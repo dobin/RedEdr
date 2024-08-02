@@ -7,6 +7,7 @@
 #include <iomanip>
 
 #include "etwreader.h"
+#include "cache.h"
 
 #pragma comment(lib, "tdh.lib")
 #pragma comment(lib, "advapi32.lib")
@@ -126,6 +127,16 @@ void PrintProperties(PEVENT_RECORD eventRecord) {
 void WINAPI EventRecordCallback(PEVENT_RECORD eventRecord) {
     std::wstring eventName;
 
+    if (eventRecord == nullptr) {
+        return;
+    }
+
+    // Do we want to track this process?
+    DWORD processId = eventRecord->EventHeader.ProcessId;
+    if (!g_cache.observe(processId)) {
+        return;
+    }
+
     // This is exclusively for Microsoft-Windows-Kernel-Process provider, change the Event IDs for other providers
     switch (eventRecord->EventHeader.EventDescriptor.Id) {
     case 1:  // Process Start
@@ -188,8 +199,6 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     case CTRL_SHUTDOWN_EVENT:
         std::wcout << L"Cleaning up resources..." << std::endl;
         stop();
-
-
         return TRUE; // Indicate that we handled the signal
     default:
         return FALSE; // Let the next handler handle the signal
@@ -240,8 +249,6 @@ int etwreader() {
     traceLogfile.ProcessTraceMode = PROCESS_TRACE_MODE_REAL_TIME | PROCESS_TRACE_MODE_EVENT_RECORD;
     traceLogfile.EventRecordCallback = EventRecordCallback;
 
-    printf("OpenTrace\n"); fflush(stdout);
-
     g_hTraceHandle = OpenTrace(&traceLogfile);
     if (g_hTraceHandle == INVALID_PROCESSTRACE_HANDLE) {
         std::wcerr << L"Failed to open trace: " << GetLastError() << std::endl;
@@ -250,14 +257,10 @@ int etwreader() {
         return 1;
     }
 
-    printf("ProcessTrace\n"); fflush(stdout);
-
     status = ProcessTrace(&g_hTraceHandle, 1, 0, 0);
     if (status != ERROR_SUCCESS) {
         std::wcerr << L"Failed to process trace: " << status << std::endl;
     }
-
-    printf("Finish\n"); fflush(stdout);
 
     //CloseTrace(g_hTraceHandle);
     delete[] sessionNameBuffer;

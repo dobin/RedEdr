@@ -24,12 +24,24 @@
     <ClCompile Include="kernelcom.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="cache.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="procinfo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="etwreader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="kernelcom.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cache.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="procinfo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
