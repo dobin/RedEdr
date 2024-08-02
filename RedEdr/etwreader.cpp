@@ -9,6 +9,7 @@
 
 #include "etwreader.h"
 #include "cache.h"
+#include "config.h"
 
 #pragma comment(lib, "tdh.lib")
 #pragma comment(lib, "advapi32.lib")
@@ -133,6 +134,7 @@ void PrintProperties(std::wstring eventName, PEVENT_RECORD eventRecord) {
 
     // Print the accumulated string
     std::wcout << output.str() << L"\n";
+    fflush(stdout);
 }
 
 
@@ -154,32 +156,40 @@ void WINAPI EventRecordCallback(PEVENT_RECORD eventRecord) {
     case 1:  // Process Start
         eventName = L"StartProcess";
         break;
-    case 2:  // Process Stop
-        eventName = L"StopProcess";
-        break;
     case 3:  // Thread Start
         eventName = L"StartThread";
-        break;
-    case 4:  // Thread Stop
-        eventName = L"StopThread";
         break;
     case 5:  // Image Load
         eventName = L"LoadImage";
         break;
-    case 6:  // Image Unload
-        eventName = L"UnloadImage";
-        break;
     default:
-        // Ignore other events
-        return;
+        if (g_config.log_unload) {
+            switch (eventRecord->EventHeader.EventDescriptor.Id) {
+            case 2:  // Process Stop
+                eventName = L"StopProcess";
+                break;
+            case 4:  // Thread Stop
+                eventName = L"StopThread";
+                break;
+                break;
+            case 6:  // Image Unload
+                eventName = L"UnloadImage";
+                break;
+            default:
+                // Ignore other events
+                return;
+            }
+        }
+        else {
+            return;
+        }
     }
-
     
     PrintProperties(eventName, eventRecord);
 }
 
 TRACEHANDLE g_hTraceHandle = INVALID_PROCESSTRACE_HANDLE; // Global trace handle
-std::wstring sessionName = L"ETWReader4";
+std::wstring sessionName = L"ETWReader2";
 TRACEHANDLE sessionHandle = 0;
 EVENT_TRACE_PROPERTIES* sessionProperties = nullptr;
 

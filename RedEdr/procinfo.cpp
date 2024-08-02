@@ -13,6 +13,7 @@
 #include <tchar.h>
 #include <stdio.h>
 
+#include "config.h"
 #include "procinfo.h"
 
 #pragma comment(lib, "ntdll.lib")
@@ -32,11 +33,11 @@ Process* MakeProcess(DWORD pid) {
     //printf("GetProcessCommandLine: %ls\n", path);
 
     BOOL observe = FALSE;
-    if (_tcsstr(cmdLine, _T("notepad.exe"))) {
-        printf("Observe: %d %ls", pid, cmdLine);
+    if (_tcsstr(cmdLine, g_config.targetExeName)) {
+        printf("Observe: %d %ls\n", pid, cmdLine);
         observe = TRUE;
     } else {
-        printf("Not Observe: %d %ls", pid, cmdLine);
+        //printf("Not Observe: %d %ls\n", pid, cmdLine);
     }
 
     Process *obj = new Process(pid, observe, cmdLine);
