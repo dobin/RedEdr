@@ -179,7 +179,7 @@ void WINAPI EventRecordCallback(PEVENT_RECORD eventRecord) {
 }
 
 TRACEHANDLE g_hTraceHandle = INVALID_PROCESSTRACE_HANDLE; // Global trace handle
-std::wstring sessionName = L"ETWReader2";
+std::wstring sessionName = L"ETWReader4";
 TRACEHANDLE sessionHandle = 0;
 EVENT_TRACE_PROPERTIES* sessionProperties = nullptr;
 

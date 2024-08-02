@@ -35,6 +35,8 @@ Process* MakeProcess(DWORD pid) {
     if (_tcsstr(cmdLine, _T("notepad.exe"))) {
         printf("Observe: %d %ls", pid, cmdLine);
         observe = TRUE;
+    } else {
+        printf("Not Observe: %d %ls", pid, cmdLine);
     }
 
     Process *obj = new Process(pid, observe, cmdLine);
