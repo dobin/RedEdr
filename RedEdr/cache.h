@@ -15,30 +15,6 @@
 #include "cache.h"
 
 
-class Process {
-public:
-    Process() {
-    }
-    Process(DWORD id, BOOL observe, std::wstring path) : id(id), observe(observe), path(path) {}
-
-    void display() const {
-        //std::cout << "ID: " << id << ", Name: " << name << std::endl;
-        wprintf(L"PID: %i  observe:%i  PATH: %ls\n",
-            id, observe, path.c_str());
-    }
-
-    BOOL doObserve() {
-        return observe;
-    }
-
-private:
-    DWORD id;
-    BOOL observe;
-    std::wstring path;
-
-};
-
-
 class Cache {
 public:
     Cache() {
@@ -58,26 +34,8 @@ public:
         }
 
         // Does not exist, create and add to cache
-
-        TCHAR cmdLine[MAX_PATH] = { 0 };
-        TCHAR workingDir[MAX_PATH] = { 0 };
-        GetProcessCommandLine2(id, cmdLine, MAX_PATH);
-        //printf("GetProcessCommandLine2: %ls\n", cmdLine);
-
-        GetProcessWorkingDirectory2(id, workingDir, MAX_PATH);
-        //printf("GetProcessWorkingDirectory2: %ls\n", workingDir);
-
-        std::wstring path;
-        GetProcessCommandLine(id, path);
-        //printf("GetProcessCommandLine: %ls\n", path);
-
-        BOOL observe = FALSE;
-        if (_tcsstr(cmdLine, _T("notepad.exe"))) {
-            observe = TRUE;
-        }
-
-        Process obj(id, observe, cmdLine);
-        cache[id] = obj;
+        Process *process = MakeProcess(id);
+        cache[id] = *process;
         return &cache[id];
     }
 

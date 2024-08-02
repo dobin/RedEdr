@@ -13,7 +13,33 @@
 #include <tchar.h>
 #include <stdio.h>
 
+#include "procinfo.h"
+
 #pragma comment(lib, "ntdll.lib")
+
+
+Process* MakeProcess(DWORD pid) {
+    TCHAR cmdLine[MAX_PATH] = { 0 };
+    TCHAR workingDir[MAX_PATH] = { 0 };
+    GetProcessCommandLine2(pid, cmdLine, MAX_PATH);
+    //printf("GetProcessCommandLine2: %ls\n", cmdLine);
+
+    GetProcessWorkingDirectory2(pid, workingDir, MAX_PATH);
+    //printf("GetProcessWorkingDirectory2: %ls\n", workingDir);
+
+    std::wstring path;
+    GetProcessCommandLine(pid, path);
+    //printf("GetProcessCommandLine: %ls\n", path);
+
+    BOOL observe = FALSE;
+    if (_tcsstr(cmdLine, _T("notepad.exe"))) {
+        printf("Observe: %d %ls", pid, cmdLine);
+        observe = TRUE;
+    }
+
+    Process *obj = new Process(pid, observe, cmdLine);
+    return obj;
+}
 
 
 typedef NTSTATUS(NTAPI* pNtQueryInformationProcess)(
@@ -29,7 +55,9 @@ BOOL GetProcessCommandLine(DWORD dwPID, std::wstring& cmdLine) {
     
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwPID);
     if (!hProcess) {
-        std::cerr << "Could not open process: " << dwPID << "  Error: " << GetLastError() << std::endl;
+        //printf("Could not open process:\n");
+        //printf("  %lu  %s\n", dwPID, cmdLine.c_str());
+        //printf("  %lu:\n", GetLastError());
         return FALSE;
     }
 

@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <iomanip>
+#include <sstream>
 
 #include "etwreader.h"
 #include "cache.h"
@@ -51,7 +52,8 @@ void DeleteTraceSession(const std::wstring& sessionName) {
     free(sessionProperties);
 }
 
-void PrintProperties(PEVENT_RECORD eventRecord) {
+
+void PrintProperties(std::wstring eventName, PEVENT_RECORD eventRecord) {
     DWORD bufferSize = 0;
     PTRACE_EVENT_INFO eventInfo = NULL;
     TDHSTATUS status = TdhGetEventInformation(eventRecord, 0, NULL, eventInfo, &bufferSize);
@@ -66,8 +68,12 @@ void PrintProperties(PEVENT_RECORD eventRecord) {
         return;
     }
 
-    std::wcout << L"Event ID: " << eventRecord->EventHeader.EventDescriptor.Id << std::endl;
-    std::wcout << L"Provider Name: " << (eventInfo->ProviderNameOffset ? (PCWSTR)((PBYTE)eventInfo + eventInfo->ProviderNameOffset) : L"Unknown") << std::endl;
+    // String stream to accumulate output
+    std::wstringstream output;
+    output << eventName << ":" << eventRecord->EventHeader.EventDescriptor.Id << L";";
+
+    //output << L"EventID:" << eventRecord->EventHeader.EventDescriptor.Id << L";";
+    output << L"ProviderName:" << (eventInfo->ProviderNameOffset ? (PCWSTR)((PBYTE)eventInfo + eventInfo->ProviderNameOffset) : L"Unknown") << L";";
 
     for (DWORD i = 0; i < eventInfo->TopLevelPropertyCount; i++) {
         PROPERTY_DATA_DESCRIPTOR dataDescriptor;
@@ -86,23 +92,23 @@ void PrintProperties(PEVENT_RECORD eventRecord) {
             continue;
         }
 
-        std::wcout << reinterpret_cast<PCWSTR>((PBYTE)eventInfo + eventInfo->EventPropertyInfoArray[i].NameOffset) << L": ";
+        output << reinterpret_cast<PCWSTR>((PBYTE)eventInfo + eventInfo->EventPropertyInfoArray[i].NameOffset) << L":";
 
         switch (eventInfo->EventPropertyInfoArray[i].nonStructType.InType) {
         case TDH_INTYPE_UINT32:
-            std::wcout << *reinterpret_cast<PULONG>(propertyBuffer.data()) << std::endl;
+            output << *reinterpret_cast<PULONG>(propertyBuffer.data()) << L";";
             break;
         case TDH_INTYPE_UINT64:
-            std::wcout << *reinterpret_cast<PULONG64>(propertyBuffer.data()) << std::endl;
+            output << *reinterpret_cast<PULONG64>(propertyBuffer.data()) << L";";
             break;
         case TDH_INTYPE_UNICODESTRING:
-            std::wcout << reinterpret_cast<PCWSTR>(propertyBuffer.data()) << std::endl;
+            output << reinterpret_cast<PCWSTR>(propertyBuffer.data()) << L";";
             break;
         case TDH_INTYPE_ANSISTRING:
-            std::wcout << reinterpret_cast<PCSTR>(propertyBuffer.data()) << std::endl;
+            output << reinterpret_cast<PCSTR>(propertyBuffer.data()) << L";";
             break;
         case TDH_INTYPE_POINTER:
-            std::wcout << reinterpret_cast<PVOID>(propertyBuffer.data()) << std::endl;
+            output << reinterpret_cast<PVOID>(propertyBuffer.data()) << L";";
             break;
         case TDH_INTYPE_FILETIME:
         {
@@ -110,19 +116,25 @@ void PrintProperties(PEVENT_RECORD eventRecord) {
             SYSTEMTIME stUTC, stLocal;
             FileTimeToSystemTime(&fileTime, &stUTC);
             SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
-            std::wcout << stLocal.wYear << L"/" << stLocal.wMonth << L"/" << stLocal.wDay << L" "
-                << stLocal.wHour << L":" << stLocal.wMinute << L":" << stLocal.wSecond << std::endl;
+            output << stLocal.wYear << L"/" << stLocal.wMonth << L"/" << stLocal.wDay << L" "
+                << stLocal.wHour << L":" << stLocal.wMinute << L":" << stLocal.wSecond << L";";
             break;
         }
         default:
-            std::wcout << L"(Unknown type)" << std::endl;
+            output << L"(Unknown type);";
             break;
         }
     }
+
+    // Free the event information structure
     if (eventInfo) {
         free(eventInfo);
     }
+
+    // Print the accumulated string
+    std::wcout << output.str() << L"\n";
 }
+
 
 void WINAPI EventRecordCallback(PEVENT_RECORD eventRecord) {
     std::wstring eventName;
@@ -140,34 +152,34 @@ void WINAPI EventRecordCallback(PEVENT_RECORD eventRecord) {
     // This is exclusively for Microsoft-Windows-Kernel-Process provider, change the Event IDs for other providers
     switch (eventRecord->EventHeader.EventDescriptor.Id) {
     case 1:  // Process Start
-        eventName = L"Start Process";
+        eventName = L"StartProcess";
         break;
     case 2:  // Process Stop
-        eventName = L"Stop Process";
+        eventName = L"StopProcess";
         break;
     case 3:  // Thread Start
-        eventName = L"Start Thread";
+        eventName = L"StartThread";
         break;
     case 4:  // Thread Stop
-        eventName = L"Stop Thread";
+        eventName = L"StopThread";
         break;
     case 5:  // Image Load
-        eventName = L"Load Image";
+        eventName = L"LoadImage";
         break;
     case 6:  // Image Unload
-        eventName = L"Unload Image";
+        eventName = L"UnloadImage";
         break;
     default:
         // Ignore other events
         return;
     }
 
-    std::wcout << L"\nEvent Name: " << eventName << std::endl;
-    PrintProperties(eventRecord);
+    
+    PrintProperties(eventName, eventRecord);
 }
 
 TRACEHANDLE g_hTraceHandle = INVALID_PROCESSTRACE_HANDLE; // Global trace handle
-std::wstring sessionName = L"ETWReader";
+std::wstring sessionName = L"ETWReader2";
 TRACEHANDLE sessionHandle = 0;
 EVENT_TRACE_PROPERTIES* sessionProperties = nullptr;
 

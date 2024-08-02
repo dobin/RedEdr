@@ -135,6 +135,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cache.h" />
+    <ClInclude Include="config.h" />
     <ClInclude Include="etwreader.h" />
     <ClInclude Include="kernelcom.h" />
     <ClInclude Include="procinfo.h" />
