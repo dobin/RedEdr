@@ -38,4 +38,4 @@ Process* MakeProcess(DWORD pid);
 BOOL GetProcessCommandLine(DWORD dwPID, std::wstring& cmdLine);
 BOOL GetProcessCommandLine2(DWORD dwPID, LPTSTR lpCmdLine, DWORD dwSize);
 BOOL GetProcessWorkingDirectory2(DWORD dwPID, LPTSTR lpDirectory, DWORD dwSize);
-
+DWORD GetProcessParentPid(DWORD pid);

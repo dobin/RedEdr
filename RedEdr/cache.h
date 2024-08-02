@@ -26,6 +26,16 @@ public:
         cache[id] = obj;
     }
 
+    BOOL containsObject(DWORD pid) {
+        auto it = cache.find(pid);
+        if (it != cache.end()) {
+            return TRUE;
+        }
+        else {
+            return FALSE;
+        }
+    }
+
     // Get an object from the cache
     Process* getObject(DWORD id) {
         auto it = cache.find(id);

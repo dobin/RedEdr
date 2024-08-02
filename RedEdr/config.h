@@ -11,8 +11,9 @@
 
 class Config {
 public:
-	const TCHAR* targetExeName = _T("notepad.exe");
+	const TCHAR* targetExeName = _T("powershell.exe");
 	BOOL log_unload = FALSE;
+	std::wstring sessionName = L"ETWReader3";
 };
 
 extern Config g_config;

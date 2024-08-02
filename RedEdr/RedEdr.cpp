@@ -9,7 +9,7 @@
 #include "etwreader.h"
 #include "kernelcom.h"
 #include "cache.h"
-
+#include "procinfo.h"
 
 // Function to enable a privilege for the current process
 BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpszPrivilege, BOOL bEnablePrivilege) {
@@ -66,6 +66,8 @@ int main() {
         printf("ERROR MakeDebug\n");
     }
 
+    //printf("--> %d", GetProcessParentPid(4652));
+    //return 1;
     //test();
     /*
     DWORD pid = 5208; // Replace with the PID you're interested in

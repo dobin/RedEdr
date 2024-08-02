@@ -15,34 +15,12 @@
 
 #include "config.h"
 #include "procinfo.h"
+#include "cache.h"
+
+
+// Link with Ntdll.lib
 
 #pragma comment(lib, "ntdll.lib")
-
-
-Process* MakeProcess(DWORD pid) {
-    TCHAR cmdLine[MAX_PATH] = { 0 };
-    TCHAR workingDir[MAX_PATH] = { 0 };
-    GetProcessCommandLine2(pid, cmdLine, MAX_PATH);
-    //printf("GetProcessCommandLine2: %ls\n", cmdLine);
-
-    GetProcessWorkingDirectory2(pid, workingDir, MAX_PATH);
-    //printf("GetProcessWorkingDirectory2: %ls\n", workingDir);
-
-    std::wstring path;
-    GetProcessCommandLine(pid, path);
-    //printf("GetProcessCommandLine: %ls\n", path);
-
-    BOOL observe = FALSE;
-    if (_tcsstr(cmdLine, g_config.targetExeName)) {
-        printf("Observe: %d %ls\n", pid, cmdLine);
-        observe = TRUE;
-    } else {
-        //printf("Not Observe: %d %ls\n", pid, cmdLine);
-    }
-
-    Process *obj = new Process(pid, observe, cmdLine);
-    return obj;
-}
 
 
 typedef NTSTATUS(NTAPI* pNtQueryInformationProcess)(
@@ -142,4 +120,72 @@ BOOL GetProcessWorkingDirectory2(DWORD dwPID, LPTSTR lpDirectory, DWORD dwSize) 
         CloseHandle(hProcess);
     }
     return bSuccess;
+}
+
+
+
+DWORD GetProcessParentPid(DWORD pid) {
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
+    if (!hProcess) {
+        //std::cerr << "Could not open process: " << GetLastError() << std::endl;
+        return 0;
+    }
+
+    PROCESS_BASIC_INFORMATION pbi;
+    ULONG returnLength;
+    HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
+    pNtQueryInformationProcess NtQueryInformationProcess =
+        (pNtQueryInformationProcess)GetProcAddress(hNtDll, "NtQueryInformationProcess");
+
+    if (NtQueryInformationProcess == nullptr) {
+        std::cerr << "Failed to get NtQueryInformationProcess address" << std::endl;
+        CloseHandle(hProcess);
+        return 1;
+    }
+
+    NTSTATUS status = NtQueryInformationProcess(
+        hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
+    if (status != 0) {
+        std::cerr << "NtQueryInformationProcess failed: " << status << std::endl;
+        CloseHandle(hProcess);
+        return 1;
+    }
+
+    DWORD parentPid = (DWORD)pbi.Reserved3; // InheritedFromUniqueProcessId lol
+    CloseHandle(hProcess);
+    return parentPid;
+}
+
+
+Process* MakeProcess(DWORD pid) {
+    TCHAR cmdLine[MAX_PATH] = { 0 };
+    TCHAR workingDir[MAX_PATH] = { 0 };
+    GetProcessCommandLine2(pid, cmdLine, MAX_PATH);
+    //printf("GetProcessCommandLine2: %ls\n", cmdLine);
+
+    GetProcessWorkingDirectory2(pid, workingDir, MAX_PATH);
+    //printf("GetProcessWorkingDirectory2: %ls\n", workingDir);
+
+    std::wstring path;
+    GetProcessCommandLine(pid, path);
+    //printf("GetProcessCommandLine: %ls\n", path);
+
+    BOOL observe = FALSE;
+
+    // CHECK: Process name
+    if (_tcsstr(cmdLine, g_config.targetExeName)) {
+        printf("Observe CMD: %d %ls\n", pid, cmdLine);
+        observe = TRUE;
+    }
+    // CHECK: Parent observed?
+    DWORD ppid = GetProcessParentPid(pid);
+    if (g_cache.containsObject(ppid)) { // dont recusively resolve all
+        if (g_cache.getObject(ppid)->doObserve()) {
+            printf("Observe PID: %d (because PPID %d): %ls\n", pid, ppid, cmdLine);
+            observe = TRUE;
+        }
+    }
+
+    Process* obj = new Process(pid, observe, cmdLine);
+    return obj;
 }
