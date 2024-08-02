@@ -5,11 +5,14 @@
 #include <Softpub.h>
 #include <wincrypt.h>
 #include <iostream>
+#include <tchar.h>
 
+#include "config.h"
 #include "etwreader.h"
 #include "kernelcom.h"
 #include "cache.h"
 #include "procinfo.h"
+
 
 // Function to enable a privilege for the current process
 BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpszPrivilege, BOOL bEnablePrivilege) {
@@ -39,56 +42,54 @@ BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpszPrivilege, BOOL bEnablePrivilege) {
     return TRUE;
 }
 
-BOOL MakeDebug() {
+
+BOOL makeMeSeDebug() {
     // Get a handle to the current process token
     HANDLE hToken;
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken)) {
         std::cerr << "OpenProcessToken failed: " << GetLastError() << std::endl;
-        return 1;
+        return FALSE;
     }
 
     // Enable SeDebugPrivilege
     if (!SetPrivilege(hToken, SE_DEBUG_NAME, TRUE)) {
         std::cerr << "Failed to enable SeDebugPrivilege." << std::endl;
         CloseHandle(hToken);
-        return 1;
+        return FALSE;
     }
 
-    printf("Debug: OK\n");
+    CloseHandle(hToken);
+
+    printf("--[ Enable SE_DEBUG: OK\n");
+    return TRUE;
 }
 
 
-int main() {
+// https://github.com/s4dbrd/ETWReader
+int wmain(int argc, wchar_t *argv[]) {
+    if (argc != 2) {
+        printf("Usage: rededr.exe <processname>");
+        return 1;
+    }
     int a = 1;
 
-    BOOL dbg = MakeDebug();
+    // Input
+    g_config.targetExeName = argv[1];
+    printf("--[ Search for: %ls\n", g_config.targetExeName);
+
+    // SeDebug
+    BOOL dbg = makeMeSeDebug();
     if (!dbg) {
-        printf("ERROR MakeDebug\n");
+        printf("ERROR MakeMeSeDebug\n");
     }
 
-    //printf("--> %d", GetProcessParentPid(4652));
-    //return 1;
-    //test();
-    /*
-    DWORD pid = 5208; // Replace with the PID you're interested in
-    std::wstring cmdLine;
-    if (GetProcessCommandLine(pid, cmdLine)) {
-        std::wcout << L"Command Line: " << cmdLine << std::endl;
-    }
-    else {
-        std::wcerr << L"Failed to get command line." << std::endl;
-    }*/
-
-
+    // Start
     if (a == 1) {
         etwreader();
     }
     else if (a == 2) {
         kernelcom();
     }
-    return 0;
 
-    // Revert privilege
-    //SetPrivilege(hToken, SE_DEBUG_NAME, FALSE);
-    //CloseHandle(hToken);
+    return 0;
 }

@@ -11,9 +11,10 @@
 
 class Config {
 public:
-	const TCHAR* targetExeName = _T("powershell.exe");
+	LPCWSTR targetExeName = L"powershell.exe"; // = const LPWSTR
 	BOOL log_unload = FALSE;
-	std::wstring sessionName = L"ETWReader3";
+	std::wstring sessionName = L"ETWReader";
+	WCHAR* a;
 };
 
 extern Config g_config;

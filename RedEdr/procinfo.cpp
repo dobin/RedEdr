@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <winternl.h>
+#include <cwchar>
 
 #include <psapi.h>
 #include <tchar.h>
@@ -88,7 +89,7 @@ BOOL GetProcessCommandLine(DWORD dwPID, std::wstring& cmdLine) {
 
 
 // Function to get the command line of a process
-BOOL GetProcessCommandLine2(DWORD dwPID, LPTSTR lpCmdLine, DWORD dwSize) {
+BOOL GetProcessCommandLine2(DWORD dwPID, LPWSTR lpCmdLine, DWORD dwSize) {
     BOOL bSuccess = FALSE;
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwPID);
     if (hProcess != NULL) {
@@ -101,7 +102,7 @@ BOOL GetProcessCommandLine2(DWORD dwPID, LPTSTR lpCmdLine, DWORD dwSize) {
 }
 
 // Function to get the working directory of a process
-BOOL GetProcessWorkingDirectory2(DWORD dwPID, LPTSTR lpDirectory, DWORD dwSize) {
+BOOL GetProcessWorkingDirectory2(DWORD dwPID, LPWSTR lpDirectory, DWORD dwSize) {
     BOOL bSuccess = FALSE;
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwPID);
     if (hProcess != NULL) {
@@ -158,28 +159,37 @@ DWORD GetProcessParentPid(DWORD pid) {
 
 
 Process* MakeProcess(DWORD pid) {
-    TCHAR cmdLine[MAX_PATH] = { 0 };
-    TCHAR workingDir[MAX_PATH] = { 0 };
-    GetProcessCommandLine2(pid, cmdLine, MAX_PATH);
+    wchar_t _cmdLine[MAX_PATH] = { 0 };  
+    wchar_t _workingDir[MAX_PATH] = { 0 };
+    LPWSTR cmdLine = _cmdLine;  // LPWSTR is *wchar_t
+    LPWSTR workingDir = _workingDir;
+
+    if (!GetProcessCommandLine2(pid, cmdLine, MAX_PATH)) {
+        wcscpy_s(cmdLine, MAX_PATH, L"unknown");
+    }
     //printf("GetProcessCommandLine2: %ls\n", cmdLine);
 
-    GetProcessWorkingDirectory2(pid, workingDir, MAX_PATH);
+    if (!GetProcessWorkingDirectory2(pid, workingDir, MAX_PATH)) {
+        wcscpy_s(workingDir, MAX_PATH, L"unknown");
+    }
     //printf("GetProcessWorkingDirectory2: %ls\n", workingDir);
 
     std::wstring path;
-    GetProcessCommandLine(pid, path);
+    if (!GetProcessCommandLine(pid, path)) {
+        path = L"unknown";
+    }
     //printf("GetProcessCommandLine: %ls\n", path);
 
     BOOL observe = FALSE;
-
     // CHECK: Process name
-    if (_tcsstr(cmdLine, g_config.targetExeName)) {
+    if (wcsstr(cmdLine, g_config.targetExeName)) {
+    //if (_tcsstr(cmdLine, g_config.targetExeName)) {
         printf("Observe CMD: %d %ls\n", pid, cmdLine);
         observe = TRUE;
     }
     // CHECK: Parent observed?
     DWORD ppid = GetProcessParentPid(pid);
-    if (g_cache.containsObject(ppid)) { // dont recusively resolve all
+    if (g_cache.containsObject(ppid)) { // dont recursively resolve all
         if (g_cache.getObject(ppid)->doObserve()) {
             printf("Observe PID: %d (because PPID %d): %ls\n", pid, ppid, cmdLine);
             observe = TRUE;
