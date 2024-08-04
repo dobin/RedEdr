@@ -22,7 +22,7 @@ struct Reader {
     TRACEHANDLE TraceHandle;
 };
 
-#define NUM_READERS 3
+#define NUM_READERS 4
 struct Reader Readers[NUM_READERS];
 
 
@@ -199,13 +199,7 @@ void WINAPI EventRecordCallbackAntimalwareEngine(PEVENT_RECORD eventRecord) {
         return;
     }
 
-    switch (eventRecord->EventHeader.EventDescriptor.Id) {
-    case 12: // or 14, 16
-        PrintProperties(eventName, eventRecord);
-    default:
-        return;
-    }
-
+    // All
     PrintProperties(eventName, eventRecord);
 }
 
@@ -353,13 +347,23 @@ int EtwReader() {
         printf("TODO ERROR\n");
         return 1;
     }
-    do_trace(&Readers[2], L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Protection");
+    do_trace(&Readers[2], L"{8E92DEEF-5E17-413B-B927-59B2F06A3CFC}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-RTP");
     if (!ret) {
         printf("TODO ERROR\n");
         return 1;
     }
+    do_trace(&Readers[3], L"{CFEB0608-330E-4410-B00D-56D8DA9986E6}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-AMFilter");
+    if (!ret) {
+        printf("TODO ERROR\n");
+        return 1;
+    }
+    /*setup_trace(&Readers[2], L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Protection");
+    if (!ret) {
+        printf("TODO ERROR\n");
+        return 1;
+    }*/
     // Test
-    /*ret = do_trace(&Readers[2], L"{EDD08927-9CC4-4E65-B970-C2560FB5C289}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Windows-Kernel-File");
+    /*ret = setup_trace(&Readers[2], L"{EDD08927-9CC4-4E65-B970-C2560FB5C289}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Windows-Kernel-File");
     if (!ret) {
         printf("TODO ERROR\n");
         return 1;
