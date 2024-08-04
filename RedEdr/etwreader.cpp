@@ -22,7 +22,7 @@ struct Reader {
     TRACEHANDLE TraceHandle;
 };
 
-#define NUM_READERS 4
+#define NUM_READERS 6
 struct Reader Readers[NUM_READERS];
 
 
@@ -248,7 +248,7 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
 typedef void (WINAPI* EventRecordCallbackFuncPtr)(PEVENT_RECORD);
 
 
-BOOL do_trace(Reader *reader, const wchar_t* guid, EventRecordCallbackFuncPtr func, const wchar_t* info) {
+BOOL setup_trace(Reader *reader, const wchar_t* guid, EventRecordCallbackFuncPtr func, const wchar_t* info) {
     ULONG status;
     GUID providerGuid;
     TRACEHANDLE sessionHandle;
@@ -337,31 +337,36 @@ int EtwReader() {
         return 1;
     }
 
-    ret = do_trace(&Readers[0], L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
+    ret = setup_trace(&Readers[0], L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
     if (!ret) {
         printf("TODO ERROR\n");
         return 1;
     }
-    do_trace(&Readers[1], L"{0a002690-3839-4e3a-b3b6-96d8df868d99}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Engine");
+    ret = setup_trace(&Readers[1], L"{0a002690-3839-4e3a-b3b6-96d8df868d99}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Engine");
     if (!ret) {
         printf("TODO ERROR\n");
         return 1;
     }
-    do_trace(&Readers[2], L"{8E92DEEF-5E17-413B-B927-59B2F06A3CFC}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-RTP");
+    ret = setup_trace(&Readers[2], L"{8E92DEEF-5E17-413B-B927-59B2F06A3CFC}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-RTP");
     if (!ret) {
         printf("TODO ERROR\n");
         return 1;
     }
-    do_trace(&Readers[3], L"{CFEB0608-330E-4410-B00D-56D8DA9986E6}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-AMFilter");
+    ret = setup_trace(&Readers[3], L"{CFEB0608-330E-4410-B00D-56D8DA9986E6}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-AMFilter");
     if (!ret) {
         printf("TODO ERROR\n");
         return 1;
     }
-    /*setup_trace(&Readers[2], L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Protection");
+    ret = setup_trace(&Readers[4], L"{2A576B87-09A7-520E-C21A-4942F0271D67}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Scan-Interface");
     if (!ret) {
         printf("TODO ERROR\n");
         return 1;
-    }*/
+    }
+    ret = setup_trace(&Readers[5], L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Protection");
+    if (!ret) {
+        printf("TODO ERROR\n");
+        return 1;
+    }
     // Test
     /*ret = setup_trace(&Readers[2], L"{EDD08927-9CC4-4E65-B970-C2560FB5C289}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Windows-Kernel-File");
     if (!ret) {
