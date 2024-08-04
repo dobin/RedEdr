@@ -138,7 +138,7 @@ void PrintProperties(std::wstring eventName, PEVENT_RECORD eventRecord) {
 
     // Print the accumulated string
     std::wcout << output.str() << L"\n";
-    fflush(stdout);
+    //fflush(stdout);
 }
 
 
@@ -211,7 +211,7 @@ void WINAPI EventRecordCallbackAntimalwareEngine(PEVENT_RECORD eventRecord) {
 
 
 void EventTraceStopAll() {
-    printf("--[ Stop tracing\n"); fflush(stdout);
+    printf("--[ Stop tracing\n");
     ULONG status;
     EVENT_TRACE_PROPERTIES* sessionProperties;
 
@@ -304,8 +304,8 @@ BOOL do_trace(Reader *reader, const wchar_t* guid, EventRecordCallbackFuncPtr fu
 
 
 DWORD WINAPI TraceProcessingThread(LPVOID param) {
-    printf("Start Thread...\n");
     Reader *reader = (Reader*)param;
+    printf("--[ Start Thread %i\n", reader->id);
 
     ULONG status = ProcessTrace(&reader->TraceHandle, 1, NULL, NULL);
     if (status != ERROR_SUCCESS) {
@@ -353,17 +353,17 @@ int EtwReader() {
         printf("TODO ERROR\n");
         return 1;
     }
-    /*do_trace(&Readers[2], L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Protection");
-    if (!ret) {
-        printf("TODO ERROR\n");
-        return 1;
-    }*/
-    // Test
-    ret = do_trace(&Readers[2], L"{EDD08927-9CC4-4E65-B970-C2560FB5C289}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Windows-Kernel-File");
+    do_trace(&Readers[2], L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Protection");
     if (!ret) {
         printf("TODO ERROR\n");
         return 1;
     }
+    // Test
+    /*ret = do_trace(&Readers[2], L"{EDD08927-9CC4-4E65-B970-C2560FB5C289}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Windows-Kernel-File");
+    if (!ret) {
+        printf("TODO ERROR\n");
+        return 1;
+    }*/
 
     // ProcessTrace() can only handle 1 (one) real-time processing session
     // Create threads instead fuck...

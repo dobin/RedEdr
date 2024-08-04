@@ -75,7 +75,7 @@ int wmain(int argc, wchar_t *argv[]) {
 
     // Input
     g_config.targetExeName = argv[1];
-    printf("--[ Search for: %ls\n", g_config.targetExeName);
+    printf("--[ Tracing process name %ls and its children\n", g_config.targetExeName);
 
     // SeDebug
     BOOL dbg = makeMeSeDebug();
