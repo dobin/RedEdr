@@ -85,7 +85,7 @@ int wmain(int argc, wchar_t *argv[]) {
 
     // Start
     if (a == 1) {
-        etwreader();
+        EtwReader();
     }
     else if (a == 2) {
         kernelcom();

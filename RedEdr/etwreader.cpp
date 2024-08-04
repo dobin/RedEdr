@@ -25,12 +25,15 @@ TRACEHANDLE TraceHandles[] = {
     INVALID_PROCESSTRACE_HANDLE
 };
 
+wchar_t* SessionNames[] = {
+    NULL,
+    NULL
+};
 
 
-EVENT_TRACE_PROPERTIES* make_SessionProperties() {
-    // SessionProperties fuck
+EVENT_TRACE_PROPERTIES* make_SessionProperties(int session_name_len) {
     EVENT_TRACE_PROPERTIES* sessionProperties;
-    ULONG bufferSize = sizeof(EVENT_TRACE_PROPERTIES) + (g_config.sessionName.size() + 1) * sizeof(wchar_t);
+    ULONG bufferSize = sizeof(EVENT_TRACE_PROPERTIES) + ((session_name_len + 1) * sizeof(wchar_t));
     sessionProperties = (EVENT_TRACE_PROPERTIES*)malloc(bufferSize);
     ZeroMemory(sessionProperties, bufferSize);
     sessionProperties->Wnode.BufferSize = bufferSize;
@@ -38,7 +41,6 @@ EVENT_TRACE_PROPERTIES* make_SessionProperties() {
     sessionProperties->Wnode.ClientContext = 1;  // QPC clock resolution
     sessionProperties->LogFileMode = EVENT_TRACE_REAL_TIME_MODE;
     sessionProperties->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
-
     return sessionProperties;
 }
 
@@ -58,27 +60,6 @@ void EnableProvider(TRACEHANDLE sessionHandle, const GUID& providerGuid) {
     if (status != ERROR_SUCCESS) {
         std::wcerr << L"Failed to enable provider: " << status << std::endl;
     }
-}
-
-
-void DeleteTraceSession() {
-    // Sesion Properties
-    EVENT_TRACE_PROPERTIES* sessionProperties = nullptr;
-    ULONG bufferSize = sizeof(EVENT_TRACE_PROPERTIES) + (g_config.sessionName.size() + 1) * sizeof(wchar_t);
-    sessionProperties = (EVENT_TRACE_PROPERTIES*)malloc(bufferSize);
-    ZeroMemory(sessionProperties, bufferSize);
-    sessionProperties->Wnode.BufferSize = bufferSize;
-    sessionProperties->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
-
-    ULONG status = ControlTrace(NULL, g_config.sessionName.c_str(), sessionProperties, EVENT_TRACE_CONTROL_STOP);
-    if (status != ERROR_SUCCESS && status != ERROR_WMI_INSTANCE_NOT_FOUND) {
-        std::wcerr << L"Failed to delete trace session: " << status << std::endl;
-    }
-    else {
-        std::wcout << L"Trace session deleted successfully." << std::endl;
-    }
-
-    free(sessionProperties);
 }
 
 
@@ -179,7 +160,6 @@ void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
         return;
     }
 
-    // This is exclusively for Microsoft-Windows-Kernel-Process provider, change the Event IDs for other providers
     switch (eventRecord->EventHeader.EventDescriptor.Id) {
     case 1:  // Process Start
         eventName = L"StartProcess";
@@ -212,56 +192,51 @@ void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
             return;
         }
     }
-    
+
     PrintProperties(eventName, eventRecord);
 }
 
 
 void WINAPI EventRecordCallbackAntimalwareEngine(PEVENT_RECORD eventRecord) {
-    std::wstring eventName = L"test------------------------>";
+    std::wstring eventName = L"test";
 
     if (eventRecord == nullptr) {
         return;
     }
-    //printf("AAAA\n"); fflush(stdout);
+
+    switch (eventRecord->EventHeader.EventDescriptor.Id) {
+    case 12: // or 14, 16
+        PrintProperties(eventName, eventRecord);
+    default:
+        return;
+    }
+
     PrintProperties(eventName, eventRecord);
 }
 
 
-void stop() {
+void EventTraceStopAll() {
     printf("--[ Stop tracing\n"); fflush(stdout);
     ULONG status;
     EVENT_TRACE_PROPERTIES* sessionProperties;
 
     // Individual traces
     for (int n=0; n<2; n++) {
-        printf("Closing: %d...\n", n);
-        sessionProperties = make_SessionProperties();
+        printf("  Stop: %d...\n", n);
+        sessionProperties = make_SessionProperties(wcslen(SessionNames[n]));
 
         if (SessionHandles[n] != NULL) {
-            status = ControlTrace(SessionHandles[n], g_config.sessionName.c_str(), sessionProperties, EVENT_TRACE_CONTROL_STOP);
+            status = ControlTrace(SessionHandles[n], SessionNames[n], sessionProperties, EVENT_TRACE_CONTROL_STOP);
             if (status != ERROR_SUCCESS) {
                 printf("Failed to stop trace %d: %d\n", n, status);
-                //std::wcerr << L"Failed to stop trace: " << status << std::endl;
+            }
+            else {
+                printf("    ControlTrace: %i stopped\n", n);
             }
             SessionHandles[n] = NULL;
         }
-        
-        if (TraceHandles[n] != INVALID_PROCESSTRACE_HANDLE) {
-            status = CloseTrace(TraceHandles[n]);
-            if (status != ERROR_SUCCESS) {
-                printf("Failed to close trace %d: %d\n", n, status);
-                //std::wcerr << L"Failed to close trace: " << status << std::endl;
-            }
-            TraceHandles[n] = INVALID_PROCESSTRACE_HANDLE;
-        }
-
         free(sessionProperties);
-        
     }
-
-    // TraceSession
-    DeleteTraceSession();
 }
 
 
@@ -273,7 +248,7 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     case CTRL_LOGOFF_EVENT:
     case CTRL_SHUTDOWN_EVENT:
         std::wcout << L"Cleaning up resources..." << std::endl;
-        stop();
+        EventTraceStopAll();
         return TRUE; // Indicate that we handled the signal
     default:
         return FALSE; // Let the next handler handle the signal
@@ -283,7 +258,7 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
 typedef void (WINAPI* EventRecordCallbackFuncPtr)(PEVENT_RECORD);
 
 
-BOOL do_trace(int idx, const wchar_t *guid, EventRecordCallbackFuncPtr func, const wchar_t *info) {
+BOOL do_trace(int idx, const wchar_t* guid, EventRecordCallbackFuncPtr func, const wchar_t* info) {
     ULONG status;
     GUID providerGuid;
     TRACEHANDLE sessionHandle;
@@ -295,12 +270,13 @@ BOOL do_trace(int idx, const wchar_t *guid, EventRecordCallbackFuncPtr func, con
         std::wcerr << L"Invalid provider GUID format." << std::endl;
         return false;
     }
-    wchar_t* sessionNameBuffer = new wchar_t[g_config.sessionName.size() + 1];
-    wcscpy_s(sessionNameBuffer, g_config.sessionName.size() + 1, g_config.sessionName.c_str());
+    std::wstring mySessionName = g_config.sessionName + L"_" + std::to_wstring(idx);
+    wchar_t* sessionNameBuffer = new wchar_t[mySessionName.size() + 1];
+    wcscpy_s(sessionNameBuffer, mySessionName.size() + 1, mySessionName.c_str());
 
     // StartTrace -> SessionHandle
-    EVENT_TRACE_PROPERTIES* sessionProperties = make_SessionProperties();
-    status = StartTrace(&sessionHandle, g_config.sessionName.c_str(), sessionProperties);
+    EVENT_TRACE_PROPERTIES* sessionProperties = make_SessionProperties(wcslen(sessionNameBuffer));
+    status = StartTrace(&sessionHandle, mySessionName.c_str(), sessionProperties);
     if (status != ERROR_SUCCESS) {
         std::wcerr << L"Failed to start trace: " << status << std::endl;
         free(sessionProperties);
@@ -326,17 +302,29 @@ BOOL do_trace(int idx, const wchar_t *guid, EventRecordCallbackFuncPtr func, con
 
     SessionHandles[idx] = sessionHandle;
     TraceHandles[idx] = traceHandle;
-    //EventProperties[idx] = sessionProperties;
+    SessionNames[idx] = sessionNameBuffer;
 
-    delete[] sessionNameBuffer;
-    //free(sessionProperties);
+    //delete[] sessionNameBuffer;
+    free(sessionProperties);
 
     return TRUE;
 }
 
 
-int etwreader() {
+DWORD WINAPI TraceProcessingThread(LPVOID param) {
+    printf("Start Thread...\n");
+    TRACEHANDLE traceHandle = *(TRACEHANDLE*)param;
+    ULONG status = ProcessTrace(&traceHandle, 1, NULL, NULL);
+    if (status != ERROR_SUCCESS) {
+        std::wcerr << L"Failed to process trace: " << status << std::endl;
+    }
+    return 0;
+}
+
+
+int EtwReader() {
     BOOL ret;
+    DWORD status;
 
     printf("--[ Tracing session name: %ls\n", g_config.sessionName.c_str());
 
@@ -348,20 +336,46 @@ int etwreader() {
 
     ret = do_trace(0, L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
     if (!ret) {
+        printf("TODO ERROR\n");
         return 1;
     }
     //do_trace(L"{0a002690-3839-4e3a-b3b6-96d8df868d99}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Engine");
     //do_trace(L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Protection");
-    //ret = do_trace(1, L"{EDD08927-9CC4-4E65-B970-C2560FB5C289}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Windows-Kernel-File");
-    //if (!ret) {
-    //    return 1;
-    //}
-
-    // This will block. Cleanup in ctrl-c handler
-    printf("---[ Start tracing...\n");
-    ULONG status = ProcessTrace(TraceHandles, 1, 0, 0);
-    if (status != ERROR_SUCCESS) {
-        std::wcerr << L"Failed to process trace: " << status << std::endl;
+    ret = do_trace(1, L"{EDD08927-9CC4-4E65-B970-C2560FB5C289}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Windows-Kernel-File");
+    if (!ret) {
+        printf("TODO ERROR\n");
+        return 1;
     }
 
+    // ProcessTrace() can only handle 1 (one) real-time processing session
+    // Create threads instead fuck...
+    printf("---[ Start tracing...\n");
+    std::vector<HANDLE> threads;
+    for (size_t i = 0; i < 2; ++i) {
+        HANDLE thread = CreateThread(NULL, 0, TraceProcessingThread, &TraceHandles[i], 0, NULL);
+        if (thread == NULL) {
+            std::wcerr << L"Failed to create thread for trace session " << i << std::endl;
+            return 1;
+        }
+        threads.push_back(thread);
+    }
+
+    // Wait for all threads to complete
+    // Stop via ctrl-c: ControlTrace EVENT_TRACE_CONTROL_STOP all, which makes the threads return
+    WaitForMultipleObjects(threads.size(), threads.data(), TRUE, INFINITE);
+
+    printf("Tracing finished, cleanup...\n");
+    for (int n = 0; n < 2; n++) {
+        if (TraceHandles[n] != INVALID_PROCESSTRACE_HANDLE) {
+            status = CloseTrace(TraceHandles[n]);
+            if (status != ERROR_SUCCESS) {
+                printf("Failed to close trace %d: %d\n", n, status);
+                //std::wcerr << L"Failed to close trace: " << status << std::endl;
+            }
+            else {
+                printf("  CloseTrace: %i closed\n", n);
+            }
+            TraceHandles[n] = INVALID_PROCESSTRACE_HANDLE;
+        }
+    }
 }

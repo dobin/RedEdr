@@ -1,4 +1,4 @@
 #pragma once
 
 
-int etwreader();
+int EtwReader();
