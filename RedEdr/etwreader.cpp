@@ -138,7 +138,7 @@ void PrintProperties(std::wstring eventName, PEVENT_RECORD eventRecord) {
 }
 
 
-void WINAPI EventRecordCallback(PEVENT_RECORD eventRecord) {
+void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
     std::wstring eventName;
 
     if (eventRecord == nullptr) {
@@ -188,6 +188,18 @@ void WINAPI EventRecordCallback(PEVENT_RECORD eventRecord) {
     PrintProperties(eventName, eventRecord);
 }
 
+
+
+void WINAPI EventRecordCallbackAntimalwareEngine(PEVENT_RECORD eventRecord) {
+    std::wstring eventName = L"test";
+
+    if (eventRecord == nullptr) {
+        return;
+    }
+    //printf("AAAA\n"); fflush(stdout);
+    PrintProperties(eventName, eventRecord);
+}
+
 TRACEHANDLE g_hTraceHandle = INVALID_PROCESSTRACE_HANDLE; // Global trace handle
 std::wstring sessionName = g_config.sessionName;
 TRACEHANDLE sessionHandle = 0;
@@ -195,7 +207,7 @@ EVENT_TRACE_PROPERTIES* sessionProperties = nullptr;
 
 
 void stop() {
-    printf("ControlTrace\n"); fflush(stdout);
+    printf("--[ Stop tracing\n"); fflush(stdout);
     ULONG status;
 
     status = ControlTrace(sessionHandle, sessionName.c_str(), sessionProperties, EVENT_TRACE_CONTROL_STOP);
@@ -227,17 +239,16 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     }
 }
 
-int etwreader() {
+typedef void (WINAPI* EventRecordCallbackFuncPtr)(PEVENT_RECORD);
+
+
+int do_trace(const wchar_t *guid, EventRecordCallbackFuncPtr func, const wchar_t *info) {
     ULONG status;
-
-    // Set up the console control handler to clean up on Ctrl+C
-    if (!SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE)) {
-        std::cerr << "Failed to set control handler" << std::endl;
-        return 1;
-    }
-
     GUID providerGuid;
-    if (CLSIDFromString(L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &providerGuid) != NOERROR) {
+
+    printf("--[ Do Trace: %ls: %ls\n", guid, info);
+
+    if (CLSIDFromString(guid, &providerGuid) != NOERROR) {
         std::wcerr << L"Invalid provider GUID format." << std::endl;
         return 1;
     }
@@ -269,7 +280,7 @@ int etwreader() {
     ZeroMemory(&traceLogfile, sizeof(EVENT_TRACE_LOGFILE));
     traceLogfile.LoggerName = sessionNameBuffer;
     traceLogfile.ProcessTraceMode = PROCESS_TRACE_MODE_REAL_TIME | PROCESS_TRACE_MODE_EVENT_RECORD;
-    traceLogfile.EventRecordCallback = EventRecordCallback;
+    traceLogfile.EventRecordCallback = func; //EventRecordCallbackKernelProcess;
 
     g_hTraceHandle = OpenTrace(&traceLogfile);
     if (g_hTraceHandle == INVALID_PROCESSTRACE_HANDLE) {
@@ -279,6 +290,7 @@ int etwreader() {
         return 1;
     }
 
+    printf("---[ Start tracing...\n");
     status = ProcessTrace(&g_hTraceHandle, 1, 0, 0);
     if (status != ERROR_SUCCESS) {
         std::wcerr << L"Failed to process trace: " << status << std::endl;
@@ -288,4 +300,18 @@ int etwreader() {
     delete[] sessionNameBuffer;
     free(sessionProperties);
     return 0;
+}
+
+
+int etwreader() {
+    // Set up the console control handler to clean up on Ctrl+C
+    if (!SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE)) {
+        std::cerr << "Failed to set control handler" << std::endl;
+        return 1;
+    }
+
+    //do_trace(L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
+    //do_trace(L"{0a002690-3839-4e3a-b3b6-96d8df868d99}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Engine");
+    //do_trace(L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Protection");
+    do_trace(L"{EDD08927-9CC4-4E65-B970-C2560FB5C289}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Windows-Kernel-File");
 }
