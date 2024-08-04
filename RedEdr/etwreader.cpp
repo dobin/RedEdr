@@ -15,20 +15,15 @@
 #pragma comment(lib, "advapi32.lib")
 
 
-TRACEHANDLE SessionHandles[] = {
-    NULL,
-    NULL,
+struct Reader {
+    int id;
+    wchar_t* SessionName;
+    TRACEHANDLE SessionHandle;
+    TRACEHANDLE TraceHandle;
 };
 
-TRACEHANDLE TraceHandles[] = {
-    INVALID_PROCESSTRACE_HANDLE,
-    INVALID_PROCESSTRACE_HANDLE
-};
-
-wchar_t* SessionNames[] = {
-    NULL,
-    NULL
-};
+#define NUM_READERS 3
+struct Reader Readers[NUM_READERS];
 
 
 EVENT_TRACE_PROPERTIES* make_SessionProperties(int session_name_len) {
@@ -221,19 +216,20 @@ void EventTraceStopAll() {
     EVENT_TRACE_PROPERTIES* sessionProperties;
 
     // Individual traces
-    for (int n=0; n<2; n++) {
+    for (int n=0; n< NUM_READERS; n++) {
         printf("  Stop: %d...\n", n);
-        sessionProperties = make_SessionProperties(wcslen(SessionNames[n]));
+        Reader* reader = &Readers[n];
+        sessionProperties = make_SessionProperties(wcslen(reader->SessionName));
 
-        if (SessionHandles[n] != NULL) {
-            status = ControlTrace(SessionHandles[n], SessionNames[n], sessionProperties, EVENT_TRACE_CONTROL_STOP);
+        if (reader->SessionHandle != NULL) {
+            status = ControlTrace(reader->SessionHandle, reader->SessionName, sessionProperties, EVENT_TRACE_CONTROL_STOP);
             if (status != ERROR_SUCCESS) {
                 printf("Failed to stop trace %d: %d\n", n, status);
             }
             else {
                 printf("    ControlTrace: %i stopped\n", n);
             }
-            SessionHandles[n] = NULL;
+            reader->SessionHandle = NULL;
         }
         free(sessionProperties);
     }
@@ -258,25 +254,23 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
 typedef void (WINAPI* EventRecordCallbackFuncPtr)(PEVENT_RECORD);
 
 
-BOOL do_trace(int idx, const wchar_t* guid, EventRecordCallbackFuncPtr func, const wchar_t* info) {
+BOOL do_trace(Reader *reader, const wchar_t* guid, EventRecordCallbackFuncPtr func, const wchar_t* info) {
     ULONG status;
     GUID providerGuid;
     TRACEHANDLE sessionHandle;
     TRACEHANDLE traceHandle;
 
-    printf("--[ Do Trace %i: %ls: %ls\n", idx, guid, info);
+    printf("--[ Do Trace %i: %ls: %ls\n", reader->id, guid, info);
 
     if (CLSIDFromString(guid, &providerGuid) != NOERROR) {
         std::wcerr << L"Invalid provider GUID format." << std::endl;
         return false;
     }
-    std::wstring mySessionName = g_config.sessionName + L"_" + std::to_wstring(idx);
-    wchar_t* sessionNameBuffer = new wchar_t[mySessionName.size() + 1];
-    wcscpy_s(sessionNameBuffer, mySessionName.size() + 1, mySessionName.c_str());
+    wchar_t* sessionNameBuffer = reader->SessionName;
 
     // StartTrace -> SessionHandle
     EVENT_TRACE_PROPERTIES* sessionProperties = make_SessionProperties(wcslen(sessionNameBuffer));
-    status = StartTrace(&sessionHandle, mySessionName.c_str(), sessionProperties);
+    status = StartTrace(&sessionHandle, sessionNameBuffer, sessionProperties);
     if (status != ERROR_SUCCESS) {
         std::wcerr << L"Failed to start trace: " << status << std::endl;
         free(sessionProperties);
@@ -295,16 +289,14 @@ BOOL do_trace(int idx, const wchar_t* guid, EventRecordCallbackFuncPtr func, con
     traceHandle = OpenTrace(&traceLogfile);
     if (traceHandle == INVALID_PROCESSTRACE_HANDLE) {
         std::wcerr << L"Failed to open trace: " << GetLastError() << std::endl;
-        delete[] sessionNameBuffer;
+        //delete[] sessionNameBuffer;
         free(sessionProperties);
         return false;
     }
 
-    SessionHandles[idx] = sessionHandle;
-    TraceHandles[idx] = traceHandle;
-    SessionNames[idx] = sessionNameBuffer;
+    reader->SessionHandle = sessionHandle;
+    reader->TraceHandle = traceHandle;
 
-    //delete[] sessionNameBuffer;
     free(sessionProperties);
 
     return TRUE;
@@ -313,8 +305,9 @@ BOOL do_trace(int idx, const wchar_t* guid, EventRecordCallbackFuncPtr func, con
 
 DWORD WINAPI TraceProcessingThread(LPVOID param) {
     printf("Start Thread...\n");
-    TRACEHANDLE traceHandle = *(TRACEHANDLE*)param;
-    ULONG status = ProcessTrace(&traceHandle, 1, NULL, NULL);
+    Reader *reader = (Reader*)param;
+
+    ULONG status = ProcessTrace(&reader->TraceHandle, 1, NULL, NULL);
     if (status != ERROR_SUCCESS) {
         std::wcerr << L"Failed to process trace: " << status << std::endl;
     }
@@ -328,20 +321,45 @@ int EtwReader() {
 
     printf("--[ Tracing session name: %ls\n", g_config.sessionName.c_str());
 
+    // Initialize readers
+    for (int i = 0; i < NUM_READERS; ++i) {
+        Readers[i].id = i;
+
+        // Allocate memory for the session name
+        std::wstring mySessionName = g_config.sessionName + L"_" + std::to_wstring(i);
+        size_t len = mySessionName.length() + 1; // +1 for null terminator
+        wchar_t* sessionName = new wchar_t[len];
+        wcscpy_s(sessionName, len, mySessionName.c_str());
+        Readers[i].SessionName = sessionName;
+
+        // Initialize handles (assuming INVALID_PROCESSTRACE_HANDLE and NULL are valid initial values)
+        Readers[i].SessionHandle = NULL;
+        Readers[i].TraceHandle = INVALID_PROCESSTRACE_HANDLE;
+    }
+
     // Set up the console control handler to clean up on Ctrl+C
     if (!SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE)) {
         std::cerr << "Failed to set control handler" << std::endl;
         return 1;
     }
 
-    ret = do_trace(0, L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
+    ret = do_trace(&Readers[0], L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
     if (!ret) {
         printf("TODO ERROR\n");
         return 1;
     }
-    //do_trace(L"{0a002690-3839-4e3a-b3b6-96d8df868d99}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Engine");
-    //do_trace(L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Protection");
-    ret = do_trace(1, L"{EDD08927-9CC4-4E65-B970-C2560FB5C289}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Windows-Kernel-File");
+    do_trace(&Readers[1], L"{0a002690-3839-4e3a-b3b6-96d8df868d99}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Engine");
+    if (!ret) {
+        printf("TODO ERROR\n");
+        return 1;
+    }
+    /*do_trace(&Readers[2], L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Protection");
+    if (!ret) {
+        printf("TODO ERROR\n");
+        return 1;
+    }*/
+    // Test
+    ret = do_trace(&Readers[2], L"{EDD08927-9CC4-4E65-B970-C2560FB5C289}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Windows-Kernel-File");
     if (!ret) {
         printf("TODO ERROR\n");
         return 1;
@@ -351,8 +369,10 @@ int EtwReader() {
     // Create threads instead fuck...
     printf("---[ Start tracing...\n");
     std::vector<HANDLE> threads;
-    for (size_t i = 0; i < 2; ++i) {
-        HANDLE thread = CreateThread(NULL, 0, TraceProcessingThread, &TraceHandles[i], 0, NULL);
+    for (size_t i = 0; i < NUM_READERS; ++i) {
+        Reader* reader = &Readers[i];
+
+        HANDLE thread = CreateThread(NULL, 0, TraceProcessingThread, reader, 0, NULL);
         if (thread == NULL) {
             std::wcerr << L"Failed to create thread for trace session " << i << std::endl;
             return 1;
@@ -365,17 +385,20 @@ int EtwReader() {
     WaitForMultipleObjects(threads.size(), threads.data(), TRUE, INFINITE);
 
     printf("Tracing finished, cleanup...\n");
-    for (int n = 0; n < 2; n++) {
-        if (TraceHandles[n] != INVALID_PROCESSTRACE_HANDLE) {
-            status = CloseTrace(TraceHandles[n]);
+    for (int n = 0; n < NUM_READERS; n++) {
+        Reader *reader = &Readers[n];
+
+        if (reader->TraceHandle != INVALID_PROCESSTRACE_HANDLE) {
+            status = CloseTrace(reader->TraceHandle);
             if (status != ERROR_SUCCESS) {
                 printf("Failed to close trace %d: %d\n", n, status);
-                //std::wcerr << L"Failed to close trace: " << status << std::endl;
             }
             else {
                 printf("  CloseTrace: %i closed\n", n);
             }
-            TraceHandles[n] = INVALID_PROCESSTRACE_HANDLE;
+            reader->TraceHandle = INVALID_PROCESSTRACE_HANDLE;
         }
+
+        // Todo free memory
     }
 }
