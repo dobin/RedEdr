@@ -19,4 +19,8 @@ int wmain(int argc, wchar_t* argv[]) {
     printf("RedTester\n");
     Process* process = MakeProcess(pid);
     process->display();
+
+    if (process->image_path.find(g_config.targetExeName) != std::wstring::npos) {
+        wprintf(L"Observe CMD: %d %ls\n", pid, process->image_path.c_str());
+    }
 }

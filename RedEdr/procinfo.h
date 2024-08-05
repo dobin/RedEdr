@@ -16,9 +16,7 @@ class Process {
 public:
     Process() {
     }
-    Process(DWORD id, DWORD parent_pid, BOOL observe, std::wstring image_path, std::wstring commandline, std::wstring working_dir) 
-        : id(id), parent_pid(parent_pid), observe(observe), image_path(image_path), commandline(commandline), working_dir(working_dir) 
-        {}
+    Process(DWORD id): id(id) {}
 
     void display() const {
         wprintf(L"PID: %i  parent: %i  observe: %i\n", id, parent_pid, observe);
@@ -53,7 +51,7 @@ public:
         return observe;
     }
 
-private:
+public:
     DWORD id;
     BOOL observe;
     std::wstring image_path;
@@ -64,9 +62,8 @@ private:
 };
 
 
-BOOL GetProcessCommandLine_Peb(DWORD dwPID, std::wstring& cmdLine);
-BOOL GetProcessImagePath_ProcessImage(DWORD dwPID, LPWSTR lpCmdLine, DWORD dwSize);
-BOOL GetProcessWorkingDirectory(DWORD dwPID, LPWSTR lpDirectory, DWORD dwSize);
-
+BOOL GetProcessCommandLine_Peb(Process* process, HANDLE hProcess);
+BOOL GetProcessImagePath_ProcessImage(Process* process, HANDLE hProcess);
+BOOL GetProcessWorkingDirectory(Process* process, HANDLE hProcess);
 Process* MakeProcess(DWORD pid);
-DWORD GetProcessParentPid(DWORD pid);
+BOOL GetProcessParentPid(Process* process, HANDLE hProcess);

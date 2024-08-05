@@ -129,6 +129,8 @@ int EtwReader() {
 
         // Todo free memory
     }*/
+
+    return 0;
 }
 
 
