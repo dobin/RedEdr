@@ -11,16 +11,20 @@
 #include <vector>
 #include <winternl.h>
 
+
 class Process {
 public:
     Process() {
     }
-    Process(DWORD id, BOOL observe, std::wstring path) : id(id), observe(observe), path(path) {}
+    Process(DWORD id, DWORD parent_pid, BOOL observe, std::wstring image_path, std::wstring commandline, std::wstring working_dir) 
+        : id(id), parent_pid(parent_pid), observe(observe), image_path(image_path), commandline(commandline), working_dir(working_dir) 
+        {}
 
     void display() const {
-        //std::cout << "ID: " << id << ", Name: " << name << std::endl;
-        wprintf(L"PID: %i  observe:%i  PATH: %ls\n",
-            id, observe, path.c_str());
+        wprintf(L"PID: %i  parent: %i  observe: %i\n", id, parent_pid, observe);
+        wprintf(L"         ImagePath: %ls\n", image_path.c_str());
+        wprintf(L"         commandline: %ls\n", commandline.c_str());
+        wprintf(L"         working_dir: %ls\n", working_dir.c_str());
     }
 
     BOOL doObserve() {
@@ -30,12 +34,17 @@ public:
 private:
     DWORD id;
     BOOL observe;
-    std::wstring path;
+    std::wstring image_path;
+    std::wstring commandline;
+    std::wstring working_dir;
+    DWORD parent_pid;
 
 };
 
+
+BOOL GetProcessCommandLine_Peb(DWORD dwPID, std::wstring& cmdLine);
+BOOL GetProcessImagePath_ProcessImage(DWORD dwPID, LPWSTR lpCmdLine, DWORD dwSize);
+BOOL GetProcessWorkingDirectory(DWORD dwPID, LPWSTR lpDirectory, DWORD dwSize);
+
 Process* MakeProcess(DWORD pid);
-BOOL GetProcessCommandLine(DWORD dwPID, std::wstring& cmdLine);
-BOOL GetProcessCommandLine2(DWORD dwPID, LPTSTR lpCmdLine, DWORD dwSize);
-BOOL GetProcessWorkingDirectory2(DWORD dwPID, LPTSTR lpDirectory, DWORD dwSize);
 DWORD GetProcessParentPid(DWORD pid);

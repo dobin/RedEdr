@@ -32,13 +32,14 @@ typedef NTSTATUS(NTAPI* pNtQueryInformationProcess)(
     PULONG ReturnLength);
 
 
-BOOL GetProcessCommandLine(DWORD dwPID, std::wstring& cmdLine) {
+// Returns: Process PEB ProcessParameters CommandLine
+BOOL GetProcessCommandLine_Peb(DWORD dwPID, std::wstring& cmdLine) {
     BOOL bSuccess = FALSE;
     
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwPID);
     if (!hProcess) {
         //printf("Could not open process:\n");
-        //printf("  %lu  %s\n", dwPID, cmdLine.c_str());
+        //printf("  %lu  %commandLinePeb\n", dwPID, process_image.c_str());
         //printf("  %lu:\n", GetLastError());
         return FALSE;
     }
@@ -46,7 +47,7 @@ BOOL GetProcessCommandLine(DWORD dwPID, std::wstring& cmdLine) {
     HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
     pNtQueryInformationProcess NtQueryInformationProcess = (pNtQueryInformationProcess)GetProcAddress(hNtDll, "NtQueryInformationProcess");
     if (!NtQueryInformationProcess) {
-        std::cerr << "Could not get NtQueryInformationProcess: " << GetLastError() << std::endl;
+        wprintf(L"Error: Could not get NtQueryInformationProcess for %d, error: %d", dwPID, GetLastError());
         CloseHandle(hProcess);
         return FALSE;
     }
@@ -55,28 +56,28 @@ BOOL GetProcessCommandLine(DWORD dwPID, std::wstring& cmdLine) {
     ULONG returnLength;
     NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
     if (status != 0) {
-        std::cerr << "NtQueryInformationProcess failed: " << status << std::endl;
+        wprintf(L"Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
         CloseHandle(hProcess);
         return FALSE;
     }
 
     PEB peb;
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        std::cerr << "ReadProcessMemory failed for PEB: " << GetLastError() << std::endl;
+        wprintf(L"Error: Could not ReadProcessMemory1 for %d, error: %d", dwPID, GetLastError());
         CloseHandle(hProcess);
         return FALSE;
     }
 
     RTL_USER_PROCESS_PARAMETERS procParams;
     if (!ReadProcessMemory(hProcess, peb.ProcessParameters, &procParams, sizeof(procParams), NULL)) {
-        std::cerr << "ReadProcessMemory failed for ProcessParameters: " << GetLastError() << std::endl;
+        wprintf(L"Error: Could not ReadProcessMemory2 for %d, error: %d", dwPID, GetLastError());
         CloseHandle(hProcess);
         return FALSE;
     }
 
     std::vector<wchar_t> commandLine(procParams.CommandLine.Length / sizeof(wchar_t));
     if (!ReadProcessMemory(hProcess, procParams.CommandLine.Buffer, commandLine.data(), procParams.CommandLine.Length, NULL)) {
-        std::cerr << "ReadProcessMemory failed for command line: " << GetLastError() << std::endl;
+        wprintf(L"Error: Could not ReadProcessMemory3 for %d, error: %d", dwPID, GetLastError());
     }
     else {
         cmdLine.assign(commandLine.begin(), commandLine.end());
@@ -88,8 +89,8 @@ BOOL GetProcessCommandLine(DWORD dwPID, std::wstring& cmdLine) {
 }
 
 
-// Function to get the command line of a process
-BOOL GetProcessCommandLine2(DWORD dwPID, LPWSTR lpCmdLine, DWORD dwSize) {
+// Returns: GetProcessImageFileName 
+BOOL GetProcessImagePath_ProcessImage(DWORD dwPID, LPWSTR lpCmdLine, DWORD dwSize) {
     BOOL bSuccess = FALSE;
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwPID);
     if (hProcess != NULL) {
@@ -102,7 +103,7 @@ BOOL GetProcessCommandLine2(DWORD dwPID, LPWSTR lpCmdLine, DWORD dwSize) {
 }
 
 // Function to get the working directory of a process
-BOOL GetProcessWorkingDirectory2(DWORD dwPID, LPWSTR lpDirectory, DWORD dwSize) {
+BOOL GetProcessWorkingDirectory(DWORD dwPID, LPWSTR lpDirectory, DWORD dwSize) {
     BOOL bSuccess = FALSE;
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwPID);
     if (hProcess != NULL) {
@@ -122,7 +123,6 @@ BOOL GetProcessWorkingDirectory2(DWORD dwPID, LPWSTR lpDirectory, DWORD dwSize) 
     }
     return bSuccess;
 }
-
 
 
 DWORD GetProcessParentPid(DWORD pid) {
@@ -161,41 +161,42 @@ DWORD GetProcessParentPid(DWORD pid) {
 Process* MakeProcess(DWORD pid) {
     wchar_t _cmdLine[MAX_PATH] = { 0 };  
     wchar_t _workingDir[MAX_PATH] = { 0 };
-    LPWSTR cmdLine = _cmdLine;  // LPWSTR is *wchar_t
+    LPWSTR process_image = _cmdLine;  // LPWSTR is *wchar_t
     LPWSTR workingDir = _workingDir;
 
-    if (!GetProcessCommandLine2(pid, cmdLine, MAX_PATH)) {
-        wcscpy_s(cmdLine, MAX_PATH, L"unknown");
+    // Process Image (ProcessImage)
+    if (!GetProcessImagePath_ProcessImage(pid, process_image, MAX_PATH)) {
+        wcscpy_s(process_image, MAX_PATH, L"unknown");
     }
-    //printf("GetProcessCommandLine2: %ls\n", cmdLine);
 
-    if (!GetProcessWorkingDirectory2(pid, workingDir, MAX_PATH)) {
+    // Command Line (PEB)
+    std::wstring commandLinePeb;
+    GetProcessCommandLine_Peb(pid, commandLinePeb);
+
+    // Working dir (broken?)
+    if (!GetProcessWorkingDirectory(pid, workingDir, MAX_PATH)) {
         wcscpy_s(workingDir, MAX_PATH, L"unknown");
     }
-    //printf("GetProcessWorkingDirectory2: %ls\n", workingDir);
 
-    std::wstring path;
-    if (!GetProcessCommandLine(pid, path)) {
-        path = L"unknown";
-    }
-    //printf("GetProcessCommandLine: %ls\n", path);
+    DWORD parent_pid = GetProcessParentPid(pid);
 
+    // CHECK: Observe
     BOOL observe = FALSE;
-    // CHECK: Process name
-    if (wcsstr(cmdLine, g_config.targetExeName)) {
-    //if (_tcsstr(cmdLine, g_config.targetExeName)) {
-        printf("Observe CMD: %d %ls\n", pid, cmdLine);
+    if (wcsstr(process_image, g_config.targetExeName)) {
+        // CHECK: Process name
+        printf("Observe CMD: %d %ls\n", pid, process_image);
         observe = TRUE;
     }
-    // CHECK: Parent observed?
     DWORD ppid = GetProcessParentPid(pid);
     if (g_cache.containsObject(ppid)) { // dont recursively resolve all
+        // CHECK: Parent observed?
         if (g_cache.getObject(ppid)->doObserve()) {
-            printf("Observe PID: %d (because PPID %d): %ls\n", pid, ppid, cmdLine);
+            printf("Observe PID: %d (because PPID %d): %ls\n", pid, ppid, process_image);
             observe = TRUE;
         }
     }
 
-    Process* obj = new Process(pid, observe, cmdLine);
+    // Make process with all this data
+    Process* obj = new Process(pid, parent_pid, observe, process_image, commandLinePeb, workingDir);
     return obj;
 }
