@@ -19,8 +19,6 @@
 #include "cache.h"
 
 
-// Link with Ntdll.lib
-
 #pragma comment(lib, "ntdll.lib")
 
 
@@ -47,7 +45,7 @@ BOOL GetProcessCommandLine_Peb(DWORD dwPID, std::wstring& cmdLine) {
     HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
     pNtQueryInformationProcess NtQueryInformationProcess = (pNtQueryInformationProcess)GetProcAddress(hNtDll, "NtQueryInformationProcess");
     if (!NtQueryInformationProcess) {
-        wprintf(L"Error: Could not get NtQueryInformationProcess for %d, error: %d", dwPID, GetLastError());
+        wprintf(L"Error: Could not get NtQueryInformationProcess for %d, error: %d\n", dwPID, GetLastError());
         CloseHandle(hProcess);
         return FALSE;
     }
@@ -56,28 +54,28 @@ BOOL GetProcessCommandLine_Peb(DWORD dwPID, std::wstring& cmdLine) {
     ULONG returnLength;
     NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
     if (status != 0) {
-        wprintf(L"Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
+        wprintf(L"Error: Could not NtQueryInformationProcess for %d, error: %d\n", status, GetLastError());
         CloseHandle(hProcess);
         return FALSE;
     }
 
     PEB peb;
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        wprintf(L"Error: Could not ReadProcessMemory1 for %d, error: %d", dwPID, GetLastError());
+        wprintf(L"Error: Could not ReadProcessMemory1 for %d, error: %d\n", dwPID, GetLastError());
         CloseHandle(hProcess);
         return FALSE;
     }
 
     RTL_USER_PROCESS_PARAMETERS procParams;
     if (!ReadProcessMemory(hProcess, peb.ProcessParameters, &procParams, sizeof(procParams), NULL)) {
-        wprintf(L"Error: Could not ReadProcessMemory2 for %d, error: %d", dwPID, GetLastError());
+        wprintf(L"Error: Could not ReadProcessMemory2 for %d, error: %d\n", dwPID, GetLastError());
         CloseHandle(hProcess);
         return FALSE;
     }
 
     std::vector<wchar_t> commandLine(procParams.CommandLine.Length / sizeof(wchar_t));
     if (!ReadProcessMemory(hProcess, procParams.CommandLine.Buffer, commandLine.data(), procParams.CommandLine.Length, NULL)) {
-        wprintf(L"Error: Could not ReadProcessMemory3 for %d, error: %d", dwPID, GetLastError());
+        wprintf(L"Error: Could not ReadProcessMemory3 for %d, error: %d\n", dwPID, GetLastError());
     }
     else {
         cmdLine.assign(commandLine.begin(), commandLine.end());
