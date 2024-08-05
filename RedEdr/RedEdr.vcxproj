@@ -129,6 +129,7 @@
   <ItemGroup>
     <ClCompile Include="cache.cpp" />
     <ClCompile Include="config.cpp" />
+    <ClCompile Include="etwhandler.cpp" />
     <ClCompile Include="etwreader.cpp" />
     <ClCompile Include="kernelcom.cpp" />
     <ClCompile Include="procinfo.cpp" />
@@ -137,6 +138,7 @@
   <ItemGroup>
     <ClInclude Include="cache.h" />
     <ClInclude Include="config.h" />
+    <ClInclude Include="etwhandler.h" />
     <ClInclude Include="etwreader.h" />
     <ClInclude Include="kernelcom.h" />
     <ClInclude Include="procinfo.h" />
