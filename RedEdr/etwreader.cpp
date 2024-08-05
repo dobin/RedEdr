@@ -193,6 +193,41 @@ void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
 
 
 void WINAPI EventRecordCallbackAntimalwareEngine(PEVENT_RECORD eventRecord) {
+    std::wstring eventName = L"engine";
+
+    if (eventRecord == nullptr) {
+        return;
+    }
+    switch (eventRecord->EventHeader.EventDescriptor.Id) {
+    case 60:
+        // test:60;ProviderName:Microsoft-Antimalware-Engine;PID:187076;Channel:ThreatIntel;EventId:19;
+        return;
+    }
+
+    // Rest
+    PrintProperties(eventName, eventRecord);
+}
+
+
+void WINAPI EventRecordCallbackAntimalwareRtp(PEVENT_RECORD eventRecord) {
+    std::wstring eventName = L"rtp";
+
+    if (eventRecord == nullptr) {
+        return;
+    }
+    switch (eventRecord->EventHeader.EventDescriptor.Id) {
+    case 22:
+        // test:22;ProviderName:Microsoft-Antimalware-RTP;Description:AsyncWorkerUpdate;PreviousValue:8;IntendedValueOrHResult:0;LatestValue:8;
+        // test:22;ProviderName:Microsoft-Antimalware-RTP;Description:RevertPriorityOK;PreviousValue:8;IntendedValueOrHResult:14;LatestValue:14;
+        return;
+    }
+
+    // Rest
+    PrintProperties(eventName, eventRecord);
+}
+
+
+void WINAPI EventRecordCallbackPrintAll(PEVENT_RECORD eventRecord) {
     std::wstring eventName = L"test";
 
     if (eventRecord == nullptr) {
@@ -347,22 +382,22 @@ int EtwReader() {
         printf("TODO ERROR\n");
         return 1;
     }
-    ret = setup_trace(&Readers[2], L"{8E92DEEF-5E17-413B-B927-59B2F06A3CFC}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-RTP");
+    ret = setup_trace(&Readers[2], L"{8E92DEEF-5E17-413B-B927-59B2F06A3CFC}", &EventRecordCallbackAntimalwareRtp, L"Microsoft-Antimalware-RTP");
     if (!ret) {
         printf("TODO ERROR\n");
         return 1;
     }
-    ret = setup_trace(&Readers[3], L"{CFEB0608-330E-4410-B00D-56D8DA9986E6}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-AMFilter");
+    ret = setup_trace(&Readers[3], L"{CFEB0608-330E-4410-B00D-56D8DA9986E6}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-AMFilter");
     if (!ret) {
         printf("TODO ERROR\n");
         return 1;
     }
-    ret = setup_trace(&Readers[4], L"{2A576B87-09A7-520E-C21A-4942F0271D67}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Scan-Interface");
+    ret = setup_trace(&Readers[4], L"{2A576B87-09A7-520E-C21A-4942F0271D67}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Scan-Interface");
     if (!ret) {
         printf("TODO ERROR\n");
         return 1;
     }
-    ret = setup_trace(&Readers[5], L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Protection");
+    ret = setup_trace(&Readers[5], L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Protection");
     if (!ret) {
         printf("TODO ERROR\n");
         return 1;
