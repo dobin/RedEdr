@@ -22,7 +22,7 @@ struct Reader {
     TRACEHANDLE TraceHandle;
 };
 
-#define NUM_READERS 6
+#define NUM_READERS 7
 struct Reader Readers[NUM_READERS];
 
 
@@ -240,28 +240,76 @@ void WINAPI EventRecordCallbackPrintAll(PEVENT_RECORD eventRecord) {
 
 
 void EventTraceStopAll() {
-    printf("--[ Stop tracing\n");
+    /*
+    The ProcessTrace function blocks the thread until 
+      it delivers all events, 
+      the BufferCallback function returns FALSE, 
+      or you call CloseTrace. 
+    In addition, if the consumer is consuming events in real time, the ProcessTrace 
+    function returns after the controller stops the trace session. 
+    (Note that there may be a delay of several seconds before the function returns.)
+    */
+    printf("--[ Stop tracing\n"); fflush(stdout);
     ULONG status;
     EVENT_TRACE_PROPERTIES* sessionProperties;
 
-    // Individual traces
+    // Stop trace sessions
     for (int n=0; n< NUM_READERS; n++) {
-        printf("  Stop: %d...\n", n);
         Reader* reader = &Readers[n];
         sessionProperties = make_SessionProperties(wcslen(reader->SessionName));
 
         if (reader->SessionHandle != NULL) {
+            printf("  Stop Session with ControlTrace(EVENT_TRACE_CONTROL_STOP): %d\n", n);
             status = ControlTrace(reader->SessionHandle, reader->SessionName, sessionProperties, EVENT_TRACE_CONTROL_STOP);
             if (status != ERROR_SUCCESS) {
-                printf("Failed to stop trace %d: %d\n", n, status);
+                printf("    Failed to stop trace %d: %d\n", n, status);
             }
             else {
-                printf("    ControlTrace: %i stopped\n", n);
+                printf("    ControlTrace: %i stopped\n", n); 
             }
             reader->SessionHandle = NULL;
         }
+        else {
+            // Kill thread?
+        }
         free(sessionProperties);
+
+        fflush(stdout);
     }
+
+    printf("Tracing finished, cleanup...\n"); fflush(stdout);
+    //Sleep(3000);
+
+    for (int n = 0; n < NUM_READERS; n++) {
+        Reader* reader = &Readers[n];
+        // Stop the traces
+        if (reader->TraceHandle != INVALID_PROCESSTRACE_HANDLE) {
+            printf("  CloseTrace(): %i\n", n);
+
+            status = CloseTrace(reader->TraceHandle);
+            if (status == ERROR_CTX_CLOSE_PENDING) {
+                // The call was successful. The ProcessTrace function will stop 
+                // after it has processed all real-time events in its buffers 
+                // (it will not receive any new events).
+                printf("    CloseTrace() success but pending\n");
+                printf("    Lets sleep a bit\n");
+                fflush(stdout);
+                Sleep(3000);
+            } else if (status == ERROR_SUCCESS) {
+                printf("    CloseTrace() success\n");
+            }
+            else {
+                printf("    CloseTrace() failed: %d\n", status);
+            }
+            reader->TraceHandle = INVALID_PROCESSTRACE_HANDLE;
+        }
+
+        // Todo free memory
+
+        fflush(stdout);
+    }
+
+    printf("Stopped\n"); fflush(stdout);
 }
 
 
@@ -272,7 +320,8 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     case CTRL_BREAK_EVENT:
     case CTRL_LOGOFF_EVENT:
     case CTRL_SHUTDOWN_EVENT:
-        std::wcout << L"Cleaning up resources..." << std::endl;
+        std::wcout << L"Ctrl-c detected, performing shutdown. Pls gife some time." << std::endl;
+        fflush(stdout); // Show to user immediately
         EventTraceStopAll();
         return TRUE; // Indicate that we handled the signal
     default:
@@ -281,6 +330,54 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
 }
 
 typedef void (WINAPI* EventRecordCallbackFuncPtr)(PEVENT_RECORD);
+
+
+void WINAPI EventRecordCallbackSecurityAuditing(PEVENT_RECORD pEventRecord)
+{
+    // Display the event ID and its name
+    std::wcout << L"SecurityEvent " << pEventRecord->EventHeader.EventDescriptor.Id << L" received." << std::endl;
+
+    // 4688: new process
+    // 4689: exit process
+}
+
+
+// Microsoft-Windows-Security-Auditing is different
+// https://github.com/microsoft/krabsetw/blob/e39e9b766a2b77a5266f0ab4b776e0ca367b3409/examples/NativeExamples/user_trace_005.cpp#L4
+// https://github.com/microsoft/krabsetw/issues/79
+// https://github.com/microsoft/krabsetw/issues/5
+BOOL setup_trace_security_auditing(Reader* reader) {
+    // Check: Are we system?
+    char user_name[128] = { 0 };
+    DWORD user_name_length = 128;
+    if (!GetUserNameA(user_name, &user_name_length) || strcmp(user_name, "SYSTEM") != 0)
+    {
+        std::wcout << L"Microsoft-Windows-Security-Auditing can only be traced by SYSTEM" << std::endl;
+        return FALSE;
+    }
+    printf("--[ Do Trace %i: %ls: %ls\n", reader->id, L"{54849625-5478-4994-A5BA-3E3B0328C30D}", L"Microsoft-Windows-Security-Auditing");
+
+    // Only one trace session is allowed for this provider: "EventLog-Security"
+    // Open a handle to this trace session
+    EVENT_TRACE_LOGFILE trace;
+    ZeroMemory(&trace, sizeof(EVENT_TRACE_LOGFILE));
+    trace.LoggerName = const_cast<LPWSTR>(L"EventLog-Security");
+    trace.ProcessTraceMode = PROCESS_TRACE_MODE_REAL_TIME | PROCESS_TRACE_MODE_EVENT_RECORD;
+    trace.EventRecordCallback = (PEVENT_RECORD_CALLBACK)(EventRecordCallbackSecurityAuditing);
+
+    // Open trace
+    TRACEHANDLE traceHandle = OpenTrace(&trace);
+    if (traceHandle == INVALID_PROCESSTRACE_HANDLE) {
+        std::wcout << L"Failed to open trace. Error: " << GetLastError() << std::endl;
+        return FALSE;
+    }
+
+    DWORD x = ERROR_CTX_CLOSE_PENDING;
+    reader->SessionHandle = NULL;  // Dont have no session
+    reader->TraceHandle = traceHandle;
+
+    return TRUE;
+}
 
 
 BOOL setup_trace(Reader *reader, const wchar_t* guid, EventRecordCallbackFuncPtr func, const wchar_t* info) {
@@ -314,7 +411,7 @@ BOOL setup_trace(Reader *reader, const wchar_t* guid, EventRecordCallbackFuncPtr
     ZeroMemory(&traceLogfile, sizeof(EVENT_TRACE_LOGFILE));
     traceLogfile.LoggerName = sessionNameBuffer;
     traceLogfile.ProcessTraceMode = PROCESS_TRACE_MODE_REAL_TIME | PROCESS_TRACE_MODE_EVENT_RECORD;
-    traceLogfile.EventRecordCallback = func; //EventRecordCallbackKernelProcess;
+    traceLogfile.EventRecordCallback = func;
     traceHandle = OpenTrace(&traceLogfile);
     if (traceHandle == INVALID_PROCESSTRACE_HANDLE) {
         std::wcerr << L"Failed to open trace: " << GetLastError() << std::endl;
@@ -402,6 +499,11 @@ int EtwReader() {
         printf("TODO ERROR\n");
         return 1;
     }
+    ret = setup_trace_security_auditing(&Readers[6]);
+    if (!ret) {
+        printf("TODO ERROR\n");
+        return 1;
+    }
     // Test
     /*ret = setup_trace(&Readers[2], L"{EDD08927-9CC4-4E65-B970-C2560FB5C289}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Windows-Kernel-File");
     if (!ret) {
@@ -428,10 +530,12 @@ int EtwReader() {
     // Stop via ctrl-c: ControlTrace EVENT_TRACE_CONTROL_STOP all, which makes the threads return
     WaitForMultipleObjects(threads.size(), threads.data(), TRUE, INFINITE);
 
-    printf("Tracing finished, cleanup...\n");
+    printf("All threads exited cleanly\n");
+
+    /*printf("Tracing finished, cleanup...\n");
     for (int n = 0; n < NUM_READERS; n++) {
         Reader *reader = &Readers[n];
-
+        // Stop the traces
         if (reader->TraceHandle != INVALID_PROCESSTRACE_HANDLE) {
             status = CloseTrace(reader->TraceHandle);
             if (status != ERROR_SUCCESS) {
@@ -444,5 +548,5 @@ int EtwReader() {
         }
 
         // Todo free memory
-    }
+    }*/
 }
