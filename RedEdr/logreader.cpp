@@ -1,15 +1,35 @@
+#include <stdio.h>
+#include <windows.h>
+#include <dbghelp.h>
+#include <wintrust.h>
+#include <Softpub.h>
+#include <wincrypt.h>
 #include <iostream>
+#include <tchar.h>
+#include <vector>
 #include <fstream>
 #include <string>
-#include <windows.h>
+#include <tdh.h>
+#include <iomanip>
+#include <sstream>
+#include <thread>
+#include <atomic>
+#include <chrono>
 
 #include "logreader.h"
 
+std::atomic<bool> stopFlag(false);
+
+void LogFileTraceStopAll() {
+    printf("--{ Stopping LogFileTracing\n");
+    stopFlag = TRUE;
+    Sleep(1001);
+}
 
 // Stupid but working tail-f implementation
 // Just checks every second for new data
 void tailFileW(const wchar_t* filePath) {
-    printf("Tail -f %ls\n", filePath);
+    printf("--{ Tail -f %ls\n", filePath);
 
     HANDLE hFile = CreateFileW(filePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
@@ -33,7 +53,7 @@ void tailFileW(const wchar_t* filePath) {
 
     // Start reading from the end of the file
     offset.QuadPart = fileSize.QuadPart;
-    while (1) {
+    while (!stopFlag) {
         // Check if there's new data
         LARGE_INTEGER newSize;
         if (!GetFileSizeEx(hFile, &newSize)) {
@@ -97,30 +117,32 @@ std::wstring findFiles(const std::wstring& directory, const std::wstring& patter
 }
 
 
-BOOL tail_mplog() {
+DWORD WINAPI LogReaderProcessingThread(LPVOID param) {
+    const wchar_t* path = (wchar_t*)param;
+    printf("Start LogReaderProcessingThread: %ls\n", path);
+    tailFileW(path);
+    return 0;
+}
+
+
+wchar_t* allocateAndCopyWString(const std::wstring& str) {
+    size_t length = str.length();
+    wchar_t* copy = new wchar_t[length + 1]; // +1 for null terminator
+    std::copy(str.c_str(), str.c_str() + length + 1, copy);
+    return copy;
+}
+
+BOOL tail_mplog(std::vector<HANDLE>& threads) {
     std::wstring directory;
     std::wstring pattern;
 
     directory = L"C:\\ProgramData\\Microsoft\\Windows Defender\\Support";
     pattern = L"MPLog-*";
 
-    std::wstring path = findFiles(directory, pattern);
-    if (path == L"") {
-        std::wcerr << L"File not found" << std::endl;
-        return 1;
+    if (TRUE) {
+        directory = L"C:\\temp";
+        pattern = L"test*";
     }
-
-    tailFileW(path.c_str());
-    return TRUE;
-}
-
-
-BOOL tail_testlog() {
-    std::wstring directory;
-    std::wstring pattern;
-
-    directory = L"C:\\temp";
-    pattern = L"test*";
 
     std::wstring path = findFiles(directory, pattern);
     if (path == L"") {
@@ -128,6 +150,15 @@ BOOL tail_testlog() {
         return 1;
     }
 
-    tailFileW(path.c_str());
+    wchar_t* real_path = allocateAndCopyWString(path);
+    HANDLE thread = CreateThread(NULL, 0, LogReaderProcessingThread, (LPVOID)real_path, 0, NULL);
+    if (thread == NULL) {
+        std::wcerr << L"Failed to create thread for trace session logreader" << "" << std::endl;
+        return 1;
+    }
+    threads.push_back(thread);
+
+    //tailFileW(path.c_str());
     return TRUE;
 }
+

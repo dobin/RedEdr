@@ -16,12 +16,12 @@
 #pragma comment(lib, "advapi32.lib")
 
 
-#define NUM_READERS 7
+#define NUM_READERS 6 // 7
 struct Reader Readers[NUM_READERS];
 
 
 // Entry function
-int EtwReader() {
+int EtwReader(std::vector<HANDLE>& threads) {
     BOOL ret;
     DWORD status;
 
@@ -43,46 +43,52 @@ int EtwReader() {
         Readers[i].TraceHandle = INVALID_PROCESSTRACE_HANDLE;
     }
 
-    // Set up the console control handler to clean up on Ctrl+C
-    if (!SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE)) {
-        std::cerr << "Failed to set control handler" << std::endl;
-        return 1;
-    }
-
     ret = setup_trace(&Readers[0], L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
     if (!ret) {
         printf("TODO ERROR\n");
         return 1;
     }
-    ret = setup_trace(&Readers[1], L"{0a002690-3839-4e3a-b3b6-96d8df868d99}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Engine");
-    if (!ret) {
-        printf("TODO ERROR\n");
-        return 1;
+    if (NUM_READERS > 1) {
+        ret = setup_trace(&Readers[1], L"{0a002690-3839-4e3a-b3b6-96d8df868d99}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Engine");
+        if (!ret) {
+            printf("TODO ERROR\n");
+            return 1;
+        }
     }
-    ret = setup_trace(&Readers[2], L"{8E92DEEF-5E17-413B-B927-59B2F06A3CFC}", &EventRecordCallbackAntimalwareRtp, L"Microsoft-Antimalware-RTP");
-    if (!ret) {
-        printf("TODO ERROR\n");
-        return 1;
+    if (NUM_READERS > 2) {
+        ret = setup_trace(&Readers[2], L"{8E92DEEF-5E17-413B-B927-59B2F06A3CFC}", &EventRecordCallbackAntimalwareRtp, L"Microsoft-Antimalware-RTP");
+        if (!ret) {
+            printf("TODO ERROR\n");
+            return 1;
+        }
     }
-    ret = setup_trace(&Readers[3], L"{CFEB0608-330E-4410-B00D-56D8DA9986E6}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-AMFilter");
-    if (!ret) {
-        printf("TODO ERROR\n");
-        return 1;
+    if (NUM_READERS > 3) {
+        ret = setup_trace(&Readers[3], L"{CFEB0608-330E-4410-B00D-56D8DA9986E6}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-AMFilter");
+        if (!ret) {
+            printf("TODO ERROR\n");
+            return 1;
+        }
     }
-    ret = setup_trace(&Readers[4], L"{2A576B87-09A7-520E-C21A-4942F0271D67}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Scan-Interface");
-    if (!ret) {
-        printf("TODO ERROR\n");
-        return 1;
+    if (NUM_READERS > 4) {
+        ret = setup_trace(&Readers[4], L"{2A576B87-09A7-520E-C21A-4942F0271D67}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Scan-Interface");
+        if (!ret) {
+            printf("TODO ERROR\n");
+            return 1;
+        }
     }
-    ret = setup_trace(&Readers[5], L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Protection");
-    if (!ret) {
-        printf("TODO ERROR\n");
-        return 1;
+    if (NUM_READERS > 5) {
+        ret = setup_trace(&Readers[5], L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Protection");
+        if (!ret) {
+            printf("TODO ERROR\n");
+            return 1;
+        }
     }
-    ret = setup_trace_security_auditing(&Readers[6]);
-    if (!ret) {
-        printf("TODO ERROR\n");
-        return 1;
+    if (NUM_READERS > 6) {
+        ret = setup_trace_security_auditing(&Readers[6]);
+        if (!ret) {
+            printf("TODO ERROR\n");
+            return 1;
+        }
     }
     // Test
     /*ret = setup_trace(&Readers[2], L"{EDD08927-9CC4-4E65-B970-C2560FB5C289}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Windows-Kernel-File");
@@ -94,7 +100,6 @@ int EtwReader() {
     // ProcessTrace() can only handle 1 (one) real-time processing session
     // Create threads instead fuck...
     printf("---[ Start tracing...\n");
-    std::vector<HANDLE> threads;
     for (size_t i = 0; i < NUM_READERS; ++i) {
         Reader* reader = &Readers[i];
 
@@ -106,11 +111,7 @@ int EtwReader() {
         threads.push_back(thread);
     }
 
-    // Wait for all threads to complete
-    // Stop via ctrl-c: ControlTrace EVENT_TRACE_CONTROL_STOP all, which makes the threads return
-    WaitForMultipleObjects(threads.size(), threads.data(), TRUE, INFINITE);
-
-    printf("All threads exited cleanly\n");
+    printf("---[ All threads created\n");
 
     /*printf("Tracing finished, cleanup...\n");
     for (int n = 0; n < NUM_READERS; n++) {
@@ -144,7 +145,7 @@ void EventTraceStopAll() {
     function returns after the controller stops the trace session.
     (Note that there may be a delay of several seconds before the function returns.)
     */
-    printf("--[ Stop tracing\n"); fflush(stdout);
+    printf("--[ Stopping EtwTracing\n"); fflush(stdout);
     ULONG status;
     EVENT_TRACE_PROPERTIES* sessionProperties;
 
@@ -173,7 +174,7 @@ void EventTraceStopAll() {
     }
 
     printf("Tracing finished, cleanup...\n"); fflush(stdout);
-    //Sleep(3000);
+    Sleep(3000);
 
     for (int n = 0; n < NUM_READERS; n++) {
         Reader* reader = &Readers[n];
@@ -204,8 +205,7 @@ void EventTraceStopAll() {
 
         fflush(stdout);
     }
-
-    printf("Stopped\n"); fflush(stdout);
+    printf("--[ EtwTracing all stopped\n"); fflush(stdout);
 }
 
 
@@ -329,23 +329,6 @@ void EnableProvider(TRACEHANDLE sessionHandle, const GUID& providerGuid) {
 }
 
 
-BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
-    switch (ctrlType) {
-    case CTRL_C_EVENT:
-    case CTRL_CLOSE_EVENT:
-    case CTRL_BREAK_EVENT:
-    case CTRL_LOGOFF_EVENT:
-    case CTRL_SHUTDOWN_EVENT:
-        std::wcout << L"Ctrl-c detected, performing shutdown. Pls gife some time." << std::endl;
-        fflush(stdout); // Show to user immediately
-        EventTraceStopAll();
-        return TRUE; // Indicate that we handled the signal
-    default:
-        return FALSE; // Let the next handler handle the signal
-    }
-}
-
-
 DWORD WINAPI TraceProcessingThread(LPVOID param) {
     Reader *reader = (Reader*)param;
     printf("--[ Start Thread %i\n", reader->id);
@@ -354,6 +337,7 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
     if (status != ERROR_SUCCESS) {
         std::wcerr << L"Failed to process trace: " << status << std::endl;
     }
+    printf("--[ Exit Thread %i\n", reader->id);
     return 0;
 }
 

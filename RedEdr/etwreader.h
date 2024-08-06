@@ -22,7 +22,7 @@ extern Reader Readers[];
 
 typedef void (WINAPI* EventRecordCallbackFuncPtr)(PEVENT_RECORD);
 
-int EtwReader();
+int EtwReader(std::vector<HANDLE>& threads);
 BOOL setup_trace(Reader* reader, const wchar_t* guid, EventRecordCallbackFuncPtr func, const wchar_t* info);
 BOOL setup_trace_security_auditing(Reader* reader);
 

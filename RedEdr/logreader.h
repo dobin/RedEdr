@@ -1,13 +1,22 @@
 #pragma once
 
+#include <stdio.h>
+#include <windows.h>
+#include <dbghelp.h>
+#include <wintrust.h>
+#include <Softpub.h>
+#include <wincrypt.h>
 #include <iostream>
+#include <tchar.h>
+#include <vector>
 #include <fstream>
 #include <string>
-#include <windows.h>
+#include <tdh.h>
+#include <iomanip>
+#include <sstream>
 
-void tail_f(const std::wstring& filename);
+
 std::wstring findFiles(const std::wstring& directory, const std::wstring& pattern);
-void chomp(std::wstring& str);
-BOOL tail_mplog();
-BOOL tail_testlog();
+BOOL tail_mplog(std::vector<HANDLE>& threads);
 void tailFileW(const wchar_t* filePath);
+void LogFileTraceStopAll();

@@ -26,5 +26,5 @@ int wmain(int argc, wchar_t* argv[]) {
     }
 
     //tail_testlog();
-    tail_mplog();
+    //tail_mplog(NULL);
 }
