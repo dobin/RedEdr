@@ -104,6 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(SolutionDir)\RedEdr;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -130,6 +131,7 @@
   <ItemGroup>
     <ClCompile Include="..\RedEdr\cache.cpp" />
     <ClCompile Include="..\RedEdr\config.cpp" />
+    <ClCompile Include="..\RedEdr\logreader.cpp" />
     <ClCompile Include="..\RedEdr\procinfo.cpp" />
     <ClCompile Include="RedEdrTester.cpp" />
   </ItemGroup>

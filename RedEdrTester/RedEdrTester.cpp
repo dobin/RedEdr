@@ -3,6 +3,7 @@
 #include <cwchar>  // For wcstol
 #include <cstdlib> // For exit()
 
+#include "logreader.h"
 #include "config.h"
 #include "procinfo.h"
 
@@ -23,4 +24,6 @@ int wmain(int argc, wchar_t* argv[]) {
     if (process->image_path.find(g_config.targetExeName) != std::wstring::npos) {
         wprintf(L"Observe CMD: %d %ls\n", pid, process->image_path.c_str());
     }
+
+    tail_mplog();
 }
