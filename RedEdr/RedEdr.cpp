@@ -80,8 +80,8 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
         double_ctrlc = TRUE;
         std::wcout << L"Ctrl-c detected, performing shutdown. Pls gife some time." << std::endl;
         fflush(stdout); // Show to user immediately
-        LogFileTraceStopAll();
-        EventTraceStopAll();
+        LogReaderStopAll();
+        EtwReaderStopAll();
         //KernelReaderStop();
         return TRUE; // Indicate that we handled the signal
     default:
@@ -120,10 +120,10 @@ int wmain(int argc, wchar_t *argv[]) {
 
     // Functionality
     if (do_etw) {
-        EtwReader(threads);
+        InitializeEtwReader(threads);
     }
     if (do_mplog) {
-        tail_mplog(threads);
+        InitializeLogReader(threads);
     }
     if (do_kernelcallback) {
         // TODO
@@ -133,7 +133,7 @@ int wmain(int argc, wchar_t *argv[]) {
     printf("--( %d threads, waiting...\n", threads.size());
 
     // Wait for all threads to complete
-    // Stop via ctrl-c: 
+    // NOTE Stops after ctrl-c handler is executed?
     // etw: ControlTrace EVENT_TRACE_CONTROL_STOP all, which makes the threads return
     // logreader: threads will persist, but WaitForMultipleObject() will still return
     DWORD result = WaitForMultipleObjects(threads.size(), threads.data(), TRUE, INFINITE);

@@ -17,6 +17,6 @@
 
 
 std::wstring findFiles(const std::wstring& directory, const std::wstring& pattern);
-BOOL tail_mplog(std::vector<HANDLE>& threads);
+BOOL InitializeLogReader(std::vector<HANDLE>& threads);
 void tailFileW(const wchar_t* filePath);
-void LogFileTraceStopAll();
+void LogReaderStopAll();

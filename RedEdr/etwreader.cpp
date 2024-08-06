@@ -21,7 +21,7 @@ struct Reader Readers[NUM_READERS];
 
 
 // Entry function
-int EtwReader(std::vector<HANDLE>& threads) {
+int InitializeEtwReader(std::vector<HANDLE>& threads) {
     BOOL ret;
     DWORD status;
 
@@ -113,29 +113,11 @@ int EtwReader(std::vector<HANDLE>& threads) {
 
     printf("---[ All threads created\n");
 
-    /*printf("Tracing finished, cleanup...\n");
-    for (int n = 0; n < NUM_READERS; n++) {
-        Reader *reader = &Readers[n];
-        // Stop the traces
-        if (reader->TraceHandle != INVALID_PROCESSTRACE_HANDLE) {
-            status = CloseTrace(reader->TraceHandle);
-            if (status != ERROR_SUCCESS) {
-                printf("Failed to close trace %d: %d\n", n, status);
-            }
-            else {
-                printf("  CloseTrace: %i closed\n", n);
-            }
-            reader->TraceHandle = INVALID_PROCESSTRACE_HANDLE;
-        }
-
-        // Todo free memory
-    }*/
-
     return 0;
 }
 
 
-void EventTraceStopAll() {
+void EtwReaderStopAll() {
     /*
     The ProcessTrace function blocks the thread until
       it delivers all events,
@@ -175,7 +157,9 @@ void EventTraceStopAll() {
 
     printf("Tracing finished, cleanup...\n"); fflush(stdout);
     Sleep(3000);
+    // NOTE if shit is still printing on screen, the following may fail?
 
+    // TODO This should be done after all EtwReader threads exited?
     for (int n = 0; n < NUM_READERS; n++) {
         Reader* reader = &Readers[n];
         // Stop the traces

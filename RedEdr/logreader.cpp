@@ -18,13 +18,16 @@
 
 #include "logreader.h"
 
-std::atomic<bool> stopFlag(false);
+// Will be checked each second and exit thread if true
+std::atomic<bool> ThreadStopFlag(false);
 
-void LogFileTraceStopAll() {
+
+void LogReaderStopAll() {
     printf("--{ Stopping LogFileTracing\n");
-    stopFlag = TRUE;
+    ThreadStopFlag = TRUE;
     Sleep(1001);
 }
+
 
 // Stupid but working tail-f implementation
 // Just checks every second for new data
@@ -53,7 +56,7 @@ void tailFileW(const wchar_t* filePath) {
 
     // Start reading from the end of the file
     offset.QuadPart = fileSize.QuadPart;
-    while (!stopFlag) {
+    while (!ThreadStopFlag) {
         // Check if there's new data
         LARGE_INTEGER newSize;
         if (!GetFileSizeEx(hFile, &newSize)) {
@@ -132,7 +135,7 @@ wchar_t* allocateAndCopyWString(const std::wstring& str) {
     return copy;
 }
 
-BOOL tail_mplog(std::vector<HANDLE>& threads) {
+BOOL InitializeLogReader(std::vector<HANDLE>& threads) {
     std::wstring directory;
     std::wstring pattern;
 
