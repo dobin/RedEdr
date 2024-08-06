@@ -6,133 +6,65 @@
 #include "logreader.h"
 
 
-void chomp(std::wstring& str) {
-    while (!str.empty() && (str.back() == L'\n' || str.back() == L'\r')) {
-        str.pop_back();
-    }
-}
+// Stupid but working tail-f implementation
+// Just checks every second for new data
+void tailFileW(const wchar_t* filePath) {
+    printf("Tail -f %ls\n", filePath);
 
-
-// Helper function to move the read pointer to the end of the file
-std::streampos moveToEnd(std::wifstream& file) {
-    file.clear();  // Clear any potential errors
-    file.seekg(0, std::ios::end);
-    return file.tellg();
-}
-
-
-// Helper function to read and print new lines
-void readNewLines(std::wifstream& file, std::streampos& lastPos) {
-    file.clear();  // Clear any potential errors
-    file.seekg(lastPos);  // Move to the last read position
-
-    std::wstring buffer((std::istreambuf_iterator<wchar_t>(file)), std::istreambuf_iterator<wchar_t>());
-
-    // Split buffer into lines and output them
-    size_t start = 0;
-    size_t end = buffer.find('\n');
-
-    //printf("_");
-    while (end != std::string::npos) {
-        std::wstring line = buffer.substr(start, end - start);
-        chomp(line);
-
-        std::wcout << line << std::endl;
-        start = end + 1;
-        end = buffer.find('\n', start);
-    }
-    //printf(".");
-
-    //printf("-> %d %d", start, buffer.size());
-
-    // Output the last line if there is no trailing newline
-    //if (start < buffer.size()) {
-    //    std::wcout << buffer.substr(start) << std::endl;
-    //}
-    //printf("/");
-
-    // Update the last position
-    lastPos = file.tellg();
-}
-
-
-void tail_f(const std::wstring& filename) {
-    std::wifstream file(filename, std::ios::in);
-    if (!file.is_open()) {
-        std::wcerr << "Error opening file: " << filename << std::endl;
-        return;
-    }
-
-    wprintf(L"tail -f %s:\n", filename.c_str());
-
-    std::streampos lastPos = moveToEnd(file);
-    file.close();
-
-    HANDLE hFile = CreateFile(
-        filename.c_str(),
-        GENERIC_READ,
-        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-        NULL,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        NULL
-    );
-
+    HANDLE hFile = CreateFileW(filePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
-        std::wcerr << "Error creating file handle: " << filename << std::endl;
+        wprintf(L"Failed to open file. Error: %lu\n", GetLastError());
         return;
     }
 
-    HANDLE hDir = CreateFile(
-        L"C:\\temp",
-        FILE_LIST_DIRECTORY,
-        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-        NULL,
-        OPEN_EXISTING,
-        FILE_FLAG_BACKUP_SEMANTICS,
-        NULL
-    );
+    // Buffer for reading the file
+    const DWORD bufferSize = 1024;
+    wchar_t buffer[bufferSize / sizeof(wchar_t)];
+    DWORD bytesRead;
+    LARGE_INTEGER fileSize;
+    LARGE_INTEGER offset;
 
-    if (hDir == INVALID_HANDLE_VALUE) {
-        std::cerr << "Error creating directory handle." << std::endl;
+    // Get the file size
+    if (!GetFileSizeEx(hFile, &fileSize)) {
+        wprintf(L"Failed to get file size. Error: %lu\n", GetLastError());
         CloseHandle(hFile);
         return;
     }
 
-    char buffer[1024];
-    DWORD bytesReturned;
-
-    while (true) {
-        if (ReadDirectoryChangesW(
-            hDir,
-            &buffer,
-            sizeof(buffer),
-            FALSE,
-            FILE_NOTIFY_CHANGE_SIZE,
-            &bytesReturned,
-            NULL,
-            NULL) == 0)
-        {
-            std::cerr << "Error reading directory changes." << std::endl;
+    // Start reading from the end of the file
+    offset.QuadPart = fileSize.QuadPart;
+    while (1) {
+        // Check if there's new data
+        LARGE_INTEGER newSize;
+        if (!GetFileSizeEx(hFile, &newSize)) {
+            wprintf(L"Failed to get file size. Error: %lu\n", GetLastError());
             break;
         }
 
-        file.open(filename, std::ios::in);
-        if (!file.is_open()) {
-            std::wcerr << "Error reopening file: " << filename << std::endl;
-            break;
+        if (newSize.QuadPart > offset.QuadPart) {
+            // Move the file pointer to the last read position
+            SetFilePointerEx(hFile, offset, NULL, FILE_BEGIN);
+
+            // Read the new data
+            if (!ReadFile(hFile, buffer, bufferSize - sizeof(wchar_t), &bytesRead, NULL)) {
+                wprintf(L"Failed to read file. Error: %lu\n", GetLastError());
+                break;
+            }
+
+            // Null-terminate the buffer
+            buffer[bytesRead / sizeof(wchar_t)] = L'\0';
+
+            // Print the new data
+            wprintf(L"%s", buffer);
+
+            // Update the offset
+            offset.QuadPart += bytesRead;
         }
 
-        // Set locale to handle UTF-8
-        //file.imbue(std::locale(file.getloc(),
-        //    new std::codecvt_utf8<wchar_t, 0x10ffff, std::consume_header>));
-
-
-        readNewLines(file, lastPos);
-        file.close();
+        // Sleep for a while before checking again
+        Sleep(1000);
     }
 
-    CloseHandle(hDir);
     CloseHandle(hFile);
 }
 
@@ -178,7 +110,7 @@ BOOL tail_mplog() {
         return 1;
     }
 
-    tail_f(path);
+    tailFileW(path.c_str());
     return TRUE;
 }
 
@@ -196,6 +128,6 @@ BOOL tail_testlog() {
         return 1;
     }
 
-    tail_f(path);
+    tailFileW(path.c_str());
     return TRUE;
 }

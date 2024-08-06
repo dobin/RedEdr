@@ -71,7 +71,10 @@ int wmain(int argc, wchar_t *argv[]) {
         printf("Usage: rededr.exe <processname>");
         return 1;
     }
-    int a = 1;
+
+    BOOL do_etw = TRUE;
+    BOOL do_mplog = TRUE;
+    BOOL do_kernelcallback = FALSE;
 
     // Input
     g_config.targetExeName = argv[1];
@@ -84,12 +87,18 @@ int wmain(int argc, wchar_t *argv[]) {
     }
 
     // Start
-    if (a == 1) {
+    if (do_etw) {
+        // Creates threads in the background and a ctrl-c handler
         EtwReader();
     }
-    else if (a == 2) {
+    if (do_mplog) {
+
+    }
+    if (do_kernelcallback) {
+        // TODO
         kernelcom();
     }
+
 
     return 0;
 }

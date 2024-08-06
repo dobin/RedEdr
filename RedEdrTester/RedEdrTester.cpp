@@ -25,5 +25,6 @@ int wmain(int argc, wchar_t* argv[]) {
         wprintf(L"Observe CMD: %d %ls\n", pid, process->image_path.c_str());
     }
 
+    //tail_testlog();
     tail_mplog();
 }
