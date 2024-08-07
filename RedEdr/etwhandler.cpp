@@ -14,10 +14,13 @@
 
 
 
-void WINAPI EventRecordCallbackSecurityAuditing(PEVENT_RECORD pEventRecord)
+void WINAPI EventRecordCallbackSecurityAuditing(PEVENT_RECORD eventRecord)
 {
     // Display the event ID and its name
-    std::wcout << L"SecurityEvent " << pEventRecord->EventHeader.EventDescriptor.Id << L" received." << std::endl;
+    //std::wcout << L"SecurityEvent " << pEventRecord->EventHeader.EventDescriptor.Id << L" received." << std::endl;
+
+    PrintProperties(L"SecurityEvents", eventRecord);
+
 
     // 4688: new process
     // 4689: exit process
@@ -138,6 +141,8 @@ void PrintProperties(std::wstring eventName, PEVENT_RECORD eventRecord) {
 
     // String stream to accumulate output
     std::wstringstream output;
+    output << L"ProcessID:" << eventRecord->EventHeader.ProcessId << L";";
+    output << L"ThreadID:" << eventRecord->EventHeader.ThreadId << L";";
     output << eventName << ":" << eventRecord->EventHeader.EventDescriptor.Id << L";";
 
     //output << L"EventID:" << eventRecord->EventHeader.EventDescriptor.Id << L";";
