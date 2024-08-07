@@ -7,7 +7,7 @@
 #include <iomanip>
 #include <sstream>
 
-
+#include "loguru.hpp"
 #include "kernelcom.h"
 
 #pragma comment (lib, "wintrust.lib")
@@ -26,9 +26,9 @@ void KernelReaderStopAll() {
 
 DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
     const wchar_t* data = (wchar_t*)param;
-    printf("--{ Start KernelReaderProcessingThread\n");
+    LOG_F(INFO, "--{ Start KernelReaderProcessingThread");
     ConnectToServerPipe();
-    printf("--{ Stopped KernelReaderProcessingThread\n");
+    LOG_F(INFO, "--{ Stopped KernelReaderProcessingThread");
     return 0;
 }
 
@@ -37,7 +37,7 @@ void InitializeKernelReader(std::vector<HANDLE>& threads) {
     const wchar_t* data = L"";
     HANDLE thread = CreateThread(NULL, 0, KernelReaderProcessingThread, (LPVOID)data, 0, NULL);
     if (thread == NULL) {
-        std::wcerr << L"Failed to create thread for trace session logreader" << "" << std::endl;
+        LOG_F(ERROR, "Failed to create thread for trace session logreader");
         return;
     }
     threads.push_back(thread);
@@ -65,7 +65,7 @@ BOOL ConnectToServerPipe() {
         NULL);                  // No template file
 
     if (hPipe == INVALID_HANDLE_VALUE) {
-        printf("Error connecting to named pipe: %ld\n", GetLastError());
+        LOG_F(ERROR, "Error connecting to named pipe: %ld", GetLastError());
         return 1;
     }
 
@@ -73,10 +73,10 @@ BOOL ConnectToServerPipe() {
         // Read data from the pipe
         if (ReadFile(hPipe, buffer, sizeof(buffer) - 1, &bytesRead, NULL)) {
             buffer[bytesRead] = '\0'; // Null-terminate the string
-            printf("Received message: %s\n", buffer);
+            LOG_F(INFO, "Received message: %s", buffer);
         }
         else {
-            printf("Error reading from named pipe: %ld\n", GetLastError());
+            LOG_F(ERROR, "Error reading from named pipe: %ld", GetLastError());
         }
     }
 
@@ -92,11 +92,11 @@ int kernelcom() {
     DWORD bytesRead = 0;
     wchar_t target_binary_file[MESSAGE_SIZE] = { 0 };
 
-    printf("Launching analyzer named pipe server3\n");
+    LOG_F(INFO, "Launching analyzer named pipe server3");
     HANDLE hServerPipe;
 
     while (TRUE) {
-        printf("Create Pipe\n");
+        LOG_F(INFO, "Create Pipe");
         // Creates a named pipe
         hServerPipe = CreateNamedPipe(
             pipeName,                 // Pipe name to create
@@ -129,20 +129,20 @@ int kernelcom() {
                 );
 
                 if (not ret) {
-                    printf("Broken pipe\n");
+                    LOG_F(INFO, "Broken pipe");
                     DisconnectNamedPipe(
                         hServerPipe // Handle to the named pipe
                     );
                     break;
                 }
                 else {
-                    printf("~> %ws\n", message);
+                    wprintf(L"~> %ws\n", message);
                 }
             }
         }
     }
 
-    printf("Exit\n\n");
+    LOG_F(INFO, "KernelReader: Exit");
 
     // Disconnect
     DisconnectNamedPipe(

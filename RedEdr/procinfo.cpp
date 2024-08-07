@@ -16,6 +16,7 @@
 #include <vector>
 #include <winternl.h>
 
+#include "loguru.hpp"
 #include "config.h"
 #include "procinfo.h"
 #include "cache.h"
@@ -40,7 +41,7 @@ BOOL GetProcessCommandLine_Peb(Process *process, HANDLE hProcess) {
     HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
     pNtQueryInformationProcess NtQueryInformationProcess = (pNtQueryInformationProcess)GetProcAddress(hNtDll, "NtQueryInformationProcess");
     if (!NtQueryInformationProcess) {
-        wprintf(L"Error: Could not get NtQueryInformationProcess for %d, error: %d\n", process->id, GetLastError());
+        LOG_F(ERROR, "Error: Could not get NtQueryInformationProcess for %d, error: %d", process->id, GetLastError());
         CloseHandle(hProcess);
         return FALSE;
     }
@@ -49,28 +50,32 @@ BOOL GetProcessCommandLine_Peb(Process *process, HANDLE hProcess) {
     ULONG returnLength;
     NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
     if (status != 0) {
-        wprintf(L"Error: Could not NtQueryInformationProcess for %d, error: %d\n", status, GetLastError());
+        LOG_F(ERROR, "Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
         CloseHandle(hProcess);
         return FALSE;
     }
 
     PEB peb;
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        wprintf(L"Error: Could not ReadProcessMemory1 for %d, error: %d\n", process->id, GetLastError());
+        // this is the first read, and may fail. 
+        // dont spam log messages
+        
+        //LOG_F(ERROR, "Error: Could not ReadProcessMemory1 for %d, error: %d", process->id, GetLastError());
+        
         CloseHandle(hProcess);
         return FALSE;
     }
 
     RTL_USER_PROCESS_PARAMETERS procParams;
     if (!ReadProcessMemory(hProcess, peb.ProcessParameters, &procParams, sizeof(procParams), NULL)) {
-        wprintf(L"Error: Could not ReadProcessMemory2 for %d, error: %d\n", process->id, GetLastError());
+        LOG_F(ERROR, "Error: Could not ReadProcessMemory2 for %d, error: %d", process->id, GetLastError());
         CloseHandle(hProcess);
         return FALSE;
     }
 
     std::vector<wchar_t> commandLine(procParams.CommandLine.Length / sizeof(wchar_t));
     if (!ReadProcessMemory(hProcess, procParams.CommandLine.Buffer, commandLine.data(), procParams.CommandLine.Length, NULL)) {
-        wprintf(L"Error: Could not ReadProcessMemory3 for %d, error: %d\n", process->id, GetLastError());
+        LOG_F(ERROR, "Error: Could not ReadProcessMemory3 for %d, error: %d", process->id, GetLastError());
     }
     else {
         process->commandline.assign(commandLine.begin(), commandLine.end());
@@ -124,14 +129,14 @@ BOOL GetProcessParentPid(Process *process, HANDLE hProcess) {
         (pNtQueryInformationProcess)GetProcAddress(hNtDll, "NtQueryInformationProcess");
 
     if (NtQueryInformationProcess == nullptr) {
-        std::cerr << "Failed to get NtQueryInformationProcess address" << std::endl;
+        LOG_F(ERROR, "Failed to get NtQueryInformationProcess address");
         return FALSE;
     }
 
     NTSTATUS status = NtQueryInformationProcess(
         hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
     if (status != 0) {
-        std::cerr << "NtQueryInformationProcess failed: " << status << std::endl;
+        LOG_F(ERROR, "NtQueryInformationProcess failed: %d", status);
         return FALSE;
     }
 
@@ -147,36 +152,36 @@ Process* MakeProcess(DWORD pid) {
 
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
     if (!hProcess) {
-        printf("Could not open process:\n");
-        printf("  %lu  %ls\n", pid, process->image_path.c_str());
-        printf("  %lu:\n", GetLastError());
+        //printf("Could not open process:\n");
+        //printf("  %lu  %ls\n", pid, process->image_path.c_str());
+        //printf("  %lu:\n", GetLastError());
         return process;
     }
 
     // ppid
     if (!GetProcessParentPid(process, hProcess)) {
-        printf("GetProcessParentPid error\n");
+        LOG_F(WARNING, "GetProcessParentPid error");
         CloseHandle(hProcess);
         return process;
     }
 
     // Process Image (ProcessImage)
     if (!GetProcessImagePath_ProcessImage(process, hProcess)) {
-        printf("GetProcessImagePath_ProcessImage error\n");
+        LOG_F(WARNING, "GetProcessImagePath_ProcessImage error");
         CloseHandle(hProcess);
         return process;
     }
 
     // Command Line (PEB)
     if (!GetProcessCommandLine_Peb(process, hProcess)) {
-        printf("GetProcessCommandLine_Peb error\n");
+        LOG_F(WARNING, "GetProcessCommandLine_Peb error");
         CloseHandle(hProcess);
         return process;
     }
 
     // Working dir (broken?)
     if (!GetProcessWorkingDirectory(process, hProcess)) {
-        printf("GetProcessWorkingDirectory error\n");
+        LOG_F(WARNING, "GetProcessWorkingDirectory error");
         CloseHandle(hProcess);
         return process;
     }
@@ -186,13 +191,13 @@ Process* MakeProcess(DWORD pid) {
     //if (wcsstr(process_image, g_config.targetExeName)) {
     if (process->image_path.find(g_config.targetExeName) != std::wstring::npos) {
         // CHECK: Process name
-        wprintf(L"Observe CMD: %d %ls\n", pid, process->image_path.c_str());
+        LOG_F(INFO, "Observe CMD: %d %ls", pid, process->image_path.c_str());
         observe = TRUE;
     }
     if (g_cache.containsObject(process->parent_pid)) { // dont recursively resolve all
         // CHECK: Parent observed?
         if (g_cache.getObject(process->parent_pid)->doObserve()) {
-            printf("Observe PID: %d (because PPID %d): %ls\n", pid, process->parent_pid, process->image_path.c_str());
+            LOG_F(INFO, "Observe PID: %d (because PPID %d): %ls", pid, process->parent_pid, process->image_path.c_str());
             observe = TRUE;
         }
     }
