@@ -78,11 +78,11 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
             return TRUE;
         }
         double_ctrlc = TRUE;
-        std::wcout << L"Ctrl-c detected, performing shutdown. Pls gife some time." << std::endl;
+        std::wcout << L"--! Ctrl-c detected, performing shutdown. Pls gife some time." << std::endl;
         fflush(stdout); // Show to user immediately
         LogReaderStopAll();
         EtwReaderStopAll();
-        //KernelReaderStop();
+        KernelReaderStopAll();
         return TRUE; // Indicate that we handled the signal
     default:
         return FALSE; // Let the next handler handle the signal
@@ -96,11 +96,12 @@ int wmain(int argc, wchar_t *argv[]) {
         printf("Usage: rededr.exe <processname>");
         return 1;
     }
+
     std::vector<HANDLE> threads;
 
-    BOOL do_etw = TRUE;
-    BOOL do_mplog = TRUE;
-    BOOL do_kernelcallback = FALSE;
+    BOOL do_etw = FALSE;
+    BOOL do_mplog = FALSE;
+    BOOL do_kernelcallback = TRUE;
 
     // Input
     g_config.targetExeName = argv[1];
@@ -127,7 +128,7 @@ int wmain(int argc, wchar_t *argv[]) {
     }
     if (do_kernelcallback) {
         // TODO
-        kernelcom();
+        InitializeKernelReader(threads);
     }
 
     printf("--( %d threads, waiting...\n", threads.size());

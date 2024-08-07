@@ -19,12 +19,12 @@
 #include "logreader.h"
 
 // Will be checked each second and exit thread if true
-std::atomic<bool> ThreadStopFlag(false);
+std::atomic<bool> LogReaderThreadStopFlag(false);
 
 
 void LogReaderStopAll() {
     printf("--{ Stopping LogFileTracing\n");
-    ThreadStopFlag = TRUE;
+    LogReaderThreadStopFlag = TRUE;
     Sleep(1001);
 }
 
@@ -56,7 +56,7 @@ void tailFileW(const wchar_t* filePath) {
 
     // Start reading from the end of the file
     offset.QuadPart = fileSize.QuadPart;
-    while (!ThreadStopFlag) {
+    while (!LogReaderThreadStopFlag) {
         // Check if there's new data
         LARGE_INTEGER newSize;
         if (!GetFileSizeEx(hFile, &newSize)) {
@@ -122,8 +122,9 @@ std::wstring findFiles(const std::wstring& directory, const std::wstring& patter
 
 DWORD WINAPI LogReaderProcessingThread(LPVOID param) {
     const wchar_t* path = (wchar_t*)param;
-    printf("Start LogReaderProcessingThread: %ls\n", path);
+    printf("--{ Start LogReaderProcessingThread: %ls\n", path);
     tailFileW(path);
+    printf("--{ Stopped LogReaderProcessingThread\n");
     return 0;
 }
 
