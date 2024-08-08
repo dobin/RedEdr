@@ -3,6 +3,7 @@
 #include <cwchar>  // For wcstol
 #include <cstdlib> // For exit()
 
+#include "loguru.hpp"
 #include "config.h"
 #include "procinfo.h"
 
@@ -70,8 +71,10 @@ int wmain(int argc, wchar_t* argv[]) {
         printf("Usage: rededrtester.exe <pid>");
         return 1;
     }
-    FakeKernelModulePipeServer();
-    return 1;
+    //FakeKernelModulePipeServer();
+    //return 1;
+
+    LOG_F(INFO, "RedTester");
 
     wchar_t* end;
     DWORD pid = wcstol(argv[1], &end, 10);

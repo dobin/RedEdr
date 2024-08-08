@@ -8,6 +8,8 @@
 #include <tchar.h>
 
 #include "loguru.hpp"
+#include "cxxops.hpp"
+
 #include "config.h"
 #include "etwreader.h"
 #include "logreader.h"
@@ -90,22 +92,47 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     }
 }
 
+wchar_t* ConvertCharToWchar2(const char *arg) {
+    int len = MultiByteToWideChar(CP_ACP, 0, arg, -1, NULL, 0);
+    wchar_t* wargv = new wchar_t[len];
+    MultiByteToWideChar(CP_ACP, 0, arg, -1, wargv, len);
+    return wargv;
+}
+
 
 // https://github.com/s4dbrd/ETWReader
-int wmain(int argc, wchar_t *argv[]) {
-    if (argc != 2) {
-        printf("Usage: rededr.exe <processname>");
-        return 1;
+int main(int argc, char* argv[]) {
+    cxxopts::Options options("RedEdr", "Maldev event recorder");
+    options.add_options()
+        ("t,trace", "Process name to trace", cxxopts::value<std::string>())
+        ("d,debug", "Enable debugging", cxxopts::value<bool>()->default_value("false"))
+        ("h,help", "Print usage")
+        ;
+    auto result = options.parse(argc, argv);
+
+    if (result.count("help")) {
+        std::cout << options.help() << std::endl;
+        exit(0);
     }
+    if (result.count("trace")) {
+        std::string s = result["trace"].as<std::string>();
+        wchar_t* ss = ConvertCharToWchar2(s.c_str());
+        g_config.targetExeName = ss;
+    }
+    else {
+        std::cout << options.help() << std::endl;
+        exit(0);
+    }
+    
 
+    // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
-
     BOOL do_etw = TRUE;
     BOOL do_mplog = FALSE;
     BOOL do_kernelcallback = FALSE;
 
     // Input
-    g_config.targetExeName = argv[1];
+    //g_config.targetExeName = ConvertCharToWchar(argv[1]);
     LOG_F(INFO, "--( Tracing process name %ls and its children", g_config.targetExeName);
 
     // SeDebug
@@ -138,8 +165,8 @@ int wmain(int argc, wchar_t *argv[]) {
     // NOTE Stops after ctrl-c handler is executed?
     // etw: ControlTrace EVENT_TRACE_CONTROL_STOP all, which makes the threads return
     // logreader: threads will persist, but WaitForMultipleObject() will still return
-    DWORD result = WaitForMultipleObjects(threads.size(), threads.data(), TRUE, INFINITE);
-    if (result == WAIT_FAILED) {
+    DWORD res = WaitForMultipleObjects(threads.size(), threads.data(), TRUE, INFINITE);
+    if (res == WAIT_FAILED) {
         LOG_F(INFO, "--( Wait failed");
     }
 

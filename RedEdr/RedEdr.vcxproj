@@ -140,6 +140,7 @@
   <ItemGroup>
     <ClInclude Include="cache.h" />
     <ClInclude Include="config.h" />
+    <ClInclude Include="cxxops.hpp" />
     <ClInclude Include="etwhandler.h" />
     <ClInclude Include="etwreader.h" />
     <ClInclude Include="kernelcom.h" />

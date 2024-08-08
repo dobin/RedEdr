@@ -132,6 +132,7 @@
     <ClCompile Include="..\RedEdr\cache.cpp" />
     <ClCompile Include="..\RedEdr\config.cpp" />
     <ClCompile Include="..\RedEdr\logreader.cpp" />
+    <ClCompile Include="..\RedEdr\loguru.cpp" />
     <ClCompile Include="..\RedEdr\procinfo.cpp" />
     <ClCompile Include="RedEdrTester.cpp" />
   </ItemGroup>
