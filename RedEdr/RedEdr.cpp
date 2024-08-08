@@ -106,11 +106,15 @@ int main(int argc, char* argv[]) {
     options.add_options()
         ("t,trace", "Process name to trace", cxxopts::value<std::string>())
         ("d,debug", "Enable debugging", cxxopts::value<bool>()->default_value("false"))
+        ("e,etw", "Show ETW Events", cxxopts::value<bool>()->default_value("false"))
+        ("m,mplog", "Show Defender mplog file", cxxopts::value<bool>()->default_value("false"))
+        ("k,kernel", "Show kernel callbacks", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print usage")
         ;
+    options.allow_unrecognised_options();
     auto result = options.parse(argc, argv);
 
-    if (result.count("help")) {
+    if (result.count("help") || result.unmatched().size() > 0) {
         std::cout << options.help() << std::endl;
         exit(0);
     }
@@ -123,13 +127,18 @@ int main(int argc, char* argv[]) {
         std::cout << options.help() << std::endl;
         exit(0);
     }
-    
+
+    bool do_etw = result["etw"].as<bool>();
+    bool do_mplog = result["mplog"].as<bool>();
+    bool do_kernelcallback = result["kernel"].as<bool>();
+
+    if (!do_etw && !do_mplog && !do_kernelcallback) {
+        printf("Choose at least one of --etw --mplog --kernel");
+        return 1;
+    }
 
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
-    BOOL do_etw = TRUE;
-    BOOL do_mplog = FALSE;
-    BOOL do_kernelcallback = FALSE;
 
     // Input
     //g_config.targetExeName = ConvertCharToWchar(argv[1]);
