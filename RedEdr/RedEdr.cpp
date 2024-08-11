@@ -11,6 +11,7 @@
 #include "cxxops.hpp"
 
 #include "config.h"
+#include "dllinjector.h"
 #include "etwreader.h"
 #include "logreader.h"
 #include "kernelcom.h"
@@ -109,6 +110,7 @@ int main(int argc, char* argv[]) {
         ("e,etw", "Show ETW Events", cxxopts::value<bool>()->default_value("false"))
         ("m,mplog", "Show Defender mplog file", cxxopts::value<bool>()->default_value("false"))
         ("k,kernel", "Show kernel callbacks", cxxopts::value<bool>()->default_value("false"))
+        ("i,inject", "Do userspace DLL injection", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print usage")
         ;
     options.allow_unrecognised_options();
@@ -131,6 +133,7 @@ int main(int argc, char* argv[]) {
     bool do_etw = result["etw"].as<bool>();
     bool do_mplog = result["mplog"].as<bool>();
     bool do_kernelcallback = result["kernel"].as<bool>();
+    bool do_dllinjection = result["inject"].as<bool>();
 
     if (!do_etw && !do_mplog && !do_kernelcallback) {
         printf("Choose at least one of --etw --mplog --kernel");

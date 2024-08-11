@@ -129,6 +129,7 @@
   <ItemGroup>
     <ClCompile Include="cache.cpp" />
     <ClCompile Include="config.cpp" />
+    <ClCompile Include="dllinjector.cpp" />
     <ClCompile Include="etwhandler.cpp" />
     <ClCompile Include="etwreader.cpp" />
     <ClCompile Include="kernelcom.cpp" />
@@ -141,6 +142,7 @@
     <ClInclude Include="cache.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="cxxops.hpp" />
+    <ClInclude Include="dllinjector.h" />
     <ClInclude Include="etwhandler.h" />
     <ClInclude Include="etwreader.h" />
     <ClInclude Include="kernelcom.h" />

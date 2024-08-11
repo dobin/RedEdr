@@ -6,7 +6,7 @@
 #include "loguru.hpp"
 #include "config.h"
 #include "procinfo.h"
-
+#include "dllinjector.h"
 
 
 #define BUFFER_SIZE 1024
@@ -71,13 +71,20 @@ int wmain(int argc, wchar_t* argv[]) {
         printf("Usage: rededrtester.exe <pid>");
         return 1;
     }
+    LOG_F(INFO, "RedTester");
+
+    // Args: pid
+    wchar_t* end;
+    DWORD pid = wcstol(argv[1], &end, 10);
+
+    // Tests
+    // 
     //FakeKernelModulePipeServer();
     //return 1;
 
-    LOG_F(INFO, "RedTester");
+    remote_inject(pid);
+    return 1;
 
-    wchar_t* end;
-    DWORD pid = wcstol(argv[1], &end, 10);
 
     printf("RedTester\n");
     Process* process = MakeProcess(pid);

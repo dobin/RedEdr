@@ -42,6 +42,9 @@
     <ClCompile Include="loguru.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="dllinjector.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="etwreader.h">
@@ -69,6 +72,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="cxxops.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dllinjector.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

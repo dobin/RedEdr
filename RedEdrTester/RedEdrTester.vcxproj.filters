@@ -33,5 +33,8 @@
     <ClCompile Include="..\RedEdr\loguru.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\RedEdr\dllinjector.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

@@ -25,7 +25,7 @@ Same data as an EDR sees.
   * PsSetCreateProcessNotifyRoutine
   * PsSetCreateThreadNotifyRoutine
   * PsSetLoadImageNotifyRoutine
-  * ObRegisterCallbacks
+  * (ObRegisterCallbacks)
 
 ## Permissions
 
@@ -34,6 +34,25 @@ Local admin:
 
 SYSTEM:
 * Microsoft-Windows-Security-Auditing
+
+
+## Requirements
+
+Use a VM.
+
+To compile the kernel driver: 
+* Install WDK (+SDK): https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk
+
+Change Windows boot options to enable self-signed kernel drivers:
+```
+bcdedit /set testsigning on
+bcdedit -debug on
+```
+
+To load the driver, use local admin shell: 
+```
+> .\load-kernel-driver.bat
+```
 
 
 ## Usage
@@ -50,7 +69,41 @@ PS > .\RedEdr.exe cobaltstrike.exe 2>$null
 ```
 
 
+## Solutions
+
+RedEdr: 
+* ETW reader
+* MPLOG reader
+* pipe-server for MyDumbEDRDLL
+* pipe-client for MyDumbEDRDriver
+
+
+MyDumbEDRDriver
+* Kernel driver to capture kernel callbacks
+* provides a pipe as server (send data to RedEdr client)
+
+MyDumbEDRDLL: 
+* amsi.dll style, to be injected into target processes
+* use a pipe as client (send data to RedEdr server)
+
+RedEdrTester: 
+* internal testing
+
+
 # Todo
 
 * ETW-TI
-* AMSI ntdll.dll hooking
+* AMSI ntdll.dll hooking userspace
+* AMSI ntdll.dll hooking kernelspace
+* Kernel ETW?
+* Kernel minifilter?
+
+
+# Based on
+
+MyDumbEdr
+* GPLv3
+* https://sensepost.com/blog/2024/sensecon-23-from-windows-drivers-to-an-almost-fully-working-edr/
+* https://github.com/sensepost/mydumbedr
+* https://github.com/dobin/mydumbedr
+
