@@ -17,7 +17,7 @@
 #pragma comment(lib, "advapi32.lib")
 
 
-#define NUM_READERS 6 // 7
+#define NUM_READERS 1 // 7
 struct Reader Readers[NUM_READERS];
 
 

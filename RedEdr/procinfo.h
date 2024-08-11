@@ -15,8 +15,11 @@
 class Process {
 public:
     Process() {
+        observe = FALSE;
     }
-    Process(DWORD id): id(id) {}
+    Process(DWORD id): id(id) {
+        observe = FALSE;
+    }
 
     void display() const {
         wprintf(L"PID: %i  parent: %i  observe: %i\n", id, parent_pid, observe);
