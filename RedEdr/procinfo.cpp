@@ -21,6 +21,7 @@
 #include "config.h"
 #include "procinfo.h"
 #include "cache.h"
+#include "dllinjector.h"
 
 
 #pragma comment(lib, "ntdll.lib")
@@ -201,6 +202,13 @@ Process* MakeProcess(DWORD pid) {
         //LOG_F(INFO, "Dont observe: %ls because %ls", process->image_path.c_str(), g_config.targetExeName);
     }
     process->observe = observe;
+
+    // every new pid comes through here
+    // if everything worked
+    // if we observe it, we need to DLL inject it too
+    if (observe && g_config.do_dllinjection) {
+        remote_inject(pid);
+    }
 
     CloseHandle(hProcess);
     return process;
