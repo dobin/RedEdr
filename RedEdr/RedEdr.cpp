@@ -106,11 +106,11 @@ int main(int argc, char* argv[]) {
     cxxopts::Options options("RedEdr", "Maldev event recorder");
     options.add_options()
         ("t,trace", "Process name to trace", cxxopts::value<std::string>())
-        ("d,debug", "Enable debugging", cxxopts::value<bool>()->default_value("false"))
-        ("e,etw", "Show ETW Events", cxxopts::value<bool>()->default_value("false"))
-        ("m,mplog", "Show Defender mplog file", cxxopts::value<bool>()->default_value("false"))
-        ("k,kernel", "Show kernel callbacks", cxxopts::value<bool>()->default_value("false"))
+        ("e,etw", "Input: Show ETW Events", cxxopts::value<bool>()->default_value("false"))
+        ("m,mplog", "Input: Show Defender mplog file", cxxopts::value<bool>()->default_value("false"))
+        ("k,kernel", "Input: Show kernel callbacks", cxxopts::value<bool>()->default_value("false"))
         ("i,inject", "Do userspace DLL injection", cxxopts::value<bool>()->default_value("false"))
+        ("d,debug", "Enable debugging", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print usage")
         ;
     options.allow_unrecognised_options();
@@ -130,12 +130,12 @@ int main(int argc, char* argv[]) {
         exit(0);
     }
 
-    bool do_etw = result["etw"].as<bool>();
-    bool do_mplog = result["mplog"].as<bool>();
-    bool do_kernelcallback = result["kernel"].as<bool>();
-    bool do_dllinjection = result["inject"].as<bool>();
+    g_config.do_etw = result["etw"].as<bool>();
+    g_config.do_mplog = result["mplog"].as<bool>();
+    g_config.do_kernelcallback = result["kernel"].as<bool>();
+    g_config.do_dllinjection = result["inject"].as<bool>();
 
-    if (!do_etw && !do_mplog && !do_kernelcallback) {
+    if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback) {
         printf("Choose at least one of --etw --mplog --kernel");
         return 1;
     }
@@ -160,13 +160,13 @@ int main(int argc, char* argv[]) {
     }
 
     // Functionality
-    if (do_etw) {
+    if (g_config.do_etw) {
         InitializeEtwReader(threads);
     }
-    if (do_mplog) {
+    if (g_config.do_mplog) {
         InitializeLogReader(threads);
     }
-    if (do_kernelcallback) {
+    if (g_config.do_kernelcallback) {
         // TODO
         InitializeKernelReader(threads);
     }
