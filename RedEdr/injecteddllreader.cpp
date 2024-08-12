@@ -39,17 +39,17 @@ BOOL InitializeInjectedDllReader2() {
             return 1;
         }
 
-        printf("Waiting for client to connect...\n");
+        LOG_F(INFO, "DllReader: Waiting for client to connect...\n");
 
         // Wait for the client to connect
         BOOL result = ConnectNamedPipe(hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
         if (!result) {
-            printf("Error connecting to named pipe: %ld\n", GetLastError());
+            LOG_F(ERROR, "Error connecting to named pipe: %ld\n", GetLastError());
             CloseHandle(hPipe);
             return 1;
         }
 
-        printf("Client connected.\n");
+        LOG_F(INFO, "DllReader: Client connected.\n");
 
         while (TRUE) {
             // Read data from the pipe

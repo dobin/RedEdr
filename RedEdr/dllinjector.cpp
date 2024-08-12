@@ -17,13 +17,13 @@ BOOL remote_inject(DWORD target_pid) {
     //strcpy_s(dll_full_path, "C:\\Users\\hacker\\source\\repos\\mydumbedr_orig\\x64\\Debug\\MyDumbEDRDLL.dll");
     strcpy_s(dll_full_path, g_config.inject_dll_path);
 
-    LOG_F(INFO, "DLL Inject into process: %d\n", target_pid);
-    LOG_F(INFO, "    DLL: %s\n", dll_full_path);
+    LOG_F(INFO, "DLL Inject into process: %d", target_pid);
+    LOG_F(INFO, "    DLL: %s", dll_full_path);
 
     // Opening the process with necessary privileges 
     HANDLE hProcess = OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, FALSE, target_pid);
     if (hProcess == NULL) {
-        LOG_F(ERROR, "Can't open handle, error: % lu\n", GetLastError());
+        LOG_F(ERROR, "Can't open handle, error: % lu", GetLastError());
         return FALSE;
     }
     //printf("\tOpen handle on PID: %d\n", target_pid);
@@ -31,7 +31,7 @@ BOOL remote_inject(DWORD target_pid) {
     // Looking for the LoadLibraryA function in the kernel32.dll
     FARPROC loadLibAddress = GetProcAddress(GetModuleHandle(L"kernel32.dll"), "LoadLibraryA");
     if (loadLibAddress == NULL) {
-        LOG_F(ERROR, "Could not find LoadLibraryA, error: %lu\n", GetLastError());
+        LOG_F(ERROR, "Could not find LoadLibraryA, error: %lu", GetLastError());
         return FALSE;
     }
     //printf("\tFound LoadLibraryA function\n");
@@ -40,7 +40,7 @@ BOOL remote_inject(DWORD target_pid) {
     LPVOID vae_buffer;
     vae_buffer = VirtualAllocEx(hProcess, NULL, MAX_PATH, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     if (vae_buffer == NULL) {
-        LOG_F(ERROR, "Can't allocate memory, error: %lu\n", GetLastError());
+        LOG_F(ERROR, "Can't allocate memory, error: %lu", GetLastError());
         CloseHandle(hProcess);
         return FALSE;
     }
@@ -49,7 +49,7 @@ BOOL remote_inject(DWORD target_pid) {
     // Writing the path of the DLL to inject x64\Debug\MyDumbEDRDLL
     SIZE_T bytesWritten;
     if (!WriteProcessMemory(hProcess, vae_buffer, dll_full_path, MAX_PATH, &bytesWritten)) {
-        LOG_F(ERROR, "Can't write into memory, error: %lu\n", GetLastError());
+        LOG_F(ERROR, "Can't write into memory, error: %lu", GetLastError());
         VirtualFreeEx(hProcess, vae_buffer, MESSAGE_SIZE, MEM_RELEASE);
         CloseHandle(hProcess);
         return FALSE;
@@ -59,12 +59,12 @@ BOOL remote_inject(DWORD target_pid) {
     // Creating a thread that will call LoadLibraryA and the path of the MyDUMBEDRDLL to load as argument
     HANDLE hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)loadLibAddress, vae_buffer, 0, NULL);
     if (hThread == NULL) {
-        LOG_F(ERROR, "Can't launch remote thread, error: %lu\n", GetLastError());
+        LOG_F(ERROR, "Can't launch remote thread, error: %lu", GetLastError());
         VirtualFreeEx(hProcess, vae_buffer, MESSAGE_SIZE, MEM_RELEASE);
         CloseHandle(hProcess);
         return FALSE;
     }
-    LOG_F(INFO, "    Looks like successo\n");
+    LOG_F(INFO, "    Looks like success");
 
     VirtualFreeEx(hProcess, vae_buffer, MESSAGE_SIZE, MEM_RELEASE);
     CloseHandle(hThread);
@@ -91,7 +91,6 @@ BOOL piper() {
     );
 
     while (TRUE) {
-
         // ConnectNamedPipe enables a named pipe server to start listening for incoming connections
         BOOL isPipeConnected = ConnectNamedPipe(
             hServerPipe, // Handle to the named pipe
