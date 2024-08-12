@@ -27,7 +27,7 @@ void KernelReaderStopAll() {
 DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
     const wchar_t* data = (wchar_t*)param;
     LOG_F(INFO, "--{ Start KernelReaderProcessingThread");
-    ConnectToServerPipe();
+    //ConnectToServerPipe();
     LOG_F(INFO, "--{ Stopped KernelReaderProcessingThread");
     return 0;
 }
@@ -47,44 +47,6 @@ void InitializeKernelReader(std::vector<HANDLE>& threads) {
 }
 
 
-#define BUFFER_SIZE 1024
-BOOL ConnectToServerPipe() {
-    HANDLE hPipe;
-    DWORD bytesRead;
-    char buffer[BUFFER_SIZE];
-    const wchar_t* pipeName = L"\\\\.\\pipe\\MyNamedPipe";
-
-    // Connect to the named pipe
-    hPipe = CreateFile(
-        pipeName,              // Pipe name
-        GENERIC_READ,          // Write access
-        0,                      // No sharing
-        NULL,                   // Default security attributes
-        OPEN_EXISTING,          // Opens existing pipe
-        0,                      // Default attributes
-        NULL);                  // No template file
-
-    if (hPipe == INVALID_HANDLE_VALUE) {
-        LOG_F(ERROR, "Error connecting to named pipe: %ld", GetLastError());
-        return 1;
-    }
-
-    while (!KernelReaderThreadStopFlag) {
-        // Read data from the pipe
-        if (ReadFile(hPipe, buffer, sizeof(buffer) - 1, &bytesRead, NULL)) {
-            buffer[bytesRead] = '\0'; // Null-terminate the string
-            LOG_F(INFO, "Received message: %s", buffer);
-        }
-        else {
-            LOG_F(ERROR, "Error reading from named pipe: %ld", GetLastError());
-        }
-    }
-
-    // Close the pipe
-    CloseHandle(hPipe);
-
-    return 0;
-}
 
 
 int kernelcom() {

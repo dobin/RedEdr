@@ -45,6 +45,9 @@
     <ClInclude Include="minhook\src\hde\table64.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="rededrpipeclient.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">

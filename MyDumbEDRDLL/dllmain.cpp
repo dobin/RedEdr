@@ -1,5 +1,79 @@
+#include <stdio.h>
+
+
 #include "pch.h"
 #include "minhook/include/MinHook.h"
+#include "rededrpipeclient.h"
+
+
+//----------------------------------------------------
+
+HANDLE hPipe;
+
+
+void WriteToServerPipe(char* buffer, int buffer_size) {
+    DWORD pipeBytesWritten = 0;
+    DWORD res = 0;
+
+    //MessageBox(NULL, L"Send", L"Send", MB_OK);
+
+    res = WriteFile(
+        hPipe,       // Handle to the named pipe
+        buffer,          // Buffer to write from
+        buffer_size,      // Size of the buffer 
+        &pipeBytesWritten, // Numbers of bytes written
+        NULL               // Whether or not the pipe supports overlapped operations
+    );
+    if (res == FALSE) {
+        MessageBox(NULL, L"ERR2", L"ERR2", MB_OK);
+
+    }
+}
+
+#define BUFFER_SIZE 1024
+int ConnectToServerPipe() {
+    char buffer[BUFFER_SIZE] = "Hello from dll";
+    const wchar_t* pipeName = L"\\\\.\\pipe\\MyNamedPipe";
+
+    // Connect to the named pipe
+    hPipe = CreateFile(
+        pipeName,              // Pipe name
+        GENERIC_WRITE,          // Write access
+        0,                      // No sharing
+        NULL,                   // Default security attributes
+        OPEN_EXISTING,          // Opens existing pipe
+        0,                      // Default attributes
+        NULL);                  // No template file
+
+    if (hPipe == INVALID_HANDLE_VALUE) {
+        //        printf("Error connecting to named pipe: %ld", GetLastError());
+        MessageBox(NULL, L"ERR1", L"ERR1", MB_OK);
+
+        return 1;
+    }
+
+    /*
+    while (1) {
+        DWORD pipeBytesWritten = 0;
+        // Write to the named pipe
+        WriteFile(
+            hPipe,       // Handle to the named pipe
+            buffer,          // Buffer to write from
+            BUFFER_SIZE-1,      // Size of the buffer
+            &pipeBytesWritten, // Numbers of bytes written
+            NULL               // Whether or not the pipe supports overlapped operations
+        );
+        Sleep(2000);
+    }
+
+    // Close the pipe
+    CloseHandle(hPipe);
+    */
+
+    return 0;
+}
+
+//----------------------------------------------------
 
 
 // Defines the prototype of the NtAllocateVirtualMemoryFunction
@@ -26,6 +100,10 @@ DWORD NTAPI NtAllocateVirtualMemory(
     ULONG AllocationType,
     ULONG Protect
 ) {
+    char buf[BUFFER_SIZE] = "Test 12 12";
+    sprintf_s(buf, "AllocateVirtualMemory:%p:%p:%#lx:%llu:%#lx:%#lx",
+        ProcessHandle, BaseAddress, ZeroBits, *RegionSize, AllocationType, Protect);
+    WriteToServerPipe(buf, BUFFER_SIZE);
 
     // Checks if the program is trying to allocate some memory and protect it with RWX 
     if (Protect == PAGE_EXECUTE_READWRITE) {
@@ -34,11 +112,17 @@ DWORD NTAPI NtAllocateVirtualMemory(
         TerminateProcess(GetCurrentProcess(), 0xdeadb33f);
     }
     else {
-        MessageBox(NULL, L"Alloc", L"Found u bro", MB_OK);
+        //MessageBox(NULL, L"Alloc", L"Found u bro", MB_OK);
     }
 
     //If no, we jump on the originate NtAllocateVirtualMemory
-    return pOriginalNtAllocateVirtualMemory(ProcessHandle, BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
+    return pOriginalNtAllocateVirtualMemory(GetCurrentProcess(), BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
+}
+
+
+DWORD WINAPI InitPipeThread(LPVOID param) {
+    ConnectToServerPipe();
+    return 0;
 }
 
 // This function initializes the hooks via the MinHook library
@@ -47,7 +131,9 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
         return -1;
     }
 
-    MessageBox(NULL, L"INIT", L"Found u bro", MB_OK);
+    //MessageBox(NULL, L"INIT1", L"Found u bro", MB_OK);
+    ConnectToServerPipe();
+    //MessageBox(NULL, L"INIT2", L"Found u bro", MB_OK);
 
     // Here we specify which function from wich DLL we want to hook
     MH_CreateHookApi(
@@ -79,6 +165,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReser
         if (hThread != NULL) {
             CloseHandle(hThread);
         }
+        /*hThread = CreateThread(NULL, 0, InitPipeThread, NULL, 0, NULL);
+        if (hThread != NULL) {
+            CloseHandle(hThread);
+        }*/
         break;
     }
     case DLL_PROCESS_DETACH:

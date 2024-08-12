@@ -127,11 +127,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\MyDumbEDRDLL\rededrpipeclient.c" />
     <ClCompile Include="cache.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="dllinjector.cpp" />
     <ClCompile Include="etwhandler.cpp" />
     <ClCompile Include="etwreader.cpp" />
+    <ClCompile Include="injecteddllreader.cpp" />
     <ClCompile Include="kernelcom.cpp" />
     <ClCompile Include="logreader.cpp" />
     <ClCompile Include="loguru.cpp" />
@@ -145,6 +147,7 @@
     <ClInclude Include="dllinjector.h" />
     <ClInclude Include="etwhandler.h" />
     <ClInclude Include="etwreader.h" />
+    <ClInclude Include="injecteddllreader.h" />
     <ClInclude Include="kernelcom.h" />
     <ClInclude Include="logreader.h" />
     <ClInclude Include="loguru.hpp" />

@@ -27,6 +27,9 @@ Same data as an EDR sees.
   * PsSetLoadImageNotifyRoutine
   * (ObRegisterCallbacks)
 
+* AMSI ntdll.dll hooking from userspace (ETW based)
+
+
 ## Permissions
 
 Local admin:
@@ -93,10 +96,10 @@ RedEdrTester:
 # Todo
 
 * ETW-TI
-* AMSI ntdll.dll hooking userspace
-* AMSI ntdll.dll hooking kernelspace
+* AMSI ntdll.dll hooking from kernelspace (KAPC)
 * Kernel ETW?
 * Kernel minifilter?
+* AMSI provider
 
 
 # Based on
@@ -105,5 +108,7 @@ MyDumbEdr
 * GPLv3
 * https://sensepost.com/blog/2024/sensecon-23-from-windows-drivers-to-an-almost-fully-working-edr/
 * https://github.com/sensepost/mydumbedr
-* https://github.com/dobin/mydumbedr
+* patched https://github.com/dobin/mydumbedr
 
+which seems to use: 
+* https://github.com/CCob/SylantStrike/tree/master/SylantStrike

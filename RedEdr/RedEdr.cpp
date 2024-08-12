@@ -17,6 +17,7 @@
 #include "kernelcom.h"
 #include "cache.h"
 #include "procinfo.h"
+#include "injecteddllreader.h"
 
 
 // Function to enable a privilege for the current process
@@ -103,6 +104,10 @@ wchar_t* ConvertCharToWchar2(const char *arg) {
 
 // https://github.com/s4dbrd/ETWReader
 int main(int argc, char* argv[]) {
+
+    InitializeInjectedDllReader2();
+    return 1;
+
     cxxopts::Options options("RedEdr", "Maldev event recorder");
     options.add_options()
         ("t,trace", "Process name to trace", cxxopts::value<std::string>())
@@ -169,6 +174,9 @@ int main(int argc, char* argv[]) {
     if (g_config.do_kernelcallback) {
         // TODO
         InitializeKernelReader(threads);
+    }
+    if (g_config.do_kernelcallback) {
+        InitializeInjectedDllReader(threads);
     }
 
     LOG_F(INFO, "--( %d threads, waiting...", threads.size());

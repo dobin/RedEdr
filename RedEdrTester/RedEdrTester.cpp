@@ -65,7 +65,6 @@ BOOL FakeKernelModulePipeServer() {
     }
 }
 
-
 int wmain(int argc, wchar_t* argv[]) {
     if (argc != 2) {
         printf("Usage: rededrtester.exe <pid>");
@@ -78,18 +77,24 @@ int wmain(int argc, wchar_t* argv[]) {
     DWORD pid = wcstol(argv[1], &end, 10);
 
     // Tests
-    // 
+    
+    // For testing the kernel callback handler: a pipe client
     //FakeKernelModulePipeServer();
     //return 1;
 
+    // For testing the injected-dll: a pipe server
+    //ConnectToServerPipe();
+    // And manual DLL injection
     remote_inject(pid);
+
     return 1;
 
 
-    printf("RedTester\n");
+    // Test: Process information
     Process* process = MakeProcess(pid);
     process->display();
 
+    // Test: process name matching
     if (process->image_path.find(g_config.targetExeName) != std::wstring::npos) {
         wprintf(L"Observe CMD: %d %ls\n", pid, process->image_path.c_str());
     }

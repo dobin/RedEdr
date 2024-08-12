@@ -129,6 +129,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\MyDumbEDRDLL\rededrpipeclient.c" />
     <ClCompile Include="..\RedEdr\cache.cpp" />
     <ClCompile Include="..\RedEdr\config.cpp" />
     <ClCompile Include="..\RedEdr\dllinjector.cpp" />
@@ -136,6 +137,9 @@
     <ClCompile Include="..\RedEdr\loguru.cpp" />
     <ClCompile Include="..\RedEdr\procinfo.cpp" />
     <ClCompile Include="RedEdrTester.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\MyDumbEDRDLL\rededrpipeclient.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

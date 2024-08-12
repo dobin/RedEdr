@@ -45,6 +45,12 @@
     <ClCompile Include="dllinjector.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="injecteddllreader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\MyDumbEDRDLL\rededrpipeclient.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="etwreader.h">
@@ -75,6 +81,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="dllinjector.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="injecteddllreader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
