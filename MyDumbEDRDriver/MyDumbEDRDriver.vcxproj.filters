@@ -39,6 +39,12 @@
     <ClCompile Include="config.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="kapcinjector.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hashcache.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h">
@@ -51,6 +57,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="kapcinjector.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hashcache.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

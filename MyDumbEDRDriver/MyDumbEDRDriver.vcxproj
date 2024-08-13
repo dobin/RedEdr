@@ -114,6 +114,8 @@
   <ItemGroup>
     <ClCompile Include="config.c" />
     <ClCompile Include="Driver.c" />
+    <ClCompile Include="hashcache.c" />
+    <ClCompile Include="kapcinjector.c" />
     <ClCompile Include="kcallbacks.c" />
     <ClCompile Include="pipe.c" />
     <ClCompile Include="stuff.c" />
@@ -121,6 +123,8 @@
   <ItemGroup>
     <ClInclude Include="common.h" />
     <ClInclude Include="config.h" />
+    <ClInclude Include="hashcache.h" />
+    <ClInclude Include="kapcinjector.h" />
     <ClInclude Include="kcallbacks.h" />
     <ClInclude Include="pipe.h" />
   </ItemGroup>

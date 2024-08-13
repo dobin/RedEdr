@@ -7,26 +7,44 @@
 
 #include "common.h"
 #include "pipe.h"
+#include "kapcinjector.h"
 #include "kcallbacks.h"
+#include "hashcache.h"
+#include "hashcache.h"
 
+
+// TODO SLOW
+int IsSubstringInUnicodeString(PUNICODE_STRING pDestString, PCWSTR pSubString) {
+    if (pDestString->Length == 0 || pDestString->Buffer == NULL) {
+        return FALSE;
+    }
+    size_t lengthInWchars = pDestString->Length / sizeof(WCHAR);
+    WCHAR tempBuffer[1024];
+    if (lengthInWchars >= sizeof(tempBuffer) / sizeof(WCHAR)) {
+        return FALSE;
+    }
+    memcpy(tempBuffer, pDestString->Buffer, pDestString->Length);
+    tempBuffer[lengthInWchars] = L'\0';
+    int result = wcsstr(tempBuffer, pSubString) != NULL;
+    return result;
+}
 
 // For: PsSetCreateProcessNotifyRoutineEx()
 void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE_NOTIFY_INFO createInfo) {
-    UNREFERENCED_PARAMETER(parent_process);
+    if (createInfo == NULL) {
+        return;
+    }
+    createInfo->CreationStatus = STATUS_SUCCESS;
 
-    PEPROCESS process = NULL;
-    PUNICODE_STRING processName = NULL;
+    PPROCESS_INFO processInfo = LookupProcessInfo(pid);
+    if (processInfo == NULL) {
+        PEPROCESS process = NULL;
+        PUNICODE_STRING processName = NULL;
 
-    PsLookupProcessByProcessId(pid, &process);
-    SeLocateProcessImageName(process, &processName);
+        PsLookupProcessByProcessId(pid, &process);
+        SeLocateProcessImageName(process, &processName);
 
-    wchar_t line[MESSAGE_SIZE] = { 0 };
 
-    // Never forget this if check because if you don't, you'll end up crashing your Windows system ;P
-    if (createInfo != NULL) {
-        createInfo->CreationStatus = STATUS_SUCCESS;
-
-        // Retrieve parent process ID and process name
         PsLookupProcessByProcessId(createInfo->ParentProcessId, &parent_process);
         PUNICODE_STRING parent_processName = NULL;
         SeLocateProcessImageName(parent_process, &parent_processName);
@@ -41,14 +59,41 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            DOS path: %ws\n", objFileDosDeviceName->Name.Buffer);
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            CommandLine: %ws\n", createInfo->CommandLine->Buffer);
 
-        swprintf(line, L"process:%llu;%wZ;%llu;%wZ",
-            (unsigned __int64)pid, processName,
-            (unsigned __int64)createInfo->ParentProcessId, parent_processName);
-        log_event(line);
+        processInfo = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(PROCESS_INFO), 'Proc');
+        if (!processInfo) {
+            return;
+            //return STATUS_INSUFFICIENT_RESOURCES;
+        }
+
+        processInfo->ProcessId = pid;
+        RtlCopyUnicodeString(processInfo->name, processName);
+        processInfo->ppid = createInfo->ParentProcessId;
+        RtlCopyUnicodeString(processInfo->parent_name, parent_processName);
+        processInfo->observe = 0;
+
+        PCWSTR searchString = L"notepad.exe";
+        if (IsSubstringInUnicodeString(processName, searchString)) {
+            processInfo->observe = 1;
+        }
+
+        /*WCHAR target[] = L"*notepad.exe";
+        UNICODE_STRING targetunicodeString;
+        RtlInitUnicodeString(&targetunicodeString, target);
+        if (FsRtlIsNameInExpression(&targetunicodeString, processName, TRUE, NULL)) {
+            processInfo->observe = 1;
+        }*/
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            Observe: %i\n", 
+            processInfo->observe);
+
+        AddProcessInfo(pid, processInfo);
     }
-    else {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[MyDumbEDR] Process %wZ killed\n", processName);
-    }
+
+    wchar_t line[MESSAGE_SIZE] = { 0 };
+    swprintf(line, L"process:%llu;%wZ;%llu;%wZ;%d",
+        (unsigned __int64)pid, processInfo->name,
+        (unsigned __int64)createInfo->ParentProcessId, processInfo->parent_name,
+        processInfo->observe);
+    log_event(line);
 }
 
 
@@ -70,17 +115,46 @@ void CreateThreadNotifyRoutine(HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Create
 
 // For: PsSetLoadImageNotifyRoutine
 void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIMAGE_INFO ImageInfo) {
+    UNREFERENCED_PARAMETER(ImageInfo);
     wchar_t line[MESSAGE_SIZE] = { 0 };
+
+    //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[ ] ImageNotifyRoutine\n");
+
+    if (FullImageName == NULL) {
+        return;
+    }
+
     swprintf(line, L"image:%llu;%wZ",
         (unsigned __int64)ProcessId,
         FullImageName);
-    log_event(line);
+    //log_event(line);
 
-    if ((uintptr_t)ProcessId == 700) {
+    /*if ((uintptr_t)ProcessId == 700) {
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[MyDumbEDR] Image %wZ created\n", FullImageName);
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            PID: %d\n", ProcessId);
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            Image Info: %d\n", ImageInfo);
+    }*/
+
+    // Check for KAPC injection
+    /*
+    PCWSTR Substring = L"notepad.exe";
+    BOOLEAN result = IsSubstringInUnicodeString(&FullImageName, Substring);
+    if (result) {
+        KdPrint(("[+] INJECT into pid %d\n", ProcessId));
+        kapc_inject(FullImageName, ProcessId, ImageInfo);
     }
+    */
+
+    PPROCESS_INFO processInfo = LookupProcessInfo(ProcessId);
+    if (processInfo != NULL && processInfo->observe && !processInfo->injected) {
+        // TODO lock this
+        
+        processInfo->injected = kapc_inject(FullImageName, ProcessId, ImageInfo);
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[+] INJECT into pid %d/%d: %ls\n", 
+            ProcessId, processInfo->injected, FullImageName);
+        //processInfo->injected = 1;
+    }
+
 }
 
 

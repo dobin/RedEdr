@@ -15,6 +15,11 @@ HANDLE hPipe = NULL;
 
 // log the event message
 int log_event(wchar_t* message) {
+    if (1) {
+        return 1;
+    }
+
+
     if (hPipe == NULL) {
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            cannot log as pipe is closed");
         return 1;
