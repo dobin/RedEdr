@@ -28,15 +28,17 @@ Same data as an EDR sees.
   * (ObRegisterCallbacks)
 
 * AMSI ntdll.dll hooking from userspace (ETW based)
+* AMSI ntdll.dll hooking from kernelspace (KAPC from LoadImage callback)
 
 
 ## Permissions
 
 Local admin:
-* Microsoft-Windows-Kernel-Process
+* ETW, especially Microsoft-Windows-Kernel-Process
+* Driver loading
 
 SYSTEM:
-* Microsoft-Windows-Security-Auditing
+* ETW Microsoft-Windows-Security-Auditing
 
 
 ## Requirements
@@ -80,9 +82,9 @@ RedEdr:
 * pipe-server for MyDumbEDRDLL
 * pipe-client for MyDumbEDRDriver
 
-
 MyDumbEDRDriver
 * Kernel driver to capture kernel callbacks
+* Will do KAPC injection
 * provides a pipe as server (send data to RedEdr client)
 
 MyDumbEDRDLL: 
@@ -90,13 +92,12 @@ MyDumbEDRDLL:
 * use a pipe as client (send data to RedEdr server)
 
 RedEdrTester: 
-* internal testing
+* internal testing tool
 
 
 # Todo
 
 * ETW-TI
-* AMSI ntdll.dll hooking from kernelspace (KAPC)
 * Kernel ETW?
 * Kernel minifilter?
 * AMSI provider
@@ -104,11 +105,14 @@ RedEdrTester:
 
 # Based on
 
-MyDumbEdr
+Based on MyDumbEdr
 * GPLv3
 * https://sensepost.com/blog/2024/sensecon-23-from-windows-drivers-to-an-almost-fully-working-edr/
 * https://github.com/sensepost/mydumbedr
 * patched https://github.com/dobin/mydumbedr
+* which seems to use: https://github.com/CCob/SylantStrike/tree/master/SylantStrike
 
-which seems to use: 
-* https://github.com/CCob/SylantStrike/tree/master/SylantStrike
+With KAPC injection from:
+* https://github.com/0xOvid/RootkitDiaries/
+
+
