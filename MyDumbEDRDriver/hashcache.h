@@ -6,10 +6,10 @@
 
 typedef struct _PROCESS_INFO {
     HANDLE ProcessId;
-    UNICODE_STRING name[128];
+    wchar_t name[128];
 
     HANDLE ppid;
-    UNICODE_STRING parent_name[128];
+    wchar_t parent_name[128];
 
     int observe;
     int injected;

@@ -5,6 +5,7 @@ typedef struct _config {
 	int enable_threadnotify;
 	int enable_imagenotify;
 	int enable_obnotify;
+	int enable_kapc_injection;
 } Config;
 
 

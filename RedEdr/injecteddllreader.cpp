@@ -57,7 +57,7 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
             // Read data from the pipe
             if (ReadFile(hPipe, buffer, BUFFER_SIZE, &bytesRead, NULL)) {
                 buffer[BUFFER_SIZE-1] = '\0'; // Null-terminate the string
-                LOG_F(INFO, "DLL %i: %s", bytesRead, buffer);
+                printf("DLL %i: %s\n", bytesRead, buffer);
             }
             else {
                 if (GetLastError() == ERROR_BROKEN_PIPE) {

@@ -14,7 +14,7 @@
 #pragma comment(lib, "dbghelp.lib")
 #pragma comment(lib, "crypt32.lib")
 
-#define MESSAGE_SIZE 1024
+#define BUFFER_SIZE 1024
 
 std::atomic<bool> KernelReaderThreadStopFlag(false);
 HANDLE hPipe = NULL;
@@ -25,35 +25,45 @@ void KernelReaderStopAll() {
 }
 
 
-
 DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
-    LPCWSTR pipeName = L"\\\\.\\pipe\\RedEdrKrnCom";
-    DWORD bytesRead = 0;
-    wchar_t target_binary_file[MESSAGE_SIZE] = { 0 };
-    char buffer[MESSAGE_SIZE] = "";
-    LOG_F(INFO, "Launching Kernel Pipe Reader");
-    
-    while (!KernelReaderThreadStopFlag) {
-        // Connect to the named pipe
-        hPipe = CreateFile(
-            pipeName,              // Pipe name
-            GENERIC_READ,          // Write access
-            0,                      // No sharing
-            NULL,                   // Default security attributes
-            OPEN_EXISTING,          // Opens existing pipe
-            0,                      // Default attributes
-            NULL);                  // No template file
+    char buffer[BUFFER_SIZE] = "";
+    DWORD bytesRead;
 
+    const wchar_t* pipeName = L"\\\\.\\pipe\\RedEdrKrnCom";
+    HANDLE hPipe;
+    while (!KernelReaderThreadStopFlag) {
+        hPipe = CreateNamedPipe(
+            pipeName,                 // Pipe name to create
+            PIPE_ACCESS_INBOUND,       // Whether the pipe is supposed to receive or send data (can be both)
+            PIPE_TYPE_MESSAGE,        // Pipe mode (whether or not the pipe is waiting for data)
+            PIPE_UNLIMITED_INSTANCES, // Maximum number of instances from 1 to PIPE_UNLIMITED_INSTANCES
+            BUFFER_SIZE,             // Number of bytes for output buffer
+            BUFFER_SIZE,             // Number of bytes for input buffer
+            0,                        // Pipe timeout 
+            NULL                      // Security attributes (anonymous connection or may be needs credentials. )
+        );
         if (hPipe == INVALID_HANDLE_VALUE) {
-            LOG_F(ERROR, "KernelReader: Invalid handle, could not connect to named pipe: %ld", GetLastError());
+            LOG_F(ERROR, "KernelReader: Error creating named pipe: %ld", GetLastError());
             return 1;
         }
 
+        LOG_F(INFO, "KernelReader: Waiting for client to connect...");
+
+        // Wait for the client to connect
+        BOOL result = ConnectNamedPipe(hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
+        if (!result) {
+            LOG_F(ERROR, "KernelReader: Error connecting to named pipe: %ld", GetLastError());
+            CloseHandle(hPipe);
+            return 1;
+        }
+
+        LOG_F(INFO, "KernelReader: Client connected.\n");
+
         while (!KernelReaderThreadStopFlag) {
             // Read data from the pipe
-            if (ReadFile(hPipe, buffer, MESSAGE_SIZE, &bytesRead, NULL)) {
-                buffer[MESSAGE_SIZE - 1] = '\0'; // Null-terminate the string
-                LOG_F(INFO, "Kernel %i: %s", bytesRead, buffer);
+            if (ReadFile(hPipe, buffer, BUFFER_SIZE, &bytesRead, NULL)) {
+                buffer[BUFFER_SIZE - 1] = '\0'; // Null-terminate the string
+                wprintf(L"KRN %i: %s\n", bytesRead, buffer);
             }
             else {
                 if (GetLastError() == ERROR_BROKEN_PIPE) {
@@ -66,9 +76,10 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
                 }
             }
         }
-    }
 
-    return 0;
+        // Close the pipe
+        CloseHandle(hPipe);
+    }
 }
 
 

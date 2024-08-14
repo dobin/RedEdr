@@ -11,6 +11,7 @@
 #include "kcallbacks.h"
 #include "hashcache.h"
 #include "hashcache.h"
+#include "config.h"
 
 
 // TODO SLOW
@@ -28,6 +29,19 @@ int IsSubstringInUnicodeString(PUNICODE_STRING pDestString, PCWSTR pSubString) {
     int result = wcsstr(tempBuffer, pSubString) != NULL;
     return result;
 }
+
+
+void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
+{
+    if (!ustr || !dest) {
+        return;  // Invalid arguments
+    }
+    size_t numChars = ustr->Length / sizeof(WCHAR);
+    size_t copyLength = numChars < destSize - 1 ? numChars : destSize - 1;
+    wcsncpy(dest, ustr->Buffer, copyLength);
+    dest[copyLength] = L'\0';
+}
+
 
 // For: PsSetCreateProcessNotifyRoutineEx()
 void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE_NOTIFY_INFO createInfo) {
@@ -62,26 +76,19 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         processInfo = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(PROCESS_INFO), 'Proc');
         if (!processInfo) {
             return;
-            //return STATUS_INSUFFICIENT_RESOURCES;
         }
 
         processInfo->ProcessId = pid;
-        RtlCopyUnicodeString(processInfo->name, processName);
+        UnicodeStringToWChar(processName, processInfo->name, 128);
         processInfo->ppid = createInfo->ParentProcessId;
-        RtlCopyUnicodeString(processInfo->parent_name, parent_processName);
+        UnicodeStringToWChar(parent_processName, processInfo->parent_name, 128);
         processInfo->observe = 0;
 
+        // Search in the unicode atm
         PCWSTR searchString = L"notepad.exe";
         if (IsSubstringInUnicodeString(processName, searchString)) {
             processInfo->observe = 1;
         }
-
-        /*WCHAR target[] = L"*notepad.exe";
-        UNICODE_STRING targetunicodeString;
-        RtlInitUnicodeString(&targetunicodeString, target);
-        if (FsRtlIsNameInExpression(&targetunicodeString, processName, TRUE, NULL)) {
-            processInfo->observe = 1;
-        }*/
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            Observe: %i\n", 
             processInfo->observe);
 
@@ -89,7 +96,7 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
     }
 
     wchar_t line[MESSAGE_SIZE] = { 0 };
-    swprintf(line, L"process:%llu;%wZ;%llu;%wZ;%d",
+    swprintf(line, L"process:%llu:%s:%llu:%s:%d",
         (unsigned __int64)pid, processInfo->name,
         (unsigned __int64)createInfo->ParentProcessId, processInfo->parent_name,
         processInfo->observe);
@@ -117,44 +124,25 @@ void CreateThreadNotifyRoutine(HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Create
 void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIMAGE_INFO ImageInfo) {
     UNREFERENCED_PARAMETER(ImageInfo);
     wchar_t line[MESSAGE_SIZE] = { 0 };
-
-    //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[ ] ImageNotifyRoutine\n");
+    wchar_t ImageName[128] = { 0 };
 
     if (FullImageName == NULL) {
         return;
     }
 
-    swprintf(line, L"image:%llu;%wZ",
-        (unsigned __int64)ProcessId,
-        FullImageName);
-    //log_event(line);
+    UnicodeStringToWChar(FullImageName, ImageName, 128);
+    swprintf(line, L"image:%llu;%s", (unsigned __int64)ProcessId, ImageName);
+    log_event(line);
 
-    /*if ((uintptr_t)ProcessId == 700) {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[MyDumbEDR] Image %wZ created\n", FullImageName);
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            PID: %d\n", ProcessId);
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            Image Info: %d\n", ImageInfo);
-    }*/
-
-    // Check for KAPC injection
-    /*
-    PCWSTR Substring = L"notepad.exe";
-    BOOLEAN result = IsSubstringInUnicodeString(&FullImageName, Substring);
-    if (result) {
-        KdPrint(("[+] INJECT into pid %d\n", ProcessId));
-        kapc_inject(FullImageName, ProcessId, ImageInfo);
+    if (g_config.enable_kapc_injection) {
+        PPROCESS_INFO processInfo = LookupProcessInfo(ProcessId);
+        if (processInfo != NULL && processInfo->observe && !processInfo->injected) {
+            // TODO lock this?
+            processInfo->injected = kapc_inject(FullImageName, ProcessId, ImageInfo);
+            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[+] INJECT into pid %d/%d: %ls\n",
+                ProcessId, processInfo->injected, FullImageName);
+        }
     }
-    */
-
-    PPROCESS_INFO processInfo = LookupProcessInfo(ProcessId);
-    if (processInfo != NULL && processInfo->observe && !processInfo->injected) {
-        // TODO lock this
-        
-        processInfo->injected = kapc_inject(FullImageName, ProcessId, ImageInfo);
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[+] INJECT into pid %d/%d: %ls\n", 
-            ProcessId, processInfo->injected, FullImageName);
-        //processInfo->injected = 1;
-    }
-
 }
 
 

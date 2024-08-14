@@ -15,11 +15,6 @@ HANDLE hPipe = NULL;
 
 // log the event message
 int log_event(wchar_t* message) {
-    if (1) {
-        return 1;
-    }
-
-
     if (hPipe == NULL) {
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            cannot log as pipe is closed");
         return 1;
@@ -70,7 +65,7 @@ void close_pipe() {
 
 
 // Connect to the userspace daemon
-int open_pipe() {
+int ConnectToServerPipe() {
     UNICODE_STRING pipeName; // String containing the name of the named
     // Initialize a UNICODE_STRING structure containing the name of the named pipe
     RtlInitUnicodeString(
@@ -87,7 +82,7 @@ int open_pipe() {
     // Reads from the named pipe
     NTSTATUS status = ZwCreateFile(
         &hPipe,                                         // Handle to the named pipe
-        FILE_WRITE_DATA | FILE_READ_DATA | SYNCHRONIZE, // File attribute (we need both read and write)
+        FILE_WRITE_DATA | SYNCHRONIZE, // File attribute (we need both read and write)
         &fattrs,                                        // Structure containing the file attribute
         &io_stat_block,                                 // Structure containing the I/O queue
         NULL,                                           // Allocation size, not needed in that case
