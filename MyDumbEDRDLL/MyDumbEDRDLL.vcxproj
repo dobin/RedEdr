@@ -87,6 +87,7 @@
     <LinkIncremental>true</LinkIncremental>
     <TargetName>MyDumbEDRDLL</TargetName>
     <IgnoreImportLibrary>true</IgnoreImportLibrary>
+    <OutDir>C:\RedEdr</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
