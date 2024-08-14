@@ -3,7 +3,6 @@
 
 #include "pch.h"
 #include "minhook/include/MinHook.h"
-#include "rededrpipeclient.h"
 
 
 //----------------------------------------------------

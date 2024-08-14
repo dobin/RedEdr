@@ -129,7 +129,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\MyDumbEDRDLL\rededrpipeclient.c" />
     <ClCompile Include="..\RedEdr\cache.cpp" />
     <ClCompile Include="..\RedEdr\config.cpp" />
     <ClCompile Include="..\RedEdr\dllinjector.cpp" />
