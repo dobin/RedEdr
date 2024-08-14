@@ -6,20 +6,24 @@ Display events from Windows to see the detection surface of your malware.
 
 Same data as an EDR sees. 
 
+* Find the telemetry your malware generates
+* Verify your anti-EDR techniques work
+* Debug and analyze malware
 
 
-## Implemented Providers
+## Implemented Telemetry Consumers
 
 * ETW
   * Microsoft-Windows-Kernel-Process
-  * Microsoft-Antimalware-Engine
-  * Microsoft-Antimalware-RTP
-  * Microsoft-Antimalware-AMFilter
-  * Microsoft-Antimalware-Scan-Interface
-  * Microsoft-Antimalware-Protection
   * Microsoft-Windows-Security-Auditing
     * needs SYSTEM
     * restrictions apply, see gpedit.msc -> Computer Configuration -> Windows Settings -> Security Settings -> Advanced Audit Policy Configuration -> System Audit Policies - Local Group Policy object
+  * And defender
+    * Microsoft-Antimalware-Engine
+    * Microsoft-Antimalware-RTP
+    * Microsoft-Antimalware-AMFilter
+    * Microsoft-Antimalware-Scan-Interface
+    * Microsoft-Antimalware-Protection
 
 * Kernel Callbacks
   * PsSetCreateProcessNotifyRoutine
@@ -27,8 +31,8 @@ Same data as an EDR sees.
   * PsSetLoadImageNotifyRoutine
   * (ObRegisterCallbacks)
 
-* AMSI ntdll.dll hooking from userspace (ETW based)
 * AMSI ntdll.dll hooking from kernelspace (KAPC from LoadImage callback)
+* AMSI ntdll.dll hooking from userspace (ETW based, unreliable)
 
 
 ## Permissions
@@ -54,6 +58,12 @@ bcdedit /set testsigning on
 bcdedit -debug on
 ```
 
+After compiling, you should have: 
+* C:\RedEdr\RedEdr.exe: The userspace component
+* C:\RedEdr\MyDumbEDRDriver\*: The kernel module
+* C:\RedEdr\MyDumbEDRDLL.dll: The injectable DLL (amsi.dll)
+
+
 To load the driver, use local admin shell: 
 ```
 > .\load-kernel-driver.bat
@@ -63,6 +73,13 @@ To load the driver, use local admin shell:
 ## Usage
 
 RedEdr will trace all processes containing argument 1 in its process image name (exe path). And its children, recursively. 
+
+There are two main modes: 
+* With kernel module
+* Without kernel module
+
+I recommend to use it with kernel module. For a quick test, you can use RedEdr without. 
+
 
 ```
 PS > .\RedEdr.exe cobaltstrike.exe
@@ -74,25 +91,43 @@ PS > .\RedEdr.exe cobaltstrike.exe 2>$null
 ```
 
 
+Without kernel module: 
+```
+PS > .\RedEdr.exe --no-kernel cobaltstrike.exe
+```
+
+
 ## Solutions
+
+All should be compiled in "Debug" mode. 
 
 RedEdr: 
 * ETW reader
 * MPLOG reader
-* pipe-server for MyDumbEDRDLL
-* pipe-client for MyDumbEDRDriver
+* pipe-server for MyDumbEDRDLL (`pipe\\RedEdrDllCom`)
+* pipe-server for MyDumbEDRDriver (`pipe\\RedEdrKrnCom`)
 
 MyDumbEDRDriver
 * Kernel driver to capture kernel callbacks
 * Will do KAPC injection
-* provides a pipe as server (send data to RedEdr client)
+* connects to RedEdr pipe server to transmit captured data
 
 MyDumbEDRDLL: 
 * amsi.dll style, to be injected into target processes
-* use a pipe as client (send data to RedEdr server)
+* connects to RedEdr pipe server to transmit captured data
 
 RedEdrTester: 
 * internal testing tool
+
+
+## Pipes
+
+* `\\.\pipe\RedEdrDllCom`: injected DLL -> RedEdr server communication
+* `\\.\pipe\RedEdrKrnCom`: Kernel server -> RedEdr communication
+
+
+## Hacking
+
 
 
 # Todo
@@ -114,5 +149,4 @@ Based on MyDumbEdr
 
 With KAPC injection from:
 * https://github.com/0xOvid/RootkitDiaries/
-
 
