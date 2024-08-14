@@ -21,7 +21,7 @@
     <ClCompile Include="etwreader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="kernelcom.cpp">
+    <ClCompile Include="kernelreader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="cache.cpp">
@@ -53,7 +53,7 @@
     <ClInclude Include="etwreader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="kernelcom.h">
+    <ClInclude Include="kernelreader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="cache.h">

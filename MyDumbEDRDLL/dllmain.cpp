@@ -55,24 +55,6 @@ int ConnectToServerPipe() {
         return 1;
     }
 
-    /*
-    while (1) {
-        DWORD pipeBytesWritten = 0;
-        // Write to the named pipe
-        WriteFile(
-            hPipe,       // Handle to the named pipe
-            buffer,          // Buffer to write from
-            BUFFER_SIZE-1,      // Size of the buffer
-            &pipeBytesWritten, // Numbers of bytes written
-            NULL               // Whether or not the pipe supports overlapped operations
-        );
-        Sleep(2000);
-    }
-
-    // Close the pipe
-    CloseHandle(hPipe);
-    */
-
     return 0;
 }
 

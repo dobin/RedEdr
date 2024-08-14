@@ -8,3 +8,4 @@
 
 
 void InitializeInjectedDllReader(std::vector<HANDLE>& threads);
+void InjectedDllReaderStopAll();

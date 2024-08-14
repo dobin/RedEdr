@@ -157,7 +157,7 @@ void EtwReaderStopAll() {
     }
 
     LOG_F(INFO, "Tracing finished, cleanup..."); fflush(stdout);
-    Sleep(3000);
+    Sleep(2000);
     // NOTE if shit is still printing on screen, the following may fail?
 
     // TODO This should be done after all EtwReader threads exited?

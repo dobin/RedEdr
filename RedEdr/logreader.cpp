@@ -24,9 +24,7 @@ std::atomic<bool> LogReaderThreadStopFlag(false);
 
 
 void LogReaderStopAll() {
-    LOG_F(INFO, "--{ Stopping LogFileTracing");
     LogReaderThreadStopFlag = TRUE;
-    Sleep(1001);
 }
 
 

@@ -14,7 +14,7 @@
 #include "dllinjector.h"
 #include "etwreader.h"
 #include "logreader.h"
-#include "kernelcom.h"
+#include "kernelreader.h"
 #include "cache.h"
 #include "procinfo.h"
 #include "injecteddllreader.h"
@@ -87,7 +87,9 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
         fflush(stdout); // Show to user immediately
         LogReaderStopAll();
         EtwReaderStopAll();
+        InjectedDllReaderStopAll();
         KernelReaderStopAll();
+        Sleep(1000);
         return TRUE; // Indicate that we handled the signal
     default:
         return FALSE; // Let the next handler handle the signal

@@ -11,6 +11,13 @@
 
 #define BUFFER_SIZE 1024
 
+std::atomic<bool> InjectedDllReaderThreadStopFlag(false);
+
+
+void InjectedDllReaderStopAll() {
+    InjectedDllReaderThreadStopFlag = TRUE;
+}
+
 
 DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
     char buffer[BUFFER_SIZE] = "";
@@ -18,7 +25,7 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
 
     const wchar_t* pipeName = L"\\\\.\\pipe\\RedEdrDllCom";
     HANDLE hPipe;
-    while (TRUE) {
+    while (!InjectedDllReaderThreadStopFlag) {
         hPipe = CreateNamedPipe(
             pipeName,                 // Pipe name to create
             PIPE_ACCESS_INBOUND,       // Whether the pipe is supposed to receive or send data (can be both)
@@ -46,7 +53,7 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
 
         LOG_F(INFO, "DllReader: Client connected.\n");
 
-        while (TRUE) {
+        while (!InjectedDllReaderThreadStopFlag) {
             // Read data from the pipe
             if (ReadFile(hPipe, buffer, BUFFER_SIZE, &bytesRead, NULL)) {
                 buffer[BUFFER_SIZE-1] = '\0'; // Null-terminate the string

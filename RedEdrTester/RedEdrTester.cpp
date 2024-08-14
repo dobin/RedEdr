@@ -14,7 +14,7 @@ BOOL FakeKernelModulePipeServer() {
     DWORD bytesWritten;
     char buffer[BUFFER_SIZE] = "Hello from the server!";
 
-    const wchar_t* pipeName = L"\\\\.\\pipe\\RedEdrDllCom";
+    const wchar_t* pipeName = L"\\\\.\\pipe\\RedEdrKrnCom";
     HANDLE hPipe;
     while (TRUE) {
          hPipe = CreateNamedPipe(
@@ -79,13 +79,11 @@ int wmain(int argc, wchar_t* argv[]) {
     // Tests
     
     // For testing the kernel callback handler: a pipe client
-    //FakeKernelModulePipeServer();
-    //return 1;
-
+    FakeKernelModulePipeServer();
     // For testing the injected-dll: a pipe server
     //ConnectToServerPipe();
     // And manual DLL injection
-    remote_inject(pid);
+    //remote_inject(pid);
 
     return 1;
 
