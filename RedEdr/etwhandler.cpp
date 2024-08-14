@@ -13,7 +13,6 @@
 #include "cache.h"
 
 
-
 void WINAPI EventRecordCallbackSecurityAuditing(PEVENT_RECORD eventRecord)
 {
     // Display the event ID and its name

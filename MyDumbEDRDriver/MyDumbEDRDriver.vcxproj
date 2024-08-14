@@ -120,7 +120,6 @@
     <ClCompile Include="kapcinjector.c" />
     <ClCompile Include="kcallbacks.c" />
     <ClCompile Include="pipe.c" />
-    <ClCompile Include="stuff.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />

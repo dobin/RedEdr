@@ -61,7 +61,6 @@ public:
     std::wstring commandline;
     std::wstring working_dir;
     DWORD parent_pid;
-
 };
 
 

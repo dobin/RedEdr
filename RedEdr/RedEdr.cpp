@@ -104,17 +104,13 @@ wchar_t* ConvertCharToWchar2(const char *arg) {
 
 // https://github.com/s4dbrd/ETWReader
 int main(int argc, char* argv[]) {
-
-    InitializeInjectedDllReader2();
-    return 1;
-
     cxxopts::Options options("RedEdr", "Maldev event recorder");
     options.add_options()
         ("t,trace", "Process name to trace", cxxopts::value<std::string>())
-        ("e,etw", "Input: Show ETW Events", cxxopts::value<bool>()->default_value("false"))
-        ("m,mplog", "Input: Show Defender mplog file", cxxopts::value<bool>()->default_value("false"))
-        ("k,kernel", "Input: Show kernel callbacks", cxxopts::value<bool>()->default_value("false"))
-        ("i,inject", "Do userspace DLL injection", cxxopts::value<bool>()->default_value("false"))
+        ("e,etw", "Input: Consume ETW Events", cxxopts::value<bool>()->default_value("false"))
+        ("m,mplog", "Input: Consume Defender mplog file", cxxopts::value<bool>()->default_value("false"))
+        ("k,kernel", "Input: Consume kernel callback events", cxxopts::value<bool>()->default_value("false"))
+        ("i,inject", "Input: Consume DLL injection", cxxopts::value<bool>()->default_value("false"))
         ("d,debug", "Enable debugging", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print usage")
         ;
@@ -140,22 +136,23 @@ int main(int argc, char* argv[]) {
     g_config.do_kernelcallback = result["kernel"].as<bool>();
     g_config.do_dllinjection = result["inject"].as<bool>();
 
-    if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback) {
-        printf("Choose at least one of --etw --mplog --kernel");
+    if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback && !g_config.do_dllinjection) {
+        printf("Choose at least one of --etw --mplog --kernel --inject");
         return 1;
     }
 
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
+    LOG_F(INFO, "--( RedEdr 0.2", g_config.targetExeName);
+
 
     // Input
-    //g_config.targetExeName = ConvertCharToWchar(argv[1]);
     LOG_F(INFO, "--( Tracing process name %ls and its children", g_config.targetExeName);
 
     // SeDebug
     BOOL dbg = makeMeSeDebug();
     if (!dbg) {
-        LOG_F(ERROR, "--( ERROR MakeMeSeDebug");
+        LOG_F(ERROR, "--( ERROR MakeMeSeDebug: Did you start with local admin or SYSTEM?");
     }
 
     // Set up the console control handler to clean up on Ctrl+C
@@ -175,11 +172,11 @@ int main(int argc, char* argv[]) {
         // TODO
         InitializeKernelReader(threads);
     }
-    if (g_config.do_kernelcallback) {
+    if (g_config.do_dllinjection) {
         InitializeInjectedDllReader(threads);
     }
 
-    LOG_F(INFO, "--( %d threads, waiting...", threads.size());
+    LOG_F(INFO, "--( waiting for %d threads...", threads.size());
 
     // Wait for all threads to complete
     // NOTE Stops after ctrl-c handler is executed?

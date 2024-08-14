@@ -75,7 +75,7 @@ int open_pipe() {
     // Initialize a UNICODE_STRING structure containing the name of the named pipe
     RtlInitUnicodeString(
         &pipeName,                      // Variable in which we will store the UNICODE_STRING structure
-        L"\\??\\pipe\\dumbedr-analyzer" // Wide string containing the name of the named pipe
+        L"\\??\\pipe\\RedEdrKrnCom" // Wide string containing the name of the named pipe
     );
 
     OBJECT_ATTRIBUTES fattrs = { 0 }; // Objects Attributes used to store information when calling ZwCreateFile

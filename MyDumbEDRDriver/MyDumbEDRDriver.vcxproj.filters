@@ -30,9 +30,6 @@
     <ClCompile Include="pipe.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="stuff.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="kcallbacks.c">
       <Filter>Source Files</Filter>
     </ClCompile>

@@ -37,7 +37,7 @@ void WriteToServerPipe(char* buffer, int buffer_size) {
 #define BUFFER_SIZE 1024
 int ConnectToServerPipe() {
     //char buffer[BUFFER_SIZE] = "Hello from dll";
-    const wchar_t* pipeName = L"\\\\.\\pipe\\MyNamedPipe";
+    const wchar_t* pipeName = L"\\\\.\\pipe\\RedEdrDllCom";
 
     // Connect to the named pipe
     hPipe = CreateFile(

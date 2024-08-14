@@ -8,4 +8,3 @@
 
 
 void InitializeInjectedDllReader(std::vector<HANDLE>& threads);
-BOOL InitializeInjectedDllReader2();

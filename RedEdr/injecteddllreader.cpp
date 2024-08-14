@@ -11,16 +11,12 @@
 
 #define BUFFER_SIZE 1024
 
-void InitializeInjectedDllReader(std::vector<HANDLE>& threads) {
-}
 
-
-
-BOOL InitializeInjectedDllReader2() {
+DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
     char buffer[BUFFER_SIZE] = "";
     DWORD bytesRead;
 
-    const wchar_t* pipeName = L"\\\\.\\pipe\\MyNamedPipe";
+    const wchar_t* pipeName = L"\\\\.\\pipe\\RedEdrDllCom";
     HANDLE hPipe;
     while (TRUE) {
         hPipe = CreateNamedPipe(
@@ -33,18 +29,17 @@ BOOL InitializeInjectedDllReader2() {
             0,                        // Pipe timeout 
             NULL                      // Security attributes (anonymous connection or may be needs credentials. )
         );
-
         if (hPipe == INVALID_HANDLE_VALUE) {
-            LOG_F(ERROR, "Error creating named pipe: %ld\n", GetLastError());
+            LOG_F(ERROR, "DllReader: Error creating named pipe: %ld", GetLastError());
             return 1;
         }
 
-        LOG_F(INFO, "DllReader: Waiting for client to connect...\n");
+        LOG_F(INFO, "DllReader: Waiting for client to connect...");
 
         // Wait for the client to connect
         BOOL result = ConnectNamedPipe(hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
         if (!result) {
-            LOG_F(ERROR, "Error connecting to named pipe: %ld\n", GetLastError());
+            LOG_F(ERROR, "DllReader: Error connecting to named pipe: %ld", GetLastError());
             CloseHandle(hPipe);
             return 1;
         }
@@ -59,11 +54,11 @@ BOOL InitializeInjectedDllReader2() {
             }
             else {
                 if (GetLastError() == ERROR_BROKEN_PIPE) {
-                    LOG_F(INFO, "Client disconnected: %ld", GetLastError());
+                    LOG_F(INFO, "DllReader: Client disconnected: %ld", GetLastError());
                     break;
                 }
                 else {
-                    LOG_F(ERROR, "Error reading from named pipe: %ld", GetLastError());
+                    LOG_F(ERROR, "DllReader: Error reading from named pipe: %ld", GetLastError());
                     break;
                 }
             }
@@ -72,4 +67,15 @@ BOOL InitializeInjectedDllReader2() {
         // Close the pipe
         CloseHandle(hPipe);
     }
+}
+
+
+void InitializeInjectedDllReader(std::vector<HANDLE>& threads) {
+    const wchar_t* data = L"";
+    HANDLE thread = CreateThread(NULL, 0, DllInjectionReaderProcessingThread, (LPVOID)data, 0, NULL);
+    if (thread == NULL) {
+        LOG_F(ERROR, "DllReader: Failed to create thread ");
+        return;
+    }
+    threads.push_back(thread);
 }

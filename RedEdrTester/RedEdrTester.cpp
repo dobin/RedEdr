@@ -14,7 +14,7 @@ BOOL FakeKernelModulePipeServer() {
     DWORD bytesWritten;
     char buffer[BUFFER_SIZE] = "Hello from the server!";
 
-    const wchar_t* pipeName = L"\\\\.\\pipe\\MyNamedPipe";
+    const wchar_t* pipeName = L"\\\\.\\pipe\\RedEdrDllCom";
     HANDLE hPipe;
     while (TRUE) {
          hPipe = CreateNamedPipe(

@@ -50,7 +50,7 @@ void InitializeKernelReader(std::vector<HANDLE>& threads) {
 
 
 int kernelcom() {
-    LPCWSTR pipeName = L"\\\\.\\pipe\\dumbedr-analyzer";
+    LPCWSTR pipeName = L"\\\\.\\pipe\\RedEdrKrnCom";
     DWORD bytesRead = 0;
     wchar_t target_binary_file[MESSAGE_SIZE] = { 0 };
 
