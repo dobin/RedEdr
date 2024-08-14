@@ -8,12 +8,16 @@
 
 //----------------------------------------------------
 
-HANDLE hPipe;
+HANDLE hPipe = NULL;
 
 
 void WriteToServerPipe(char* buffer, int buffer_size) {
     DWORD pipeBytesWritten = 0;
     DWORD res = 0;
+
+    if (hPipe == NULL) {
+        return;
+    }
 
     //MessageBox(NULL, L"Send", L"Send", MB_OK);
 
@@ -32,7 +36,7 @@ void WriteToServerPipe(char* buffer, int buffer_size) {
 
 #define BUFFER_SIZE 1024
 int ConnectToServerPipe() {
-    char buffer[BUFFER_SIZE] = "Hello from dll";
+    //char buffer[BUFFER_SIZE] = "Hello from dll";
     const wchar_t* pipeName = L"\\\\.\\pipe\\MyNamedPipe";
 
     // Connect to the named pipe
@@ -131,9 +135,7 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
         return -1;
     }
 
-    //MessageBox(NULL, L"INIT1", L"Found u bro", MB_OK);
     ConnectToServerPipe();
-    //MessageBox(NULL, L"INIT2", L"Found u bro", MB_OK);
 
     // Here we specify which function from wich DLL we want to hook
     MH_CreateHookApi(
