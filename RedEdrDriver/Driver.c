@@ -170,7 +170,7 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
     }
 
     init_config();
-    ConnectToServerPipe();
+    InitDllPipe();
     LoadKernelCallbacks();
 
     return STATUS_SUCCESS;

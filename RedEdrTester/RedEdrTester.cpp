@@ -10,60 +10,97 @@
 
 
 #define BUFFER_SIZE 1024
-BOOL FakeKernelModulePipeServer() {
+
+// Will send some data to the RedEdr KernelModuleReader
+BOOL FakeKernelPipeClient() {
+
     DWORD bytesWritten;
-    char buffer[BUFFER_SIZE] = "Hello from the server!";
+    wchar_t buffer[BUFFER_SIZE] = L"Test:RedEdrTester:FakeKernelPipeClient";
 
     const wchar_t* pipeName = L"\\\\.\\pipe\\RedEdrKrnCom";
     HANDLE hPipe;
     while (TRUE) {
-         hPipe = CreateNamedPipe(
-            pipeName,                 // Pipe name to create
-            PIPE_ACCESS_OUTBOUND,       // Whether the pipe is supposed to receive or send data (can be both)
-            PIPE_TYPE_MESSAGE,        // Pipe mode (whether or not the pipe is waiting for data)
-            PIPE_UNLIMITED_INSTANCES, // Maximum number of instances from 1 to PIPE_UNLIMITED_INSTANCES
-            BUFFER_SIZE,             // Number of bytes for output buffer
-            BUFFER_SIZE,             // Number of bytes for input buffer
-            0,                        // Pipe timeout 
-            NULL                      // Security attributes (anonymous connection or may be needs credentials. )
-        );
-
+        hPipe = CreateFile(
+            pipeName,
+            GENERIC_WRITE,
+            0,
+            NULL,
+            OPEN_EXISTING,
+            0,
+            NULL);
         if (hPipe == INVALID_HANDLE_VALUE) {
             printf("Error creating named pipe: %ld\n", GetLastError());
             return 1;
         }
 
-        printf("Waiting for client to connect...\n");
-    
-        // Wait for the client to connect
-        BOOL result = ConnectNamedPipe(hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
-        if (!result) {
-            printf("Error connecting to named pipe: %ld\n", GetLastError());
-            CloseHandle(hPipe);
-            return 1;
-        }
-
-        printf("Client connected.\n");
-
         while (TRUE) {
-            // Write data to the pipe
-            if (!WriteFile(hPipe, buffer, (DWORD)strlen(buffer), &bytesWritten, NULL)) {
-                if (GetLastError() == ERROR_NO_DATA) {
-                    printf("Client disconnected, creating new socket\n");
-                }
-                else {
-                    printf("Error writing from named pipe: %ld\n", GetLastError());
-                }
-                break;
+            DWORD len = wcslen(buffer) * 2;
+            if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
+                printf("Error writing to named pipe: %ld\n", GetLastError());
+                CloseHandle(hPipe);
+                return 1;
             }
 
             Sleep(2000);
         }
 
-        // Close the pipe
         CloseHandle(hPipe);
     }
 }
+
+
+// Will send some data to the RedEdr DllReader
+BOOL FakeDllPipeClient() {
+
+    DWORD bytesWritten;
+    wchar_t buffer[BUFFER_SIZE] = L"Test:RedEdrTester:FakeDllPipeClient";
+
+    const wchar_t* pipeName = L"\\\\.\\pipe\\RedEdrDllCom";
+    HANDLE hPipe;
+    while (TRUE) {
+        hPipe = CreateFile(
+            pipeName,
+            GENERIC_WRITE,
+            0,
+            NULL,
+            OPEN_EXISTING,
+            0,
+            NULL);
+        if (hPipe == INVALID_HANDLE_VALUE) {
+            printf("Error creating named pipe: %ld\n", GetLastError());
+            return 1;
+        }
+
+        while (TRUE) {
+            DWORD len = wcslen(buffer) * 2;
+            if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
+                printf("Error writing to named pipe: %ld\n", GetLastError());
+                CloseHandle(hPipe);
+                return 1;
+            }
+
+            Sleep(2000);
+        }
+
+        CloseHandle(hPipe);
+    }
+}
+
+
+void query_process(DWORD pid) {
+    // Test: Process information
+    Process* process = MakeProcess(pid);
+    process->display();
+
+    // Test: process name matching
+    if (process->image_path.find(g_config.targetExeName) != std::wstring::npos) {
+        wprintf(L"Observe CMD: %d %ls\n", pid, process->image_path.c_str());
+    }
+    else {
+        wprintf(L"DONT Observe CMD: %d %ls\n", pid, process->image_path.c_str());
+    }
+}
+
 
 int wmain(int argc, wchar_t* argv[]) {
     if (argc != 2) {
@@ -76,27 +113,35 @@ int wmain(int argc, wchar_t* argv[]) {
     wchar_t* end;
     DWORD pid = wcstol(argv[1], &end, 10);
 
-    // Tests
+    int test = 2;
+    switch (test) {
+    case 1:
+        printf("Fake Kernel Module Pipe Client\n");
+        // Testing RedEdr kernel callback handler: a pipe client
+        // For: RedEdr.exe --kernel
+        FakeKernelPipeClient();
+        break;
+
+    case 2:
+        printf("Fake InjectedDll Pipe Client\n");
+        // Testing RedEdr InjectedDll callback handler: a pipe client
+        // For: RedEdr.exe --inject
+        FakeDllPipeClient();
+        break;
+
+    case 3:
+        // And manual DLL injection
+        printf("Manual DLL injection (from userspace)\n");
+        remote_inject(pid);
+        break;
+
+    case 4:
+        // Query process information
+        printf("Query process information\n");
+        query_process(pid);
+        break;
+    }
     
-    // For testing the kernel callback handler: a pipe client
-    FakeKernelModulePipeServer();
-    // For testing the injected-dll: a pipe server
-    //ConnectToServerPipe();
-    // And manual DLL injection
-    //remote_inject(pid);
-
-    return 1;
 
 
-    // Test: Process information
-    Process* process = MakeProcess(pid);
-    process->display();
-
-    // Test: process name matching
-    if (process->image_path.find(g_config.targetExeName) != std::wstring::npos) {
-        wprintf(L"Observe CMD: %d %ls\n", pid, process->image_path.c_str());
-    }
-    else {
-        wprintf(L"DONT Observe CMD: %d %ls\n", pid, process->image_path.c_str());
-    }
 }

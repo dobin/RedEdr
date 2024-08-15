@@ -70,6 +70,7 @@ BOOL makeMeSeDebug() {
     return TRUE;
 }
 
+
 BOOL double_ctrlc = FALSE;
 BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     switch (ctrlType) {
@@ -95,6 +96,7 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
         return FALSE; // Let the next handler handle the signal
     }
 }
+
 
 wchar_t* ConvertCharToWchar2(const char *arg) {
     int len = MultiByteToWideChar(CP_ACP, 0, arg, -1, NULL, 0);
@@ -146,9 +148,6 @@ int main(int argc, char* argv[]) {
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
     LOG_F(INFO, "--( RedEdr 0.2", g_config.targetExeName);
-
-
-    // Input
     LOG_F(INFO, "--( Tracing process name %ls and its children", g_config.targetExeName);
 
     // SeDebug
@@ -157,7 +156,7 @@ int main(int argc, char* argv[]) {
         LOG_F(ERROR, "--( ERROR MakeMeSeDebug: Did you start with local admin or SYSTEM?");
     }
 
-    // Set up the console control handler to clean up on Ctrl+C
+    // Ctrl+C
     if (!SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE)) {
         LOG_F(ERROR, "--( Failed to set control handler");
         return 1;
@@ -171,7 +170,6 @@ int main(int argc, char* argv[]) {
         InitializeLogReader(threads);
     }
     if (g_config.do_kernelcallback) {
-        // TODO
         InitializeKernelReader(threads);
     }
     if (g_config.do_dllinjection) {

@@ -1,6 +1,5 @@
 #include <stdio.h>
 
-
 #include "pch.h"
 #include "minhook/include/MinHook.h"
 
@@ -10,48 +9,42 @@
 HANDLE hPipe = NULL;
 
 
-void WriteToServerPipe(char* buffer, int buffer_size) {
+void SendDllPipe(wchar_t* buffer) {
     DWORD pipeBytesWritten = 0;
     DWORD res = 0;
 
     if (hPipe == NULL) {
         return;
     }
-
-    //MessageBox(NULL, L"Send", L"Send", MB_OK);
-
+    DWORD len = wcslen(buffer) * 2;
     res = WriteFile(
-        hPipe,       // Handle to the named pipe
-        buffer,          // Buffer to write from
-        buffer_size,      // Size of the buffer 
-        &pipeBytesWritten, // Numbers of bytes written
-        NULL               // Whether or not the pipe supports overlapped operations
+        hPipe,
+        buffer,
+        len,
+        &pipeBytesWritten,
+        NULL
     );
     if (res == FALSE) {
-        MessageBox(NULL, L"ERR2", L"ERR2", MB_OK);
-
+        MessageBox(NULL, L"Error", L"SendDllPipe: Error when sending to pipe", MB_OK);
     }
 }
 
+
 #define BUFFER_SIZE 1024
-int ConnectToServerPipe() {
-    //char buffer[BUFFER_SIZE] = "Hello from dll";
+int InitDllPipe() {
     const wchar_t* pipeName = L"\\\\.\\pipe\\RedEdrDllCom";
 
-    // Connect to the named pipe
     hPipe = CreateFile(
-        pipeName,              // Pipe name
-        GENERIC_WRITE,          // Write access
-        0,                      // No sharing
-        NULL,                   // Default security attributes
-        OPEN_EXISTING,          // Opens existing pipe
-        0,                      // Default attributes
-        NULL);                  // No template file
-
+        pipeName,
+        GENERIC_WRITE,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        0,
+        NULL);
     if (hPipe == INVALID_HANDLE_VALUE) {
         //        printf("Error connecting to named pipe: %ld", GetLastError());
         MessageBox(NULL, L"ERR1", L"ERR1", MB_OK);
-
         return 1;
     }
 
@@ -74,9 +67,6 @@ typedef DWORD(NTAPI* pNtAllocateVirtualMemory)(
 // Pointer to the trampoline function used to call the original NtAllocateVirtualMemory
 pNtAllocateVirtualMemory pOriginalNtAllocateVirtualMemory = NULL;
 
-// This is the function that will be called whenever the injected process calls 
-// NtAllocateVirtualMemory. This function takes the arguments Protect and checks
-// if the requested protection is RWX (which shouldn't happen).
 DWORD NTAPI NtAllocateVirtualMemory(
     HANDLE ProcessHandle,
     PVOID* BaseAddress,
@@ -85,28 +75,18 @@ DWORD NTAPI NtAllocateVirtualMemory(
     ULONG AllocationType,
     ULONG Protect
 ) {
-    char buf[BUFFER_SIZE] = "Test 12 12";
-    sprintf_s(buf, "AllocateVirtualMemory:%p:%p:%#lx:%llu:%#lx:%#lx",
+    wchar_t buf[BUFFER_SIZE] = L"";
+    int ret = swprintf_s(buf, BUFFER_SIZE, L"AllocateVirtualMemory:%p:%p:%#lx:%llu:%#lx:%#lx",
         ProcessHandle, BaseAddress, ZeroBits, *RegionSize, AllocationType, Protect);
-    WriteToServerPipe(buf, BUFFER_SIZE);
+    SendDllPipe(buf);
 
-    // Checks if the program is trying to allocate some memory and protect it with RWX 
-    if (Protect == PAGE_EXECUTE_READWRITE) {
-        // If yes, we notify the user and terminate the process
-        MessageBox(NULL, L"Dude, are you trying to RWX me ?", L"Found u bro", MB_OK);
-        TerminateProcess(GetCurrentProcess(), 0xdeadb33f);
-    }
-    else {
-        //MessageBox(NULL, L"Alloc", L"Found u bro", MB_OK);
-    }
-
-    //If no, we jump on the originate NtAllocateVirtualMemory
+    // jump on the originate NtAllocateVirtualMemory
     return pOriginalNtAllocateVirtualMemory(GetCurrentProcess(), BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
 }
 
 
 DWORD WINAPI InitPipeThread(LPVOID param) {
-    ConnectToServerPipe();
+    InitDllPipe();
     return 0;
 }
 
@@ -116,7 +96,7 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
         return -1;
     }
 
-    ConnectToServerPipe();
+    InitDllPipe();
 
     // Here we specify which function from wich DLL we want to hook
     MH_CreateHookApi(

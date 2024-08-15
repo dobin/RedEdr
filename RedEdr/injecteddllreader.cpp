@@ -41,7 +41,7 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
             return 1;
         }
 
-        LOG_F(INFO, "DllReader: Waiting for client to connect...");
+        //LOG_F(INFO, "DllReader: Waiting for client to connect...");
 
         // Wait for the client to connect
         BOOL result = ConnectNamedPipe(hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
@@ -51,17 +51,17 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
             return 1;
         }
 
-        LOG_F(INFO, "DllReader: Client connected.\n");
+        LOG_F(INFO, "DllReader: Client connected");
 
         while (!InjectedDllReaderThreadStopFlag) {
             // Read data from the pipe
             if (ReadFile(hPipe, buffer, BUFFER_SIZE, &bytesRead, NULL)) {
                 buffer[BUFFER_SIZE-1] = '\0'; // Null-terminate the string
-                printf("DLL %i: %s\n", bytesRead, buffer);
+                wprintf(L"DLL %i: %s\n", bytesRead, buffer);
             }
             else {
                 if (GetLastError() == ERROR_BROKEN_PIPE) {
-                    LOG_F(INFO, "DllReader: Client disconnected: %ld", GetLastError());
+                    //LOG_F(INFO, "DllReader: Client disconnected: %ld", GetLastError());
                     break;
                 }
                 else {

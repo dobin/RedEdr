@@ -8,99 +8,77 @@
 #include "common.h"
 
 
-// Handle that we will use to communicate with the named pipe
-// To Userspace
+// Handle that we will use to communicate with the named pipe to userspace
 HANDLE hPipe = NULL;
 
 
-// log the event message
+// log the event message (write to pipe)
 int log_event(wchar_t* message) {
     if (hPipe == NULL) {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            cannot log as pipe is closed");
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, 
+            "LogEvent: cannot log as pipe is closed");
         return 1;
     }
     NTSTATUS status;
-    IO_STATUS_BLOCK io_stat_block;    // IO status block used to specify the state of a I/O request
-
-    // Now we'll send the data path the userland agent
+    IO_STATUS_BLOCK io_stat_block;
+    ULONG len = (ULONG) wcslen(message) * 2;
     status = ZwWriteFile(
-        hPipe,            // Handle to the named pipe
-        NULL,             // Optionally a handle on an even object
-        NULL,             // Always NULL
-        NULL,             // Always NULL
-        &io_stat_block,   // Structure containing the I/O queue
-        message, // Buffer in which is stored the binary path
-        MESSAGE_SIZE,     // Maximum size of the buffer
-        NULL,             // Bytes offset (optional)
-        NULL              // Always NULL
+        hPipe,
+        NULL,
+        NULL,
+        NULL,
+        &io_stat_block,
+        message,
+        len,
+        NULL,
+        NULL
     );
     if (!NT_SUCCESS(status)) {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            ZwWriteFile: Error ZwWriteFile: 0x%0.8x\n", status);
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, 
+            "LogEvent: ZwWriteFile: Error ZwWriteFile: 0x%0.8x\n", status);
         hPipe = NULL;
         return 0;
     }
-
-    //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            log_event(): %zW", message);
-    /*status = ZwWaitForSingleObject(
-        hPipe, // Handle the named pipe
-        FALSE, // Whether or not we want the wait to be alertable
-        NULL   // An optional timeout
-    );
-    if (!NT_SUCCESS(status)) {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            ZwWriteFile: Error ZwWaitForSingleObject: 0x%0.8x\n", status);
-        hPipe = NULL;
-        return 0;
-    }*/
-
-    //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            ZwWaitForSingleObject: 0x%0.8x\n", status);
-
     return 1;
 }
 
 
-// Close pipe
 void close_pipe() {
     ZwClose(hPipe);
 }
 
 
 // Connect to the userspace daemon
-int ConnectToServerPipe() {
-    UNICODE_STRING pipeName; // String containing the name of the named
-    // Initialize a UNICODE_STRING structure containing the name of the named pipe
-    RtlInitUnicodeString(
-        &pipeName,                      // Variable in which we will store the UNICODE_STRING structure
-        L"\\??\\pipe\\RedEdrKrnCom" // Wide string containing the name of the named pipe
-    );
+int InitDllPipe() {
+    UNICODE_STRING pipeName;
+    RtlInitUnicodeString(&pipeName, L"\\??\\pipe\\RedEdrKrnCom");
 
-    OBJECT_ATTRIBUTES fattrs = { 0 }; // Objects Attributes used to store information when calling ZwCreateFile
-    IO_STATUS_BLOCK io_stat_block;    // IO status block used to specify the state of a I/O request
+    OBJECT_ATTRIBUTES fattrs = { 0 };
+    IO_STATUS_BLOCK io_stat_block;
 
-    // Initialize an OBJECT_ATTRIBUTE structure pointing to our named pipe
     InitializeObjectAttributes(&fattrs, &pipeName, OBJ_CASE_INSENSITIVE | 0x0200, 0, NULL);
 
-    // Reads from the named pipe
     NTSTATUS status = ZwCreateFile(
-        &hPipe,                                         // Handle to the named pipe
-        FILE_WRITE_DATA | SYNCHRONIZE, // File attribute (we need both read and write)
-        &fattrs,                                        // Structure containing the file attribute
-        &io_stat_block,                                 // Structure containing the I/O queue
-        NULL,                                           // Allocation size, not needed in that case
-        0,                                              // Specific files attributes (not needed as well
-        FILE_SHARE_READ | FILE_SHARE_WRITE,             // File sharing access
-        FILE_OPEN,                                      // Specify the action we want to do on the file 
-        FILE_NON_DIRECTORY_FILE,                        // Specifying that the file is not a directory
-        NULL,                                           // Always NULL
-        0                                               // Always zero
+        &hPipe,
+        FILE_WRITE_DATA | SYNCHRONIZE,
+        &fattrs,
+        &io_stat_block,
+        NULL,
+        0,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        FILE_OPEN,
+        FILE_NON_DIRECTORY_FILE,
+        NULL,
+        0
     );
-
-    // If we can obtain a handle on the named pipe then 
     if (NT_SUCCESS(status)) {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            PIPE: OK.\n");
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, 
+            "InitDllPipe: OK.\n");
         return 1;
     }
     else {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            PIPE: ERROR, Daemon not running?.\n");
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, 
+            "InitDllPipe: ERROR, Daemon not running?.\n");
         hPipe = NULL;
         return 0;
     }

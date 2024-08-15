@@ -47,7 +47,7 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
             return 1;
         }
 
-        LOG_F(INFO, "KernelReader: Waiting for client to connect...");
+        LOG_F(INFO, "KernelReader: Waiting for client (Kernel Driver) to connect...");
 
         // Wait for the client to connect
         BOOL result = ConnectNamedPipe(hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
@@ -57,17 +57,17 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
             return 1;
         }
 
-        LOG_F(INFO, "KernelReader: Client connected.\n");
+        LOG_F(INFO, "KernelReader: connected.\n");
 
         while (!KernelReaderThreadStopFlag) {
             // Read data from the pipe
             if (ReadFile(hPipe, buffer, BUFFER_SIZE, &bytesRead, NULL)) {
-                buffer[BUFFER_SIZE - 1] = '\0'; // Null-terminate the string
+                buffer[bytesRead] = '\0';
                 wprintf(L"KRN %i: %s\n", bytesRead, buffer);
             }
             else {
                 if (GetLastError() == ERROR_BROKEN_PIPE) {
-                    LOG_F(INFO, "KernelReader: Client disconnected: %ld", GetLastError());
+                    LOG_F(INFO, "KernelReader: Disconnected: %ld", GetLastError());
                     break;
                 }
                 else {
