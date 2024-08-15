@@ -12,7 +12,7 @@ void init_config() {
 	g_config.enable_threadnotify = 0;
 	g_config.enable_imagenotify = 1;
 	g_config.enable_obnotify = 0;
-	g_config.enable_kapc_injection = 0;
+	g_config.enable_kapc_injection = 1;
 }
 
 

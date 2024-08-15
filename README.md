@@ -35,15 +35,6 @@ Same data as an EDR sees.
 * AMSI ntdll.dll hooking from userspace (ETW based, unreliable)
 
 
-## Permissions
-
-Local admin:
-* ETW, especially Microsoft-Windows-Kernel-Process
-* Driver loading
-
-SYSTEM:
-* ETW Microsoft-Windows-Security-Auditing
-
 
 ## Requirements
 
@@ -60,14 +51,18 @@ bcdedit -debug on
 
 After compiling, you should have: 
 * C:\RedEdr\RedEdr.exe: The userspace component
-* C:\RedEdr\MyDumbEDRDriver\*: The kernel module
-* C:\RedEdr\MyDumbEDRDLL.dll: The injectable DLL (amsi.dll)
+* C:\RedEdr\RedEdrDriver\*: The kernel module
+* C:\RedEdr\RedEdrDll.dll: The injectable DLL (amsi.dll)
 
 
 To load the driver, use local admin shell: 
 ```
 > .\load-kernel-driver.bat
 ```
+
+Execute as admin obviously. 
+
+If you want ETW Microsoft-Windows-Security-Auditing, start as SYSTEM. 
 
 
 ## Usage
@@ -104,15 +99,15 @@ All should be compiled in "Debug" mode.
 RedEdr: 
 * ETW reader
 * MPLOG reader
-* pipe-server for MyDumbEDRDLL (`pipe\\RedEdrDllCom`)
-* pipe-server for MyDumbEDRDriver (`pipe\\RedEdrKrnCom`)
+* pipe-server for RedEdrDll (`pipe\\RedEdrDllCom`)
+* pipe-server for RedEdrDriver (`pipe\\RedEdrKrnCom`)
 
-MyDumbEDRDriver
+RedEdrDriver:
 * Kernel driver to capture kernel callbacks
 * Will do KAPC injection
 * connects to RedEdr pipe server to transmit captured data
 
-MyDumbEDRDLL: 
+RedEdrDll: 
 * amsi.dll style, to be injected into target processes
 * connects to RedEdr pipe server to transmit captured data
 

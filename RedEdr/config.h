@@ -17,7 +17,7 @@ public:
 	std::wstring sessionName = L"RedEdrEtw";
 	//WCHAR* a;
 
-	LPCSTR inject_dll_path = "C:\\RedEdr\\MyDumbEDRDLL.dll";
+	LPCSTR inject_dll_path = "C:\\RedEdr\\RedEdrDll.dll";
 	bool do_etw = false;
 	bool do_mplog = false;
 	bool do_kernelcallback = false;

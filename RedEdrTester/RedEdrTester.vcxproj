@@ -137,9 +137,6 @@
     <ClCompile Include="..\RedEdr\procinfo.cpp" />
     <ClCompile Include="RedEdrTester.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\MyDumbEDRDLL\rededrpipeclient.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

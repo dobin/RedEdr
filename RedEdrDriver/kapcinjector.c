@@ -139,11 +139,7 @@ NTSTATUS DllInject(HANDLE ProcessId, PEPROCESS PeProcess, PETHREAD PeThread, BOO
 		return STATUS_NO_MEMORY;
 	}
 
-	// 1) define our dll path: ''C:\\MyDLL.dll" in the sample
-	//CHAR DllFormatPath[] = "C:\\MyDLL.dll";
-	//CHAR DllFormatPath[] = "C:\\Users\\hacker\\source\\repos\\RootkitDiaries\\KAPC_Injection\\KapcInjection\\x64\\Debug\\MyDLL.dll";
-	//CHAR DllFormatPath[] = "C:\\Users\\hacker\\source\\repos\\RedEdr\\x64\\Release\\SylantStrike.dll";
-	CHAR DllFormatPath[] = "C:\\RedEdr\\MyDumbEDRDLL.dll";
+	CHAR DllFormatPath[] = "C:\\RedEdr\\RedEdrDll.dll";
 	// 2) get the size in bytes of the string
 	SIZE_T Size = strlen(DllFormatPath) + 1;
 	PVOID pvMemory = NULL;

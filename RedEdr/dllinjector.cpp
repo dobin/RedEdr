@@ -11,10 +11,6 @@
 
 BOOL remote_inject(DWORD target_pid) {
     char dll_full_path[MAX_PATH];
-
-    //char dll_path[] = "x64\\Debug\\MyDumbEDRDLL.dll";
-    //GetFullPathNameA(dll_path, MAX_PATH, dll_full_path, NULL);
-    //strcpy_s(dll_full_path, "C:\\Users\\hacker\\source\\repos\\mydumbedr_orig\\x64\\Debug\\MyDumbEDRDLL.dll");
     strcpy_s(dll_full_path, g_config.inject_dll_path);
 
     LOG_F(INFO, "DLL Inject into process: %d", target_pid);
@@ -46,7 +42,7 @@ BOOL remote_inject(DWORD target_pid) {
     }
     //printf("\tAllocated: %d bytes\n", MAX_PATH);
 
-    // Writing the path of the DLL to inject x64\Debug\MyDumbEDRDLL
+    // Writing the path of the DLL to inject
     SIZE_T bytesWritten;
     if (!WriteProcessMemory(hProcess, vae_buffer, dll_full_path, MAX_PATH, &bytesWritten)) {
         LOG_F(ERROR, "Can't write into memory, error: %lu", GetLastError());

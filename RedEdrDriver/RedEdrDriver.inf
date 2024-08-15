@@ -1,0 +1,77 @@
+;
+; RedEdrDriver.inf
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=System ; TODO: specify appropriate Class
+ClassGuid={4d36e97d-e325-11ce-bfc1-08002be10318} ; TODO: specify appropriate ClassGuid
+Provider=%ManufacturerName%
+CatalogFile=RedEdrDriver.cat
+DriverVer= ; TODO: set DriverVer in stampinf property pages
+PnpLockdown=1
+
+[DestinationDirs]
+DefaultDestDir = 12
+RedEdrDriver_Device_CoInstaller_CopyFiles = 11
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+RedEdrDriver.sys  = 1,,
+WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll=1 ; make sure the number matches with SourceDisksNames
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName%=Standard,NT$ARCH$
+
+[Standard.NT$ARCH$]
+%RedEdrDriver.DeviceDesc%=RedEdrDriver_Device, Root\RedEdrDriver ; TODO: edit hw-id
+
+[RedEdrDriver_Device.NT]
+CopyFiles=Drivers_Dir
+
+[Drivers_Dir]
+RedEdrDriver.sys
+
+;-------------- Service installation
+[RedEdrDriver_Device.NT.Services]
+AddService = RedEdrDriver,%SPSVCINST_ASSOCSERVICE%, RedEdrDriver_Service_Inst
+
+; -------------- RedEdrDriver driver install sections
+[RedEdrDriver_Service_Inst]
+DisplayName    = %RedEdrDriver.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\RedEdrDriver.sys
+
+;
+;--- RedEdrDriver_Device Coinstaller installation ------
+;
+
+[RedEdrDriver_Device.NT.CoInstallers]
+AddReg=RedEdrDriver_Device_CoInstaller_AddReg
+CopyFiles=RedEdrDriver_Device_CoInstaller_CopyFiles
+
+[RedEdrDriver_Device_CoInstaller_AddReg]
+HKR,,CoInstallers32,0x00010000, "WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll,WdfCoInstaller"
+
+[RedEdrDriver_Device_CoInstaller_CopyFiles]
+WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll
+
+[RedEdrDriver_Device.NT.Wdf]
+KmdfService =  RedEdrDriver, RedEdrDriver_wdfsect
+[RedEdrDriver_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+ManufacturerName="<Your manufacturer name>" ;TODO: Replace with your manufacturer name
+DiskName = "RedEdrDriver Installation Disk"
+RedEdrDriver.DeviceDesc = "RedEdrDriver Device"
+RedEdrDriver.SVCDESC = "RedEdrDriver Service"

@@ -19,7 +19,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Inf Include="MyDumbEDRDriver.inf">
+    <Inf Include="RedEdrDriver.inf">
       <Filter>Driver Files</Filter>
     </Inf>
   </ItemGroup>

@@ -15,10 +15,10 @@
 #include "hashcache.h"
 
 // Internal driver device name, cannot be used userland
-UNICODE_STRING DEVICE_NAME = RTL_CONSTANT_STRING(L"\\Device\\MyDumbEDR");
+UNICODE_STRING DEVICE_NAME = RTL_CONSTANT_STRING(L"\\Device\\RedEdr");
 
 // Symlink used to reach the driver, can be used userland
-UNICODE_STRING SYM_LINK = RTL_CONSTANT_STRING(L"\\??\\MyDumbEDR");
+UNICODE_STRING SYM_LINK = RTL_CONSTANT_STRING(L"\\??\\RedEdr");
 
 
 // To remove ObRegisterCallback at the end
@@ -110,8 +110,8 @@ void LoadKernelCallbacks() {
 }
 
 
-void UnloadMyDumbEDR(_In_ PDRIVER_OBJECT DriverObject) {
-    DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "[MyDumbEDR] Unloading routine called\n");
+void RedEdrUnload(_In_ PDRIVER_OBJECT DriverObject) {
+    DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "Unloading routine called\n");
 
     close_pipe();
 
@@ -137,11 +137,11 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
     UNREFERENCED_PARAMETER(RegistryPath); // Prevent compiler error such as unreferenced parameter (error 4)
     NTSTATUS status;
 
-    DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[MyDumbEDR] 0.2 Initializing the EDR's driver\n");
+    DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] 0.2 Initializing the EDR's driver\n");
     InitializeHashTable();
 
     // Setting the unload routine to execute
-    DriverObject->DriverUnload = UnloadMyDumbEDR;
+    DriverObject->DriverUnload = RedEdrUnload;
 
     // Initializing a device object and creating it
     PDEVICE_OBJECT DeviceObject;
@@ -157,14 +157,14 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
         &DeviceObject		   // the resulting pointer
     );
     if (!NT_SUCCESS(status)) {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[MyDumbEDR] Device creation failed\n");
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] Device creation failed\n");
         return status;
     }
 
     // Creating the symlink that we will use to contact our driver
     status = IoCreateSymbolicLink(&symlinkName, &deviceName);
     if (!NT_SUCCESS(status)) {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[MyDumbEDR] Symlink creation failed\n");
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] Symlink creation failed\n");
         IoDeleteDevice(DeviceObject);
         return status;
     }
