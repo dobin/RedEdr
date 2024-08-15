@@ -3,25 +3,21 @@
 #include <cwchar>  // For wcstol
 #include <cstdlib> // For exit()
 
+#include "../Shared/common.h"
 #include "loguru.hpp"
 #include "config.h"
 #include "procinfo.h"
 #include "dllinjector.h"
 
 
-#define BUFFER_SIZE 1024
-
 // Will send some data to the RedEdr KernelModuleReader
 BOOL FakeKernelPipeClient() {
-
     DWORD bytesWritten;
-    wchar_t buffer[BUFFER_SIZE] = L"Test:RedEdrTester:FakeKernelPipeClient";
-
-    const wchar_t* pipeName = L"\\\\.\\pipe\\RedEdrKrnCom";
+    wchar_t buffer[DATA_BUFFER_SIZE] = L"Test:RedEdrTester:FakeKernelPipeClient";
     HANDLE hPipe;
     while (TRUE) {
         hPipe = CreateFile(
-            pipeName,
+            KERNEL_PIPE_NAME,
             GENERIC_WRITE,
             0,
             NULL,
@@ -51,15 +47,12 @@ BOOL FakeKernelPipeClient() {
 
 // Will send some data to the RedEdr DllReader
 BOOL FakeDllPipeClient() {
-
     DWORD bytesWritten;
-    wchar_t buffer[BUFFER_SIZE] = L"Test:RedEdrTester:FakeDllPipeClient";
-
-    const wchar_t* pipeName = L"\\\\.\\pipe\\RedEdrDllCom";
+    wchar_t buffer[DATA_BUFFER_SIZE] = L"Test:RedEdrTester:FakeDllPipeClient";
     HANDLE hPipe;
     while (TRUE) {
         hPipe = CreateFile(
-            pipeName,
+            DLL_PIPE_NAME,
             GENERIC_WRITE,
             0,
             NULL,

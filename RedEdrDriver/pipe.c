@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <fltkernel.h>
 
+#include "../Shared/common.h"
 #include "common.h"
 
 
@@ -21,7 +22,7 @@ int log_event(wchar_t* message) {
     }
     NTSTATUS status;
     IO_STATUS_BLOCK io_stat_block;
-    ULONG len = (ULONG) wcslen(message) * 2;
+    ULONG len = (ULONG) wcslen(message) * 2 + 2; // include end \x00\x00
     status = ZwWriteFile(
         hPipe,
         NULL,
@@ -51,7 +52,7 @@ void close_pipe() {
 // Connect to the userspace daemon
 int InitDllPipe() {
     UNICODE_STRING pipeName;
-    RtlInitUnicodeString(&pipeName, L"\\??\\pipe\\RedEdrKrnCom");
+    RtlInitUnicodeString(&pipeName, DRIVER_KERNEL_PIPE_NAME);
 
     OBJECT_ATTRIBUTES fattrs = { 0 };
     IO_STATUS_BLOCK io_stat_block;

@@ -2,6 +2,7 @@
 
 #include "pch.h"
 #include "minhook/include/MinHook.h"
+#include "../Shared/common.h"
 
 
 //----------------------------------------------------
@@ -16,7 +17,7 @@ void SendDllPipe(wchar_t* buffer) {
     if (hPipe == NULL) {
         return;
     }
-    DWORD len = wcslen(buffer) * 2;
+    DWORD len = (wcslen(buffer) * 2) + 2; // +2 -> include two trailing 0 bytes
     res = WriteFile(
         hPipe,
         buffer,
@@ -30,12 +31,9 @@ void SendDllPipe(wchar_t* buffer) {
 }
 
 
-#define BUFFER_SIZE 1024
 int InitDllPipe() {
-    const wchar_t* pipeName = L"\\\\.\\pipe\\RedEdrDllCom";
-
     hPipe = CreateFile(
-        pipeName,
+        DLL_PIPE_NAME,
         GENERIC_WRITE,
         0,
         NULL,
@@ -47,7 +45,6 @@ int InitDllPipe() {
         MessageBox(NULL, L"ERR1", L"ERR1", MB_OK);
         return 1;
     }
-
     return 0;
 }
 
@@ -75,8 +72,8 @@ DWORD NTAPI NtAllocateVirtualMemory(
     ULONG AllocationType,
     ULONG Protect
 ) {
-    wchar_t buf[BUFFER_SIZE] = L"";
-    int ret = swprintf_s(buf, BUFFER_SIZE, L"AllocateVirtualMemory:%p:%p:%#lx:%llu:%#lx:%#lx",
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE, L"AllocateVirtualMemory:%p:%p:%#lx:%llu:%#lx:%#lx",
         ProcessHandle, BaseAddress, ZeroBits, *RegionSize, AllocationType, Protect);
     SendDllPipe(buf);
 
