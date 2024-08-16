@@ -46,11 +46,12 @@ int log_event(wchar_t* message) {
 
 void close_pipe() {
     ZwClose(hPipe);
+    hPipe = NULL;
 }
 
 
 // Connect to the userspace daemon
-int InitDllPipe() {
+int InitPipeToUserspace() {
     UNICODE_STRING pipeName;
     RtlInitUnicodeString(&pipeName, DRIVER_KERNEL_PIPE_NAME);
 
@@ -74,12 +75,12 @@ int InitDllPipe() {
     );
     if (NT_SUCCESS(status)) {
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, 
-            "InitDllPipe: OK.\n");
+            "InitPipeToUserspace: OK.\n");
         return 1;
     }
     else {
         DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, 
-            "InitDllPipe: ERROR, Daemon not running?.\n");
+            "InitPipeToUserspace: ERROR, Daemon not running?.\n");
         hPipe = NULL;
         return 0;
     }

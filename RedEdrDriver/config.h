@@ -1,11 +1,17 @@
 #pragma once
+#include <ntddk.h>
+#include <string.h>
+#include <stdio.h>
 
 typedef struct _config {
-	int enable_processnotify;
-	int enable_threadnotify;
-	int enable_imagenotify;
-	int enable_obnotify;
+	int init_processnotify;
+	int init_threadnotify;
+	int init_imagenotify;
+	int init_obnotify;
+
 	int enable_kapc_injection;
+	int enable_logging;
+	WCHAR target[256];  // zero length means disabled
 } Config;
 
 

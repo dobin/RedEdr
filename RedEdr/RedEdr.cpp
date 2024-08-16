@@ -6,9 +6,11 @@
 #include <wincrypt.h>
 #include <iostream>
 #include <tchar.h>
-
+#include <cwchar>  // For wcstol
+#include <cstdlib> // For exit()
 #include "loguru.hpp"
 #include "cxxops.hpp"
+#include <string.h>     // for strcpy_s, strcat_s
 
 #include "config.h"
 #include "dllinjector.h"
@@ -18,6 +20,7 @@
 #include "cache.h"
 #include "procinfo.h"
 #include "injecteddllreader.h"
+#include "../Shared/common.h"
 
 
 // Function to enable a privilege for the current process
@@ -71,8 +74,59 @@ BOOL makeMeSeDebug() {
 }
 
 
+int ioctl_enable_kernel_module(int enable, wchar_t* target) {
+    if (enable) {
+        LOG_F(INFO, "Send IOCTL to kernel module: Enable: %ls", target);
+    }
+    else {
+        LOG_F(INFO, "Send IOCTL to kernel module: Disable");
+    }
+
+    HANDLE hDevice = CreateFile(L"\\\\.\\RedEdr",
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL);
+
+    if (hDevice == INVALID_HANDLE_VALUE) {
+        LOG_F(ERROR, "Failed to open device. Error: %d\n", GetLastError());
+        return 0;
+    }
+
+    MY_DRIVER_DATA dataToSend = { 0 }; // all zero means all disabled by chance
+    if (enable) {
+        wcscpy_s(dataToSend.filename, target);
+        dataToSend.flag = 1;
+    }
+    char buffer_incoming[128] = { 0 };
+    DWORD bytesReturned = 0;
+    BOOL success = DeviceIoControl(hDevice,
+        IOCTL_MY_IOCTL_CODE,
+        (LPVOID)&dataToSend,
+        (DWORD)sizeof(dataToSend),
+        buffer_incoming,
+        sizeof(buffer_incoming),
+        &bytesReturned,
+        NULL);
+    if (!success) {
+        LOG_F(ERROR, "DeviceIoControl failed. Error: %d\n", GetLastError());
+        CloseHandle(hDevice);
+        return 0;
+    }
+
+    LOG_F(INFO, "Received from driver: %i: %s\n", bytesReturned, buffer_incoming);
+
+    CloseHandle(hDevice);
+    return 1;
+}
+
+
 BOOL double_ctrlc = FALSE;
 BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
+    const wchar_t* target = L"";
+
     switch (ctrlType) {
     case CTRL_C_EVENT:
     case CTRL_CLOSE_EVENT:
@@ -87,10 +141,20 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
         LOG_F(WARNING, "--! Ctrl-c detected, performing shutdown. Pls gife some time.");
         fflush(stdout); // Show to user immediately
         LogReaderStopAll();
+        ioctl_enable_kernel_module(0, (wchar_t*)target);
+
         EtwReaderStopAll();
+
+        LOG_F(WARNING, "--! 1");
+        fflush(stdout); // Show to user immediately
         InjectedDllReaderStopAll();
+        LOG_F(WARNING, "--! 2");
+        fflush(stdout); // Show to user immediately
         KernelReaderStopAll();
-        Sleep(1000);
+        LOG_F(WARNING, "--! 3");
+        fflush(stdout); // Show to user immediately
+
+        //Sleep(1000);
         return TRUE; // Indicate that we handled the signal
     default:
         return FALSE; // Let the next handler handle the signal
@@ -104,6 +168,7 @@ wchar_t* ConvertCharToWchar2(const char *arg) {
     MultiByteToWideChar(CP_ACP, 0, arg, -1, wargv, len);
     return wargv;
 }
+
 
 
 // https://github.com/s4dbrd/ETWReader
@@ -164,16 +229,25 @@ int main(int argc, char* argv[]) {
 
     // Functionality
     if (g_config.do_etw) {
+        LOG_F(INFO, "--( ETW Reader");
         InitializeEtwReader(threads);
     }
     if (g_config.do_mplog) {
+        LOG_F(INFO, "--( MPLOG Reader");
         InitializeLogReader(threads);
     }
     if (g_config.do_kernelcallback) {
+        LOG_F(INFO, "--( Kernel Reader");
         InitializeKernelReader(threads);
     }
     if (g_config.do_dllinjection) {
+        LOG_F(INFO, "--( InjectedDll Reader");
         InitializeInjectedDllReader(threads);
+    }
+    if (g_config.do_kernelcallback || g_config.do_dllinjection) {
+        Sleep(1000); // the thread with the server is not yet started...
+        const wchar_t* target = L"notepad.exe";
+        ioctl_enable_kernel_module(1, (wchar_t*)target);
     }
 
     LOG_F(INFO, "--( waiting for %d threads...", threads.size());
@@ -186,6 +260,7 @@ int main(int argc, char* argv[]) {
     if (res == WAIT_FAILED) {
         LOG_F(INFO, "--( Wait failed");
     }
+    // No code here as it will not be executed?
 
     return 0;
 }

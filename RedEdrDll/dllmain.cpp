@@ -26,7 +26,7 @@ void SendDllPipe(wchar_t* buffer) {
         NULL
     );
     if (res == FALSE) {
-        MessageBox(NULL, L"Error", L"SendDllPipe: Error when sending to pipe", MB_OK);
+        MessageBox(NULL, L"SendDllPipe: Error when sending to pipe", L"RedEdr Injected DLL error", MB_OK);
     }
 }
 
@@ -42,7 +42,7 @@ int InitDllPipe() {
         NULL);
     if (hPipe == INVALID_HANDLE_VALUE) {
         //        printf("Error connecting to named pipe: %ld", GetLastError());
-        MessageBox(NULL, L"ERR1", L"ERR1", MB_OK);
+        MessageBox(NULL, L"Could not open pipe", L"RedEdr Injected DLL error", MB_OK);
         return 1;
     }
     return 0;
@@ -82,11 +82,6 @@ DWORD NTAPI NtAllocateVirtualMemory(
 }
 
 
-DWORD WINAPI InitPipeThread(LPVOID param) {
-    InitDllPipe();
-    return 0;
-}
-
 // This function initializes the hooks via the MinHook library
 DWORD WINAPI InitHooksThread(LPVOID param) {
     if (MH_Initialize() != MH_OK) {
@@ -107,6 +102,7 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     MH_STATUS status = MH_EnableHook(MH_ALL_HOOKS);
     return status;
 }
+
 
 // Here is the DllMain of our DLL
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved) {

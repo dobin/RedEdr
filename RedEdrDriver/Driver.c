@@ -10,9 +10,9 @@
 
 #include "config.h"
 #include "pipe.h"
-#include "common.h"
 #include "kcallbacks.h"
 #include "hashcache.h"
+#include "../Shared/common.h"
 
 // Internal driver device name, cannot be used userland
 UNICODE_STRING DEVICE_NAME = RTL_CONSTANT_STRING(L"\\Device\\RedEdr");
@@ -25,11 +25,78 @@ UNICODE_STRING SYM_LINK = RTL_CONSTANT_STRING(L"\\??\\RedEdr");
 PVOID pCBRegistrationHandle = NULL;
 
 
+NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
+    PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(Irp);
+    NTSTATUS status = STATUS_SUCCESS;
+    ULONG controlCode = stack->Parameters.DeviceIoControl.IoControlCode;
+
+    UNREFERENCED_PARAMETER(DeviceObject);
+
+    switch (controlCode) {
+    case IOCTL_MY_IOCTL_CODE: {
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] IOCTL!\n");
+
+        // read IOCTL
+        PMY_DRIVER_DATA data = (PMY_DRIVER_DATA)Irp->AssociatedIrp.SystemBuffer;
+        size_t inputBufferLength = stack->Parameters.DeviceIoControl.InputBufferLength;
+
+        if (inputBufferLength != sizeof(data)) {
+            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Size error: %i %i\n", 
+                inputBufferLength, sizeof(data));
+        }
+
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Received from user-space: %i: %i %s\n", inputBufferLength, data->flag, data->filename);
+        char* answer;
+        if (data->flag) {
+            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "  Enable\n");
+            g_config.enable_kapc_injection = 1;
+            g_config.enable_logging = 1;
+            wcscpy_s(g_config.target, sizeof(g_config.target), data->filename);
+
+            int ret = InitPipeToUserspace();
+            if (ret) {
+                DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "  OK: %d bytes\n", ret);
+                answer = "OK";
+            }
+            else {
+                DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "  FAIL Not Enabled: %d\n", ret);
+                answer = "FAIL";
+            }
+        }
+        else {
+            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "  Disable\n");
+            g_config.enable_kapc_injection = 0;
+            g_config.enable_logging = 0;
+            wcscpy_s(g_config.target, sizeof(g_config.target), data->filename); // should be zero
+            close_pipe();
+            answer = "OK";
+        }
+
+        // Answer IOCTL
+        size_t messageLen = strlen(answer) + 1;
+        RtlCopyMemory(Irp->AssociatedIrp.SystemBuffer, answer, messageLen);
+        Irp->IoStatus.Information = (ULONG) messageLen;
+        break;
+    }
+
+    default:
+        status = STATUS_INVALID_DEVICE_REQUEST;
+        Irp->IoStatus.Information = 0;
+        break;
+    }
+
+    Irp->IoStatus.Status = status;
+    IoCompleteRequest(Irp, IO_NO_INCREMENT);
+
+    return status;
+}
+
+
 void LoadKernelCallbacks() {
     NTSTATUS ret;
 
     // Process
-    if (g_config.enable_processnotify) {
+    if (g_config.init_processnotify) {
         ret = PsSetCreateProcessNotifyRoutineEx(CreateProcessNotifyRoutine, FALSE);
         if (ret == STATUS_SUCCESS) {
             DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[OK] CreateProcessNotifyRoutine launched successfully\n");
@@ -43,7 +110,7 @@ void LoadKernelCallbacks() {
     }
     
     // Thread
-    if (g_config.enable_threadnotify) {
+    if (g_config.init_threadnotify) {
         ret = PsSetCreateThreadNotifyRoutine(CreateThreadNotifyRoutine);
         if (ret == STATUS_SUCCESS) {
             DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[OK] CreateThreadNotifyRoutine launched successfully\n");
@@ -57,7 +124,7 @@ void LoadKernelCallbacks() {
     }
 
     // Image
-    if (g_config.enable_imagenotify) {
+    if (g_config.init_imagenotify) {
         ret = PsSetLoadImageNotifyRoutine(LoadImageNotifyRoutine);
         if (ret == STATUS_SUCCESS) {
             DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[OK] LoadImageNotifyRoutine launched successfully\n");
@@ -71,7 +138,7 @@ void LoadKernelCallbacks() {
     }
 
     // Open
-    if (g_config.enable_obnotify) {
+    if (g_config.init_obnotify) {
         // https://github.com/microsoft/Windows-driver-samples/blob/main/general/obcallback/driver/callback.c
         OB_CALLBACK_REGISTRATION  CBObRegistration = { 0 };
         UNICODE_STRING CBAltitude = { 0 };
@@ -133,6 +200,17 @@ void RedEdrUnload(_In_ PDRIVER_OBJECT DriverObject) {
 }
 
 
+NTSTATUS MyDriverCreateClose(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
+    UNREFERENCED_PARAMETER(DeviceObject);
+
+    Irp->IoStatus.Status = STATUS_SUCCESS;
+    Irp->IoStatus.Information = 0;
+    IoCompleteRequest(Irp, IO_NO_INCREMENT);
+
+    return STATUS_SUCCESS;
+}
+
+
 NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING RegistryPath) {
     UNREFERENCED_PARAMETER(RegistryPath); // Prevent compiler error such as unreferenced parameter (error 4)
     NTSTATUS status;
@@ -142,6 +220,11 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
 
     // Setting the unload routine to execute
     DriverObject->DriverUnload = RedEdrUnload;
+
+    // IOCTL
+    DriverObject->MajorFunction[IRP_MJ_CREATE] = MyDriverCreateClose;
+    DriverObject->MajorFunction[IRP_MJ_CLOSE] = MyDriverCreateClose;
+    DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = MyDriverDeviceControl;
 
     // Initializing a device object and creating it
     PDEVICE_OBJECT DeviceObject;
@@ -170,8 +253,10 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
     }
 
     init_config();
-    InitDllPipe();
-    LoadKernelCallbacks();
+    LoadKernelCallbacks(); // always load the callbacks, based on config
+    if (g_config.enable_logging) { // only connect when we enable this (deamon may not be ready on load)
+        InitPipeToUserspace();
+    }
 
     return STATUS_SUCCESS;
 }

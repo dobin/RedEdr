@@ -45,6 +45,10 @@ void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t dest
 
 // For: PsSetCreateProcessNotifyRoutineEx()
 void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE_NOTIFY_INFO createInfo) {
+    // Still execute even if we are globally disabled, but need kapc injection
+    if (!g_config.enable_logging && !g_config.enable_kapc_injection) {
+        return;
+    }
     if (createInfo == NULL) {
         return;
     }
@@ -63,15 +67,15 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         PUNICODE_STRING parent_processName = NULL;
         SeLocateProcessImageName(parent_process, &parent_processName);
 
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] Process %wZ created\n", processName);
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            PID: %d\n", pid);
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            Created by: %wZ\n", parent_processName);
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            ImageBase: %ws\n", createInfo->ImageFileName->Buffer);
+        //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] Process %wZ created\n", processName);
+        //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            PID: %d\n", pid);
+        //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            Created by: %wZ\n", parent_processName);
+        //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            ImageBase: %ws\n", createInfo->ImageFileName->Buffer);
 
         POBJECT_NAME_INFORMATION objFileDosDeviceName;
         IoQueryFileDosDeviceName(createInfo->FileObject, &objFileDosDeviceName);
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            DOS path: %ws\n", objFileDosDeviceName->Name.Buffer);
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            CommandLine: %ws\n", createInfo->CommandLine->Buffer);
+        //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            DOS path: %ws\n", objFileDosDeviceName->Name.Buffer);
+        //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            CommandLine: %ws\n", createInfo->CommandLine->Buffer);
 
         processInfo = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(PROCESS_INFO), 'Proc');
         if (!processInfo) {
@@ -85,55 +89,73 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         processInfo->observe = 0;
 
         // Search in the unicode atm
-        PCWSTR searchString = L"notepad.exe";
-        if (IsSubstringInUnicodeString(processName, searchString)) {
-            processInfo->observe = 1;
+        if (wcslen(g_config.target) > 0) {
+            if (IsSubstringInUnicodeString(processName, g_config.target)) {
+                processInfo->observe = 1;
+            }
         }
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            Observe: %i\n", 
-            processInfo->observe);
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] Process %d created, observe: %i\n", 
+            pid, processInfo->observe);
 
         AddProcessInfo(pid, processInfo);
     }
 
-    wchar_t line[MESSAGE_SIZE] = { 0 };
-    swprintf(line, L"process:%llu:%s:%llu:%s:%d",
-        (unsigned __int64)pid, processInfo->name,
-        (unsigned __int64)createInfo->ParentProcessId, processInfo->parent_name,
-        processInfo->observe);
-    log_event(line);
+    if (g_config.enable_logging) {
+        wchar_t line[MESSAGE_SIZE] = { 0 };
+        swprintf(line, L"process:%llu:%s:%llu:%s:%d",
+            (unsigned __int64)pid, processInfo->name,
+            (unsigned __int64)createInfo->ParentProcessId, processInfo->parent_name,
+            processInfo->observe);
+        log_event(line);
+    }
 }
 
 
 // For: PsSetCreateThreadNotifyRoutine()
 void CreateThreadNotifyRoutine(HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Create) {
+    if (!g_config.enable_logging) {
+        return;
+    }
+    if (!g_config.enable_logging) {
+        return;
+    }
+    PROCESS_INFO* procInfo = LookupProcessInfo(ProcessId);
+    if (procInfo == NULL || !procInfo->observe) {
+        return;
+    }
+
     wchar_t line[MESSAGE_SIZE] = { 0 };
     swprintf(line, L"thread:%llu;%llu;%d",
         (unsigned __int64)ProcessId,
         (unsigned __int64)ThreadId,
         Create);
     log_event(line);
-
-    if ((uintptr_t)ProcessId == 700) {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] Thread %d created\n", ThreadId);
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            PID: %d  %d\n", ProcessId, Create);
-    }
 }
 
 
 // For: PsSetLoadImageNotifyRoutine
 void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIMAGE_INFO ImageInfo) {
-    UNREFERENCED_PARAMETER(ImageInfo);
-    wchar_t line[MESSAGE_SIZE] = { 0 };
-    wchar_t ImageName[128] = { 0 };
-
+    // Still execute even if we are globally disabled, but need kapc injection
+    if (!g_config.enable_logging && !g_config.enable_kapc_injection) {
+        return;
+    }
     if (FullImageName == NULL) {
         return;
     }
 
-    UnicodeStringToWChar(FullImageName, ImageName, 128);
-    swprintf(line, L"image:%llu;%s", (unsigned __int64)ProcessId, ImageName);
-    log_event(line);
+    UNREFERENCED_PARAMETER(ImageInfo);
+    wchar_t line[MESSAGE_SIZE] = { 0 };
+    wchar_t ImageName[128] = { 0 };
 
+    // We may only have KAPC injection, and no logging
+    if (g_config.enable_logging) {
+        PROCESS_INFO* procInfo = LookupProcessInfo(ProcessId);
+        if (procInfo != NULL && procInfo->observe) {
+            UnicodeStringToWChar(FullImageName, ImageName, 128);
+            swprintf(line, L"image:%llu;%s", (unsigned __int64)ProcessId, ImageName);
+            log_event(line);
+        }
+    }
     if (g_config.enable_kapc_injection) {
         PPROCESS_INFO processInfo = LookupProcessInfo(ProcessId);
         if (processInfo != NULL && processInfo->observe && !processInfo->injected) {
@@ -193,6 +215,9 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
 )
 {
     // https://github.com/microsoft/Windows-driver-samples/blob/main/general/obcallback/driver/callback.c
+    if (!g_config.enable_logging) {
+        return OB_PREOP_SUCCESS;
+    }
 
     PTD_CALLBACK_REGISTRATION CallbackRegistration;
 

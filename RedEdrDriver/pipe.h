@@ -9,4 +9,4 @@
 
 int log_event(wchar_t*);
 void close_pipe();
-int InitDllPipe();
+int InitPipeToUserspace();
