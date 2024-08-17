@@ -6,6 +6,8 @@
 #include <sstream>
 #include <cwchar>
 #include <cstdio>
+#include <sddl.h>
+
 #include "../Shared/common.h"
 #include "loguru.hpp"
 #include "injecteddllreader.h"
@@ -42,6 +44,24 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
     DWORD bytesRead;
     HANDLE hPipe;
 
+    // Allow processes of all privilege levels to access this pipe
+    // "D:(A;OICI;GA;;;WD)" translates to: Allow (A) All Users (WD) Generic Access (GA)
+    LPCWSTR pipeName = L"\\\\.\\pipe\\MyPipe";
+    LPCWSTR securityDescriptorString = L"D:(A;OICI;GA;;;WD)";
+    SECURITY_ATTRIBUTES sa;
+    PSECURITY_DESCRIPTOR pSD = NULL;
+    if (!ConvertStringSecurityDescriptorToSecurityDescriptor(
+        securityDescriptorString,
+        SDDL_REVISION_1,
+        &pSD,
+        NULL)) {
+        printf("Failed to create security descriptor. Error: %lu\n", GetLastError());
+        return 1;
+    }
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+    sa.lpSecurityDescriptor = pSD;
+    sa.bInheritHandle = FALSE;
+
     while (!InjectedDllReaderThreadStopFlag) {
         hPipe = CreateNamedPipe(
             DLL_PIPE_NAME,
@@ -51,7 +71,7 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
             PIPE_BUFFER_SIZE,
             PIPE_BUFFER_SIZE,
             0,
-            NULL
+            &sa
         );
         if (hPipe == INVALID_HANDLE_VALUE) {
             LOG_F(ERROR, "DllReader: Error creating named pipe: %ld", GetLastError());
