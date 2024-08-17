@@ -308,7 +308,7 @@ int kapc_inject(IN PUNICODE_STRING ImageName, IN HANDLE ProcessId, IN PIMAGE_INF
 	if (!(FsRtlIsNameInExpression(&kernel32unicodeString, ImageName, TRUE, NULL))) {
 		return 0;
 	}
-	DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[+] kernel32.dll match\n");
+	DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[+] INJECT into pid %d\n", ProcessId);
 	/*
 	* How it was done in the original:
 	3) Hash variable its actually a global variable(in real production malware this would be change) defined like this GET_ADDRESS Hash.

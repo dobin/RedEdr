@@ -102,7 +102,8 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
 
     if (g_config.enable_logging) {
         wchar_t line[MESSAGE_SIZE] = { 0 };
-        swprintf(line, L"process:%llu:%s:%llu:%s:%d",
+        swprintf(line, L"%llu:process:%llu:%s:%llu:%s:%d",
+            (unsigned __int64)PsGetCurrentProcessId(),
             (unsigned __int64)pid, processInfo->name,
             (unsigned __int64)createInfo->ParentProcessId, processInfo->parent_name,
             processInfo->observe);
@@ -152,7 +153,8 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
         PROCESS_INFO* procInfo = LookupProcessInfo(ProcessId);
         if (procInfo != NULL && procInfo->observe) {
             UnicodeStringToWChar(FullImageName, ImageName, 128);
-            swprintf(line, L"image:%llu;%s", (unsigned __int64)ProcessId, ImageName);
+            swprintf(line, L"%llu:image:%llu;%s", 
+                (unsigned __int64)PsGetCurrentProcessId(), (unsigned __int64)ProcessId, ImageName);
             log_event(line);
         }
     }
@@ -161,8 +163,6 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
         if (processInfo != NULL && processInfo->observe && !processInfo->injected) {
             // TODO lock this?
             processInfo->injected = kapc_inject(FullImageName, ProcessId, ImageInfo);
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[+] INJECT into pid %d/%d: %ls\n",
-                ProcessId, processInfo->injected, FullImageName);
         }
     }
 }

@@ -34,13 +34,13 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
 
     switch (controlCode) {
     case IOCTL_MY_IOCTL_CODE: {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] IOCTL!\n");
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] Handling IOCTL\n");
 
         // read IOCTL
         PMY_DRIVER_DATA data = (PMY_DRIVER_DATA)Irp->AssociatedIrp.SystemBuffer;
         size_t inputBufferLength = stack->Parameters.DeviceIoControl.InputBufferLength;
 
-        if (inputBufferLength != sizeof(data)) {
+        if (inputBufferLength != sizeof(MY_DRIVER_DATA)) {
             DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Size error: %i %i\n", 
                 inputBufferLength, sizeof(data));
         }

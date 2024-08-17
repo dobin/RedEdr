@@ -91,7 +91,7 @@ int ioctl_enable_kernel_module(int enable, wchar_t* target) {
         NULL);
 
     if (hDevice == INVALID_HANDLE_VALUE) {
-        LOG_F(ERROR, "Failed to open device. Error: %d\n", GetLastError());
+        LOG_F(ERROR, "Failed to open device. Error: %d", GetLastError());
         return 0;
     }
 
@@ -111,12 +111,12 @@ int ioctl_enable_kernel_module(int enable, wchar_t* target) {
         &bytesReturned,
         NULL);
     if (!success) {
-        LOG_F(ERROR, "DeviceIoControl failed. Error: %d\n", GetLastError());
+        LOG_F(ERROR, "DeviceIoControl failed. Error: %d", GetLastError());
         CloseHandle(hDevice);
         return 0;
     }
 
-    LOG_F(INFO, "Received from driver: %i: %s\n", bytesReturned, buffer_incoming);
+    LOG_F(INFO, "Received from driver: %i: %s", bytesReturned, buffer_incoming);
 
     CloseHandle(hDevice);
     return 1;
@@ -246,7 +246,7 @@ int main(int argc, char* argv[]) {
     }
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
         Sleep(1000); // the thread with the server is not yet started...
-        const wchar_t* target = L"notepad.exe";
+        const wchar_t* target = g_config.targetExeName;
         ioctl_enable_kernel_module(1, (wchar_t*)target);
     }
 

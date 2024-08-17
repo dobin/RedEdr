@@ -73,8 +73,8 @@ DWORD NTAPI NtAllocateVirtualMemory(
     ULONG Protect
 ) {
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
-    int ret = swprintf_s(buf, DATA_BUFFER_SIZE, L"AllocateVirtualMemory:%p:%p:%#lx:%llu:%#lx:%#lx",
-        ProcessHandle, BaseAddress, ZeroBits, *RegionSize, AllocationType, Protect);
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE, L"pid:%llu:AllocateVirtualMemory:%p:%p:%#lx:%llu:%#lx:%#lx",
+        (unsigned __int64) GetCurrentProcessId(), ProcessHandle, BaseAddress, ZeroBits, *RegionSize, AllocationType, Protect);
     SendDllPipe(buf);
 
     // jump on the originate NtAllocateVirtualMemory
