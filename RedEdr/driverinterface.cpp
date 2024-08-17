@@ -70,7 +70,7 @@ BOOL LoadDriver() {
     // Open the Service Control Manager
     hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hSCManager) {
-        LOG_F(ERROR, "OpenSCManager failed. Error: %lu\n", GetLastError());
+        LOG_F(ERROR, "OpenSCManager failed. Error: %lu", GetLastError());
         return FALSE;
     }
 
@@ -93,16 +93,16 @@ BOOL LoadDriver() {
 
     if (!hService) {
         if (GetLastError() == ERROR_SERVICE_EXISTS) {
-            LOG_F(INFO, "Service already exists. Opening existing service...\n");
+            LOG_F(INFO, "KernelDriver: Servicealready exists. Opening existing service...");
             hService = OpenService(hSCManager, driverName, SERVICE_ALL_ACCESS);
             if (!hService) {
-                LOG_F(ERROR, "OpenService failed. Error: %lu\n", GetLastError());
+                LOG_F(ERROR, "OpenService failed. Error: %lu", GetLastError());
                 ret = FALSE;
                 goto cleanup;
             }
         }
         else {
-            LOG_F(ERROR, "CreateService failed. Error: %lu\n", GetLastError());
+            LOG_F(ERROR, "CreateService failed. Error: %lu", GetLastError());
             ret = FALSE;
             goto cleanup;
         }
@@ -111,18 +111,18 @@ BOOL LoadDriver() {
     // Start the service (load the driver)
     if (!StartService(hService, 0, NULL)) {
         if (GetLastError() != ERROR_SERVICE_ALREADY_RUNNING) {
-            LOG_F(ERROR, "StartService failed. Error: %lu\n", GetLastError());
+            LOG_F(ERROR, "StartService failed. Error: %lu", GetLastError());
             ret = FALSE;
             goto cleanup;
         }
         else {
             ret = FALSE;
-            LOG_F(INFO, "Service already running.\n");
+            LOG_F(INFO, "KernelDriver: Servicealready running.");
         }
     }
     else {
         ret = TRUE;
-        LOG_F(INFO, "Service started successfully.\n");
+        LOG_F(INFO, "KernelDriver: Servicestarted successfully.");
     }
 
 cleanup:
@@ -142,38 +142,38 @@ BOOL UnloadDriver() {
 
     hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hSCManager) {
-        LOG_F(ERROR, "OpenSCManager failed. Error: %lu\n", GetLastError());
+        LOG_F(ERROR, "OpenSCManager failed. Error: %lu", GetLastError());
         return FALSE;
     }
 
     hService = OpenService(hSCManager, driverName, SERVICE_STOP | DELETE | SERVICE_QUERY_STATUS);
     if (!hService) {
-        LOG_F(ERROR, "OpenService failed. Error: %lu\n", GetLastError());
+        LOG_F(ERROR, "OpenService failed. Error: %lu", GetLastError());
         ret = FALSE;
         goto cleanup;
     }
 
     if (ControlService(hService, SERVICE_CONTROL_STOP, &status)) {
-        LOG_F(INFO, "Service stopped successfully.\n");
+        LOG_F(INFO, "KernelDriver: Servicestopped successfully.");
         ret = TRUE;
     }
     else if (GetLastError() == ERROR_SERVICE_NOT_ACTIVE) {
-        LOG_F(INFO, "Service is not running.\n");
+        LOG_F(INFO, "KernelDriver: Serviceis not running.");
         ret = TRUE;
     }
     else {
-        LOG_F(ERROR, "ControlService failed. Error: %lu\n", GetLastError());
+        LOG_F(ERROR, "ControlService failed. Error: %lu", GetLastError());
         ret = FALSE;
         goto cleanup;
     }
 
     if (!DeleteService(hService)) {
-        LOG_F(ERROR, "DeleteService failed. Error: %lu\n", GetLastError());
+        LOG_F(ERROR, "DeleteService failed. Error: %lu", GetLastError());
         ret = FALSE;
         goto cleanup;
     }
     else {
-        LOG_F(INFO, "Service deleted successfully.\n");
+        LOG_F(INFO, "KernelDriver: Servicedeleted successfully.");
     }
 
 cleanup:
@@ -193,25 +193,25 @@ BOOL CheckDriverStatus() {
 
     hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hSCManager) {
-        LOG_F(ERROR, "OpenSCManager failed. Error: %lu\n", GetLastError());
+        LOG_F(ERROR, "OpenSCManager failed. Error: %lu", GetLastError());
         return FALSE;
     }
 
     hService = OpenService(hSCManager, driverName, SERVICE_QUERY_STATUS);
     if (!hService) {
-        LOG_F(ERROR, "OpenService failed. Error: %lu\n", GetLastError());
+        //LOG_F(ERROR, "OpenService failed. Error: %lu", GetLastError());
         ret = FALSE;
         goto cleanup;
     }
 
     if (QueryServiceStatusEx(hService, SC_STATUS_PROCESS_INFO, (LPBYTE)&status, sizeof(SERVICE_STATUS_PROCESS), &bytesNeeded)) {
-        LOG_F(ERROR, "Service status:\n");
-        LOG_F(ERROR, "  PID: %lu\n", status.dwProcessId);
-        LOG_F(ERROR, "  State: %lu\n", status.dwCurrentState);
+        //LOG_F(ERROR, "KernelDriver: Servicestatus:");
+        //LOG_F(ERROR, "  PID: %lu", status.dwProcessId);
+        //LOG_F(ERROR, "  State: %lu", status.dwCurrentState);
         ret = TRUE;
     }
     else {
-        LOG_F(ERROR, "QueryServiceStatusEx failed. Error: %lu\n", GetLastError());
+        LOG_F(ERROR, "QueryServiceStatusEx failed. Error: %lu", GetLastError());
         ret = FALSE;
     }
 

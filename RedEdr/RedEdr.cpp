@@ -204,25 +204,30 @@ int main(int argc, char* argv[]) {
 
     // Functionality
     if (g_config.do_etw) {
-        LOG_F(INFO, "--( ETW Reader");
+        LOG_F(INFO, "--( Input: ETW Reader");
         InitializeEtwReader(threads);
     }
     if (g_config.do_mplog) {
-        LOG_F(INFO, "--( MPLOG Reader");
+        LOG_F(INFO, "--( Input: MPLOG Reader");
         InitializeLogReader(threads);
     }
     if (g_config.do_kernelcallback) {
-        LOG_F(INFO, "--( Kernel Reader");
+        LOG_F(INFO, "--( Input: Kernel Reader");
         InitializeKernelReader(threads);
     }
     if (g_config.do_dllinjection) {
-        LOG_F(INFO, "--( InjectedDll Reader");
+        LOG_F(INFO, "--( Input: InjectedDll Reader");
         InitializeInjectedDllReader(threads);
     }
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
         // load kernel module
-        if (!CheckDriverStatus()) {
-            LoadDriver();
+        if (CheckDriverStatus()) {
+            LOG_F(INFO, "Kernel Driver already loaded");
+        } else {
+            LOG_F(INFO, "Load Kernel Driver");
+            if (!LoadDriver()) {
+                LOG_F(ERROR, "Could not load driver");
+            }
         }
 
         //Sleep(1000); // the thread with the server is not yet started...
