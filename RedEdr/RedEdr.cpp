@@ -20,6 +20,7 @@
 #include "cache.h"
 #include "procinfo.h"
 #include "injecteddllreader.h"
+#include "driverinterface.h"
 #include "../Shared/common.h"
 
 
@@ -74,55 +75,6 @@ BOOL makeMeSeDebug() {
 }
 
 
-int ioctl_enable_kernel_module(int enable, wchar_t* target) {
-    if (enable) {
-        LOG_F(INFO, "Send IOCTL to kernel module: Enable: %ls", target);
-    }
-    else {
-        LOG_F(INFO, "Send IOCTL to kernel module: Disable");
-    }
-
-    HANDLE hDevice = CreateFile(L"\\\\.\\RedEdr",
-        GENERIC_READ | GENERIC_WRITE,
-        0,
-        NULL,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        NULL);
-
-    if (hDevice == INVALID_HANDLE_VALUE) {
-        LOG_F(ERROR, "Failed to open device. Error: %d", GetLastError());
-        return 0;
-    }
-
-    MY_DRIVER_DATA dataToSend = { 0 }; // all zero means all disabled by chance
-    if (enable) {
-        wcscpy_s(dataToSend.filename, target);
-        dataToSend.flag = 1;
-    }
-    char buffer_incoming[128] = { 0 };
-    DWORD bytesReturned = 0;
-    BOOL success = DeviceIoControl(hDevice,
-        IOCTL_MY_IOCTL_CODE,
-        (LPVOID)&dataToSend,
-        (DWORD)sizeof(dataToSend),
-        buffer_incoming,
-        sizeof(buffer_incoming),
-        &bytesReturned,
-        NULL);
-    if (!success) {
-        LOG_F(ERROR, "DeviceIoControl failed. Error: %d", GetLastError());
-        CloseHandle(hDevice);
-        return 0;
-    }
-
-    LOG_F(INFO, "Received from driver: %i: %s", bytesReturned, buffer_incoming);
-
-    CloseHandle(hDevice);
-    return 1;
-}
-
-
 BOOL double_ctrlc = FALSE;
 BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     const wchar_t* target = L"";
@@ -170,7 +122,6 @@ wchar_t* ConvertCharToWchar2(const char *arg) {
 }
 
 
-
 // https://github.com/s4dbrd/ETWReader
 int main(int argc, char* argv[]) {
     cxxopts::Options options("RedEdr", "Maldev event recorder");
@@ -180,6 +131,11 @@ int main(int argc, char* argv[]) {
         ("m,mplog", "Input: Consume Defender mplog file", cxxopts::value<bool>()->default_value("false"))
         ("k,kernel", "Input: Consume kernel callback events", cxxopts::value<bool>()->default_value("false"))
         ("i,inject", "Input: Consume DLL injection", cxxopts::value<bool>()->default_value("false"))
+
+        ("1,krnload", "Kernel Module: Load", cxxopts::value<bool>()->default_value("false"))
+        ("2,krnreload", "Kernel Module: ReLoad", cxxopts::value<bool>()->default_value("false"))
+        ("3,krnunload", "Kernel Module: Unload", cxxopts::value<bool>()->default_value("false"))
+
         ("d,debug", "Enable debugging", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print usage")
         ;
@@ -187,9 +143,28 @@ int main(int argc, char* argv[]) {
     auto result = options.parse(argc, argv);
 
     if (result.count("help") || result.unmatched().size() > 0) {
+        printf("HMMM\n");
         std::cout << options.help() << std::endl;
         exit(0);
     }
+
+    if (result.count("krnload")) {
+        LoadDriver();
+        exit(0);
+    } else if (result.count("krnreload")) {
+        if (CheckDriverStatus()) {
+            UnloadDriver();
+            LoadDriver();
+        }
+        else {
+            LoadDriver();
+        }
+        exit(0);
+    } else if (result.count("krnunload")) {
+        UnloadDriver();
+        exit(0);
+    }
+
     if (result.count("trace")) {
         std::string s = result["trace"].as<std::string>();
         wchar_t* ss = ConvertCharToWchar2(s.c_str());
@@ -245,7 +220,12 @@ int main(int argc, char* argv[]) {
         InitializeInjectedDllReader(threads);
     }
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
-        Sleep(1000); // the thread with the server is not yet started...
+        // load kernel module
+        if (!CheckDriverStatus()) {
+            LoadDriver();
+        }
+
+        //Sleep(1000); // the thread with the server is not yet started...
         const wchar_t* target = g_config.targetExeName;
         ioctl_enable_kernel_module(1, (wchar_t*)target);
     }

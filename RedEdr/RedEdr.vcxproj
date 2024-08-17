@@ -133,6 +133,7 @@
     <ClCompile Include="cache.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="dllinjector.cpp" />
+    <ClCompile Include="driverinterface.cpp" />
     <ClCompile Include="etwhandler.cpp" />
     <ClCompile Include="etwreader.cpp" />
     <ClCompile Include="injecteddllreader.cpp" />
@@ -147,6 +148,7 @@
     <ClInclude Include="config.h" />
     <ClInclude Include="cxxops.hpp" />
     <ClInclude Include="dllinjector.h" />
+    <ClInclude Include="driverinterface.h" />
     <ClInclude Include="etwhandler.h" />
     <ClInclude Include="etwreader.h" />
     <ClInclude Include="injecteddllreader.h" />

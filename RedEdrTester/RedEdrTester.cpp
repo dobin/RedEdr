@@ -235,6 +235,159 @@ int ioctl_enable_kernel_module() {
     return 0;
 }
 
+
+int LoadDriver() {
+    SC_HANDLE hSCManager = NULL;
+    SC_HANDLE hService = NULL;
+    int result = 0;
+    LPCWSTR driverName = g_config.driverName;
+    LPCWSTR driverPath = g_config.driverPath;
+
+    // Open the Service Control Manager
+    hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (!hSCManager) {
+        printf("OpenSCManager failed. Error: %lu\n", GetLastError());
+        return 1;
+    }
+
+    // Create the service (driver)
+    hService = CreateService(
+        hSCManager,              // SCM handle
+        driverName,              // Name of the service
+        driverName,              // Display name
+        SERVICE_ALL_ACCESS,      // Desired access
+        SERVICE_KERNEL_DRIVER,   // Service type (kernel driver)
+        SERVICE_DEMAND_START,    // Start type (on demand)
+        SERVICE_ERROR_NORMAL,    // Error control type
+        driverPath,              // Path to the driver executable
+        NULL,                    // No load ordering group
+        NULL,                    // No tag identifier
+        NULL,                    // No dependencies
+        NULL,                    // LocalSystem account
+        NULL                     // No password
+    );
+
+    if (!hService) {
+        if (GetLastError() == ERROR_SERVICE_EXISTS) {
+            printf("Service already exists. Opening existing service...\n");
+            hService = OpenService(hSCManager, driverName, SERVICE_ALL_ACCESS);
+            if (!hService) {
+                printf("OpenService failed. Error: %lu\n", GetLastError());
+                result = 1;
+                goto cleanup;
+            }
+        }
+        else {
+            printf("CreateService failed. Error: %lu\n", GetLastError());
+            result = 1;
+            goto cleanup;
+        }
+    }
+
+    // Start the service (load the driver)
+    if (!StartService(hService, 0, NULL)) {
+        if (GetLastError() != ERROR_SERVICE_ALREADY_RUNNING) {
+            printf("StartService failed. Error: %lu\n", GetLastError());
+            result = 1;
+            goto cleanup;
+        }
+        else {
+            printf("Service already running.\n");
+        }
+    }
+    else {
+        printf("Service started successfully.\n");
+    }
+
+cleanup:
+    if (hService) CloseServiceHandle(hService);
+    if (hSCManager) CloseServiceHandle(hSCManager);
+
+    return result;
+}
+
+
+int UnloadDriver() {
+    SC_HANDLE hSCManager = NULL;
+    SC_HANDLE hService = NULL;
+    SERVICE_STATUS status;
+    int result = 0;
+    LPCWSTR driverName = g_config.driverName;
+
+    hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (!hSCManager) {
+        printf("OpenSCManager failed. Error: %lu\n", GetLastError());
+        return 1;
+    }
+
+    hService = OpenService(hSCManager, driverName, SERVICE_STOP | DELETE | SERVICE_QUERY_STATUS);
+    if (!hService) {
+        printf("OpenService failed. Error: %lu\n", GetLastError());
+        result = 1;
+        goto cleanup;
+    }
+
+    if (ControlService(hService, SERVICE_CONTROL_STOP, &status)) {
+        printf("Service stopped successfully.\n");
+    }
+    else if (GetLastError() == ERROR_SERVICE_NOT_ACTIVE) {
+        printf("Service is not running.\n");
+    }
+    else {
+        printf("ControlService failed. Error: %lu\n", GetLastError());
+        result = 1;
+        goto cleanup;
+    }
+
+    if (!DeleteService(hService)) {
+        printf("DeleteService failed. Error: %lu\n", GetLastError());
+        result = 1;
+        goto cleanup;
+    }
+    else {
+        printf("Service deleted successfully.\n");
+    }
+
+cleanup:
+    if (hService) CloseServiceHandle(hService);
+    if (hSCManager) CloseServiceHandle(hSCManager);
+
+    return result;
+}
+
+void CheckDriverStatus() {
+    SC_HANDLE hSCManager = NULL;
+    SC_HANDLE hService = NULL;
+    SERVICE_STATUS_PROCESS status;
+    DWORD bytesNeeded;
+    LPCWSTR driverName = g_config.driverName;
+
+    hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (!hSCManager) {
+        printf("OpenSCManager failed. Error: %lu\n", GetLastError());
+        return;
+    }
+
+    hService = OpenService(hSCManager, driverName, SERVICE_QUERY_STATUS);
+    if (!hService) {
+        printf("OpenService failed. Error: %lu\n", GetLastError());
+        goto cleanup;
+    }
+
+    if (QueryServiceStatusEx(hService, SC_STATUS_PROCESS_INFO, (LPBYTE)&status, sizeof(SERVICE_STATUS_PROCESS), &bytesNeeded)) {
+        printf("Service status:\n");
+        printf("  PID: %lu\n", status.dwProcessId);
+        printf("  State: %lu\n", status.dwCurrentState);
+    }
+    else {
+        printf("QueryServiceStatusEx failed. Error: %lu\n", GetLastError());
+    }
+
+cleanup:
+    if (hService) CloseServiceHandle(hService);
+    if (hSCManager) CloseServiceHandle(hSCManager);
+}
+
 int wmain(int argc, wchar_t* argv[]) {
     //pipeparser_test();
     //return 1;
@@ -248,7 +401,7 @@ int wmain(int argc, wchar_t* argv[]) {
     wchar_t* end;
     DWORD pid = wcstol(argv[1], &end, 10);
 
-    int test = 3;
+    int test = 7;
     switch (test) {
     case 1:
         printf("Fake Kernel Module Pipe Client\n");
@@ -282,6 +435,26 @@ int wmain(int argc, wchar_t* argv[]) {
     case 6:
         printf("IOCTL test\n");
         ioctl_enable_kernel_module();
+        break;
+    case 7:
+        if (LoadDriver() == 0) {
+            printf("Driver loaded successfully.\n");
+        }
+        else {
+            printf("Failed to load driver.\n");
+            return 1;
+        }
+
+        CheckDriverStatus();
+
+        if (UnloadDriver() == 0) {
+            printf("Driver unloaded successfully.\n");
+        }
+        else {
+            printf("Failed to unload driver.\n");
+            return 1;
+        }
+
     }
     
 
