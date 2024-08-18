@@ -50,6 +50,7 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         return;
     }
     if (createInfo == NULL) {
+        // process is exiting
         return;
     }
     createInfo->CreationStatus = STATUS_SUCCESS;

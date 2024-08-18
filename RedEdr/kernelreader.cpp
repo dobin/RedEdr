@@ -17,11 +17,15 @@
 
 
 std::atomic<bool> KernelReaderThreadStopFlag(false);
-HANDLE hPipe = NULL;
+HANDLE kernel_pipe = NULL;
 
 
 void KernelReaderStopAll() {
     KernelReaderThreadStopFlag = TRUE;
+
+    // Send some stuff so the ReadFile() in the reader thread returns
+    DWORD dwWritten;
+    BOOL success = WriteFile(kernel_pipe, "", 0, &dwWritten, NULL);
 }
 
 
@@ -31,10 +35,9 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
     int rest_len = 0;
     DWORD bytesRead;
     memset(buffer, 0, sizeof(buffer));
-    HANDLE hPipe;
 
     while (!KernelReaderThreadStopFlag) {
-        hPipe = CreateNamedPipe(
+        kernel_pipe = CreateNamedPipe(
             KERNEL_PIPE_NAME,                 // Pipe name to create
             PIPE_ACCESS_INBOUND,       // Whether the pipe is supposed to receive or send data (can be both)
             PIPE_TYPE_MESSAGE,        // Pipe mode (whether or not the pipe is waiting for data)
@@ -44,7 +47,7 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
             0,                        // Pipe timeout 
             NULL                      // Security attributes (anonymous connection or may be needs credentials. )
         );
-        if (hPipe == INVALID_HANDLE_VALUE) {
+        if (kernel_pipe == INVALID_HANDLE_VALUE) {
             LOG_F(ERROR, "KernelReader: Error creating named pipe: %ld", GetLastError());
             return 1;
         }
@@ -52,10 +55,10 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
         LOG_F(INFO, "KernelReader: Waiting for client (Kernel Driver) to connect...");
 
         // Wait for the client to connect
-        BOOL result = ConnectNamedPipe(hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
+        BOOL result = ConnectNamedPipe(kernel_pipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
         if (!result) {
             LOG_F(ERROR, "KernelReader: Error connecting to named pipe: %ld", GetLastError());
-            CloseHandle(hPipe);
+            CloseHandle(kernel_pipe);
             return 1;
         }
 
@@ -63,7 +66,7 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
 
         while (!KernelReaderThreadStopFlag) {
             // Read data from the pipe
-            if (ReadFile(hPipe, buffer, DATA_BUFFER_SIZE, &bytesRead, NULL)) {
+            if (ReadFile(kernel_pipe, buffer, DATA_BUFFER_SIZE, &bytesRead, NULL)) {
                 int full_len = rest_len + bytesRead; // full len including the previous shit, if any
                 wchar_t* p = (wchar_t*)buffer; // pointer to the string we will print. points to buffer
                 // which always contains the beginning of a string
@@ -106,8 +109,10 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
         }
 
         // Close the pipe
-        CloseHandle(hPipe);
+        CloseHandle(kernel_pipe);
     }
+    LOG_F(INFO, "KernelReader: Quit");
+
 }
 
 

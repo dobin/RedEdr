@@ -135,6 +135,9 @@ void EtwReaderStopAll() {
     // Stop trace sessions
     for (int n = 0; n < NUM_READERS; n++) {
         Reader* reader = &Readers[n];
+        if (reader == NULL) {
+            continue;
+        }
         sessionProperties = make_SessionProperties(wcslen(reader->SessionName));
 
         if (reader->SessionHandle != NULL) {
@@ -157,12 +160,16 @@ void EtwReaderStopAll() {
     }
 
     LOG_F(INFO, "Tracing finished, cleanup..."); fflush(stdout);
-    Sleep(2000);
+    //Sleep(2000);
     // NOTE if shit is still printing on screen, the following may fail?
 
     // TODO This should be done after all EtwReader threads exited?
     for (int n = 0; n < NUM_READERS; n++) {
         Reader* reader = &Readers[n];
+        if (reader == NULL) {
+            continue;
+        }
+
         // Stop the traces
         if (reader->TraceHandle != INVALID_PROCESSTRACE_HANDLE) {
             LOG_F(INFO, "  CloseTrace(): %i", n);
@@ -173,9 +180,8 @@ void EtwReaderStopAll() {
                 // after it has processed all real-time events in its buffers 
                 // (it will not receive any new events).
                 LOG_F(INFO, "    CloseTrace() success but pending");
-                LOG_F(INFO, "    Lets sleep a bit");
-                fflush(stdout);
-                Sleep(3000);
+                //LOG_F(INFO, "    Lets sleep a bit");
+                //Sleep(3000);
             }
             else if (status == ERROR_SUCCESS) {
                 LOG_F(INFO, "    CloseTrace() success");
@@ -187,10 +193,8 @@ void EtwReaderStopAll() {
         }
 
         // Todo free memory
-
-        fflush(stdout);
     }
-    LOG_F(INFO, "--[ EtwTracing all stopped"); fflush(stdout);
+    LOG_F(INFO, "--[ EtwTracing all stopped"); 
 }
 
 

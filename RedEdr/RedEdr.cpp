@@ -75,7 +75,6 @@ BOOL makeMeSeDebug() {
 }
 
 
-BOOL double_ctrlc = FALSE;
 BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     const wchar_t* target = L"";
 
@@ -85,28 +84,20 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     case CTRL_BREAK_EVENT:
     case CTRL_LOGOFF_EVENT:
     case CTRL_SHUTDOWN_EVENT:
-        if (double_ctrlc) {
-            LOG_F(INFO, "You already pressed ctrl-c. Be patient.");
-            return TRUE;
+        LOG_F(WARNING, "--! Ctrl-c detected, performing shutdown");
+        if (g_config.do_mplog) {
+            LogReaderStopAll();
         }
-        double_ctrlc = TRUE;
-        LOG_F(WARNING, "--! Ctrl-c detected, performing shutdown. Pls gife some time.");
-        fflush(stdout); // Show to user immediately
-        LogReaderStopAll();
-        ioctl_enable_kernel_module(0, (wchar_t*)target);
-
-        EtwReaderStopAll();
-
-        LOG_F(WARNING, "--! 1");
-        fflush(stdout); // Show to user immediately
-        InjectedDllReaderStopAll();
-        LOG_F(WARNING, "--! 2");
-        fflush(stdout); // Show to user immediately
-        KernelReaderStopAll();
-        LOG_F(WARNING, "--! 3");
-        fflush(stdout); // Show to user immediately
-
-        //Sleep(1000);
+        if (g_config.do_kernelcallback) {
+            InjectedDllReaderStopAll(); // stop reading from the dll pipe
+            ioctl_enable_kernel_module(0, (wchar_t*)target);  // turn off kernel module
+        }
+        if (g_config.do_dllinjection) {
+            KernelReaderStopAll(); // stop reading from the kernel pipe
+        }
+        if (g_config.do_etw) {
+            EtwReaderStopAll();
+        }
         return TRUE; // Indicate that we handled the signal
     default:
         return FALSE; // Let the next handler handle the signal

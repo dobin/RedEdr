@@ -15,9 +15,26 @@
 
 std::atomic<bool> InjectedDllReaderThreadStopFlag(false);
 
+HANDLE dll_pipe;
 
 void InjectedDllReaderStopAll() {
     InjectedDllReaderThreadStopFlag = TRUE;
+
+    // Send some stuff so the ReadFile() in the reader thread returns
+    HANDLE hPipe = CreateFile(
+        DLL_PIPE_NAME,              // Pipe name
+        GENERIC_WRITE,          // Write access
+        0,                      // No sharing
+        NULL,                   // Default security attributes
+        OPEN_EXISTING,          // Opens existing pipe
+        0,                      // Default attributes
+        NULL);                  // No template file
+    if (hPipe == INVALID_HANDLE_VALUE) {
+        // no error
+        return;
+    }
+    DWORD dwWritten;
+    BOOL success = WriteFile(hPipe, "", 0, &dwWritten, NULL);
 }
 
 void PrintWcharBufferAsHex(const wchar_t* buffer, size_t bufferSize) {
@@ -42,11 +59,9 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
     int rest_len = 0;
     memset(buffer, 0, sizeof(buffer));
     DWORD bytesRead;
-    HANDLE hPipe;
 
     // Allow processes of all privilege levels to access this pipe
     // "D:(A;OICI;GA;;;WD)" translates to: Allow (A) All Users (WD) Generic Access (GA)
-    LPCWSTR pipeName = L"\\\\.\\pipe\\MyPipe";
     LPCWSTR securityDescriptorString = L"D:(A;OICI;GA;;;WD)";
     SECURITY_ATTRIBUTES sa;
     PSECURITY_DESCRIPTOR pSD = NULL;
@@ -63,7 +78,7 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
     sa.bInheritHandle = FALSE;
 
     while (!InjectedDllReaderThreadStopFlag) {
-        hPipe = CreateNamedPipe(
+        dll_pipe = CreateNamedPipe(
             DLL_PIPE_NAME,
             PIPE_ACCESS_INBOUND,
             PIPE_TYPE_MESSAGE,
@@ -73,7 +88,7 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
             0,
             &sa
         );
-        if (hPipe == INVALID_HANDLE_VALUE) {
+        if (dll_pipe == INVALID_HANDLE_VALUE) {
             LOG_F(ERROR, "DllReader: Error creating named pipe: %ld", GetLastError());
             return 1;
         }
@@ -81,17 +96,17 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
         //LOG_F(INFO, "DllReader: Waiting for client to connect...");
 
         // Wait for the client to connect
-        BOOL result = ConnectNamedPipe(hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
+        BOOL result = ConnectNamedPipe(dll_pipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
         if (!result) {
             LOG_F(ERROR, "DllReader: Error connecting to named pipe: %ld", GetLastError());
-            CloseHandle(hPipe);
+            CloseHandle(dll_pipe);
             return 1;
         }
 
         LOG_F(INFO, "DllReader: Client connected");
 
         while (!InjectedDllReaderThreadStopFlag) {
-            if (ReadFile(hPipe, buf_ptr, sizeof(buffer) - rest_len, &bytesRead, NULL)) {
+            if (ReadFile(dll_pipe, buf_ptr, sizeof(buffer) - rest_len, &bytesRead, NULL)) {
                 int full_len = rest_len + bytesRead; // full len including the previous shit, if any
                 wchar_t* p = (wchar_t*)buffer; // pointer to the string we will print. points to buffer
                 // which always contains the beginning of a string
@@ -124,7 +139,7 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
             }
             else {
                 if (GetLastError() == ERROR_BROKEN_PIPE) {
-                    //LOG_F(INFO, "DllReader: Client disconnected: %ld", GetLastError());
+                    LOG_F(INFO, "DllReader: Client disconnected: %ld", GetLastError());
                     break;
                 }
                 else {
@@ -135,8 +150,10 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
         }
 
         // Close the pipe
-        CloseHandle(hPipe);
+        CloseHandle(dll_pipe);
     }
+
+    LOG_F(INFO, "DllReader: Quit");
 }
 
 
