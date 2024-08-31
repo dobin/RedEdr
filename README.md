@@ -64,19 +64,20 @@ If you want ETW Microsoft-Windows-Security-Auditing, start as SYSTEM.
 RedEdr will trace all processes containing argument 1 in its process image name (exe path). And its children, recursively. 
 
 There are two main modes: 
-* With kernel module
-* Without kernel module
+* With kernel module (kernel callbacks, KAPC DLL injection)
+* Without kernel module (ETW, mplog)
 
 I recommend to use it with kernel module. For a quick test, you can use RedEdr without. 
 RedEdr only traces newly created processes, with the `--trace` argument in the image
-name. After starting RedEdr, just start `notepad.exe`.
+name. After starting RedEdr, just start `notepad.exe`. Make sure you have the right name, 
+check with `tasklist | findstr notepad.exe` (could be `Notepad`?).
 
 Only ETW, no kernel module:
 ```
 PS > .\RedEdr.exe --etw --trace notepad.exe
 ```
 
-Only kernel module (callbacks, KAPC DLL injection): 
+Kernel module callbacks and KAPC DLL injection into processes: 
 ```
 PS > .\RedEdr.exe --kernel --inject --trace notepad.exe
 ```
@@ -84,8 +85,14 @@ PS > .\RedEdr.exe --kernel --inject --trace notepad.exe
 
 If you want just the events, without any log output:
 ```
-PS > .\RedEdr.exe --kernel --inject --etw 2>$null
+PS > .\RedEdr.exe ... --trace notepad.exe 2>$null
 ```
+
+Start with web server returning all event on `http://localhost:8080` as json array:
+```
+PS > .\RedEdr.exe ... --trace notepad.exe --web
+```
+
 
 ## Example Output
 
