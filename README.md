@@ -54,12 +54,6 @@ After compiling solution (all "Debug"), you should have:
 
 Everything should be in `C:\RedEdr`. No other directories are supported.
 
-
-To load the driver, use local admin shell: 
-```
-> .\load-kernel-driver.bat
-```
-
 Execute as admin obviously. 
 
 If you want ETW Microsoft-Windows-Security-Auditing, start as SYSTEM. 
