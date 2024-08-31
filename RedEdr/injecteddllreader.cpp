@@ -11,7 +11,7 @@
 #include "../Shared/common.h"
 #include "loguru.hpp"
 #include "injecteddllreader.h"
-
+#include "output.h"
 
 std::atomic<bool> InjectedDllReaderThreadStopFlag(false);
 
@@ -113,7 +113,8 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
                 int last_potential_str_start = 0;
                 for (int i = 0; i < full_len; i += 2) { // 2-byte increments because wide string
                     if (buffer[i] == 0 && buffer[i + 1] == 0) { // check manually for \x00\x00
-                        wprintf(L"DLL: %s\n", p); // found \x00\x00, print the previous string
+                        //wprintf(L"DLL: %s\n", p); // found \x00\x00, print the previous string
+                        do_output(std::wstring(p));
                         i += 2; // skip \x00\x00
                         last_potential_str_start = i; // remember the last zero byte we found
                         p = (wchar_t*)&buffer[i]; // init p with (potential) next string

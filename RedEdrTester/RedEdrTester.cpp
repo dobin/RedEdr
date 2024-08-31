@@ -3,6 +3,12 @@
 #include <cwchar>  // For wcstol
 #include <cstdlib> // For exit()
 
+#include <string>
+#include <sstream>
+//#include <map>
+#include <vector>
+
+
 #include "../Shared/common.h"
 #include "loguru.hpp"
 #include "config.h"
@@ -388,20 +394,102 @@ cleanup:
     if (hSCManager) CloseServiceHandle(hSCManager);
 }
 
+
+
+LARGE_INTEGER get_time2() {
+    FILETIME fileTime;
+    LARGE_INTEGER largeInt;
+
+    // Get the current system time as FILETIME
+    GetSystemTimeAsFileTime(&fileTime);
+
+    // Convert FILETIME to LARGE_INTEGER
+    largeInt.LowPart = fileTime.dwLowDateTime;
+    largeInt.HighPart = fileTime.dwHighDateTime;
+
+    return largeInt;
+}
+
+std::wstring ConvertToJSON2(const std::wstring& input)
+{
+    std::vector<std::pair<std::wstring, std::wstring>> keyValuePairs;
+    std::wstringstream wss(input);
+    std::wstring token;
+
+    // Split by ';'
+    while (std::getline(wss, token, L';'))
+    {
+        std::wstringstream kvStream(token);
+        std::wstring key, value;
+
+        // Split by ':'
+        if (std::getline(kvStream, key, L':') && std::getline(kvStream, value))
+        {
+            keyValuePairs.emplace_back(key, value);
+        }
+    }
+
+    // Construct JSON
+    std::wstringstream jsonStream;
+    jsonStream << L"{";
+
+    bool first = true;
+    for (const auto& pair : keyValuePairs)
+    {
+        if (!first)
+        {
+            jsonStream << L", ";
+        }
+        jsonStream << L"\"" << pair.first << L"\": \"" << pair.second << L"\"";
+        first = false;
+    }
+
+    jsonStream << L"}";
+
+    return jsonStream.str();
+}
+
+
+void ConvertLargeIntegerToReadableString2(LARGE_INTEGER largeInt, char* buffer, size_t bufferSize)
+{
+    FILETIME fileTime;
+    SYSTEMTIME systemTime;
+
+    // Assign LARGE_INTEGER to FILETIME
+    fileTime.dwLowDateTime = largeInt.LowPart;
+    fileTime.dwHighDateTime = largeInt.HighPart;
+
+    // Convert FILETIME to SYSTEMTIME
+    FileTimeToSystemTime(&fileTime, &systemTime);
+
+    // Format SYSTEMTIME to a readable string
+    // In UTC
+    snprintf(buffer, bufferSize,
+        "%04d-%02d-%02d %02d:%02d:%02d.%03d",
+        systemTime.wYear,
+        systemTime.wMonth,
+        systemTime.wDay,
+        systemTime.wHour,
+        systemTime.wMinute,
+        systemTime.wSecond,
+        systemTime.wMilliseconds);
+
+}
+
+
 int wmain(int argc, wchar_t* argv[]) {
-    //pipeparser_test();
-    //return 1;
-    if (argc != 2) {
-        printf("Usage: rededrtester.exe <pid>");
+    if (argc != 3) {
+        printf("Usage: rededrtester.exe <id> <pid>");
         return 1;
     }
     LOG_F(INFO, "RedTester");
 
-    // Args: pid
+    // Args: pid, for 3
     wchar_t* end;
-    DWORD pid = wcstol(argv[1], &end, 10);
+    DWORD test = wcstol(argv[1], &end, 10);
+    DWORD pid = wcstol(argv[2], &end, 10);
 
-    int test = 7;
+    //int test = 9;
     switch (test) {
     case 1:
         printf("Fake Kernel Module Pipe Client\n");
@@ -454,7 +542,20 @@ int wmain(int argc, wchar_t* argv[]) {
             printf("Failed to unload driver.\n");
             return 1;
         }
-
+        break;
+    case 8:
+        char timeString[100];
+        LARGE_INTEGER largeInt;
+        largeInt = get_time2();
+        printf("Time: %lld\n", largeInt);
+        ConvertLargeIntegerToReadableString2(largeInt, timeString, sizeof(timeString));
+        printf("Readable Time: %s\n", timeString);
+        break;
+    case 9:
+        std::wstring input = L"type:dll;time:28500;krn_pid:133695059491286994;func:AllocateVirtualMemory;pid:FFFFFFFFFFFFFFFF;addr:0000004F821FCB60;zero:0x7fffffff;size:42;type:0x1000:protect:0x4";
+        std::wstring json = ConvertToJSON2(input);
+        std::wcout << L"JSON Output: " << json << std::endl;
+        break;
     }
     
 

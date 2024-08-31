@@ -51,6 +51,9 @@
     <ClCompile Include="driverinterface.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="output.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="etwreader.h">
@@ -87,6 +90,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="driverinterface.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="output.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

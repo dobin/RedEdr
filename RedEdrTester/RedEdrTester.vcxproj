@@ -134,6 +134,7 @@
     <ClCompile Include="..\RedEdr\dllinjector.cpp" />
     <ClCompile Include="..\RedEdr\logreader.cpp" />
     <ClCompile Include="..\RedEdr\loguru.cpp" />
+    <ClCompile Include="..\RedEdr\output.cpp" />
     <ClCompile Include="..\RedEdr\procinfo.cpp" />
     <ClCompile Include="RedEdrTester.cpp" />
   </ItemGroup>

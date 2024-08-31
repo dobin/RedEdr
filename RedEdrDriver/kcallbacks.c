@@ -55,6 +55,9 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
     }
     createInfo->CreationStatus = STATUS_SUCCESS;
 
+    ULONG64 systemTime;
+    KeQuerySystemTime(&systemTime);
+
     PPROCESS_INFO processInfo = LookupProcessInfo(pid);
     if (processInfo == NULL) {
         PEPROCESS process = NULL;
@@ -103,7 +106,8 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
 
     if (g_config.enable_logging) {
         wchar_t line[MESSAGE_SIZE] = { 0 };
-        swprintf(line, L"%llu:process:%llu:%s:%llu:%s:%d",
+        swprintf(line, L"type:kernel;time:%llu;callback:create_process;krn_pid:%llu;pid:%llu;name:%s;ppid:%llu;parent_name:%s;observe:%d",
+            systemTime,
             (unsigned __int64)PsGetCurrentProcessId(),
             (unsigned __int64)pid, processInfo->name,
             (unsigned __int64)createInfo->ParentProcessId, processInfo->parent_name,
@@ -125,9 +129,13 @@ void CreateThreadNotifyRoutine(HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Create
     if (procInfo == NULL || !procInfo->observe) {
         return;
     }
+    ULONG64 systemTime;
+    KeQuerySystemTime(&systemTime);
 
     wchar_t line[MESSAGE_SIZE] = { 0 };
-    swprintf(line, L"thread:%llu;%llu;%d",
+    swprintf(line, L"type:kernel;time:%llu;callback:thread;krn_pid:%llu;pid:%llu;threadid:%llu;create:%d",
+        systemTime,
+        (unsigned __int64)PsGetCurrentProcessId(),
         (unsigned __int64)ProcessId,
         (unsigned __int64)ThreadId,
         Create);
@@ -145,6 +153,9 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
         return;
     }
 
+    ULONG64 systemTime;
+    KeQuerySystemTime(&systemTime);
+
     UNREFERENCED_PARAMETER(ImageInfo);
     wchar_t line[MESSAGE_SIZE] = { 0 };
     wchar_t ImageName[128] = { 0 };
@@ -154,8 +165,11 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
         PROCESS_INFO* procInfo = LookupProcessInfo(ProcessId);
         if (procInfo != NULL && procInfo->observe) {
             UnicodeStringToWChar(FullImageName, ImageName, 128);
-            swprintf(line, L"%llu:image:%llu;%s", 
-                (unsigned __int64)PsGetCurrentProcessId(), (unsigned __int64)ProcessId, ImageName);
+            swprintf(line, L"type:kernel;time:%llu;callback:image;krn_pid:%llu;pid:%llu:image:%s", 
+                systemTime,
+                (unsigned __int64)PsGetCurrentProcessId(),
+                (unsigned __int64)ProcessId,
+                ImageName);
             log_event(line);
         }
     }

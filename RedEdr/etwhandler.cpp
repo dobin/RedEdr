@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <sstream>
 
+#include "output.h"
 #include "etwhandler.h"
 #include "config.h"
 #include "cache.h"
@@ -140,12 +141,13 @@ void PrintProperties(std::wstring eventName, PEVENT_RECORD eventRecord) {
 
     // String stream to accumulate output
     std::wstringstream output;
-    output << L"ProcessID:" << eventRecord->EventHeader.ProcessId << L";";
-    output << L"ThreadID:" << eventRecord->EventHeader.ThreadId << L";";
+    output << L"type:etw;time:" << static_cast<__int64>(eventRecord->EventHeader.TimeStamp.QuadPart) << L";";
+    output << L"pid:" << eventRecord->EventHeader.ProcessId << L";";
+    output << L"thread_id:" << eventRecord->EventHeader.ThreadId << L";";
     output << eventName << ":" << eventRecord->EventHeader.EventDescriptor.Id << L";";
 
     //output << L"EventID:" << eventRecord->EventHeader.EventDescriptor.Id << L";";
-    output << L"ProviderName:" << (eventInfo->ProviderNameOffset ? (PCWSTR)((PBYTE)eventInfo + eventInfo->ProviderNameOffset) : L"Unknown") << L";";
+    output << L"provider_name:" << (eventInfo->ProviderNameOffset ? (PCWSTR)((PBYTE)eventInfo + eventInfo->ProviderNameOffset) : L"Unknown") << L";";
 
     for (DWORD i = 0; i < eventInfo->TopLevelPropertyCount; i++) {
         PROPERTY_DATA_DESCRIPTOR dataDescriptor;
@@ -202,8 +204,8 @@ void PrintProperties(std::wstring eventName, PEVENT_RECORD eventRecord) {
     if (eventInfo) {
         free(eventInfo);
     }
-
+    do_output(output.str());
     // Print the accumulated string
-    std::wcout << output.str() << L"\n";
+    //std::wcout << output.str() << L"\n";
     //fflush(stdout);
 }

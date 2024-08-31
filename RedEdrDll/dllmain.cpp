@@ -48,6 +48,20 @@ int InitDllPipe() {
     return 0;
 }
 
+LARGE_INTEGER get_time() {
+    FILETIME fileTime;
+    LARGE_INTEGER largeInt;
+
+    // Get the current system time as FILETIME
+    GetSystemTimeAsFileTime(&fileTime);
+
+    // Convert FILETIME to LARGE_INTEGER
+    largeInt.LowPart = fileTime.dwLowDateTime;
+    largeInt.HighPart = fileTime.dwHighDateTime;
+
+    return largeInt;
+}
+
 //----------------------------------------------------
 
 
@@ -72,9 +86,10 @@ DWORD NTAPI NtAllocateVirtualMemory(
     ULONG AllocationType,
     ULONG Protect
 ) {
+    LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
-    int ret = swprintf_s(buf, DATA_BUFFER_SIZE, L"pid:%llu:AllocateVirtualMemory:%p:%p:%#lx:%llu:%#lx:%#lx",
-        (unsigned __int64) GetCurrentProcessId(), ProcessHandle, BaseAddress, ZeroBits, *RegionSize, AllocationType, Protect);
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE, L"type:dll;time:%llu;krn_pid:%llu;func:AllocateVirtualMemory;pid:%p;addr:%p;zero:%#lx;size:%llu;type:%#lx;protect:%#lx",
+        time, (unsigned __int64) GetCurrentProcessId(), ProcessHandle, BaseAddress, ZeroBits, *RegionSize, AllocationType, Protect);
     SendDllPipe(buf);
 
     // jump on the originate NtAllocateVirtualMemory

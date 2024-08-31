@@ -18,6 +18,7 @@
 
 #include "loguru.hpp"
 #include "logreader.h"
+#include "output.h"
 
 // Will be checked each second and exit thread if true
 std::atomic<bool> LogReaderThreadStopFlag(false);
@@ -77,7 +78,8 @@ void tailFileW(const wchar_t* filePath) {
             buffer[bytesRead / sizeof(wchar_t)] = L'\0';
 
             // Print the new data (including newline?)
-            wprintf(L"%s", buffer);
+            do_output(std::wstring(buffer));
+            //wprintf(L"%s", buffer);
 
             // Update the offset
             offset.QuadPart += bytesRead;

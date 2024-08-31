@@ -140,6 +140,7 @@
     <ClCompile Include="kernelreader.cpp" />
     <ClCompile Include="logreader.cpp" />
     <ClCompile Include="loguru.cpp" />
+    <ClCompile Include="output.cpp" />
     <ClCompile Include="procinfo.cpp" />
     <ClCompile Include="RedEdr.cpp" />
   </ItemGroup>
@@ -155,6 +156,7 @@
     <ClInclude Include="kernelreader.h" />
     <ClInclude Include="logreader.h" />
     <ClInclude Include="loguru.hpp" />
+    <ClInclude Include="output.h" />
     <ClInclude Include="procinfo.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
