@@ -18,6 +18,7 @@
 #include "logreader.h"
 #include "kernelreader.h"
 #include "cache.h"
+#include "output.h"
 #include "procinfo.h"
 #include "injecteddllreader.h"
 #include "driverinterface.h"
@@ -247,6 +248,8 @@ int main(int argc, char* argv[]) {
         LOG_F(INFO, "--( Wait failed");
     }
     // No code here as it will not be executed?
+
+    //print_all_output();
 
     return 0;
 }

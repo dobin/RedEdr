@@ -2,6 +2,9 @@
 #include <sstream>
 #include <vector>
 
+std::vector<std::wstring> output_entries;
+
+
 std::wstring ConvertToJSON(const std::wstring& input)
 {
     std::vector<std::pair<std::wstring, std::wstring>> keyValuePairs;
@@ -43,12 +46,21 @@ std::wstring ConvertToJSON(const std::wstring& input)
 
 
 void do_output(std::wstring str) {
-    int do_json = 0;
-
-    if (do_json) {
-        std::wcout << ConvertToJSON(str) << L"\n";
-    }
-    else {
-        std::wcout << str << L"\n";
-    }
+    // add
+    //std::wcout << ConvertToJSON(str) << L"\n";
+    std::wstring json = ConvertToJSON(str);
+    output_entries.push_back(json);
+    
+    // print
+    std::wcout << str << L"\n";
 }
+
+
+void print_all_output() {
+    std::wcout << "[" << std::endl;
+    for (const auto& str : output_entries) {
+        std::wcout << str << ", " << std::endl;
+    }
+    std::wcout << "]" << std::endl;
+}
+
