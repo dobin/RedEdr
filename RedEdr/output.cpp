@@ -1,8 +1,18 @@
+#include "httplib.h" // Needs to be on top?
+
 #include <iostream>
 #include <sstream>
 #include <vector>
 
+#include <locale>
+#include <codecvt>
+
+#include "loguru.hpp"
+
+
 std::vector<std::wstring> output_entries;
+HANDLE webserver_thread;
+httplib::Server svr;
 
 
 std::wstring ConvertToJSON(const std::wstring& input)
@@ -64,3 +74,45 @@ void print_all_output() {
     std::wcout << "]" << std::endl;
 }
 
+
+std::string output_as_json() {
+    std::wstringstream output;
+    output << "[" << std::endl;
+    for (const auto& str : output_entries) {
+        output << str << ", " << std::endl;
+    }
+    output << "]" << std::endl;
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
+    return conv.to_bytes(output.str());
+}
+
+
+DWORD WINAPI WebserverThread(LPVOID param) {
+    LOG_F(INFO, "--[ Start Webserver thread");
+    svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
+        res.set_content(output_as_json(), "application/json; charset=UTF-8");
+        });
+    LOG_F(INFO, "Web Server listening on http://localhost:8080");
+    svr.listen("localhost", 8080);
+    LOG_F(INFO, "--[ Exit Webserver thread");
+    
+    return 0;
+}
+
+
+int InitializeWebServer(std::vector<HANDLE>& threads) {
+    webserver_thread = CreateThread(NULL, 0, WebserverThread, NULL, 0, NULL);
+    if (webserver_thread == NULL) {
+        LOG_F(ERROR, "Failed to create thread for webserver");
+        return 1;
+    }
+    threads.push_back(webserver_thread);
+    return 0;
+}
+
+void StopWebServer() {
+    if (webserver_thread != NULL) {
+        svr.stop();
+        //TerminateThread(webserver_thread, 0);
+    }
+}

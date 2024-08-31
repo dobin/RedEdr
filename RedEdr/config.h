@@ -25,6 +25,7 @@ public:
 	bool do_kernelcallback = false;
 	bool do_dllinjection = false;
 	bool debug_dllreader = false;
+	bool web_output = false;
 	//bool do_dllinjection_nochildren = false;
 };
 

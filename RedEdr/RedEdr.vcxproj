@@ -152,6 +152,7 @@
     <ClInclude Include="driverinterface.h" />
     <ClInclude Include="etwhandler.h" />
     <ClInclude Include="etwreader.h" />
+    <ClInclude Include="httplib.h" />
     <ClInclude Include="injecteddllreader.h" />
     <ClInclude Include="kernelreader.h" />
     <ClInclude Include="logreader.h" />

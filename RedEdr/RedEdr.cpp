@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <windows.h>
 #include <dbghelp.h>
@@ -8,9 +9,10 @@
 #include <tchar.h>
 #include <cwchar>  // For wcstol
 #include <cstdlib> // For exit()
+#include <string.h>     // for strcpy_s, strcat_s
+
 #include "loguru.hpp"
 #include "cxxops.hpp"
-#include <string.h>     // for strcpy_s, strcat_s
 
 #include "config.h"
 #include "dllinjector.h"
@@ -108,6 +110,10 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
             LOG_F(INFO, "-- Stop ETW readers");
             EtwReaderStopAll();
         }
+        if (g_config.web_output) {
+            LOG_F(INFO, "-- Stop web server");
+            StopWebServer();
+        }
         return TRUE; // Indicate that we handled the signal
     default:
         return FALSE; // Let the next handler handle the signal
@@ -132,6 +138,7 @@ int main(int argc, char* argv[]) {
         ("m,mplog", "Input: Consume Defender mplog file", cxxopts::value<bool>()->default_value("false"))
         ("k,kernel", "Input: Consume kernel callback events", cxxopts::value<bool>()->default_value("false"))
         ("i,inject", "Input: Consume DLL injection", cxxopts::value<bool>()->default_value("false"))
+        ("w,web", "Output: Web server", cxxopts::value<bool>()->default_value("false"))
 
         ("1,krnload", "Kernel Module: Load", cxxopts::value<bool>()->default_value("false"))
         ("2,krnreload", "Kernel Module: ReLoad", cxxopts::value<bool>()->default_value("false"))
@@ -182,6 +189,8 @@ int main(int argc, char* argv[]) {
     g_config.do_kernelcallback = result["kernel"].as<bool>();
     g_config.do_dllinjection = result["inject"].as<bool>();
     g_config.debug_dllreader = result["dllreader"].as<bool>();
+    g_config.web_output = result["web"].as<bool>();
+
 
     if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback && !g_config.do_dllinjection && !g_config.debug_dllreader) {
         printf("Choose at least one of --etw --mplog --kernel --inject --dllreader");
@@ -190,7 +199,7 @@ int main(int argc, char* argv[]) {
 
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
-    LOG_F(INFO, "--( RedEdr 0.2", g_config.targetExeName);
+    LOG_F(INFO, "--( RedEdr 0.2 for %ls", g_config.targetExeName);
     LOG_F(INFO, "--( Tracing process name %ls and its children", g_config.targetExeName);
 
     // SeDebug
@@ -203,6 +212,10 @@ int main(int argc, char* argv[]) {
     if (!SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE)) {
         LOG_F(ERROR, "--( Failed to set control handler");
         return 1;
+    }
+
+    if (g_config.web_output) {
+        InitializeWebServer(threads);
     }
 
     // Functionality
