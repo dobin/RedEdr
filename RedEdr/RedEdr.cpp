@@ -86,16 +86,25 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     case CTRL_SHUTDOWN_EVENT:
         LOG_F(WARNING, "--! Ctrl-c detected, performing shutdown");
         if (g_config.do_mplog) {
+            LOG_F(INFO, "-- Stop log reader");
             LogReaderStopAll();
         }
         if (g_config.do_kernelcallback) {
+            LOG_F(INFO, "-- Stop kernel reader and injected dll reader");
+            KernelReaderStopAll();
             InjectedDllReaderStopAll(); // stop reading from the dll pipe
             ioctl_enable_kernel_module(0, (wchar_t*)target);  // turn off kernel module
         }
         if (g_config.do_dllinjection) {
+            LOG_F(INFO, "-- Stop DLL reader");
             KernelReaderStopAll(); // stop reading from the kernel pipe
         }
+        if (g_config.debug_dllreader) {
+            LOG_F(INFO, "-- Stop DLL reader");
+            InjectedDllReaderStopAll();
+        }
         if (g_config.do_etw) {
+            LOG_F(INFO, "-- Stop ETW readers");
             EtwReaderStopAll();
         }
         return TRUE; // Indicate that we handled the signal
@@ -127,6 +136,7 @@ int main(int argc, char* argv[]) {
         ("2,krnreload", "Kernel Module: ReLoad", cxxopts::value<bool>()->default_value("false"))
         ("3,krnunload", "Kernel Module: Unload", cxxopts::value<bool>()->default_value("false"))
 
+        ("l,dllreader", "Debug: DLL reader but no injection (for manual injection tests)", cxxopts::value<bool>()->default_value("false"))
         ("d,debug", "Enable debugging", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print usage")
         ;
@@ -170,9 +180,10 @@ int main(int argc, char* argv[]) {
     g_config.do_mplog = result["mplog"].as<bool>();
     g_config.do_kernelcallback = result["kernel"].as<bool>();
     g_config.do_dllinjection = result["inject"].as<bool>();
+    g_config.debug_dllreader = result["dllreader"].as<bool>();
 
-    if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback && !g_config.do_dllinjection) {
-        printf("Choose at least one of --etw --mplog --kernel --inject");
+    if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback && !g_config.do_dllinjection && !g_config.debug_dllreader) {
+        printf("Choose at least one of --etw --mplog --kernel --inject --dllreader");
         return 1;
     }
 
@@ -206,7 +217,7 @@ int main(int argc, char* argv[]) {
         LOG_F(INFO, "--( Input: Kernel Reader");
         InitializeKernelReader(threads);
     }
-    if (g_config.do_dllinjection) {
+    if (g_config.do_dllinjection || g_config.debug_dllreader) {
         LOG_F(INFO, "--( Input: InjectedDll Reader");
         InitializeInjectedDllReader(threads);
     }
@@ -226,12 +237,11 @@ int main(int argc, char* argv[]) {
         ioctl_enable_kernel_module(1, (wchar_t*)target);
     }
 
-    LOG_F(INFO, "--( waiting for %d threads...", threads.size());
-
     // Wait for all threads to complete
     // NOTE Stops after ctrl-c handler is executed?
     // etw: ControlTrace EVENT_TRACE_CONTROL_STOP all, which makes the threads return
     // logreader: threads will persist, but WaitForMultipleObject() will still return
+    LOG_F(INFO, "--( waiting for %llu threads...", threads.size());
     DWORD res = WaitForMultipleObjects(threads.size(), threads.data(), TRUE, INFINITE);
     if (res == WAIT_FAILED) {
         LOG_F(INFO, "--( Wait failed");

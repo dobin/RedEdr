@@ -24,6 +24,7 @@ public:
 	bool do_mplog = false;
 	bool do_kernelcallback = false;
 	bool do_dllinjection = false;
+	bool debug_dllreader = false;
 	//bool do_dllinjection_nochildren = false;
 };
 
