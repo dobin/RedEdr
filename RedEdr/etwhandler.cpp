@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <sstream>
 
+#include "loguru.hpp"
 #include "output.h"
 #include "etwhandler.h"
 #include "config.h"
@@ -16,14 +17,170 @@
 
 void WINAPI EventRecordCallbackSecurityAuditing(PEVENT_RECORD eventRecord)
 {
-    // Display the event ID and its name
-    //std::wcout << L"SecurityEvent " << pEventRecord->EventHeader.EventDescriptor.Id << L" received." << std::endl;
+    // Do we want to track this process?
+    DWORD processId = eventRecord->EventHeader.ProcessId;
+    if (!g_cache.observe(processId)) {
+        return;
+    }
 
-    PrintProperties(L"SecurityEvents", eventRecord);
+    /* https://docs.google.com/spreadsheets/d/1d7hPRktxzYWmYtfLFaU_vMBKX2z98bci0fssTYyofdo/edit?gid=0#gid=0
+    4624	An account was successfully logged on.
+    4625	An account failed to log on.
+    4627	Group membership information.
+    4634	An account was logged off
+    4647	User initiated logoff.
+    4648	A logon was attempted using explicit credentials.
+    4656	A handle to an object was requested.
+    4657	A registry value was modified.
+    4660	An object was deleted.
+    4661	A handle to an object was requested.
+    4662	An operation was performed on an object.
+    4663	An attempt was made to access an object.
+    4664	An attempt was made to create a hard link.
+    4672	Special privileges assigned to new logon.
+    4673	A privileged service was called.
+    4674	An operation was attempted on a privileged object.
+   x 4688	A new process has been created.
+   x 4689	A process has exited.
+    4690	An attempt was made to duplicate a handle to an object.
+    4696	A primary token was assigned to process.
+    4697	A service was installed in the system.
+    4698	A scheduled task was created.
+    4699	A scheduled task was deleted.
+    4700	A scheduled task was enabled.
+    4701	A scheduled task was disabled.
+    4702	A scheduled task was updated.
+    4703	A user right was adjusted.
+    4741	A computer account was created.
+    4742	A computer account was changed.
+    4743	A computer account was deleted.
+    4768	A Kerberos authentication ticket (TGT) was requested.
+    4769	A Kerberos service ticket was requested.
+    4770	A Kerberos service ticket was renewed.
+    4771	Kerberos pre-authentication failed.
+    4798	A user's local group membership was enumerated.
+    5145	A network share object was checked to see whether client can be granted desired access.
+    5379	Credential Manager credentials were read.
+    */
+    std::wstring event_name = L"";
+    switch (eventRecord->EventHeader.EventDescriptor.Id) {
+    case 4624:	
+        event_name = L"AccountLogonSuccess";
+        break;
+    case 4625:	
+        event_name = L"AccountLogonFail";
+        break;
+    case  4627:	
+        event_name = L"GroupMembershipInformation.";
+        break;
+    case 4634:	
+        event_name = L"AccountLogoff";
+        break;
+    case 4647:	
+        event_name = L"UserLogoff";
+        break;
+    case 4648:	
+        event_name = L"ExplicitLogon";
+        break;
+    case 4656:	
+        event_name = L"ObjectHandleRequest";
+        break;
+    case 4657:	
+        event_name = L"RegistryValueModified";
+        break;
+    case 4660:	
+        event_name = L"ObjectDelete";
+        break;
+    case 4661:	
+        event_name = L"ObjectHandleRequest";
+        break;
+    case 4662:	
+        event_name = L"ObjectOperation";
+        break;
+    case 4663:	
+        event_name = L"ObjectAccess";
+        break;
+    case 4664:	
+        event_name = L"CreateHardLink";
+        break;
+    case 4672:	
+        event_name = L"LogonSpecialPrivileges";
+        break;
+    case 4673:	
+        event_name = L"PrivilegedServiceInstalled";
+        break;
+    case 4674:	
+        event_name = L"PrivilegedObjectOperation";
+        break;
+    case 4688:	
+        event_name = L"ProcessCreate";
+        break;
+    case 4689:	
+        event_name = L"ProcessExit";
+        break;
+    case 4690:	
+        event_name = L"ObjectHandleDuplicate";
+        break;
+    case 4696:	
+        event_name = L"ProcessPrimaryTokenAssign";
+        break;
+    case 4697:	
+        event_name = L"ServiceInstalled";
+        break;
+    case 4698:	
+        event_name = L"ScheduledTaskCreate";
+        break;
+    case 4699:	
+        event_name = L"ScheduledTaskDelete";
+        break;
+    case 4700:	
+        event_name = L"ScheduledTaskEnable";
+        break;
+    case 4701:	
+        event_name = L"ScheduledTaskDisable";
+        break;
+    case 4702:	
+        event_name = L"ScheduledTaskUpdated";
+        break;
+    case 4703:	
+        event_name = L"UserRightsAdjusted";
+        break;
+    case 4741:	
+        event_name = L"ComputerAccountCreated";
+        break;
+    case 4742:	
+        event_name = L"ComputerAccountChanged";
+        break;
+    case 4743:	
+        event_name = L"ComputerAccountDeleted";
+        break;
+    case 4768:	
+        event_name = L"KerberosTgtRequest";
+        break;
+    case 4769:	
+        event_name = L"KerberosServiceTicketRequest";
+        break;
+    case 4770:	
+        event_name = L"KerberosServiceTicketRenew";
+        break;
+    case 4771:	
+        event_name = L"KerberosPreAuthFail";
+        break;
+    case 4798:	
+        event_name = L"LocalGroupEnum";
+        break;
+    case 5145:	
+        event_name = L"NetworkShareCheck";
+        break;
+    case 5379:	
+        event_name = L"CredentialManagerRead";
+        break;
+    default:
+        event_name = L"<unknown>";
+        return;
+    }
 
-
-    // 4688: new process
-    // 4689: exit process
+    PrintProperties(event_name, eventRecord);
 }
 
 
@@ -39,6 +196,19 @@ void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
     if (!g_cache.observe(processId)) {
         return;
     }
+
+    /* Available tasks:
+     <task name="ProcessStart" message="$(string.task_ProcessStart)" value="1"/>
+     <task name="ProcessStop" message="$(string.task_ProcessStop)" value="2"/>
+     <task name="ThreadStart" message="$(string.task_ThreadStart)" value="3"/>
+     <task name="ThreadStop" message="$(string.task_ThreadStop)" value="4"/>
+     <task name="ImageLoad" message="$(string.task_ImageLoad)" value="5"/>
+     <task name="ImageUnload" message="$(string.task_ImageUnload)" value="6"/>
+     <task name="CpuBasePriorityChange" message="$(string.task_CpuBasePriorityChange)" value="7"/>
+     <task name="CpuPriorityChange" message="$(string.task_CpuPriorityChange)" value="8"/>
+     <task name="PagePriorityChange" message="$(string.task_PagePriorityChange)" value="9"/>
+     <task name="IoPriorityChange" message="$(string.task_IoPriorityChange)" value="10"/>
+    */
 
     switch (eventRecord->EventHeader.EventDescriptor.Id) {
     case 1:  // Process Start
@@ -133,6 +303,7 @@ void PrintProperties(std::wstring eventName, PEVENT_RECORD eventRecord) {
         status = TdhGetEventInformation(eventRecord, 0, NULL, eventInfo, &bufferSize);
     }
     if (ERROR_SUCCESS != status) {
+        LOG_F(ERROR, "TdhGetEventInformation");
         if (eventInfo) {
             free(eventInfo);
         }
@@ -204,6 +375,7 @@ void PrintProperties(std::wstring eventName, PEVENT_RECORD eventRecord) {
     if (eventInfo) {
         free(eventInfo);
     }
+
     do_output(output.str());
     // Print the accumulated string
     //std::wcout << output.str() << L"\n";

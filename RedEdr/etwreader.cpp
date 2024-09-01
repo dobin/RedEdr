@@ -17,7 +17,7 @@
 #pragma comment(lib, "advapi32.lib")
 
 
-#define NUM_READERS 1 // 7
+#define NUM_READERS 2 // 7
 struct Reader Readers[NUM_READERS];
 
 
@@ -44,59 +44,57 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
         Readers[i].TraceHandle = INVALID_PROCESSTRACE_HANDLE;
     }
 
+    // Kernel-Process
     ret = setup_trace(&Readers[0], L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
     if (!ret) {
         LOG_F(ERROR, "TODO ERROR");
         return 1;
     }
+
+    // Security-Auditing
     if (NUM_READERS > 1) {
-        ret = setup_trace(&Readers[1], L"{0a002690-3839-4e3a-b3b6-96d8df868d99}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Engine");
+        ret = setup_trace_security_auditing(&Readers[1]);
         if (!ret) {
-            LOG_F(ERROR, "TODO ERROR");
-            return 1;
+            //LOG_F(ERROR, "TODO ERROR");
+            //return 1;
         }
     }
+
     if (NUM_READERS > 2) {
-        ret = setup_trace(&Readers[2], L"{8E92DEEF-5E17-413B-B927-59B2F06A3CFC}", &EventRecordCallbackAntimalwareRtp, L"Microsoft-Antimalware-RTP");
+        ret = setup_trace(&Readers[2], L"{0a002690-3839-4e3a-b3b6-96d8df868d99}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Engine");
         if (!ret) {
             LOG_F(ERROR, "TODO ERROR");
             return 1;
         }
     }
     if (NUM_READERS > 3) {
-        ret = setup_trace(&Readers[3], L"{CFEB0608-330E-4410-B00D-56D8DA9986E6}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-AMFilter");
+        ret = setup_trace(&Readers[3], L"{8E92DEEF-5E17-413B-B927-59B2F06A3CFC}", &EventRecordCallbackAntimalwareRtp, L"Microsoft-Antimalware-RTP");
         if (!ret) {
             LOG_F(ERROR, "TODO ERROR");
             return 1;
         }
     }
     if (NUM_READERS > 4) {
-        ret = setup_trace(&Readers[4], L"{2A576B87-09A7-520E-C21A-4942F0271D67}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Scan-Interface");
+        ret = setup_trace(&Readers[4], L"{CFEB0608-330E-4410-B00D-56D8DA9986E6}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-AMFilter");
         if (!ret) {
             LOG_F(ERROR, "TODO ERROR");
             return 1;
         }
     }
     if (NUM_READERS > 5) {
-        ret = setup_trace(&Readers[5], L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Protection");
+        ret = setup_trace(&Readers[5], L"{2A576B87-09A7-520E-C21A-4942F0271D67}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Scan-Interface");
         if (!ret) {
             LOG_F(ERROR, "TODO ERROR");
             return 1;
         }
     }
     if (NUM_READERS > 6) {
-        ret = setup_trace_security_auditing(&Readers[6]);
+        ret = setup_trace(&Readers[6], L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Protection");
         if (!ret) {
             LOG_F(ERROR, "TODO ERROR");
             return 1;
         }
     }
-    // Test
-    /*ret = setup_trace(&Readers[2], L"{EDD08927-9CC4-4E65-B970-C2560FB5C289}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Windows-Kernel-File");
-    if (!ret) {
-        LOG_F(ERROR, "TODO ERROR");
-        return 1;
-    }*/
 
     // ProcessTrace() can only handle 1 (one) real-time processing session
     // Create threads instead fuck...
