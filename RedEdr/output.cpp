@@ -75,17 +75,41 @@ void print_all_output() {
 }
 
 
+std::wstring replace_all(const std::wstring& str, const std::wstring& from, const std::wstring& to) {
+    std::wstring result = str;
+    if (from.empty()) return result;
+    size_t start_pos = 0;
+    while ((start_pos = result.find(from, start_pos)) != std::wstring::npos) {
+        result.replace(start_pos, from.length(), to);
+        start_pos += to.length(); // Move past the last replaced occurrence
+    }
+    return result;
+}
+
 std::string output_as_json() {
     std::wstringstream output;
-    output << "[" << std::endl;
-    for (const auto& str : output_entries) {
-        output << str << ", " << std::endl;
+    int otype = 0;
+
+    if (otype == 0) { // elastic style one entry per line
+        for (auto it = output_entries.begin(); it != output_entries.end(); ++it) {
+            output << replace_all(*it, L"\\", L"\\\\") << std::endl;
+        }
     }
-    output << "]" << std::endl;
+    else if (otype == 1) { // 1 line json
+        output << "[";
+        for (auto it = output_entries.begin(); it != output_entries.end(); ++it) {
+            output << replace_all(*it, L"\\", L"\\\\");
+            if (std::next(it) != output_entries.end()) {
+                output << ", ";  // Add comma only if it's not the last element
+            }
+        }
+        output << "]";
+    }
+    
+
     std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
     return conv.to_bytes(output.str());
 }
-
 
 DWORD WINAPI WebserverThread(LPVOID param) {
     LOG_F(INFO, "--[ Start Webserver thread");

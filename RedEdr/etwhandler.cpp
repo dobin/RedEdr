@@ -144,7 +144,7 @@ void PrintProperties(std::wstring eventName, PEVENT_RECORD eventRecord) {
     output << L"type:etw;time:" << static_cast<__int64>(eventRecord->EventHeader.TimeStamp.QuadPart) << L";";
     output << L"pid:" << eventRecord->EventHeader.ProcessId << L";";
     output << L"thread_id:" << eventRecord->EventHeader.ThreadId << L";";
-    output << eventName << ":" << eventRecord->EventHeader.EventDescriptor.Id << L";";
+    output << L"event:" << eventName << L";";
 
     //output << L"EventID:" << eventRecord->EventHeader.EventDescriptor.Id << L";";
     output << L"provider_name:" << (eventInfo->ProviderNameOffset ? (PCWSTR)((PBYTE)eventInfo + eventInfo->ProviderNameOffset) : L"Unknown") << L";";
@@ -181,8 +181,8 @@ void PrintProperties(std::wstring eventName, PEVENT_RECORD eventRecord) {
         case TDH_INTYPE_ANSISTRING:
             output << reinterpret_cast<PCSTR>(propertyBuffer.data()) << L";";
             break;
-        case TDH_INTYPE_POINTER:
-            output << reinterpret_cast<PVOID>(propertyBuffer.data()) << L";";
+        case TDH_INTYPE_POINTER:  // hex
+            output << L"0x" << reinterpret_cast<PVOID>(propertyBuffer.data()) << L";";
             break;
         case TDH_INTYPE_FILETIME:
         {

@@ -199,7 +199,7 @@ int main(int argc, char* argv[]) {
 
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
-    LOG_F(INFO, "--( RedEdr 0.2 for %ls", g_config.targetExeName);
+    LOG_F(INFO, "--( RedEdr 0.2");
     LOG_F(INFO, "--( Tracing process name %ls and its children", g_config.targetExeName);
 
     // SeDebug
