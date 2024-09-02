@@ -361,7 +361,7 @@ cleanup:
     return result;
 }
 
-void CheckDriverStatus() {
+void DriverIsLoaded() {
     SC_HANDLE hSCManager = NULL;
     SC_HANDLE hService = NULL;
     SERVICE_STATUS_PROCESS status;
@@ -533,7 +533,7 @@ int wmain(int argc, wchar_t* argv[]) {
             return 1;
         }
 
-        CheckDriverStatus();
+        DriverIsLoaded();
 
         if (UnloadDriver() == 0) {
             printf("Driver unloaded successfully.\n");

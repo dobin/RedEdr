@@ -11,7 +11,7 @@
 #include "driverinterface.h"
 
 
-int ioctl_enable_kernel_module(int enable, wchar_t* target) {
+BOOL ioctl_enable_kernel_module(int enable, wchar_t* target) {
     if (enable) {
         LOG_F(INFO, "Send IOCTL to kernel module: Enable: %ls", target);
     }
@@ -29,7 +29,7 @@ int ioctl_enable_kernel_module(int enable, wchar_t* target) {
 
     if (hDevice == INVALID_HANDLE_VALUE) {
         LOG_F(ERROR, "Failed to open device. Error: %d", GetLastError());
-        return 0;
+        return false;
     }
 
     MY_DRIVER_DATA dataToSend = { 0 }; // all zero means all disabled by chance
@@ -50,13 +50,13 @@ int ioctl_enable_kernel_module(int enable, wchar_t* target) {
     if (!success) {
         LOG_F(ERROR, "DeviceIoControl failed. Error: %d", GetLastError());
         CloseHandle(hDevice);
-        return 0;
+        return false;
     }
 
     LOG_F(INFO, "Received from driver: %i: %s", bytesReturned, buffer_incoming);
 
     CloseHandle(hDevice);
-    return 1;
+    return true;
 }
 
 
@@ -93,7 +93,7 @@ BOOL LoadDriver() {
 
     if (!hService) {
         if (GetLastError() == ERROR_SERVICE_EXISTS) {
-            LOG_F(INFO, "KernelDriver: Servicealready exists. Opening existing service...");
+            LOG_F(INFO, "KernelDriver: Service already exists. Opening existing service...");
             hService = OpenService(hSCManager, driverName, SERVICE_ALL_ACCESS);
             if (!hService) {
                 LOG_F(ERROR, "OpenService failed. Error: %lu", GetLastError());
@@ -113,6 +113,7 @@ BOOL LoadDriver() {
         if (GetLastError() != ERROR_SERVICE_ALREADY_RUNNING) {
             LOG_F(ERROR, "StartService failed. Error: %lu", GetLastError());
             ret = FALSE;
+
             goto cleanup;
         }
         else {
@@ -126,8 +127,13 @@ BOOL LoadDriver() {
     }
 
 cleanup:
-    if (hService) CloseServiceHandle(hService);
-    if (hSCManager) CloseServiceHandle(hSCManager);
+    if (hService) {
+        DeleteService(hService);
+        CloseServiceHandle(hService);
+    }
+    if (hSCManager) {
+        CloseServiceHandle(hSCManager);
+    }
 
     return ret;
 }
@@ -183,7 +189,7 @@ cleanup:
     return ret;
 }
 
-BOOL CheckDriverStatus() {
+BOOL DriverIsLoaded() {
     SC_HANDLE hSCManager = NULL;
     SC_HANDLE hService = NULL;
     SERVICE_STATUS_PROCESS status;

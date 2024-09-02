@@ -161,7 +161,7 @@ int main(int argc, char* argv[]) {
         LoadDriver();
         exit(0);
     } else if (result.count("krnreload")) {
-        if (CheckDriverStatus()) {
+        if (DriverIsLoaded()) {
             UnloadDriver();
             LoadDriver();
         }
@@ -219,6 +219,33 @@ int main(int argc, char* argv[]) {
     }
 
     // Functionality
+    
+    // Do kernel module stuff first, as it can fail hard
+    // we can then just bail out without tearing down the other threads
+    if (g_config.do_kernelcallback || g_config.do_dllinjection) {
+        if (DriverIsLoaded()) {
+            LOG_F(INFO, "Kernel Driver already loaded");
+        }
+        else {
+            LOG_F(INFO, "Load Kernel Driver");
+            if (!LoadDriver()) {
+                LOG_F(ERROR, "Could not load driver");
+                return 1;
+            }
+        }
+
+        // Start the kernel server first
+        // The kernel module will connect to it
+        InitializeKernelReader(threads);
+        //Sleep(1000); // the thread with the server is not yet started...
+        
+        // Enable it
+        const wchar_t* target = g_config.targetExeName;
+        if (!ioctl_enable_kernel_module(1, (wchar_t*)target)) {
+            LOG_F(ERROR, "Could not communicate with kernel driver, aborting.");
+            return 1;
+        }
+    }
     if (g_config.do_etw) {
         LOG_F(INFO, "--( Input: ETW Reader");
         InitializeEtwReader(threads);
@@ -229,27 +256,12 @@ int main(int argc, char* argv[]) {
     }
     if (g_config.do_kernelcallback) {
         LOG_F(INFO, "--( Input: Kernel Reader");
-        InitializeKernelReader(threads);
     }
     if (g_config.do_dllinjection || g_config.debug_dllreader) {
         LOG_F(INFO, "--( Input: InjectedDll Reader");
         InitializeInjectedDllReader(threads);
     }
-    if (g_config.do_kernelcallback || g_config.do_dllinjection) {
-        // load kernel module
-        if (CheckDriverStatus()) {
-            LOG_F(INFO, "Kernel Driver already loaded");
-        } else {
-            LOG_F(INFO, "Load Kernel Driver");
-            if (!LoadDriver()) {
-                LOG_F(ERROR, "Could not load driver");
-            }
-        }
 
-        //Sleep(1000); // the thread with the server is not yet started...
-        const wchar_t* target = g_config.targetExeName;
-        ioctl_enable_kernel_module(1, (wchar_t*)target);
-    }
 
     // Wait for all threads to complete
     // NOTE Stops after ctrl-c handler is executed?
