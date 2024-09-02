@@ -12,7 +12,7 @@
 
 class Config {
 public:
-	LPCWSTR targetExeName = L"powershell.exe"; // = const LPWSTR
+	LPCWSTR targetExeName = L"powershell.exe";
 	BOOL log_unload = FALSE;
 	std::wstring sessionName = L"RedEdrEtw";
 
@@ -27,6 +27,10 @@ public:
 	bool debug_dllreader = false;
 	bool web_output = false;
 	//bool do_dllinjection_nochildren = false;
+
+	bool etw_standard = true;
+	bool etw_secaudit = true;
+	bool etw_defender = true;
 };
 
 extern Config g_config;

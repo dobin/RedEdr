@@ -27,25 +27,29 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
     Reader* reader = NULL;
 
     // Kernel-Process
-    reader = setup_trace(id++, L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
-    if (!reader) {
-        LOG_F(ERROR, "TODO ERROR");
-        return 1;
-    }
-    readers.push_back(reader);
-
-    // Security-Auditing, special case
-    reader = setup_trace_security_auditing(id++);
-    if (!reader) {
-        //LOG_F(ERROR, "TODO ERROR");
-        //return 1;
-    }
-    else {
+    if (g_config.etw_standard) {
+        reader = setup_trace(id++, L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
+        if (!reader) {
+            LOG_F(ERROR, "TODO ERROR");
+            return 1;
+        }
         readers.push_back(reader);
     }
 
+    // Security-Auditing, special case
+    if (g_config.etw_secaudit) {
+        reader = setup_trace_security_auditing(id++);
+        if (!reader) {
+            //LOG_F(ERROR, "TODO ERROR");
+            //return 1;
+        }
+        else {
+            readers.push_back(reader);
+        }
+    }
+
     // Antimalware
-    if (0) {
+    if (g_config.etw_defender) {
         reader = setup_trace(id++, L"{0a002690-3839-4e3a-b3b6-96d8df868d99}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Engine");
         if (reader != NULL) {
             readers.push_back(reader);
