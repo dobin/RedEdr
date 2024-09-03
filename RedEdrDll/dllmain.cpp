@@ -77,7 +77,6 @@ typedef DWORD(NTAPI* pNtAllocateVirtualMemory)(
 
 // Pointer to the trampoline function used to call the original NtAllocateVirtualMemory
 pNtAllocateVirtualMemory pOriginalNtAllocateVirtualMemory = NULL;
-
 DWORD NTAPI NtAllocateVirtualMemory(
     HANDLE ProcessHandle,
     PVOID* BaseAddress,
@@ -88,7 +87,7 @@ DWORD NTAPI NtAllocateVirtualMemory(
 ) {
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
-    int ret = swprintf_s(buf, DATA_BUFFER_SIZE, L"type:dll;time:%llu;krn_pid:%llu;func:AllocateVirtualMemory;pid:%p;addr:%p;zero:%#lx;size:%llu;type:%#lx;protect:%#lx",
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE, L"type:dll;time:%llu;krn_pid:%llu;func:AllocateVirtualMemory;pid:%p;base_addr:%p;zero:%#lx;size:%llu;type:%#lx;protect:%#lx",
         time, (unsigned __int64) GetCurrentProcessId(), ProcessHandle, BaseAddress, ZeroBits, *RegionSize, AllocationType, Protect);
     SendDllPipe(buf);
 
@@ -96,6 +95,55 @@ DWORD NTAPI NtAllocateVirtualMemory(
     return pOriginalNtAllocateVirtualMemory(GetCurrentProcess(), BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
 }
 
+
+wchar_t* GetMemoryPermissions(wchar_t* buf, DWORD protection) {
+    //char permissions[4] = "---"; // Initialize as "---"
+    wcscpy_s(buf, 16, L"---");
+
+    if (protection & (PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
+        buf[0] = L'R'; // Readable
+    }
+    if (protection & (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
+        buf[1] = L'W'; // Writable
+    }
+    if (protection & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
+        buf[2] = L'X'; // Executable
+    }
+    buf[3] = L'\x00';
+
+    return buf;
+}
+
+// Defines the prototype of the NtProtectVirtualMemoryFunction
+typedef DWORD(NTAPI* pNtProtectVirtualMemory)(
+    HANDLE ProcessHandle,
+    PVOID* BaseAddress,
+    PULONG NumberOfBytesToProtect,
+    ULONG NewAccessProtection,
+    PULONG OldAccessProtection
+    );
+pNtProtectVirtualMemory pOriginalNtProtectVirtualMemory = NULL;
+DWORD NTAPI NtProtectVirtualMemory(
+    HANDLE ProcessHandle,
+    PVOID* BaseAddress,
+    PULONG NumberOfBytesToProtect,
+    ULONG NewAccessProtection,
+    PULONG OldAccessProtection
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t mem_perm[16] = L"";
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    memset(mem_perm, 0, sizeof(mem_perm));
+    GetMemoryPermissions(mem_perm, NewAccessProtection);
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE, 
+        L"type:dll;time:%llu;krn_pid:%llu;func:ProtectVirtualMemory;pid:%p;base_addr:%p;size:%llu;new_access:%#lx;new_access_str:%ls;old_access:%#lx",
+        time, (unsigned __int64)GetCurrentProcessId(), ProcessHandle, 
+        BaseAddress, NumberOfBytesToProtect, NewAccessProtection, mem_perm, OldAccessProtection);
+    SendDllPipe(buf);
+
+    // jump on the originate NtProtectVirtualMemory
+    return pOriginalNtProtectVirtualMemory(GetCurrentProcess(), BaseAddress, NumberOfBytesToProtect, NewAccessProtection, OldAccessProtection);
+}
 
 // This function initializes the hooks via the MinHook library
 DWORD WINAPI InitHooksThread(LPVOID param) {
@@ -105,12 +153,28 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
 
     InitDllPipe();
 
+    /*
+    VirtualAlloc, VirtualProtect
+    MapViewOfFile, MapViewOfFile2
+    VirtualAllocEx, VirtualProtectEx
+    QueueUserAPC
+    SetThreadContext
+    WriteProcessMemory, ReadProcessMemory
+    */
+
     // Here we specify which function from wich DLL we want to hook
     MH_CreateHookApi(
         L"ntdll",                                     // Name of the DLL containing the function to  hook
         "NtAllocateVirtualMemory",                    // Name of the function to hook
         NtAllocateVirtualMemory,                      // Address of the function on which to jump when hooking 
         (LPVOID*)(&pOriginalNtAllocateVirtualMemory) // Address of the original NtAllocateVirtualMemory function
+    );
+
+    MH_CreateHookApi(
+        L"ntdll",                                     // Name of the DLL containing the function to  hook
+        "NtProtectVirtualMemory",                    // Name of the function to hook
+        NtProtectVirtualMemory,                      // Address of the function on which to jump when hooking 
+        (LPVOID*)(&pOriginalNtProtectVirtualMemory) // Address of the original NtAllocateVirtualMemory function
     );
 
     // Enable the hook on NtAllocateVirtualMemory
