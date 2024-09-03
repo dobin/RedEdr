@@ -7,9 +7,9 @@
 #include <wincrypt.h>
 #include <iostream>
 #include <tchar.h>
-#include <cwchar>  // For wcstol
-#include <cstdlib> // For exit()
-#include <string.h>     // for strcpy_s, strcat_s
+#include <cwchar>
+#include <cstdlib>
+#include <string.h>
 
 #include "loguru.hpp"
 #include "cxxops.hpp"
@@ -78,9 +78,49 @@ BOOL makeMeSeDebug() {
 }
 
 
-BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
-    const wchar_t* target = L"";
+void shutdown_all() {
+    if (g_config.do_mplog) {
+        LOG_F(INFO, "-- Stop log reader");
+        LogReaderStopAll();
+    }
 
+    // Make kernel module stop emitting events
+    if (g_config.do_kernelcallback || g_config.do_dllinjection) {
+        const wchar_t* target = L"";
+        ioctl_enable_kernel_module(0, (wchar_t*)target);
+    }
+    // Shutdown kernel reader
+    if (g_config.do_kernelcallback) {
+        LOG_F(INFO, "-- Stop kernel reader and injected dll reader");
+        KernelReaderStopAll();
+    }
+    // Shutdown dll reader
+    if (g_config.do_dllinjection) {
+        LOG_F(INFO, "-- Stop DLL reader");
+        InjectedDllReaderStopAll();
+    }
+    
+    // Special case
+    if (g_config.debug_dllreader) {
+        LOG_F(INFO, "-- Stop DLL reader");
+        InjectedDllReaderStopAll();
+    }
+
+    // ETW
+    if (g_config.do_etw) {
+        LOG_F(INFO, "-- Stop ETW readers");
+        EtwReaderStopAll();
+    }
+
+    // Web server
+    if (g_config.web_output) {
+        LOG_F(INFO, "-- Stop web server");
+        StopWebServer();
+    }
+}
+
+
+BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     switch (ctrlType) {
     case CTRL_C_EVENT:
     case CTRL_CLOSE_EVENT:
@@ -88,32 +128,7 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     case CTRL_LOGOFF_EVENT:
     case CTRL_SHUTDOWN_EVENT:
         LOG_F(WARNING, "--! Ctrl-c detected, performing shutdown");
-        if (g_config.do_mplog) {
-            LOG_F(INFO, "-- Stop log reader");
-            LogReaderStopAll();
-        }
-        if (g_config.do_kernelcallback) {
-            LOG_F(INFO, "-- Stop kernel reader and injected dll reader");
-            KernelReaderStopAll();
-            InjectedDllReaderStopAll(); // stop reading from the dll pipe
-            ioctl_enable_kernel_module(0, (wchar_t*)target);  // turn off kernel module
-        }
-        if (g_config.do_dllinjection) {
-            LOG_F(INFO, "-- Stop DLL reader");
-            KernelReaderStopAll(); // stop reading from the kernel pipe
-        }
-        if (g_config.debug_dllreader) {
-            LOG_F(INFO, "-- Stop DLL reader");
-            InjectedDllReaderStopAll();
-        }
-        if (g_config.do_etw) {
-            LOG_F(INFO, "-- Stop ETW readers");
-            EtwReaderStopAll();
-        }
-        if (g_config.web_output) {
-            LOG_F(INFO, "-- Stop web server");
-            StopWebServer();
-        }
+        shutdown_all();
         return TRUE; // Indicate that we handled the signal
     default:
         return FALSE; // Let the next handler handle the signal
@@ -262,7 +277,6 @@ int main(int argc, char* argv[]) {
         InitializeInjectedDllReader(threads);
     }
 
-
     // Wait for all threads to complete
     // NOTE Stops after ctrl-c handler is executed?
     // etw: ControlTrace EVENT_TRACE_CONTROL_STOP all, which makes the threads return
@@ -272,9 +286,6 @@ int main(int argc, char* argv[]) {
     if (res == WAIT_FAILED) {
         LOG_F(INFO, "--( Wait failed");
     }
-    // No code here as it will not be executed?
-
-    //print_all_output();
 
     return 0;
 }

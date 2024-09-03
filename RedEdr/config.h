@@ -30,7 +30,9 @@ public:
 
 	bool etw_standard = true;
 	bool etw_secaudit = true;
-	bool etw_defender = true;
+	bool etw_defender = false;
+
+	bool do_udllinjection = false;
 };
 
 extern Config g_config;
