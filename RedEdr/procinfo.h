@@ -26,6 +26,11 @@ public:
         wprintf(L"         ImagePath: %ls\n", image_path.c_str());
         wprintf(L"         commandline: %ls\n", commandline.c_str());
         wprintf(L"         working_dir: %ls\n", working_dir.c_str());
+
+        wprintf(L"         is_debugged: %d\n", is_debugged);
+        wprintf(L"         is_protected_process: %d\n", is_protected_process);
+        wprintf(L"         is_protected_process_light: %d\n", is_protected_process_light);
+        wprintf(L"         image_base: 0x%p\n", image_base);
     }
 
     wchar_t* serialize() const {
@@ -55,17 +60,19 @@ public:
     }
 
 public:
-    DWORD id;
-    BOOL observe;
-    std::wstring image_path;
-    std::wstring commandline;
-    std::wstring working_dir;
-    DWORD parent_pid;
+    DWORD id = 0;
+    BOOL observe = 0;
+    std::wstring image_path = L"";
+    std::wstring commandline = L"";
+    std::wstring working_dir = L"";
+    DWORD parent_pid = 0;
+
+    DWORD is_debugged = 0;
+    DWORD is_protected_process = 0;
+    DWORD is_protected_process_light = 0;
+    PVOID image_base = 0;
 };
 
 
-BOOL GetProcessCommandLine_Peb(Process* process, HANDLE hProcess);
-BOOL GetProcessImagePath_ProcessImage(Process* process, HANDLE hProcess);
-BOOL GetProcessWorkingDirectory(Process* process, HANDLE hProcess);
 Process* MakeProcess(DWORD pid);
-BOOL GetProcessParentPid(Process* process, HANDLE hProcess);
+

@@ -14,7 +14,7 @@
 #include "config.h"
 #include "procinfo.h"
 #include "dllinjector.h"
-
+#include "output.h"
 
 // Will send some data to the RedEdr KernelModuleReader
 BOOL FakeKernelPipeClient() {
@@ -477,6 +477,19 @@ void ConvertLargeIntegerToReadableString2(LARGE_INTEGER largeInt, char* buffer, 
 }
 
 
+
+std::wstring format_wstring2(const wchar_t* format, ...) {
+    wchar_t buffer[DATA_BUFFER_SIZE];
+
+    va_list args;
+    va_start(args, format);
+    vswprintf(buffer, DATA_BUFFER_SIZE, format, args);
+    va_end(args);
+
+    return std::wstring(buffer);
+}
+
+
 int wmain(int argc, wchar_t* argv[]) {
     if (argc != 3) {
         printf("Usage: rededrtester.exe <id> <pid>");
@@ -513,9 +526,29 @@ int wmain(int argc, wchar_t* argv[]) {
 
     case 4:
         // Query process information
-        printf("Query process information\n");
-        query_process(pid);
+        { // WTF
+            printf("Query process information\n");
+            Process* process = MakeProcess(pid);
+            if (process != NULL) {
+                process->display();
+            
+                std::wstring o = format_wstring2(L"type:peb;time:%lld;id:%lld;parent_pid:%lld;image_path:%ls;commandline:%ls;working_dir:%ls;is_debugged:%d;is_protected_process:%d;is_protected_process_light:%d;image_base:0x%p",
+                    0,
+                    process->id,
+                    process->parent_pid,
+                    process->image_path.c_str(),
+                    process->commandline.c_str(),
+                    process->working_dir.c_str(),
+                    process->is_debugged,
+                    process->is_protected_process,
+                    process->is_protected_process_light,
+                    process->image_base
+                );
+                do_output(o);
+            }
+        }
         break;
+
     case 5:
         printf("Pipeparser test\n");
         pipeparser_test();

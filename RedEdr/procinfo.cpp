@@ -22,7 +22,9 @@
 #include "procinfo.h"
 #include "cache.h"
 #include "dllinjector.h"
-
+#include "mypeb.h"
+#include "output.h"
+#include "../Shared/common.h"
 
 #pragma comment(lib, "ntdll.lib")
 
@@ -35,111 +37,92 @@ typedef NTSTATUS(NTAPI* pNtQueryInformationProcess)(
     PULONG ReturnLength);
 
 
-// Returns: Process PEB ProcessParameters CommandLine
-BOOL GetProcessCommandLine_Peb(Process *process, HANDLE hProcess) {
-    BOOL bSuccess = FALSE;
-    std::wstring commandLinePeb = L"";
-    
+// Gets a UNICODE_STRING content in a remote process as wstring
+std::wstring my_get_str(HANDLE hProcess, UNICODE_STRING* u) {
+    std::wstring s;
+    std::vector<wchar_t> commandLine(u->Length / sizeof(wchar_t));
+    if (!ReadProcessMemory(hProcess, u->Buffer, commandLine.data(), u->Length, NULL)) {
+        LOG_F(ERROR, "Error: Could not ReadProcessMemory error: %d", GetLastError());
+    }
+    else {
+        s.assign(commandLine.begin(), commandLine.end());
+    }
+    return s;
+}
+
+
+bool augment_process_info(Process *process, HANDLE hProcess) {
     HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
     pNtQueryInformationProcess NtQueryInformationProcess = (pNtQueryInformationProcess)GetProcAddress(hNtDll, "NtQueryInformationProcess");
     if (!NtQueryInformationProcess) {
-        //LOG_F(ERROR, "Error: Could not get NtQueryInformationProcess for %d, error: %d", process->id, GetLastError());
+        LOG_F(ERROR, "Error: Could not get NtQueryInformationProcess error: %d", GetLastError());
         return FALSE;
     }
-
     PROCESS_BASIC_INFORMATION pbi;
     ULONG returnLength;
     NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
     if (status != 0) {
-        //LOG_F(ERROR, "Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
-        return FALSE;
-    }
-
-    PEB peb;
-    if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        // this is the first read, and may fail. 
-        // dont spam log messages
-        //LOG_F(DEBUG, "Error: Could not ReadProcessMemory1 for %d, error: %d", process->id, GetLastError());
-        return FALSE;
-    }
-
-    RTL_USER_PROCESS_PARAMETERS procParams;
-    if (!ReadProcessMemory(hProcess, peb.ProcessParameters, &procParams, sizeof(procParams), NULL)) {
-        //LOG_F(ERROR, "Error: Could not ReadProcessMemory2 for %d, error: %d", process->id, GetLastError());
-        return FALSE;
-    }
-
-    std::vector<wchar_t> commandLine(procParams.CommandLine.Length / sizeof(wchar_t));
-    if (!ReadProcessMemory(hProcess, procParams.CommandLine.Buffer, commandLine.data(), procParams.CommandLine.Length, NULL)) {
-        //LOG_F(ERROR, "Error: Could not ReadProcessMemory3 for %d, error: %d", process->id, GetLastError());
-    }
-    else {
-        process->commandline.assign(commandLine.begin(), commandLine.end());
-        bSuccess = TRUE;
-    }
-
-    return bSuccess;
-}
-
-
-// Returns: GetProcessImageFileName 
-BOOL GetProcessImagePath_ProcessImage(Process *process, HANDLE hProcess) {
-    wchar_t _str[MAX_PATH] = { 0 };
-    LPWSTR str = _str;  // LPWSTR is *wchar_t
-
-    if (GetProcessImageFileName(hProcess, str, MAX_PATH)) {
-        process->image_path = std::wstring(str);
-        return TRUE;
-    }
-    else {
-        process->image_path = std::wstring(L"unknown");
-        return FALSE;
-    }
-}
-
-
-// Function to extract the working directory from the environment block
-std::wstring GetWorkingDirectoryFromEnvironmentBlock(const std::vector<wchar_t>& environmentBlock) {
-    const wchar_t* env = environmentBlock.data();
-    while (*env) {
-        std::wstring envVar(env);
-        if (envVar.find(L"CD=") == 0) {
-            return envVar.substr(3); // Extract the directory path after "CD="
-        }
-        env += wcslen(env) + 1; // Move to the next environment variable
-    }
-    return L"";
-}
-
-// Function to get the working directory of a process
-BOOL GetProcessWorkingDirectory(Process* process, HANDLE hProcess) {
-    return TRUE;
-}
-
-
-BOOL GetProcessParentPid(Process *process, HANDLE hProcess) {
-    PROCESS_BASIC_INFORMATION pbi;
-    ULONG returnLength;
-    HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
-    pNtQueryInformationProcess NtQueryInformationProcess =
-        (pNtQueryInformationProcess)GetProcAddress(hNtDll, "NtQueryInformationProcess");
-
-    if (NtQueryInformationProcess == nullptr) {
-        LOG_F(ERROR, "Failed to get NtQueryInformationProcess address");
-        return FALSE;
-    }
-
-    NTSTATUS status = NtQueryInformationProcess(
-        hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
-    if (status != 0) {
-        LOG_F(ERROR, "NtQueryInformationProcess failed: %d", status);
+        LOG_F(ERROR, "Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
         return FALSE;
     }
 
     DWORD parentPid = (DWORD)pbi.Reserved3; // InheritedFromUniqueProcessId lol
     process->parent_pid = parentPid;
 
-    return TRUE;
+    MYPEB peb;
+    if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
+        // this is the first read, and may fail. 
+        // dont spam log messages
+        LOG_F(WARNING, "Error: Could not ReadProcessMemory1 for error: %d", GetLastError());
+        return FALSE;
+    }
+
+    // PEB directly accessible
+    /*
+    printf("InheritedAddressSpace: %i\n", peb.InheritedAddressSpace);
+    printf("ReadImageFileExecOptions: %i\n", peb.ReadImageFileExecOptions);
+    printf("BeingDebugged : %i\n", peb.BeingDebugged);
+    printf("IsProtectedProcess : %i\n", peb.IsProtectedProcess);
+    printf("IsImageDynamicallyRelocated : %i\n", peb.IsImageDynamicallyRelocated);
+    printf("IsAppContainer : %i\n", peb.IsAppContainer);
+    printf("IsProtectedProcessLight : %i\n", peb.IsProtectedProcessLight);
+    printf("ImageBaseAddress: 0x%p\n", peb.ImageBaseAddress);
+    printf("ProcessUsingVEH: %i\n", peb.ProcessUsingVEH);
+    printf("pImageHeaderHash: 0x%p\n", peb.pImageHeaderHash);
+    */
+    process->is_debugged = peb.BeingDebugged;
+    process->is_protected_process = peb.IsProtectedProcess;
+    process->is_protected_process_light = peb.IsProtectedProcessLight;
+    process->image_base = peb.ImageBaseAddress;
+
+    // ProcessParameters - anoying copying
+    MY_RTL_USER_PROCESS_PARAMETERS procParams;
+    if (!ReadProcessMemory(hProcess, peb.ProcessParameters, &procParams, sizeof(procParams), NULL)) {
+        LOG_F(ERROR, "Error: Could not ReadProcessMemory for %d, error: %d", process->id, GetLastError());
+        return FALSE;
+    }
+    process->commandline = my_get_str(hProcess, &procParams.CommandLine);
+    process->image_path = my_get_str(hProcess, &procParams.ImagePathName);
+    process->working_dir = my_get_str(hProcess, &procParams.CurrentDirectory.DosPath);
+    
+    // No need for these for now
+    //std::wstring DllPath = my_get_str(hProcess, &procParams.DllPath);
+    //std::wstring WindowTitle = my_get_str(hProcess, &procParams.WindowTitle);
+
+    // Ldr
+    // DLL's ?
+}
+
+
+std::wstring format_wstring(const wchar_t* format, ...) {
+    wchar_t buffer[DATA_BUFFER_SIZE];
+
+    va_list args;
+    va_start(args, format);
+    vswprintf(buffer, DATA_BUFFER_SIZE, format, args);
+    va_end(args);
+
+    return std::wstring(buffer);
 }
 
 
@@ -152,37 +135,8 @@ Process* MakeProcess(DWORD pid) {
         return process;
     }
 
-    // Checks
-    // name: vmmem, vmmemWSL
-
-    // ppid
-    if (!GetProcessParentPid(process, hProcess)) {
-        LOG_F(WARNING, "GetProcessParentPid error: %lu: %ls", pid, process->image_path.c_str());
-        CloseHandle(hProcess);
-        return process;
-    }
-
-    // Process Image (ProcessImage)
-    if (!GetProcessImagePath_ProcessImage(process, hProcess)) {
-        LOG_F(WARNING, "GetProcessImagePath_ProcessImage error: %lu: %ls", pid, process->image_path.c_str());
-        CloseHandle(hProcess);
-        return process;
-    }
-
-    // Command Line (PEB)
-    if (!GetProcessCommandLine_Peb(process, hProcess)) {
-        //LOG_F(WARNING, "GetProcessCommandLine_Peb error: %lu: %ls", pid, process->image_path.c_str());
-        process->commandline.assign(L"<unknown>");
-        CloseHandle(hProcess);
-        return process;
-    }
-
-    // Working dir (broken?)
-    if (!GetProcessWorkingDirectory(process, hProcess)) {
-        LOG_F(WARNING, "GetProcessWorkingDirectory error: %lu: %ls", pid, process->image_path.c_str());
-        CloseHandle(hProcess);
-        return process;
-    }
+    augment_process_info(process, hProcess);
+    //return process;
 
     // CHECK: Observe
     BOOL observe = FALSE;
@@ -206,8 +160,24 @@ Process* MakeProcess(DWORD pid) {
     // every new pid comes through here
     // if everything worked
     // if we observe it, we need to DLL inject it too
-    if (observe && g_config.do_dllinjection) {
+    if (observe && g_config.do_udllinjection) {
         remote_inject(pid);
+    }
+
+    if (observe) {
+        std::wstring o = format_wstring(L"type:peb;time:%lld;id:%lld;parent_pid:%lld;image_path:%ls;commandline:%ls;working_dir:%ls;is_debugged:%d;is_protected_process:%d;is_protected_process_light:%d;image_base:0x%p",
+            0,
+            process->id,
+            process->parent_pid,
+            process->image_path,
+            process->commandline,
+            process->working_dir,
+            process->is_debugged,
+            process->is_protected_process,
+            process->is_protected_process_light,
+            process->image_base
+            );
+        do_output(o);
     }
 
     CloseHandle(hProcess);
