@@ -157,6 +157,7 @@
     <ClInclude Include="kernelreader.h" />
     <ClInclude Include="logreader.h" />
     <ClInclude Include="loguru.hpp" />
+    <ClInclude Include="mypeb.h" />
     <ClInclude Include="output.h" />
     <ClInclude Include="procinfo.h" />
   </ItemGroup>

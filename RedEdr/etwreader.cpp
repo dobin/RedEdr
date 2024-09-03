@@ -30,7 +30,7 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
     if (g_config.etw_standard) {
         reader = setup_trace(id++, L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
         if (!reader) {
-            LOG_F(ERROR, "TODO ERROR");
+            LOG_F(ERROR, "Probably open session/trace. Aborting.");
             return 1;
         }
         readers.push_back(reader);
