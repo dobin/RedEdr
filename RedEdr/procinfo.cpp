@@ -37,6 +37,22 @@ typedef NTSTATUS(NTAPI* pNtQueryInformationProcess)(
     PULONG ReturnLength);
 
 
+// FIXME copy from dll
+LARGE_INTEGER get_time() {
+    FILETIME fileTime;
+    LARGE_INTEGER largeInt;
+
+    // Get the current system time as FILETIME
+    GetSystemTimeAsFileTime(&fileTime);
+
+    // Convert FILETIME to LARGE_INTEGER
+    largeInt.LowPart = fileTime.dwLowDateTime;
+    largeInt.HighPart = fileTime.dwHighDateTime;
+
+    return largeInt;
+}
+
+
 // Gets a UNICODE_STRING content in a remote process as wstring
 std::wstring my_get_str(HANDLE hProcess, UNICODE_STRING* u) {
     std::wstring s;
@@ -166,7 +182,7 @@ Process* MakeProcess(DWORD pid) {
 
     if (observe) {
         std::wstring o = format_wstring(L"type:peb;time:%lld;id:%lld;parent_pid:%lld;image_path:%ls;commandline:%ls;working_dir:%ls;is_debugged:%d;is_protected_process:%d;is_protected_process_light:%d;image_base:0x%p",
-            0,
+            get_time(),
             process->id,
             process->parent_pid,
             process->image_path,
