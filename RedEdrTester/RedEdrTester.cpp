@@ -490,6 +490,23 @@ std::wstring format_wstring2(const wchar_t* format, ...) {
 }
 
 
+char* GetMemoryPermissions(char *buf, DWORD protection) {
+    //char permissions[4] = "---"; // Initialize as "---"
+    strcpy_s(buf, 16, "---");
+
+    if (protection & (PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
+        buf[0] = 'R'; // Readable
+    }
+    if (protection & (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
+        buf[1] = 'W'; // Writable
+    }
+    if (protection & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
+        buf[2] = 'X'; // Executable
+    }
+
+    return buf;
+}
+
 int wmain(int argc, wchar_t* argv[]) {
     if (argc != 3) {
         printf("Usage: rededrtester.exe <id> <pid>");
@@ -589,8 +606,8 @@ int wmain(int argc, wchar_t* argv[]) {
         std::wstring json = ConvertToJSON2(input);
         std::wcout << L"JSON Output: " << json << std::endl;
         break;
+
     }
-    
 
 
 }
