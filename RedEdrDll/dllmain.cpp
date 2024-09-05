@@ -3,7 +3,19 @@
 #include "pch.h"
 #include "minhook/include/MinHook.h"
 #include "../Shared/common.h"
+#include <winternl.h>
 
+
+void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
+{
+    if (!ustr || !dest) {
+        return;  // Invalid arguments
+    }
+    size_t numChars = ustr->Length / sizeof(WCHAR);
+    size_t copyLength = numChars < destSize - 1 ? numChars : destSize - 1;
+    wcsncpy_s(dest, destSize, ustr->Buffer, copyLength);
+    dest[copyLength] = L'\0';
+}
 
 //----------------------------------------------------
 
@@ -16,7 +28,7 @@ void SendDllPipe(wchar_t* buffer) {
     if (hPipe == NULL) {
         return;
     }
-    DWORD len = (wcslen(buffer) * 2) + 2; // +2 -> include two trailing 0 bytes
+    DWORD len = (DWORD) (wcslen(buffer) * 2) + 2; // +2 -> include two trailing 0 bytes
     res = WriteFile(
         hPipe,
         buffer,
@@ -89,8 +101,9 @@ DWORD NTAPI NtAllocateVirtualMemory(
 ) {
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
-    int ret = swprintf_s(buf, DATA_BUFFER_SIZE, L"type:dll;time:%llu;krn_pid:%llu;func:AllocateVirtualMemory;pid:%p;base_addr:%p;zero:%#lx;size:%llu;type:%#lx;protect:%#lx",
-        time, (unsigned __int64) GetCurrentProcessId(), ProcessHandle, BaseAddress, ZeroBits, *RegionSize, AllocationType, Protect);
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE, 
+        L"type:dll;time:%llu;krn_pid:%llu;func:AllocateVirtualMemory;pid:%p;base_addr:%p;zero:%#llx;size:%llu;type:%#lx;protect:%#lx",
+        time.QuadPart, (unsigned __int64) GetCurrentProcessId(), ProcessHandle, BaseAddress, ZeroBits, *RegionSize, AllocationType, Protect);
     SendDllPipe(buf);
 
     // jump on the originate NtAllocateVirtualMemory
@@ -143,9 +156,9 @@ DWORD NTAPI NtProtectVirtualMemory(
     GetMemoryPermissions(mem_perm, NewAccessProtection);
     
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE, 
-        L"type:dll;time:%llu;krn_pid:%llu;func:ProtectVirtualMemory;pid:%p;base_addr:%p;size:%llu;new_access:%#lx;new_access_str:%ls;old_access:%#lx",
-        time, (unsigned __int64)GetCurrentProcessId(), ProcessHandle, 
-        BaseAddress, NumberOfBytesToProtect, NewAccessProtection, mem_perm, OldAccessProtection);
+        L"type:dll;time:%llu;krn_pid:%llu;func:ProtectVirtualMemory;pid:%p;base_addr:%p;size:%lu;new_access:%#lx;new_access_str:%ls",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle,
+        BaseAddress, *NumberOfBytesToProtect, NewAccessProtection, mem_perm);
     SendDllPipe(buf);
 
     // jump on the originate NtProtectVirtualMemory
@@ -190,8 +203,8 @@ DWORD NTAPI NtMapViewOfSection(
 
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
         L"type:dll;time:%llu;krn_pid:%llu;func:MapViewOfSection;section_handle:0x%p;process_handle:0x%p;base_address:0x%p;zero_bits:%llu;size:%llu;section_offset:%lld;view_size:%llu;inherit_disposition:%x;alloc_type:%x;protect:%x;protect_str:%ls;",
-        time, (unsigned __int64)GetCurrentProcessId(),
-        SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Protect);
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(),
+        SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset->QuadPart, *ViewSize, InheritDisposition, AllocationType, Protect, mem_perm);
     SendDllPipe(buf);
 
     // jump on the originate NtMapViewOfSection
@@ -221,14 +234,15 @@ DWORD NTAPI NtWriteVirtualMemory(
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:WriteVirtualMemory;process_handle:0x%p;base_address:0x%p;buffer:0x%p;size:%llu",
-        time, (unsigned __int64)GetCurrentProcessId(),
+        L"type:dll;time:%llu;krn_pid:%llu;func:WriteVirtualMemory;process_handle:0x%p;base_address:0x%p;buffer:0x%p;size:%lu",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(),
         ProcessHandle, BaseAddress, Buffer, NumberOfBytesToWrite);
     SendDllPipe(buf);
 
     // jump on the originate NtWriteVirtualMemory
     return pOriginalNtWriteVirtualMemory(ProcessHandle, BaseAddress, Buffer, NumberOfBytesToWrite, NumberOfBytesWritten);
 }
+
 
 /******************* NtSetContextThread ************************/
 
@@ -247,11 +261,391 @@ DWORD NTAPI NtSetContextThread(
 
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
         L"type:dll;time:%llu;krn_pid:%llu;func:SetContextThread;thread_handle:0x%p;",
-        time, (unsigned __int64)GetCurrentProcessId(), ThreadHandle);
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle);
     SendDllPipe(buf);
-
-    // jump on the originate NtSetContextThread
     return pOriginalNtSetContextThread(ThreadHandle, Context);
+}
+
+
+/******************* LdrLoadDll ************************/
+
+typedef DWORD(NTAPI* pLdrLoadDll)(
+    IN PWSTR                PathToFile,
+    IN ULONG                Flags,
+    IN PUNICODE_STRING      ModuleFileName,
+    OUT PHANDLE             ModuleHandle
+    );
+pLdrLoadDll pOriginalLdrLoadDll = NULL;
+DWORD NTAPI LdrLoadDll(
+    IN PWSTR                PathToFile,
+    IN ULONG                Flags,
+    IN PUNICODE_STRING      ModuleFileName,
+    OUT PHANDLE             ModuleHandle
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    wchar_t wModuleFileName[1024];
+
+    UnicodeStringToWChar(ModuleFileName, wModuleFileName, 1024);
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:LdrLoadDll;path:%ls;flags:0x%lx;module:0x%ls;",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), PathToFile, Flags, wModuleFileName);
+    SendDllPipe(buf);
+    return pOriginalLdrLoadDll(PathToFile, Flags, ModuleFileName, ModuleHandle);
+}
+
+
+/******************* LdrGetProcedureAddress ************************/
+
+typedef DWORD(NTAPI* pLdrGetProcedureAddress)(
+    IN HMODULE              ModuleHandle,
+    IN PANSI_STRING         FunctionName,
+    IN WORD                 Oridinal,
+    OUT FARPROC* FunctionAddress
+    );
+pLdrGetProcedureAddress pOriginalLdrGetProcedureAddress = NULL;
+DWORD NTAPI LdrGetProcedureAddress(
+    IN HMODULE              ModuleHandle,
+    IN PANSI_STRING         FunctionName,
+    IN WORD                 Oridinal,
+    OUT FARPROC* FunctionAddress
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    wchar_t wideFunctionName[1024] = L"";
+    if (FunctionName && FunctionName->Buffer) {
+        // Convert ANSI string to wide string
+        MultiByteToWideChar(CP_ACP, 0, FunctionName->Buffer, -1, wideFunctionName, 1024);
+    }
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:LdrGetProcedureAddress;module_handle:0x%p;function:%s;ordinal:0x%hx;",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ModuleHandle, wideFunctionName, Oridinal);
+    SendDllPipe(buf);
+    return pOriginalLdrGetProcedureAddress(ModuleHandle, FunctionName, Oridinal, FunctionAddress);
+}
+
+
+/******************* NtQueueApcThread ************************/
+
+typedef DWORD(NTAPI* pNtQueueApcThread)(
+    IN HANDLE               ThreadHandle, 
+    IN PIO_APC_ROUTINE      ApcRoutine,
+    IN PVOID                ApcRoutineContext OPTIONAL,
+    IN PIO_STATUS_BLOCK     ApcStatusBlock OPTIONAL,
+    IN ULONG                ApcReserved OPTIONAL
+    );
+pNtQueueApcThread pOriginalNtQueueApcThread = NULL;
+DWORD NTAPI NtQueueApcThread(
+    IN HANDLE               ThreadHandle,
+    IN PIO_APC_ROUTINE      ApcRoutine,
+    IN PVOID                ApcRoutineContext OPTIONAL,
+    IN PIO_STATUS_BLOCK     ApcStatusBlock OPTIONAL,
+    IN ULONG                ApcReserved OPTIONAL
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtQueueApcThread;thread_handle:0x%p;",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle);
+    SendDllPipe(buf);
+    return pOriginalNtQueueApcThread(ThreadHandle, ApcRoutine, ApcRoutineContext, ApcStatusBlock, ApcReserved);
+}
+
+
+/******************* NtQueueApcThreadEx ************************/
+
+typedef DWORD(NTAPI* pNtQueueApcThreadEx)(
+    IN HANDLE               ThreadHandle,
+    IN HANDLE               ApcThreadHandle,
+    IN PVOID                ApcRoutine,
+    IN PVOID                ApcArgument1,
+    IN PVOID                ApcArgument2,
+    IN PVOID                ApcArgument3
+    );
+pNtQueueApcThreadEx pOriginalNtQueueApcThreadEx = NULL;
+DWORD NTAPI NtQueueApcThreadEx(
+    IN HANDLE               ThreadHandle,
+    IN HANDLE               ApcThreadHandle,
+    IN PVOID                ApcRoutine,
+    IN PVOID                ApcArgument1,
+    IN PVOID                ApcArgument2,
+    IN PVOID                ApcArgument3
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtQueueApcThreadEx;thread_handle:0x%p;apc_thread:0x%p;apc_routine:0x%p;arg1:0x%p;arg2:0x%p;arg3:0x%p;",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle, ApcThreadHandle, ApcRoutine, ApcArgument1, ApcArgument2, ApcArgument3);
+    SendDllPipe(buf);
+    return pOriginalNtQueueApcThreadEx(ThreadHandle, ApcThreadHandle, ApcRoutine, ApcArgument1, ApcArgument2, ApcArgument3);
+}
+
+
+/******************* NtCreateProcess ************************/
+
+typedef DWORD(NTAPI* pNtCreateProcess)(
+    OUT PHANDLE             ProcessHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes,
+    IN HANDLE               ParentProcess,
+    IN BOOLEAN              InheritObjectTable,
+    IN HANDLE               SectionHandle,
+    IN HANDLE               DebugPort,
+    IN HANDLE               ExceptionPort
+    );
+pNtCreateProcess pOriginalNtCreateProcess = NULL;
+DWORD NTAPI NtCreateProcess(
+    OUT PHANDLE             ProcessHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes,
+    IN HANDLE               ParentProcess,
+    IN BOOLEAN              InheritObjectTable,
+    IN HANDLE               SectionHandle,
+    IN HANDLE               DebugPort,
+    IN HANDLE               ExceptionPort
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateProcess;process_handle:0x%p;access_mask:0x%x;parent_process:0x%p;inherit_table:%d;",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle, DesiredAccess, ParentProcess, InheritObjectTable);
+    SendDllPipe(buf);
+    return pOriginalNtCreateProcess(ProcessHandle, DesiredAccess, ObjectAttributes, ParentProcess, InheritObjectTable, SectionHandle, DebugPort, ExceptionPort);
+}
+
+
+/******************* NtCreateThreadEx ************************/
+
+typedef DWORD(NTAPI* pNtCreateThreadEx)(
+    OUT PHANDLE             ThreadHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes,
+    IN HANDLE               ProcessHandle,
+    IN PVOID                StartRoutine,
+    IN PVOID                Argument,
+    IN ULONG                CreateFlags,
+    IN ULONG_PTR            ZeroBits,
+    IN SIZE_T               StackSize,
+    IN SIZE_T               MaximumStackSize,
+    IN PVOID                AttributeList
+    );
+pNtCreateThreadEx pOriginalNtCreateThreadEx = NULL;
+DWORD NTAPI NtCreateThreadEx(
+    OUT PHANDLE             ThreadHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes,
+    IN HANDLE               ProcessHandle,
+    IN PVOID                StartRoutine,
+    IN PVOID                Argument,
+    IN ULONG                CreateFlags,
+    IN ULONG_PTR            ZeroBits,
+    IN SIZE_T               StackSize,
+    IN SIZE_T               MaximumStackSize,
+    IN PVOID                AttributeList
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateThreadEx;thread_handle:0x%p;process_handle:0x%p;start_routine:0x%p;argument:0x%p;",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle, ProcessHandle, StartRoutine, Argument);
+    SendDllPipe(buf);
+    return pOriginalNtCreateThreadEx(ThreadHandle, DesiredAccess, ObjectAttributes, ProcessHandle, StartRoutine, Argument, CreateFlags, ZeroBits, StackSize, MaximumStackSize, AttributeList);
+}
+
+
+/******************* NtOpenProcess ************************/
+
+typedef DWORD(NTAPI* pNtOpenProcess)(
+    OUT PHANDLE             ProcessHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes,
+    IN CLIENT_ID*           ClientId
+    );
+pNtOpenProcess pOriginalNtOpenProcess = NULL;
+DWORD NTAPI NtOpenProcess(
+    OUT PHANDLE             ProcessHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes,
+    IN CLIENT_ID*           ClientId
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtOpenProcess;process_handle:0x%p;access_mask:0x%x;client_id_process:0x%p;client_id_thread:0x%p;",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle, DesiredAccess, ClientId->UniqueProcess, ClientId->UniqueThread);
+    SendDllPipe(buf);
+    return pOriginalNtOpenProcess(ProcessHandle, DesiredAccess, ObjectAttributes, ClientId);
+}
+
+
+/******************* NtLoadDriver ************************/
+
+typedef DWORD(NTAPI* pNtLoadDriver)(
+    IN PUNICODE_STRING      DriverServiceName
+    );
+pNtLoadDriver pOriginalNtLoadDriver = NULL;
+DWORD NTAPI NtLoadDriver(
+    IN PUNICODE_STRING      DriverServiceName
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    wchar_t wDriverServiceName[1024];
+
+    UnicodeStringToWChar(DriverServiceName, wDriverServiceName, 1024);
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtLoadDriver;driver_service_name:%ls;",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), wDriverServiceName);
+    SendDllPipe(buf);
+    return pOriginalNtLoadDriver(DriverServiceName);
+}
+
+
+/******************* NtCreateNamedPipeFile ************************/
+
+typedef DWORD(NTAPI* pNtCreateNamedPipeFile)(
+    OUT PHANDLE             NamedPipeFileHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes,
+    OUT PIO_STATUS_BLOCK    IoStatusBlock,
+    IN ULONG                ShareAccess,
+    IN ULONG                CreateDisposition,
+    IN ULONG                CreateOptions,
+    IN ULONG                NamedPipeType,
+    IN ULONG                ReadMode,
+    IN ULONG                CompletionMode,
+    IN ULONG                MaximumInstances,
+    IN ULONG                InboundQuota,
+    IN ULONG                OutboundQuota,
+    IN PLARGE_INTEGER       DefaultTimeout
+    );
+pNtCreateNamedPipeFile pOriginalNtCreateNamedPipeFile = NULL;
+DWORD NTAPI NtCreateNamedPipeFile(
+    OUT PHANDLE             NamedPipeFileHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes,
+    OUT PIO_STATUS_BLOCK    IoStatusBlock,
+    IN ULONG                ShareAccess,
+    IN ULONG                CreateDisposition,
+    IN ULONG                CreateOptions,
+    IN ULONG                NamedPipeType,
+    IN ULONG                ReadMode,
+    IN ULONG                CompletionMode,
+    IN ULONG                MaximumInstances,
+    IN ULONG                InboundQuota,
+    IN ULONG                OutboundQuota,
+    IN PLARGE_INTEGER       DefaultTimeout
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateNamedPipeFile;pipe_handle:0x%p;access_mask:0x%x;share_access:0x%x;pipe_type:0x%x;read_mode:0x%x;",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), NamedPipeFileHandle, DesiredAccess, ShareAccess, NamedPipeType, ReadMode);
+    SendDllPipe(buf);
+    return pOriginalNtCreateNamedPipeFile(NamedPipeFileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, CreateDisposition, CreateOptions, NamedPipeType, ReadMode, CompletionMode, MaximumInstances, InboundQuota, OutboundQuota, DefaultTimeout);
+}
+
+
+/******************* NtOpenThread ************************/
+
+typedef DWORD(NTAPI* pNtOpenThread)(
+    OUT PHANDLE             ThreadHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes,
+    IN CLIENT_ID*           ClientId
+    );
+pNtOpenThread pOriginalNtOpenThread = NULL;
+DWORD NTAPI NtOpenThread(
+    OUT PHANDLE             ThreadHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes,
+    IN CLIENT_ID*           ClientId
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtOpenThread;thread_handle:0x%p;access_mask:0x%x;client_id_process:0x%p;client_id_thread:0x%p",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle, DesiredAccess, ClientId->UniqueProcess, ClientId->UniqueThread);
+    SendDllPipe(buf);
+    return pOriginalNtOpenThread(ThreadHandle, DesiredAccess, ObjectAttributes, ClientId);
+}
+
+
+/******************* NtCreateSection ************************/
+
+typedef DWORD(NTAPI* pNtCreateSection)(
+    OUT PHANDLE             SectionHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes,
+    IN PLARGE_INTEGER       MaximumSize,
+    IN ULONG                SectionPageProtection,
+    IN ULONG                AllocationAttributes,
+    IN HANDLE               FileHandle
+    );
+pNtCreateSection pOriginalNtCreateSection = NULL;
+DWORD NTAPI NtCreateSection(
+    OUT PHANDLE             SectionHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes,
+    IN PLARGE_INTEGER       MaximumSize,
+    IN ULONG                SectionPageProtection,
+    IN ULONG                AllocationAttributes,
+    IN HANDLE               FileHandle
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateSection;section_handle:0x%p;access_mask:0x%x;max_size:0x%p;page_protection:0x%x;alloc_attributes:0x%x;file_handle:0x%p;",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), SectionHandle, DesiredAccess, MaximumSize, SectionPageProtection, AllocationAttributes, FileHandle);
+    SendDllPipe(buf);
+    return pOriginalNtCreateSection(SectionHandle, DesiredAccess, ObjectAttributes, MaximumSize, SectionPageProtection, AllocationAttributes, FileHandle);
+}
+
+
+/******************* NtCreateProcessEx ************************/
+
+typedef DWORD(NTAPI* pNtCreateProcessEx)(
+    OUT PHANDLE             ProcessHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes,
+    IN HANDLE               ParentProcess,
+    IN ULONG                Flags,
+    IN HANDLE               SectionHandle,
+    IN HANDLE               DebugPort,
+    IN HANDLE               ExceptionPort,
+    IN BOOLEAN              InJob
+    );
+pNtCreateProcessEx pOriginalNtCreateProcessEx = NULL;
+DWORD NTAPI NtCreateProcessEx(
+    OUT PHANDLE             ProcessHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes,
+    IN HANDLE               ParentProcess,
+    IN ULONG                Flags,
+    IN HANDLE               SectionHandle,
+    IN HANDLE               DebugPort,
+    IN HANDLE               ExceptionPort,
+    IN BOOLEAN              InJob
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateProcessEx;process_handle:0x%p;parent_process:0x%p;flags:0x%lx;section_handle:0x%p;debug_port:0x%p;exception_port:0x%p;in_job:%d;",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle, ParentProcess, Flags, SectionHandle, DebugPort, ExceptionPort, InJob);
+    SendDllPipe(buf);
+    return pOriginalNtCreateProcessEx(ProcessHandle, DesiredAccess, ObjectAttributes, ParentProcess, Flags, SectionHandle, DebugPort, ExceptionPort, InJob);
 }
 
 
@@ -267,16 +661,6 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
 
     InitDllPipe();
 
-    /*
-    +VirtualAlloc, +VirtualProtect
-    +MapViewOfFile, /MapViewOfFile2
-    /VirtualAllocEx, /VirtualProtectEx
-    QueueUserAPC
-    SetThreadContext
-    +WriteProcessMemory, ReadProcessMemory
-
-    +NtMapViewOfSection  NtUnmapViewOfSection  NtUnmapViewOfSectionEx
-    */
 
     MH_CreateHookApi(
         L"ntdll",                                     // Name of the DLL containing the function to  hook
@@ -309,8 +693,86 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
         (LPVOID*)(&pOriginalNtSetContextThread)
     );
 
-    status = MH_EnableHook(MH_ALL_HOOKS);
+    MH_CreateHookApi(
+        L"ntdll",
+        "LdrLoadDll",
+        LdrLoadDll,
+        (LPVOID*)(&pOriginalLdrLoadDll)
+    );
+    MH_CreateHookApi(
+        L"ntdll",
+        "LdrGetProcedureAddress",
+        LdrGetProcedureAddress,
+        (LPVOID*)(&pOriginalLdrGetProcedureAddress)
+    );
+    MH_CreateHookApi(
+        L"ntdll",
+        "NtQueueApcThread",
+        NtQueueApcThread,
+        (LPVOID*)(&pOriginalNtQueueApcThread)
+    );
+    MH_CreateHookApi(
+        L"ntdll",
+        "NtQueueApcThreadEx",
+        NtQueueApcThreadEx,
+        (LPVOID*)(&pOriginalNtQueueApcThreadEx)
+    );
+    MH_CreateHookApi(
+        L"ntdll",
+        "NtCreateProcess",
+        NtCreateProcess,
+        (LPVOID*)(&pOriginalNtCreateProcess)
+    );
+    MH_CreateHookApi(
+        L"ntdll",
+        "NtCreateThreadEx",
+        NtCreateThreadEx,
+        (LPVOID*)(&pOriginalNtCreateThreadEx)
+    );
+    MH_CreateHookApi(
+        L"ntdll",
+        "NtOpenProcess",
+        NtOpenProcess,
+        (LPVOID*)(&pOriginalNtOpenProcess)
+    );
+    MH_CreateHookApi(
+        L"ntdll",
+        "NtLoadDriver",
+        NtLoadDriver,
+        (LPVOID*)(&pOriginalNtLoadDriver)
+    );
+    MH_CreateHookApi(
+        L"ntdll",
+        "NtCreateNamedPipeFile",
+        NtCreateNamedPipeFile,
+        (LPVOID*)(&pOriginalNtCreateNamedPipeFile)
+    );
+    MH_CreateHookApi(
+        L"ntdll",
+        "NtOpenThread",
+        NtOpenThread,
+        (LPVOID*)(&pOriginalNtOpenThread)
+    );
+    MH_CreateHookApi(
+        L"ntdll",
+        "NtCreateSection",
+        NtCreateSection,
+        (LPVOID*)(&pOriginalNtCreateSection)
+    );
+    MH_CreateHookApi(
+        L"ntdll",
+        "NtCreateThreadEx",
+        NtCreateThreadEx,
+        (LPVOID*)(&pOriginalNtCreateThreadEx)
+    );
+    MH_CreateHookApi(
+        L"ntdll",
+        "NtCreateProcessEx",
+        NtCreateProcessEx,
+        (LPVOID*)(&pOriginalNtCreateProcessEx)
+    );
 
+    status = MH_EnableHook(MH_ALL_HOOKS);
     return status;
 }
 

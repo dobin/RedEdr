@@ -61,7 +61,7 @@ If you want ETW Microsoft-Windows-Security-Auditing, start as SYSTEM.
 
 ## Usage
 
-RedEdr will trace all processes containing argument 1 in its process image name (exe path). And its children, recursively. 
+RedEdr will trace all processes containing the `--trace` argument in the respective process image name (exe path). And its children, recursively. 
 
 There are two main modes: 
 * With kernel module (kernel callbacks, KAPC DLL injection)
@@ -131,15 +131,20 @@ RedEdrTester:
 
 ## Hacking
 
+generators:
 * https://github.com/dobin/RedEdr/blob/master/RedEdrDriver/kcallbacks.c
 * https://github.com/dobin/RedEdr/blob/master/RedEdrDll/dllmain.cpp
 
+consumers:
 * https://github.com/dobin/RedEdr/blob/master/RedEdr/etwreader.cpp
 * https://github.com/dobin/RedEdr/blob/master/RedEdr/injecteddllreader.cpp
 * https://github.com/dobin/RedEdr/blob/master/RedEdr/kernelreader.cpp
 
 
 ## Todo
+
+* stack trace
+* 
 
 More consumers:
 * ETW-TI

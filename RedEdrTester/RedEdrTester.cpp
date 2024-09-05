@@ -597,7 +597,7 @@ int wmain(int argc, wchar_t* argv[]) {
         char timeString[100];
         LARGE_INTEGER largeInt;
         largeInt = get_time2();
-        printf("Time: %lld\n", largeInt);
+        printf("Time: %lld\n", largeInt.QuadPart);
         ConvertLargeIntegerToReadableString2(largeInt, timeString, sizeof(timeString));
         printf("Readable Time: %s\n", timeString);
         break;
