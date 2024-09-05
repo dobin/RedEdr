@@ -30,7 +30,9 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
     if (g_config.etw_standard) {
         reader = setup_trace(id++, L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
         if (!reader) {
-            LOG_F(ERROR, "Probably open session/trace. Aborting.");
+            LOG_F(ERROR, "Probably open session/trace. Aborting, try again");
+            //readers.push_back(reader);
+            //EtwReaderStopAll();
             return 1;
         }
         readers.push_back(reader);
@@ -271,10 +273,14 @@ Reader* setup_trace_security_auditing(int id) {
 
 /** Helpers **/
 
-EVENT_TRACE_PROPERTIES* make_SessionProperties(int session_name_len) {
+EVENT_TRACE_PROPERTIES* make_SessionProperties(size_t session_name_len) {
     EVENT_TRACE_PROPERTIES* sessionProperties;
-    ULONG bufferSize = sizeof(EVENT_TRACE_PROPERTIES) + ((session_name_len + 1) * sizeof(wchar_t));
-    sessionProperties = (EVENT_TRACE_PROPERTIES*)malloc(bufferSize);
+    ULONG bufferSize = (ULONG) (sizeof(EVENT_TRACE_PROPERTIES) + ((session_name_len + 1) * sizeof(wchar_t)));
+    sessionProperties = (EVENT_TRACE_PROPERTIES*) malloc(bufferSize);
+    if (sessionProperties == NULL) {
+        LOG_F(ERROR, "Allocating");
+        return NULL;
+    }
     ZeroMemory(sessionProperties, bufferSize);
     sessionProperties->Wnode.BufferSize = bufferSize;
     sessionProperties->Wnode.Flags = WNODE_FLAG_TRACED_GUID;

@@ -28,7 +28,7 @@ Reader* setup_trace_security_auditing(int id);
 
 
 // Helper
-EVENT_TRACE_PROPERTIES* make_SessionProperties(int session_name_len);
+EVENT_TRACE_PROPERTIES* make_SessionProperties(size_t session_name_len);
 void EnableProvider(TRACEHANDLE sessionHandle, const GUID& providerGuid);
 void EtwReaderStopAll();
 BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType);

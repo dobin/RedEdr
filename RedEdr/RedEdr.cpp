@@ -43,7 +43,7 @@ BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpszPrivilege, BOOL bEnablePrivilege) {
 
     // Enable the privilege or disable all privileges.
     if (!AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL)) {
-        LOG_F(ERROR, "AdjustTokenPrivileges error: %d");
+        LOG_F(ERROR, "AdjustTokenPrivileges error: %d", GetLastError());
         return FALSE;
     }
 
@@ -282,7 +282,7 @@ int main(int argc, char* argv[]) {
     // etw: ControlTrace EVENT_TRACE_CONTROL_STOP all, which makes the threads return
     // logreader: threads will persist, but WaitForMultipleObject() will still return
     LOG_F(INFO, "--( waiting for %llu threads...", threads.size());
-    DWORD res = WaitForMultipleObjects(threads.size(), threads.data(), TRUE, INFINITE);
+    DWORD res = WaitForMultipleObjects((DWORD) threads.size(), threads.data(), TRUE, INFINITE);
     if (res == WAIT_FAILED) {
         LOG_F(INFO, "--( Wait failed");
     }
