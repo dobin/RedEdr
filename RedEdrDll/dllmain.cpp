@@ -6,6 +6,7 @@
 #include <winternl.h>
 
 
+
 void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
 {
     if (!ustr || !dest) {
@@ -649,6 +650,98 @@ DWORD NTAPI NtCreateProcessEx(
 }
 
 
+/******************* NtCreateEvent ************************/
+
+typedef enum _EVENT_TYPE {
+    NotificationEvent = 0,
+    SynchronizationEvent = 1
+} EVENT_TYPE;
+
+typedef DWORD(NTAPI* pNtCreateEvent)(
+    OUT PHANDLE             EventHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes OPTIONAL,
+    IN EVENT_TYPE           EventType,
+    IN BOOLEAN              InitialState
+    );
+pNtCreateEvent pOriginalNtCreateEvent = NULL;
+DWORD NTAPI NtCreateEvent(
+    OUT PHANDLE             EventHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes OPTIONAL,
+    IN EVENT_TYPE           EventType,
+    IN BOOLEAN              InitialState
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateEvent;desired_access:0x%x;event_type:%d;initial_state:%d;",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), DesiredAccess, EventType, InitialState);
+    SendDllPipe(buf);
+    return pOriginalNtCreateEvent(EventHandle, DesiredAccess, ObjectAttributes, EventType, InitialState);
+}
+
+
+/******************* NtCreateTimer ************************/
+
+typedef enum _TIMER_TYPE {
+    NotificationTimer,
+    SynchronizationTimer
+} TIMER_TYPE;
+
+typedef DWORD(NTAPI* pNtCreateTimer)(
+    OUT PHANDLE             TimerHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes OPTIONAL,
+    IN TIMER_TYPE           TimerType
+    );
+pNtCreateTimer pOriginalNtCreateTimer = NULL;
+DWORD NTAPI NtCreateTimer(
+    OUT PHANDLE             TimerHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes OPTIONAL,
+    IN TIMER_TYPE           TimerType
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateTimer;desired_access:0x%x;timer_type:%d;",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), DesiredAccess, TimerType);
+    SendDllPipe(buf);
+    return pOriginalNtCreateTimer(TimerHandle, DesiredAccess, ObjectAttributes, TimerType);
+}
+
+
+/******************* NtCreateTimer2 ************************/
+
+typedef DWORD(NTAPI* pNtCreateTimer2)(
+    OUT PHANDLE             TimerHandle,
+    IN PVOID                Reserved1 OPTIONAL,
+    IN PVOID                Reserved2 OPTIONAL,
+    IN ULONG                Attributes,
+    IN ACCESS_MASK          DesiredAccess
+    );
+pNtCreateTimer2 pOriginalNtCreateTimer2 = NULL;
+DWORD NTAPI NtCreateTimer2(
+    OUT PHANDLE             TimerHandle,
+    IN PVOID                Reserved1 OPTIONAL,
+    IN PVOID                Reserved2 OPTIONAL,
+    IN ULONG                Attributes,
+    IN ACCESS_MASK          DesiredAccess
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateTimer2;attributes:0x%lx;desired_access:0x%x;",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), Attributes, DesiredAccess);
+    SendDllPipe(buf);
+    return pOriginalNtCreateTimer2(TimerHandle, Reserved1, Reserved2, Attributes, DesiredAccess);
+}
+
+
 //----------------------------------------------------
 
 
@@ -770,6 +863,25 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
         "NtCreateProcessEx",
         NtCreateProcessEx,
         (LPVOID*)(&pOriginalNtCreateProcessEx)
+    );
+
+    MH_CreateHookApi(
+        L"ntdll",
+        "NtCreateEvent",
+        NtCreateEvent,
+        (LPVOID*)(&pOriginalNtCreateEvent)
+    );
+    MH_CreateHookApi(
+        L"ntdll",
+        "NtCreateTimer",
+        NtCreateTimer,
+        (LPVOID*)(&pOriginalNtCreateTimer)
+    );
+    MH_CreateHookApi(
+        L"ntdll",
+        "NtCreateTimer2",
+        NtCreateTimer2,
+        (LPVOID*)(&pOriginalNtCreateTimer2)
     );
 
     status = MH_EnableHook(MH_ALL_HOOKS);
