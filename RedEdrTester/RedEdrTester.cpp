@@ -507,7 +507,93 @@ char* GetMemoryPermissions(char *buf, DWORD protection) {
     return buf;
 }
 
+
+
+// Will send some data to the RedEdr DllReader
+BOOL FakePplPipeClient() {
+    DWORD bytesWritten;
+    //wchar_t buffer[DATA_BUFFER_SIZE] = L"Test:RedEdrTester:FakeDllPipeClient";
+    wchar_t buffer[DATA_BUFFER_SIZE] = L"012345678901234567890123456789";
+    HANDLE hPipe;
+    int n = 0;
+    while (TRUE) {
+        hPipe = CreateFile(
+            PPL_SERVICE_PIPE_NAME,
+            GENERIC_WRITE,
+            0,
+            NULL,
+            OPEN_EXISTING,
+            0,
+            NULL);
+        if (hPipe == INVALID_HANDLE_VALUE) {
+            printf("Error creating named pipe: %ld\n", GetLastError());
+            return 1;
+        }
+        DWORD len;
+//        while (TRUE) {
+        if (1) {
+            //swprintf_s(buffer, sizeof(buffer), L"Test:RedEdrTester:FakeDllPipeClient:%d", n++);
+            wcscpy_s(buffer, DATA_BUFFER_SIZE, L"start");
+            len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
+            if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
+                printf("Error writing to named pipe: %ld\n", GetLastError());
+                CloseHandle(hPipe);
+                return 1;
+            }
+            wprintf(L"Wrote: %s\n", buffer);
+            Sleep(10000);
+
+            /*wcscpy_s(buffer, DATA_BUFFER_SIZE, L"TESCHT");
+            len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
+            if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
+                printf("Error writing to named pipe: %ld\n", GetLastError());
+                CloseHandle(hPipe);
+                return 1;
+            }
+            printf("Wrote: %d\n", len);
+            Sleep(1000);
+
+            wcscpy_s(buffer, DATA_BUFFER_SIZE, L"TESCHT2");
+            len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
+            if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
+                printf("Error writing to named pipe: %ld\n", GetLastError());
+                CloseHandle(hPipe);
+                return 1;
+            }
+            printf("Wrote: %d\n", len);
+            Sleep(1000);*/
+
+            wcscpy_s(buffer, DATA_BUFFER_SIZE, L"stop");
+            len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
+            if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
+                printf("Error writing to named pipe: %ld\n", GetLastError());
+                CloseHandle(hPipe);
+                return 1;
+            }
+            wprintf(L"Wrote: %s\n", buffer);
+            Sleep(1000);
+        //} else {
+            wcscpy_s(buffer, DATA_BUFFER_SIZE, L"shutdown");
+            len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
+            if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
+                printf("Error writing to named pipe: %ld\n", GetLastError());
+                CloseHandle(hPipe);
+                return 1;
+            }
+            wprintf(L"Wrote: %s\n", buffer);
+            
+        }
+//        }
+
+        CloseHandle(hPipe);
+    }
+}
+
+
 int wmain(int argc, wchar_t* argv[]) {
+    FakePplPipeClient();
+    return 0;
+
     if (argc != 3) {
         printf("Usage: rededrtester.exe <id> <pid>");
         return 1;

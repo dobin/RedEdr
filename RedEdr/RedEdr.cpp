@@ -24,6 +24,7 @@
 #include "procinfo.h"
 #include "injecteddllreader.h"
 #include "driverinterface.h"
+#include "pplreader.h"
 #include "../Shared/common.h"
 
 
@@ -158,6 +159,7 @@ int main(int argc, char* argv[]) {
         ("1,krnload", "Kernel Module: Load", cxxopts::value<bool>()->default_value("false"))
         ("2,krnreload", "Kernel Module: ReLoad", cxxopts::value<bool>()->default_value("false"))
         ("3,krnunload", "Kernel Module: Unload", cxxopts::value<bool>()->default_value("false"))
+        ("4,pplstart", "PPL service: load", cxxopts::value<bool>()->default_value("false"))
 
         ("l,dllreader", "Debug: DLL reader but no injection (for manual injection tests)", cxxopts::value<bool>()->default_value("false"))
         ("d,debug", "Enable debugging", cxxopts::value<bool>()->default_value("false"))
@@ -186,6 +188,11 @@ int main(int argc, char* argv[]) {
         exit(0);
     } else if (result.count("krnunload")) {
         UnloadDriver();
+        exit(0);
+    }
+    else if (result.count("pplstart")) {
+        install_elam_cert();
+        install_ppl_service();
         exit(0);
     }
 
