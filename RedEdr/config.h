@@ -21,6 +21,7 @@ public:
 
 	LPCSTR inject_dll_path = "C:\\RedEdr\\RedEdrDll.dll";
 	bool do_etw = false;
+	bool do_etwti = false;
 	bool do_mplog = false;
 	bool do_kernelcallback = false;
 	bool do_dllinjection = false;
