@@ -201,6 +201,7 @@ int main(int argc, char* argv[]) {
     }
     else if (result.count("pplstop")) {
         // Needs to be started as PPL to work
+        pplreader_shutdown();
         remove_ppl_service();
         exit(0);
     }

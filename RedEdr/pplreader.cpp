@@ -52,6 +52,41 @@ BOOL pplreader_enable(BOOL e) {
 }
 
 
+
+BOOL pplreader_shutdown() {
+    DWORD bytesWritten;
+    wchar_t buffer[DATA_BUFFER_SIZE] = { 0 };
+    HANDLE hPipe;
+    int n = 0;
+    DWORD len;
+
+    hPipe = CreateFile(
+        PPL_SERVICE_PIPE_NAME,
+        GENERIC_WRITE,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        0,
+        NULL);
+    if (hPipe == INVALID_HANDLE_VALUE) {
+        LOG_F(ERROR, "Error creating named pipe: %ld\n", GetLastError());
+        return 1;
+    }
+
+    wcscpy_s(buffer, DATA_BUFFER_SIZE, L"shutdown");
+    len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
+    if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
+        LOG_F(ERROR, "Error writing to named pipe: %ld\n", GetLastError());
+        CloseHandle(hPipe);
+        return FALSE;
+    }
+    LOG_F(INFO, "ppl reader: Enabled");
+
+    CloseHandle(hPipe);
+    return TRUE;
+}
+
+
 DWORD install_elam_cert()
 {
     DWORD retval = 0;
