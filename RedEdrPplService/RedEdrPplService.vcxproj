@@ -139,11 +139,13 @@
     <ClCompile Include="control.c" />
     <ClCompile Include="emitter.c" />
     <ClCompile Include="RedEdrPplService.c" />
+    <ClCompile Include="utils.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="consumer.h" />
     <ClInclude Include="control.h" />
     <ClInclude Include="emitter.h" />
+    <ClInclude Include="utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

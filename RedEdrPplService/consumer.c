@@ -8,16 +8,19 @@
 #include <stdlib.h>
 #include <evntrace.h>
 
+#include <sddl.h>
+
 #include "emitter.h"
 #pragma comment(lib, "Ole32.lib")
 #pragma comment(lib, "tdh.lib")
 
-/* NOTE: Copied from etwreader.cpp */
 
-//wchar_t* SessionName = L"RedEdrPplServiceEtwTiReader_2";
-wchar_t* SessionName = L"RedEdr__11";
+/* NOTE: Most copied from RedEdr/etwreader.cpp */
 
+
+wchar_t* SessionName = L"RedEdrPplServiceEtwTiReader";
 BOOL enabled_consumer = FALSE;
+
 
 void enable_consumer(BOOL e) {
     log_message(L"Consumer: Enable: %d", e);
@@ -34,7 +37,7 @@ void PrintProperties(wchar_t *eventName, PEVENT_RECORD eventRecord) {
         status = TdhGetEventInformation(eventRecord, 0, NULL, eventInfo, &bufferSize);
     }
     if (ERROR_SUCCESS != status) {
-        wprintf(L"TdhGetEventInformation failed\n");
+        log_message(L"Consumer: TdhGetEventInformation failed\n");
         if (eventInfo) {
             free(eventInfo);
         }
@@ -110,8 +113,75 @@ void PrintProperties(wchar_t *eventName, PEVENT_RECORD eventRecord) {
                 stLocal.wHour, stLocal.wMinute, stLocal.wSecond);
             break;
         }
+
+        case TDH_INTYPE_INT8:
+            swprintf(output + wcslen(output), 32, L"%d;", *(PCHAR)propertyBuffer);
+            break;
+        case TDH_INTYPE_UINT8:
+            swprintf(output + wcslen(output), 32, L"%u;", *(PUCHAR)propertyBuffer);
+            break;
+        case TDH_INTYPE_INT16:
+            swprintf(output + wcslen(output), 32, L"%d;", *(PSHORT)propertyBuffer);
+            break;
+        case TDH_INTYPE_UINT16:
+            swprintf(output + wcslen(output), 32, L"%u;", *(PUSHORT)propertyBuffer);
+            break;
+        case TDH_INTYPE_INT32:
+            swprintf(output + wcslen(output), 32, L"%d;", *(PLONG)propertyBuffer);
+            break;
+        case TDH_INTYPE_INT64:
+            swprintf(output + wcslen(output), 32, L"%lld;", *(PLONGLONG)propertyBuffer);
+            break;
+        case TDH_INTYPE_FLOAT:
+            swprintf(output + wcslen(output), 32, L"%f;", *(PFLOAT)propertyBuffer);
+            break;
+        case TDH_INTYPE_DOUBLE:
+            swprintf(output + wcslen(output), 32, L"%lf;", *(DOUBLE*)propertyBuffer);
+            break;
+        case TDH_INTYPE_BOOLEAN:
+            swprintf(output + wcslen(output), 32, L"%d;", *(PBOOL)propertyBuffer);
+            break;
+        case TDH_INTYPE_BINARY: {
+            // Print each byte in hexadecimal
+            for (ULONG j = 0; j < bufferSize; j++) {
+                swprintf(output + wcslen(output), 4, L"%02X", ((PBYTE)propertyBuffer)[j]);
+            }
+            wcscat_s(output, sizeof(output) / sizeof(output[0]), L";");
+            break;
+        }
+        case TDH_INTYPE_GUID: {
+            GUID* guid = (GUID*)propertyBuffer;
+            swprintf(output + wcslen(output), 64, L"{%08x-%04x-%04x-%04x-%012x};", guid->Data1, guid->Data2, guid->Data3, *((USHORT*)guid->Data4), *((ULONG*)&guid->Data4[2]));
+            break;
+        }
+        case TDH_INTYPE_SYSTEMTIME: {
+            SYSTEMTIME* st = (SYSTEMTIME*)propertyBuffer;
+            swprintf(output + wcslen(output), 64, L"%04d-%02d-%02d %02d:%02d:%02d;", st->wYear, st->wMonth, st->wDay, st->wHour, st->wMinute, st->wSecond);
+            break;
+        }
+        case TDH_INTYPE_HEXINT32:
+            swprintf(output + wcslen(output), 32, L"0x%08X;", *(PULONG)propertyBuffer);
+            break;
+        case TDH_INTYPE_HEXINT64:
+            swprintf(output + wcslen(output), 32, L"0x%016llX;", *(PULONG64)propertyBuffer);
+            break;
+        case TDH_INTYPE_SID: {
+            PSID sid = (PSID)propertyBuffer;
+            WCHAR sidString[256];
+            if (ConvertSidToStringSid(sid, &sidString)) {
+                wcscat_s(output, sizeof(output) / sizeof(output[0]), sidString);
+                wcscat_s(output, sizeof(output) / sizeof(output[0]), L";");
+            }
+            break;
+        }
+
         default:
-            wcscat_s(output, sizeof(output) / sizeof(output[0]), L"(Unknown type);");
+            swprintf(output + wcslen(output), 32, L"%d:0x%x;",
+                eventInfo->EventPropertyInfoArray[i].nonStructType.InType,
+                propertyBuffer
+                );
+
+            //wcscat_s(output, sizeof(output) / sizeof(output[0]), L"(Unknown type);");
             break;
         }
 
@@ -128,32 +198,23 @@ void PrintProperties(wchar_t *eventName, PEVENT_RECORD eventRecord) {
     SendEmitterPipe(output);
 }
 
+
+// Only for testing
 void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
     if (eventRecord == NULL || !enabled_consumer) {
         return;
     }
     wchar_t id[32];
 
-    // Do we want to track this process?
-    //DWORD processId = eventRecord->EventHeader.ProcessId;
-    //if (!g_cache.observe(processId)) {
-    //    return;
-    //}
-
     switch (eventRecord->EventHeader.EventDescriptor.Id) {
     case 1:
-        //log_message(L"-> Start process");
-        //SendEmitterPipe(L"-> Sart Process: enabled: %d", enabled_consumer);
         wcsncpy_s(id, 32, L"StartProcess", _TRUNCATE);
         break;
     case 3:
-        //log_message(L"-> Start thread");
-        //SendEmitterPipe(L"-> Sart thread");
         wcsncpy_s(id, 32, L"StartThread", _TRUNCATE);
         break;
     case 5:
         wcsncpy_s(id, 32, L"LoadImage", _TRUNCATE);
-        //log_message(L"-> load image");
         break;
     default:
         return;
@@ -161,7 +222,6 @@ void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
 
     PrintProperties(id, eventRecord);
 }
-
 
 
 void WINAPI EventRecordCallbackTi(PEVENT_RECORD eventRecord) {
@@ -200,6 +260,8 @@ void WINAPI EventRecordCallbackTi(PEVENT_RECORD eventRecord) {
 
 DWORD WINAPI TraceProcessingThread(LPVOID param) {
     setup_trace(L"{f4e1897c-bb5d-5668-f1d8-040f4d8dd344}", &EventRecordCallbackTi, L"Microsoft-Windows-Threat-Intelligence");
+    
+    // For testing only:
     //setup_trace(L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
     return 0;
 }
@@ -221,7 +283,7 @@ EVENT_TRACE_PROPERTIES* make_SessionProperties(size_t session_name_len) {
     ULONG bufferSize = (ULONG)(sizeof(EVENT_TRACE_PROPERTIES) + ((session_name_len + 1) * sizeof(wchar_t)));
     sessionProperties = (EVENT_TRACE_PROPERTIES*)malloc(bufferSize);
     if (sessionProperties == NULL) {
-        log_message(L"Allocating");
+        log_message(L"Consumer error: Allocating");
         return NULL;
     }
     ZeroMemory(sessionProperties, bufferSize);
@@ -235,39 +297,39 @@ EVENT_TRACE_PROPERTIES* make_SessionProperties(size_t session_name_len) {
 
 
 BOOL shutdown_etwti_reader() {
-    log_message(L"--[ Stopping EtwTracing");
+    log_message(L"Consumer: Stopping EtwTracing");
     ULONG status;
     EVENT_TRACE_PROPERTIES* sessionProperties;
 
     sessionProperties = make_SessionProperties(wcslen(SessionName));
     if (SessionHandle != NULL) {
-        log_message(L"  Stop Session with ControlTrace(EVENT_TRACE_CONTROL_STOP)");
+        log_message(L"Consumer: Stop Session with ControlTrace(EVENT_TRACE_CONTROL_STOP)");
         status = ControlTrace(SessionHandle, SessionName, sessionProperties, EVENT_TRACE_CONTROL_STOP);
         if (status != ERROR_SUCCESS) {
-            log_message(L"    Failed to stop trace");
+            log_message(L"Consumer: Failed to stop trace");
         }
         else {
-            log_message(L"    ControlTrace stopped");
+            log_message(L"Consumer: ControlTrace stopped");
         }
         SessionHandle = NULL;
     }
     free(sessionProperties);
 
     if (TraceHandle != INVALID_PROCESSTRACE_HANDLE) {
-        log_message(L"  CloseTrace()");
+        log_message(L"Consumer: CloseTrace()");
 
         status = CloseTrace(TraceHandle);
         if (status == ERROR_CTX_CLOSE_PENDING) {
             // The call was successful. The ProcessTrace function will stop 
             // after it has processed all real-time events in its buffers 
             // (it will not receive any new events).
-            log_message(L"    CloseTrace() success but pending");
+            log_message(L"Consumer: CloseTrace() success but pending");
         }
         else if (status == ERROR_SUCCESS) {
-            log_message(L"    CloseTrace() success");
+            log_message(L"Consumer: CloseTrace() success");
         }
         else {
-            log_message(L"    CloseTrace() failed: %d", status);
+            log_message(L"Consumer: CloseTrace() failed: %d", status);
         }
         TraceHandle = INVALID_PROCESSTRACE_HANDLE;
     }
@@ -280,11 +342,11 @@ BOOL setup_trace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wch
     SessionHandle = NULL;
     TraceHandle = INVALID_PROCESSTRACE_HANDLE;
 
-    log_message(L"--[ Setup ETW-TI Reader");
+    log_message(L"Consumer: Setup ETW-TI Reader");
 
     // Convert CLSID
     if (CLSIDFromString(guid, &providerGuid) != NOERROR) {
-        log_message(L"Invalid provider GUID format");
+        log_message(L"Consumer: error: Invalid provider GUID format");
         return FALSE;
     }
 
@@ -292,11 +354,11 @@ BOOL setup_trace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wch
     EVENT_TRACE_PROPERTIES* sessionProperties = make_SessionProperties(wcslen(SessionName));
     status = StartTrace(&SessionHandle, SessionName, sessionProperties);
     if (status != ERROR_SUCCESS) {
-        log_message(L"Failed to start trace: %d", status);
+        log_message(L"Consumer: Failed to start trace: %d", status);
         free(sessionProperties);
 
         if (status == ERROR_ALREADY_EXISTS) {
-            log_message(L"-> Already exists");
+            log_message(L"Consumer: Trace already exists");
         }
 
         return FALSE;
@@ -306,9 +368,9 @@ BOOL setup_trace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wch
     status = EnableTraceEx2(SessionHandle,  &providerGuid, EVENT_CONTROL_CODE_ENABLE_PROVIDER,
         TRACE_LEVEL_INFORMATION, 0, 0, 0, NULL);
     if (status != ERROR_SUCCESS) {
-        log_message(L"Failed to enable provider: %d", status);
+        log_message(L"Consumer: Failed to enable provider: %d", status);
         if (status == ERROR_ACCESS_DENIED) {
-            log_message(L"No permission, start in elevated prompt");
+            log_message(L"Consumer: No permission");
         }
         return FALSE;
     }
@@ -321,7 +383,7 @@ BOOL setup_trace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wch
     traceLogfile.EventRecordCallback = func;
     TraceHandle = OpenTrace(&traceLogfile);
     if (TraceHandle == INVALID_PROCESSTRACE_HANDLE) {
-        log_message(L"Failed to open trace: %d", GetLastError());
+        log_message(L"Consumer: Failed to open trace: %d", GetLastError());
         free(sessionProperties);
         return NULL;
     }
@@ -329,13 +391,11 @@ BOOL setup_trace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wch
 
     // Start it (blocking)
     TRACEHANDLE traceHandles[] = { TraceHandle };
-    log_message(L"--[ ETW Listening now...");
+    log_message(L"Consumer: ETW Listening start");
     status = ProcessTrace(traceHandles, 1, 0, 0);
     if (status != ERROR_SUCCESS) {
-        log_message(L"ProcessTrace() failed with error: %d", status);
+        log_message(L"Consumer: ProcessTrace() failed with error: %d", status);
     }
 
-    log_message(L"--[ All good");
+    log_message(L"Consumer: ETW Listening stopped");
 }
-
-
