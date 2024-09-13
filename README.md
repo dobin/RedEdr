@@ -22,6 +22,7 @@ Same data as an EDR sees.
     * Microsoft-Antimalware-AMFilter
     * Microsoft-Antimalware-Scan-Interface
     * Microsoft-Antimalware-Protection
+* ETW-TI (Threat Intelligence)
 
 * Kernel Callbacks
   * PsSetCreateProcessNotifyRoutine
@@ -36,16 +37,16 @@ Same data as an EDR sees.
 
 ## Requirements
 
-Use a VM.
+Use a VM. Tested on Win10. 
 
-To compile the kernel driver: 
-* Install WDK (+SDK): https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk
-
-Change Windows boot options to enable self-signed kernel drivers:
+Change Windows boot options to enable self-signed kernel drivers and reboot:
 ```
 bcdedit /set testsigning on
 bcdedit -debug on
 ```
+
+To compile the kernel driver: 
+* Install WDK (+SDK): https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk
 
 After compiling solution (all "Debug"), you should have: 
 * C:\RedEdr\RedEdr.exe: The userspace component
@@ -54,88 +55,46 @@ After compiling solution (all "Debug"), you should have:
 
 Everything should be in `C:\RedEdr`. No other directories are supported.
 
-Execute as admin obviously. 
-
-If you want ETW Microsoft-Windows-Security-Auditing, start as SYSTEM. 
+Start an local admin shell to execute `RedEdr.exe`. If you want ETW Microsoft-Windows-Security-Auditing, use SYSTEM (?). 
 
 
 ## Usage
 
-RedEdr will trace all processes containing the `--trace` argument in the respective process image name (exe path). And its children, recursively. 
+RedEdr will trace all processes containing by process image name (exe path). And its children, recursively. 
 
 There are two main modes: 
-* With kernel module (kernel callbacks, KAPC DLL injection)
-* Without kernel module (ETW, mplog)
+* With kernel module
+* Without kernel module
 
 I recommend to use it with kernel module. For a quick test, you can use RedEdr without. 
 RedEdr only traces newly created processes, with the `--trace` argument in the image
-name. After starting RedEdr, just start `notepad.exe`. Make sure you have the right name, 
-check with `tasklist | findstr notepad.exe` (could be `Notepad`?).
+name. After starting RedEdr, just start `notepad.exe`.
 
 Only ETW, no kernel module:
 ```
 PS > .\RedEdr.exe --etw --trace notepad.exe
 ```
 
-Kernel module callbacks and KAPC DLL injection into processes: 
+Only kernel module (callbacks, KAPC DLL injection): 
 ```
 PS > .\RedEdr.exe --kernel --inject --trace notepad.exe
 ```
 
 
-If you want just the events, without any log output:
+If you want just the events, without any debug output:
 ```
-PS > .\RedEdr.exe ... --trace notepad.exe 2>$null
+PS > .\RedEdr.exe --kernel --inject --etw 2>$null
 ```
-
-Start with web server returning all event on `http://localhost:8080` as json array:
-```
-PS > .\RedEdr.exe ... --trace notepad.exe --web
-```
-
 
 ## Example Output
 
 
 
-# Source
-
-## Solutions
-
-All should be compiled in "Debug" mode. 
-
-RedEdr: 
-* ETW reader
-* MPLOG reader
-* pipe-server for RedEdrDll (`pipe\\RedEdrDllCom`)
-* pipe-server for RedEdrDriver (`pipe\\RedEdrKrnCom`)
-
-RedEdrDriver:
-* Kernel driver to capture kernel callbacks
-* Will do KAPC injection
-* connects to RedEdr pipe server to transmit captured data
-
-RedEdrDll: 
-* amsi.dll style, to be injected into target processes
-* connects to RedEdr pipe server to transmit captured data
-
-RedEdrTester: 
-* internal testing tool
-
-
-## Pipes
-
-* `\\.\pipe\RedEdrDllCom`: injected DLL -> RedEdr server communication
-* `\\.\pipe\RedEdrKrnCom`: Kernel server -> RedEdr communication
-
-
 ## Hacking
 
-generators:
 * https://github.com/dobin/RedEdr/blob/master/RedEdrDriver/kcallbacks.c
 * https://github.com/dobin/RedEdr/blob/master/RedEdrDll/dllmain.cpp
 
-consumers:
 * https://github.com/dobin/RedEdr/blob/master/RedEdr/etwreader.cpp
 * https://github.com/dobin/RedEdr/blob/master/RedEdr/injecteddllreader.cpp
 * https://github.com/dobin/RedEdr/blob/master/RedEdr/kernelreader.cpp
@@ -143,11 +102,7 @@ consumers:
 
 ## Todo
 
-* stack trace
-* 
-
 More consumers:
-* ETW-TI
 * Kernel ETW?
 * Kernel minifilter?
 * AMSI provider
@@ -164,10 +119,20 @@ Based on MyDumbEdr
 
 With KAPC injection from:
 * https://github.com/0xOvid/RootkitDiaries/
+* No license
 
+To run as PPL: 
+* https://github.com/pathtofile/PPLRunner/
+* No license
 
 
 ## Example Output
+
+From `notepad.exe` start. Test output with less information.
+
+* KRN: Kernel callbacks (no thread or ob here)
+* DLL: KAPC injected DLL (only `AllocateVirtualMemory`)
+* ETW: ETW (only Microsoft-Windows-Kernel-Process here)
 
 ```
 C:\Windows\system32>c:\rededr\rededr.exe --trace notepad --kernel --inject --etw
@@ -283,7 +248,6 @@ ProcessID:10432;ThreadID:3676;LoadImage:5;ProviderName:Microsoft-Windows-Kernel-
 ProcessID:10432;ThreadID:5020;StartThread:3;ProviderName:Microsoft-Windows-Kernel-Process;ProcessID:10432;ThreadID:9628;StackBase:000002199A44EF10;StackLimit:000002199A44FAF0;UserStackBase:000002199A44F730;UserStackLimit:000002199A44F410;StartAddr:000002199A44F730;Win32StartAddr:000002199A44FC80;TebBase:000002199A44ED80;SubProcessTag:0;
 ProcessID:10432;ThreadID:3676;LoadImage:5;ProviderName:Microsoft-Windows-Kernel-Process;ImageBase:000002199A44F730;ImageSize:000002199A44F140;ProcessID:10432;ImageCheckSum:0;TimeDateStamp:1723914219;DefaultBase:000002199A44FC80;ImageName:\Device\HarddiskVolume2\RedEdr\RedEdrDll.dll;DLL: pid:10432:AllocateVirtualMemory:FFFFFFFFFFFFFFFF:00000047B107E8E0:0:4096:0x1000:0x4
 DLL: pid:10432:AllocateVirtualMemory:FFFFFFFFFFFFFFFF:00000047B107E8D0:0:4096:0x1000:0x4
-
 ProcessID:10432;ThreadID:3676;LoadImage:5;ProviderName:Microsoft-Windows-Kernel-Process;ImageBase:000002199A44EDD0;ImageSize:000002199A44F870;ProcessID:10432;ImageCheckSum:215677;TimeDateStamp:3390545094;DefaultBase:000002199A44FC80;ImageName:\Device\HarddiskVolume2\Windows\System32\vcruntime140d.dll;
 ProcessID:10432;ThreadID:3676;LoadImage:5;ProviderName:Microsoft-Windows-Kernel-Process;ImageBase:000002199A44F410;ImageSize:000002199A44F460;ProcessID:10432;ImageCheckSum:2249853;TimeDateStamp:3642813796;DefaultBase:000002199A44EF10;ImageName:\Device\HarddiskVolume2\Windows\System32\ucrtbased.dll;
 ProcessID:10432;ThreadID:3676;StartThread:3;ProviderName:Microsoft-Windows-Kernel-Process;ProcessID:10432;ThreadID:8208;StackBase:000002199A44FC80;StackLimit:000002199A44EEC0;UserStackBase:000002199A44FD70;UserStackLimit:000002199A44FF50;StartAddr:000002199A450040;Win32StartAddr:000002199A44EDD0;TebBase:000002199A44EEC0;SubProcessTag:0;
