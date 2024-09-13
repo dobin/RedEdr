@@ -24,6 +24,7 @@
 #include "procinfo.h"
 #include "injecteddllreader.h"
 #include "driverinterface.h"
+#include "pplreader.h"
 #include "../Shared/common.h"
 
 
@@ -94,24 +95,25 @@ void shutdown_all() {
         LOG_F(INFO, "-- Stop kernel reader and injected dll reader");
         KernelReaderStopAll();
     }
+    // ETW-TI
+    if (g_config.do_etwti) {
+        pplreader_enable(FALSE);
+    }
     // Shutdown dll reader
-    if (g_config.do_dllinjection) {
+    if (g_config.do_dllinjection || g_config.do_etwti) {
         LOG_F(INFO, "-- Stop DLL reader");
         InjectedDllReaderStopAll();
     }
-    
     // Special case
     if (g_config.debug_dllreader) {
         LOG_F(INFO, "-- Stop DLL reader");
         InjectedDllReaderStopAll();
     }
-
     // ETW
     if (g_config.do_etw) {
         LOG_F(INFO, "-- Stop ETW readers");
         EtwReaderStopAll();
     }
-
     // Web server
     if (g_config.web_output) {
         LOG_F(INFO, "-- Stop web server");
@@ -150,6 +152,7 @@ int main(int argc, char* argv[]) {
     options.add_options()
         ("t,trace", "Process name to trace", cxxopts::value<std::string>())
         ("e,etw", "Input: Consume ETW Events", cxxopts::value<bool>()->default_value("false"))
+        ("p,etwti", "Input: Consume ETW-TI Events", cxxopts::value<bool>()->default_value("false"))
         ("m,mplog", "Input: Consume Defender mplog file", cxxopts::value<bool>()->default_value("false"))
         ("k,kernel", "Input: Consume kernel callback events", cxxopts::value<bool>()->default_value("false"))
         ("i,inject", "Input: Consume DLL injection", cxxopts::value<bool>()->default_value("false"))
@@ -158,6 +161,9 @@ int main(int argc, char* argv[]) {
         ("1,krnload", "Kernel Module: Load", cxxopts::value<bool>()->default_value("false"))
         ("2,krnreload", "Kernel Module: ReLoad", cxxopts::value<bool>()->default_value("false"))
         ("3,krnunload", "Kernel Module: Unload", cxxopts::value<bool>()->default_value("false"))
+        
+        ("4,pplstart", "PPL service: load", cxxopts::value<bool>()->default_value("false"))
+        ("5,pplstop", "PPL service: stop", cxxopts::value<bool>()->default_value("false"))
 
         ("l,dllreader", "Debug: DLL reader but no injection (for manual injection tests)", cxxopts::value<bool>()->default_value("false"))
         ("d,debug", "Enable debugging", cxxopts::value<bool>()->default_value("false"))
@@ -188,6 +194,17 @@ int main(int argc, char* argv[]) {
         UnloadDriver();
         exit(0);
     }
+    else if (result.count("pplstart")) {
+        install_elam_cert();
+        install_ppl_service();
+        exit(0);
+    }
+    else if (result.count("pplstop")) {
+        // Needs to be started as PPL to work
+        pplreader_shutdown();
+        remove_ppl_service();
+        exit(0);
+    }
 
     if (result.count("trace")) {
         std::string s = result["trace"].as<std::string>();
@@ -200,6 +217,7 @@ int main(int argc, char* argv[]) {
     }
 
     g_config.do_etw = result["etw"].as<bool>();
+    g_config.do_etwti = result["etwti"].as<bool>();
     g_config.do_mplog = result["mplog"].as<bool>();
     g_config.do_kernelcallback = result["kernel"].as<bool>();
     g_config.do_dllinjection = result["inject"].as<bool>();
@@ -207,8 +225,9 @@ int main(int argc, char* argv[]) {
     g_config.web_output = result["web"].as<bool>();
 
 
-    if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback && !g_config.do_dllinjection && !g_config.debug_dllreader) {
-        printf("Choose at least one of --etw --mplog --kernel --inject --dllreader");
+    if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback 
+        && !g_config.do_dllinjection && !g_config.debug_dllreader && !g_config.do_etwti) {
+        printf("Choose at least one of --etw --mplog --kernel --inject --dllreader --etwti");
         return 1;
     }
 
@@ -269,12 +288,13 @@ int main(int argc, char* argv[]) {
         LOG_F(INFO, "--( Input: MPLOG Reader");
         InitializeLogReader(threads);
     }
-    if (g_config.do_kernelcallback) {
-        LOG_F(INFO, "--( Input: Kernel Reader");
-    }
-    if (g_config.do_dllinjection || g_config.debug_dllreader) {
+    if (g_config.do_dllinjection || g_config.debug_dllreader || g_config.do_etwti) {
         LOG_F(INFO, "--( Input: InjectedDll Reader");
         InitializeInjectedDllReader(threads);
+    }
+    if (g_config.do_etwti) {
+        Sleep(1000);
+        pplreader_enable(TRUE);
     }
 
     // Wait for all threads to complete
