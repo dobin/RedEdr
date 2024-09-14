@@ -89,7 +89,8 @@ bool augment_process_info(Process *process, HANDLE hProcess) {
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
         // this is the first read, and may fail. 
         // dont spam log messages
-        LOG_F(WARNING, "Error: Could not ReadProcessMemory1 for error: %d", GetLastError());
+        LOG_F(WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
+            process->id, GetLastError());
         return FALSE;
     }
 
@@ -185,9 +186,9 @@ Process* MakeProcess(DWORD pid) {
             get_time(),
             process->id,
             process->parent_pid,
-            process->image_path,
-            process->commandline,
-            process->working_dir,
+            process->image_path.c_str(),
+            process->commandline.c_str(),
+            process->working_dir.c_str(),
             process->is_debugged,
             process->is_protected_process,
             process->is_protected_process_light,

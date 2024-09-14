@@ -53,7 +53,7 @@ BOOL ioctl_enable_kernel_module(int enable, wchar_t* target) {
         return false;
     }
 
-    LOG_F(INFO, "Received from driver: %i: %s", bytesReturned, buffer_incoming);
+    LOG_F(INFO, "Received from driver: %s", buffer_incoming);
 
     CloseHandle(hDevice);
     return true;

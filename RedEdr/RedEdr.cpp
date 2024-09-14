@@ -173,7 +173,7 @@ int main(int argc, char* argv[]) {
     auto result = options.parse(argc, argv);
 
     if (result.count("help") || result.unmatched().size() > 0) {
-        printf("HMMM\n");
+        printf("Unrecognized argument\n");
         std::cout << options.help() << std::endl;
         exit(0);
     }
@@ -271,7 +271,7 @@ int main(int argc, char* argv[]) {
         // Start the kernel server first
         // The kernel module will connect to it
         InitializeKernelReader(threads);
-        //Sleep(1000); // the thread with the server is not yet started...
+        Sleep(1000); // the thread with the server is not yet started...
         
         // Enable it
         const wchar_t* target = g_config.targetExeName;
