@@ -247,6 +247,119 @@ void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
 }
 
 
+void WINAPI EventRecordCallbackApiCalls(PEVENT_RECORD eventRecord) {
+    std::wstring eventName;
+
+    if (eventRecord == nullptr) {
+        return;
+    }
+
+    // Do we want to track this process?
+    DWORD processId = eventRecord->EventHeader.ProcessId;
+    if (!g_cache.observe(processId)) {
+        return;
+    }
+
+    /* https://www.elastic.co/security-labs/kernel-etw-best-etw
+    Id	EVENT_DESCRIPTOR Symbol	                        Function
+    1	KERNEL_AUDIT_API_PSSETLOADIMAGENOTIFYROUTINE	PsSetLoadImageNotifyRoutineEx
+    2	KERNEL_AUDIT_API_TERMINATEPROCESS	            NtTerminateProcess
+    3	KERNEL_AUDIT_API_CREATESYMBOLICLINKOBJECT	    ObCreateSymbolicLink
+    4	KERNEL_AUDIT_API_SETCONTEXTTHREAD	            NtSetContextThread
+    5	KERNEL_AUDIT_API_OPENPROCESS	                PsOpenProcess
+    6	KERNEL_AUDIT_API_OPENTHREAD	                    PsOpenThread
+    7	KERNEL_AUDIT_API_IOREGISTERLASTCHANCESHUTDOWNNOTIFICATION	IoRegisterLastChanceShutdownNotification
+    8	KERNEL_AUDIT_API_IOREGISTERSHUTDOWNNOTIFICATION IoRegisterShutdownNotification
+    */
+
+    switch (eventRecord->EventHeader.EventDescriptor.Id) {
+    case 1:
+        eventName = L"KERNEL_AUDIT_API_PSSETLOADIMAGENOTIFYROUTINE";
+        break;
+    case 2:
+        eventName = L"KERNEL_AUDIT_API_TERMINATEPROCESS";
+        break;
+    case 3:
+        eventName = L"KERNEL_AUDIT_API_CREATESYMBOLICLINKOBJECT";
+        break;
+    case 4:
+        eventName = L"KERNEL_AUDIT_API_SETCONTEXTTHREAD";
+        break;
+    case 5:
+        eventName = L"KERNEL_AUDIT_API_OPENPROCESS";
+        break;
+    case 6:
+        eventName = L"KERNEL_AUDIT_API_OPENTHREAD";
+        break;
+    case 7:
+        eventName = L"KERNEL_AUDIT_API_IOREGISTERLASTCHANCESHUTDOWNNOTIFICATION";
+        break;
+    case 8:
+        eventName = L"KERNEL_AUDIT_API_IOREGISTERSHUTDOWNNOTIFICATION";
+        break;
+    }
+
+    PrintProperties(eventName, eventRecord);
+}
+
+void WINAPI EventRecordCallbackWin32(PEVENT_RECORD eventRecord) {
+    /*
+          <task name="task_0" message="$(string.task_task_0)" value="0" />
+          <task name="WindowUpdate" message="$(string.task_WindowUpdate)" value="1" />
+          <task name="FocusChange" message="$(string.task_FocusChange)" value="2" />
+          <task name="UIPIMsgError" message="$(string.task_UIPIMsgError)" value="3" />
+          <task name="UIPIHookError" message="$(string.task_UIPIHookError)" value="4" />
+          <task name="UIPIEventHookError" message="$(string.task_UIPIEventHookError)" value="5" />
+          <task name="UIPIHandleValError" message="$(string.task_UIPIHandleValError)" value="6" />
+          <task name="UIPIInputError" message="$(string.task_UIPIInputError)" value="7" />
+          <task name="UIPIClipboardError" message="$(string.task_UIPIClipboardError)" value="8" />
+          <task name="UIPISystemError" message="$(string.task_UIPISystemError)" value="9" />
+          <task name="PowerDisplayChange" message="$(string.task_PowerDisplayChange)" value="10" />
+          <task name="IdleActionExpiration" message="$(string.task_IdleActionExpiration)" value="11" />
+          <task name="DisplayReqChange" message="$(string.task_DisplayReqChange)" value="12" />
+          <task name="DisplayTimeoutReset" message="$(string.task_DisplayTimeoutReset)" value="13" />
+          <task name="LockAcquireExclusive" message="$(string.task_LockAcquireExclusive)" value="14" />
+          <task name="LockAcquireShared" message="$(string.task_LockAcquireShared)" value="15" />
+          <task name="LockAcquireSharedStarveExclusive" message="$(string.task_LockAcquireSharedStarveExclusive)" value="16" />
+          <task name="LockRelease" message="$(string.task_LockRelease)" value="17" />
+          <task name="SwapChainBind" message="$(string.task_SwapChainBind)" value="18" />
+          <task name="SwapChainSetStats" message="$(string.task_SwapChainSetStats)" value="19" />
+          <task name="SwapChainUnBind" message="$(string.task_SwapChainUnBind)" value="20" />
+          <task name="IdleStatusTracing" message="$(string.task_IdleStatusTracing)" value="21" />
+          <task name="ScreenSaverProcess" message="$(string.task_ScreenSaverProcess)" value="22" />
+          <task name="WinlogonSleepStart" message="$(string.task_WinlogonSleepStart)" value="23" />
+          <task name="WinlogonSleepEnd" message="$(string.task_WinlogonSleepEnd)" value="24" />
+          <task name="UserActive" message="$(string.task_UserActive)" value="25" />
+          <task name="FocusedProcessChange" message="$(string.task_FocusedProcessChange)" value="26" />
+          <task name="DwmSpriteCreate" message="$(string.task_DwmSpriteCreate)" value="27" />
+          <task name="DwmSpriteDestroy" message="$(string.task_DwmSpriteDestroy)" value="28" />
+          <task name="LogicalSurfCreate" message="$(string.task_LogicalSurfCreate)" value="29" />
+          <task name="LogicalSurfDestroy" message="$(string.task_LogicalSurfDestroy)" value="30" />
+          <task name="LogicalSurfPhysSurfBind" message="$(string.task_LogicalSurfPhysSurfBind)" value="31" />
+          <task name="LogicalSurfPhysSurfUnbind" message="$(string.task_LogicalSurfPhysSurfUnbind)" value="32" />
+          <task name="GdiSysMemToken" message="$(string.task_GdiSysMemToken)" value="33" />
+          <task name="WaitCursor" message="$(string.task_WaitCursor)" value="35" />
+          <task name="ThreadInfoRundown" message="$(string.task_ThreadInfoRundown)" value="36" />
+          <task name="InputProcessDelay" message="$(string.task_InputProcessDelay)" value="37" />
+          <task name="MessageCheckDelay" message="$(string.task_MessageCheckDelay)" value="38" />
+          <task name="Rendering" message="$(string.task_Rendering)" value="39">
+    */
+
+    std::wstring eventName = L"<unknown>";
+    if (eventRecord == nullptr) {
+        return;
+    }
+
+    // Do we want to track this process?
+    DWORD processId = eventRecord->EventHeader.ProcessId;
+    if (!g_cache.observe(processId)) {
+        return;
+    }
+    PrintProperties(eventName, eventRecord);
+}
+
+
+
 void WINAPI EventRecordCallbackAntimalwareEngine(PEVENT_RECORD eventRecord) {
     std::wstring eventName = L"engine";
 

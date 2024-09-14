@@ -36,6 +36,27 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
             return 1;
         }
         readers.push_back(reader);
+
+        reader = setup_trace(id++, L"{e02a841c-75a3-4fa7-afc8-ae09cf9b7f23}", &EventRecordCallbackApiCalls, L"Microsoft-Windows-Kernel-Audit-API-Calls");
+        if (!reader) {
+            LOG_F(ERROR, "Probably open session/trace. Aborting, try again");
+            //readers.push_back(reader);
+            //EtwReaderStopAll();
+            return 1;
+        }
+        readers.push_back(reader);
+
+        // Nothing interesting in here
+        /*
+        reader = setup_trace(id++, L"{8c416c79-d49b-4f01-a467-e56d3aa8234c}", &EventRecordCallbackWin32, L"Microsoft-Windows-Win32k");
+        if (!reader) {
+            LOG_F(ERROR, "Probably open session/trace. Aborting, try again");
+            //readers.push_back(reader);
+            //EtwReaderStopAll();
+            return 1;
+        }
+        readers.push_back(reader);
+        */
     }
 
     // Security-Auditing, special case
