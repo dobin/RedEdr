@@ -6,7 +6,7 @@
 #include "../Shared/common.h"
 
 
-BOOL pplreader_enable(BOOL e) {
+BOOL pplreader_enable(BOOL e, wchar_t *target_name) {
     DWORD bytesWritten;
     wchar_t buffer[DATA_BUFFER_SIZE] = { 0 };
     HANDLE hPipe;
@@ -27,7 +27,12 @@ BOOL pplreader_enable(BOOL e) {
     }
 
     if (e) {
-        wcscpy_s(buffer, DATA_BUFFER_SIZE, L"start");
+        if (target_name == NULL) {
+            LOG_F(ERROR, "Enable, but no target name given. Abort.");
+            return FALSE;
+        }
+        swprintf_s(buffer, sizeof(buffer) / sizeof(buffer[0]), L"start:%s", target_name);
+        //wcscpy_s(buffer, DATA_BUFFER_SIZE, L"start");
         len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
         if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
             LOG_F(ERROR, "Error writing to named pipe: %ld\n", GetLastError());
@@ -80,7 +85,7 @@ BOOL pplreader_shutdown() {
         CloseHandle(hPipe);
         return FALSE;
     }
-    LOG_F(INFO, "ppl reader: Enabled");
+    LOG_F(INFO, "ppl reader: Disabled");
 
     CloseHandle(hPipe);
     return TRUE;

@@ -97,7 +97,7 @@ void shutdown_all() {
     }
     // ETW-TI
     if (g_config.do_etwti) {
-        pplreader_enable(FALSE);
+        pplreader_enable(FALSE, NULL);
     }
     // Shutdown dll reader
     if (g_config.do_dllinjection || g_config.do_etwti) {
@@ -152,7 +152,7 @@ int main(int argc, char* argv[]) {
     options.add_options()
         ("t,trace", "Process name to trace", cxxopts::value<std::string>())
         ("e,etw", "Input: Consume ETW Events", cxxopts::value<bool>()->default_value("false"))
-        ("p,etwti", "Input: Consume ETW-TI Events", cxxopts::value<bool>()->default_value("false"))
+        ("g,etwti", "Input: Consume ETW-TI Events", cxxopts::value<bool>()->default_value("false"))
         ("m,mplog", "Input: Consume Defender mplog file", cxxopts::value<bool>()->default_value("false"))
         ("k,kernel", "Input: Consume kernel callback events", cxxopts::value<bool>()->default_value("false"))
         ("i,inject", "Input: Consume DLL injection", cxxopts::value<bool>()->default_value("false"))
@@ -202,6 +202,7 @@ int main(int argc, char* argv[]) {
     else if (result.count("pplstop")) {
         // Needs to be started as PPL to work
         pplreader_shutdown();
+        Sleep(1000);
         remove_ppl_service();
         exit(0);
     }
@@ -223,7 +224,6 @@ int main(int argc, char* argv[]) {
     g_config.do_dllinjection = result["inject"].as<bool>();
     g_config.debug_dllreader = result["dllreader"].as<bool>();
     g_config.web_output = result["web"].as<bool>();
-
 
     if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback 
         && !g_config.do_dllinjection && !g_config.debug_dllreader && !g_config.do_etwti) {
@@ -294,7 +294,8 @@ int main(int argc, char* argv[]) {
     }
     if (g_config.do_etwti) {
         Sleep(1000);
-        pplreader_enable(TRUE);
+        wchar_t* target = (wchar_t* )g_config.targetExeName;
+        pplreader_enable(TRUE, target);
     }
 
     // Wait for all threads to complete
@@ -306,6 +307,7 @@ int main(int argc, char* argv[]) {
     if (res == WAIT_FAILED) {
         LOG_F(INFO, "--( Wait failed");
     }
+    LOG_F(INFO, "--( all %d threads finished", threads.size());
 
     return 0;
 }

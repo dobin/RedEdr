@@ -11,7 +11,7 @@ VOID log_message(WCHAR* format, ...)
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
-    int ret = _vsnwprintf_s(&message[offset], MAX_BUF_SIZE, MAX_BUF_SIZE, format, arg_ptr);
+    int ret = _vsnwprintf_s(&message[offset], MAX_BUF_SIZE-offset, MAX_BUF_SIZE-offset, format, arg_ptr);
     va_end(arg_ptr);
 
     OutputDebugString(message);

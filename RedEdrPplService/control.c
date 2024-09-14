@@ -62,11 +62,25 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                 }
             }
             else {
-                buffer[bytesRead] = L"\0";
-                if (wcscmp(buffer, L"start") == 0) {
+                //buffer[bytesRead] = L"\0";
+                
+                //if (wcscmp(buffer, L"start") == 0) {
+                if (wcsstr(buffer, L"start:") != NULL) {
+                    wchar_t *token = NULL, *context = NULL;
                     log_message(L"Control: Received command: start");
-                    ConnectEmitterPipe(); // Connect to the RedEdr pipe
-                    enable_consumer(TRUE);
+
+                    // should give "start:"
+                    token = wcstok_s(buffer, L":", &context);
+                    if (token != NULL) {
+                        // should give the thing after "start:"
+                        token = wcstok_s(NULL, L":", &context);
+                        if (token != NULL) {
+                            log_message(L"Control: Target: %s", token);
+                            set_target_name(_wcsdup(token));
+                            ConnectEmitterPipe(); // Connect to the RedEdr pipe
+                            enable_consumer(TRUE);
+                        }
+                    }
                 }
                 else if (wcscmp(buffer, L"stop") == 0) {
                     log_message(L"Control: Received command: stop");
@@ -75,7 +89,7 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                 }
                 else if (wcscmp(buffer, L"shutdown") == 0) {
                     log_message(L"Control: Received command: shutdown");
-                    rededr_remove_service();  // attempt to remove service
+                    //rededr_remove_service();  // attempt to remove service
                     stop_control(); // stop this thread
                     shutdown_etwti_reader(); // also makes main return
                     break;

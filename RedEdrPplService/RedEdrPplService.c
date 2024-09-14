@@ -124,5 +124,13 @@ DWORD main(INT argc, CHAR** argv)
 {
     log_message(L"Start RedEdr PPL Service");
     service_entry();
+
+    if (0) {
+        objcache_init();
+        start_control();
+        initialize_etwti_reader(); // BLOCKS atm
+        service_exit();
+    }
+
     return 0;
 }

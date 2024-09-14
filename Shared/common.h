@@ -20,12 +20,9 @@ typedef struct _MY_DRIVER_DATA {
 #define DLL_PIPE_NAME L"\\\\.\\pipe\\RedEdrDllCom"
 
 #define PPL_SERVICE_PIPE_NAME L"\\\\.\\pipe\\RedEdrPplService"
-
-//#define SERVICE_NAME  L"ppl_runner"  // PplReader
 #define SERVICE_NAME  L"RedEdrPplService"
 
-// Tmp
 #define DRIVER_NAME L"c:\\RedEdr\\elam_driver.sys"
-#define MAX_BUF_SIZE 1024
+#define MAX_BUF_SIZE 2048
 
 #endif

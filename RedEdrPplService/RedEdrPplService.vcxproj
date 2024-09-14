@@ -138,6 +138,7 @@
     <ClCompile Include="consumer.c" />
     <ClCompile Include="control.c" />
     <ClCompile Include="emitter.c" />
+    <ClCompile Include="objcache.c" />
     <ClCompile Include="RedEdrPplService.c" />
     <ClCompile Include="utils.c" />
   </ItemGroup>
@@ -145,6 +146,8 @@
     <ClInclude Include="consumer.h" />
     <ClInclude Include="control.h" />
     <ClInclude Include="emitter.h" />
+    <ClInclude Include="objcache.h" />
+    <ClInclude Include="uthash.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

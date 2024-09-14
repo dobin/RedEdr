@@ -11,6 +11,7 @@
 #include <sddl.h>
 
 #include "emitter.h"
+#include "objcache.h"
 #pragma comment(lib, "Ole32.lib")
 #pragma comment(lib, "tdh.lib")
 
@@ -204,6 +205,12 @@ void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
     if (eventRecord == NULL || !enabled_consumer) {
         return;
     }
+    DWORD processId = eventRecord->EventHeader.ProcessId;
+    struct my_hashmap* obj = get_obj(processId);
+    if (!obj->value) {
+        return;
+    }
+
     wchar_t id[32];
 
     switch (eventRecord->EventHeader.EventDescriptor.Id) {
@@ -213,9 +220,9 @@ void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
     case 3:
         wcsncpy_s(id, 32, L"StartThread", _TRUNCATE);
         break;
-    case 5:
-        wcsncpy_s(id, 32, L"LoadImage", _TRUNCATE);
-        break;
+    //case 5:
+    //    wcsncpy_s(id, 32, L"LoadImage", _TRUNCATE);
+    //    break;
     default:
         return;
     }
@@ -226,6 +233,11 @@ void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
 
 void WINAPI EventRecordCallbackTi(PEVENT_RECORD eventRecord) {
     if (eventRecord == NULL || !enabled_consumer) {
+        return;
+    }
+    DWORD processId = eventRecord->EventHeader.ProcessId;
+    struct my_hashmap* obj = get_obj(processId);
+    if (!obj->value) {
         return;
     }
 
