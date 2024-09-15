@@ -45,16 +45,19 @@
     <ClCompile Include="dllinjector.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="injecteddllreader.cpp">
+    <ClCompile Include="dllreader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="driverinterface.cpp">
+    <ClCompile Include="kernelinterface.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="output.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pplreader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pplmanager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -89,10 +92,10 @@
     <ClInclude Include="dllinjector.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="injecteddllreader.h">
+    <ClInclude Include="dllreader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="driverinterface.h">
+    <ClInclude Include="kernelinterface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="output.h">
@@ -105,6 +108,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="pplreader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pplmanager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

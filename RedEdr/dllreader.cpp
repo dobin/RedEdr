@@ -13,7 +13,7 @@
 
 #include "../Shared/common.h"
 #include "loguru.hpp"
-#include "injecteddllreader.h"
+#include "dllreader.h"
 #include "output.h"
 
 std::atomic<bool> InjectedDllReaderThreadStopFlag(false);

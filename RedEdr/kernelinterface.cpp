@@ -9,7 +9,7 @@
 #include "config.h"
 #include "procinfo.h"
 #include "dllinjector.h"
-#include "driverinterface.h"
+#include "kernelinterface.h"
 
 
 BOOL ioctl_enable_kernel_module(int enable, wchar_t* target) {
@@ -58,7 +58,7 @@ BOOL ioctl_enable_kernel_module(int enable, wchar_t* target) {
 }
 
 
-BOOL LoadDriver() {
+BOOL LoadKernelDriver() {
     SC_HANDLE hSCManager = NULL;
     SC_HANDLE hService = NULL;
     LPCWSTR driverName = g_config.driverName;
@@ -137,7 +137,7 @@ cleanup:
 }
 
 
-BOOL UnloadDriver() {
+BOOL UnloadKernelDriver() {
     SC_HANDLE hSCManager = NULL;
     SC_HANDLE hService = NULL;
     SERVICE_STATUS status;

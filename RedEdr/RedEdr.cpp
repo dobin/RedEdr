@@ -22,9 +22,9 @@
 #include "cache.h"
 #include "output.h"
 #include "procinfo.h"
-#include "injecteddllreader.h"
-#include "driverinterface.h"
-#include "pplreader.h"
+#include "dllreader.h"
+#include "kernelinterface.h"
+#include "pplmanager.h"
 #include "../Shared/common.h"
 
 
@@ -97,7 +97,7 @@ void shutdown_all() {
     }
     // ETW-TI
     if (g_config.do_etwti) {
-        pplreader_enable(FALSE, NULL);
+        ppl_service_enable(FALSE, NULL);
     }
     // Shutdown dll reader
     if (g_config.do_dllinjection || g_config.do_etwti) {
@@ -179,19 +179,19 @@ int main(int argc, char* argv[]) {
     }
 
     if (result.count("krnload")) {
-        LoadDriver();
+        LoadKernelDriver();
         exit(0);
     } else if (result.count("krnreload")) {
         if (DriverIsLoaded()) {
-            UnloadDriver();
-            LoadDriver();
+            UnloadKernelDriver();
+            LoadKernelDriver();
         }
         else {
-            LoadDriver();
+            LoadKernelDriver();
         }
         exit(0);
     } else if (result.count("krnunload")) {
-        UnloadDriver();
+        UnloadKernelDriver();
         exit(0);
     }
     else if (result.count("pplstart")) {
@@ -200,10 +200,11 @@ int main(int argc, char* argv[]) {
         exit(0);
     }
     else if (result.count("pplstop")) {
-        // Needs to be started as PPL to work
-        pplreader_shutdown();
-        Sleep(1000);
-        remove_ppl_service();
+        // remove_ppl_service();  // Needs to be started as PPL to work
+
+        // Instruct service to exit itself
+        // We can replace the exe and start it again
+        ppl_service_shutdown();
         exit(0);
     }
 
@@ -262,7 +263,7 @@ int main(int argc, char* argv[]) {
         }
         else {
             LOG_F(INFO, "RedEdr: Load Kernel Driver");
-            if (!LoadDriver()) {
+            if (!LoadKernelDriver()) {
                 LOG_F(ERROR, "RedEdr: Could not load driver");
                 return 1;
             }
@@ -298,7 +299,7 @@ int main(int argc, char* argv[]) {
         LOG_F(INFO, "RedEdr: Start ETW-TI reader");
         Sleep(1000);
         wchar_t* target = (wchar_t* )g_config.targetExeName;
-        pplreader_enable(TRUE, target);
+        ppl_service_enable(TRUE, target);
     }
 
     // Wait for all threads to complete
@@ -307,7 +308,7 @@ int main(int argc, char* argv[]) {
     if (res == WAIT_FAILED) {
         LOG_F(INFO, "RedEdr: Wait failed");
     }
-    LOG_F(INFO, "RedEdr: all %d threads finished", threads.size());
+    LOG_F(INFO, "RedEdr: all %llu threads finished", threads.size());
 
     return 0;
 }

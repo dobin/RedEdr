@@ -136,14 +136,15 @@
     <ClCompile Include="cache.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="dllinjector.cpp" />
-    <ClCompile Include="driverinterface.cpp" />
+    <ClCompile Include="kernelinterface.cpp" />
     <ClCompile Include="etwhandler.cpp" />
     <ClCompile Include="etwreader.cpp" />
-    <ClCompile Include="injecteddllreader.cpp" />
+    <ClCompile Include="dllreader.cpp" />
     <ClCompile Include="kernelreader.cpp" />
     <ClCompile Include="logreader.cpp" />
     <ClCompile Include="loguru.cpp" />
     <ClCompile Include="output.cpp" />
+    <ClCompile Include="pplmanager.cpp" />
     <ClCompile Include="pplreader.cpp" />
     <ClCompile Include="procinfo.cpp" />
     <ClCompile Include="RedEdr.cpp" />
@@ -153,16 +154,17 @@
     <ClInclude Include="config.h" />
     <ClInclude Include="cxxops.hpp" />
     <ClInclude Include="dllinjector.h" />
-    <ClInclude Include="driverinterface.h" />
+    <ClInclude Include="kernelinterface.h" />
     <ClInclude Include="etwhandler.h" />
     <ClInclude Include="etwreader.h" />
     <ClInclude Include="httplib.h" />
-    <ClInclude Include="injecteddllreader.h" />
+    <ClInclude Include="dllreader.h" />
     <ClInclude Include="kernelreader.h" />
     <ClInclude Include="logreader.h" />
     <ClInclude Include="loguru.hpp" />
     <ClInclude Include="mypeb.h" />
     <ClInclude Include="output.h" />
+    <ClInclude Include="pplmanager.h" />
     <ClInclude Include="pplreader.h" />
     <ClInclude Include="procinfo.h" />
   </ItemGroup>

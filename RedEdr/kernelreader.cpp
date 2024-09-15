@@ -32,11 +32,10 @@ void KernelReaderStopAll() {
 
 
 DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
-    char buffer[DATA_BUFFER_SIZE];
+    char buffer[DATA_BUFFER_SIZE] = { 0 };
     char* buf_ptr = buffer; // buf_ptr and rest_len are synchronized
     int rest_len = 0;
     DWORD bytesRead;
-    memset(buffer, 0, sizeof(buffer));
 
     while (!KernelReaderThreadStopFlag) {
         kernel_pipe = CreateNamedPipe(
