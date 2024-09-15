@@ -7,17 +7,16 @@
 
 #include "../Shared/common.h"
 #include "common.h"
-
+#include "utils.h"
 
 // Handle that we will use to communicate with the named pipe to userspace
 HANDLE hPipe = NULL;
 
 
 // log the event message (write to pipe)
-int log_event(wchar_t* message) {
+int LogEvent(wchar_t* message) {
     if (hPipe == NULL) {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, 
-            "LogEvent: cannot log as pipe is closed");
+        log_message("uPipe: cannot log as pipe is closed");
         return 1;
     }
     NTSTATUS status;
@@ -35,8 +34,8 @@ int log_event(wchar_t* message) {
         NULL
     );
     if (!NT_SUCCESS(status)) {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, 
-            "LogEvent: ZwWriteFile: Error ZwWriteFile: 0x%0.8x\n", status);
+        log_message(
+            "uPipe: ZwWriteFile: Error ZwWriteFile: 0x%0.8x", status);
         hPipe = NULL;
         return 0;
     }
@@ -44,14 +43,14 @@ int log_event(wchar_t* message) {
 }
 
 
-void close_pipe() {
+void DisconnectUserspacePipe() {
     ZwClose(hPipe);
     hPipe = NULL;
 }
 
 
 // Connect to the userspace daemon
-int InitPipeToUserspace() {
+int ConnectUserspacePipe() {
     UNICODE_STRING pipeName;
     RtlInitUnicodeString(&pipeName, DRIVER_KERNEL_PIPE_NAME);
 
@@ -74,13 +73,11 @@ int InitPipeToUserspace() {
         0
     );
     if (NT_SUCCESS(status)) {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, 
-            "InitPipeToUserspace: OK.\n");
+        log_message("uPipe: Connecting to userspace server OK");
         return 1;
     }
     else {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, 
-            "InitPipeToUserspace: ERROR, Daemon not running?.\n");
+        log_message("uPipe: Could not connect to userspace server, RedEdr.exe --kernel running?\n");
         hPipe = NULL;
         return 0;
     }

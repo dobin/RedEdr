@@ -9,7 +9,8 @@
 #pragma comment(lib, "FltMgr.lib")
 
 #include "config.h"
-#include "pipe.h"
+#include "utils.h"
+#include "upipe.h"
 #include "kcallbacks.h"
 #include "hashcache.h"
 #include "../Shared/common.h"
@@ -34,41 +35,40 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
 
     switch (controlCode) {
     case IOCTL_MY_IOCTL_CODE: {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] Handling IOCTL\n");
+        log_message("[IOCTL] Handling IOCTL\n");
 
         // read IOCTL
         PMY_DRIVER_DATA data = (PMY_DRIVER_DATA)Irp->AssociatedIrp.SystemBuffer;
         size_t inputBufferLength = stack->Parameters.DeviceIoControl.InputBufferLength;
 
         if (inputBufferLength != sizeof(MY_DRIVER_DATA)) {
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Size error: %i %i\n", 
+            log_message("[IOCTL] Size error: %i %i\n", 
                 inputBufferLength, sizeof(data));
         }
 
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Received from user-space: %i: %i %s\n", inputBufferLength, data->flag, data->filename);
+        log_message("[IOCTL] Received from user-space: enabled: %i  filename: %ls\n", data->flag, data->filename);
         char* answer;
         if (data->flag) {
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "  Enable\n");
             g_config.enable_kapc_injection = 1;
             g_config.enable_logging = 1;
             wcscpy_s(g_config.target, sizeof(g_config.target), data->filename);
 
-            int ret = InitPipeToUserspace();
+            int ret = ConnectUserspacePipe();
             if (ret) {
-                DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "  OK: %d bytes\n", ret);
+                log_message("[IOCTL] Start OK\n");
                 answer = "OK";
             }
             else {
-                DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "  FAIL Not Enabled: %d\n", ret);
+                log_message("[IOCTL] Start ERROR\n");
                 answer = "FAIL";
             }
         }
         else {
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "  Disable\n");
+            log_message("[IOCTL] Stop\n");
             g_config.enable_kapc_injection = 0;
             g_config.enable_logging = 0;
             wcscpy_s(g_config.target, sizeof(g_config.target), data->filename); // should be zero
-            close_pipe();
+            DisconnectUserspacePipe();
             answer = "OK";
         }
 
@@ -99,13 +99,13 @@ void LoadKernelCallbacks() {
     if (g_config.init_processnotify) {
         ret = PsSetCreateProcessNotifyRoutineEx(CreateProcessNotifyRoutine, FALSE);
         if (ret == STATUS_SUCCESS) {
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[OK] CreateProcessNotifyRoutine launched successfully\n");
+            log_message("CreateProcessNotifyRoutine launched successfully\n");
         }
         else if (ret == STATUS_INVALID_PARAMETER) {
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[ERROR] CreateProcessNotifyRoutine Invalid parameter\n");
+            log_message("ERROR: CreateProcessNotifyRoutine Invalid parameter\n");
         }
         else if (ret == STATUS_ACCESS_DENIED) {
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[ERROR] CreateProcessNotifyRoutine Access denied\n");
+            log_message("ERROR: CreateProcessNotifyRoutine Access denied\n");
         }
     }
     
@@ -113,13 +113,13 @@ void LoadKernelCallbacks() {
     if (g_config.init_threadnotify) {
         ret = PsSetCreateThreadNotifyRoutine(CreateThreadNotifyRoutine);
         if (ret == STATUS_SUCCESS) {
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[OK] CreateThreadNotifyRoutine launched successfully\n");
+            log_message("CreateThreadNotifyRoutine launched successfully\n");
         }
         else if (ret == STATUS_INVALID_PARAMETER) {
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[ERROR] CreateThreadNotifyRoutine Invalid parameter\n");
+            log_message("ERROR: CreateThreadNotifyRoutine Invalid parameter\n");
         }
         else if (ret == STATUS_ACCESS_DENIED) {
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[ERROR] CreateThreadNotifyRoutine Access denied\n");
+            log_message("ERROR: CreateThreadNotifyRoutine Access denied\n");
         }
     }
 
@@ -127,13 +127,13 @@ void LoadKernelCallbacks() {
     if (g_config.init_imagenotify) {
         ret = PsSetLoadImageNotifyRoutine(LoadImageNotifyRoutine);
         if (ret == STATUS_SUCCESS) {
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[OK] LoadImageNotifyRoutine launched successfully\n");
+            log_message("LoadImageNotifyRoutine launched successfully\n");
         }
         else if (ret == STATUS_INVALID_PARAMETER) {
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[ERROR] LoadImageNotifyRoutine Invalid parameter\n");
+            log_message("ERROR: LoadImageNotifyRoutine Invalid parameter\n");
         }
         else if (ret == STATUS_ACCESS_DENIED) {
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[ERROR] LoadImageNotifyRoutine Access denied\n");
+            log_message("ERROR: LoadImageNotifyRoutine Access denied\n");
         }
     }
 
@@ -165,13 +165,13 @@ void LoadKernelCallbacks() {
         CBObRegistration.OperationRegistration = CBOperationRegistrations;
         ret = ObRegisterCallbacks(&CBObRegistration, &pCBRegistrationHandle);
         if (ret == STATUS_SUCCESS) {
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[OK] ObRegister launched successfully\n");
+            log_message("ObRegister launched successfully\n");
         }
         else if (ret == STATUS_INVALID_PARAMETER) {
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[ERROR] ObRegister Invalid parameter\n");
+            log_message("ERROR: ObRegister Invalid parameter\n");
         }
         else if (ret == STATUS_ACCESS_DENIED) {
-            DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[ERROR] ObRegister Access denied\n");
+            log_message("ERROR: ObRegister Access denied\n");
         }
     }
 }
@@ -180,7 +180,7 @@ void LoadKernelCallbacks() {
 void RedEdrUnload(_In_ PDRIVER_OBJECT DriverObject) {
     DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "Unloading routine called\n");
 
-    close_pipe();
+    DisconnectUserspacePipe();
 
     // Unset the callback
     PsSetCreateProcessNotifyRoutineEx(CreateProcessNotifyRoutine, TRUE);
@@ -215,7 +215,7 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
     UNREFERENCED_PARAMETER(RegistryPath); // Prevent compiler error such as unreferenced parameter (error 4)
     NTSTATUS status;
 
-    DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] 0.2 Initializing the EDR's driver\n");
+    log_message("RedEdr Kernel Driver 0.3\n");
     InitializeHashTable();
 
     // Setting the unload routine to execute
@@ -240,14 +240,14 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
         &DeviceObject		   // the resulting pointer
     );
     if (!NT_SUCCESS(status)) {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] Device creation failed\n");
+        log_message("Device creation failed\n");
         return status;
     }
 
     // Creating the symlink that we will use to contact our driver
     status = IoCreateSymbolicLink(&symlinkName, &deviceName);
     if (!NT_SUCCESS(status)) {
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] Symlink creation failed\n");
+        log_message("Symlink creation failed\n");
         IoDeleteDevice(DeviceObject);
         return status;
     }
@@ -255,7 +255,7 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
     init_config();
     LoadKernelCallbacks(); // always load the callbacks, based on config
     if (g_config.enable_logging) { // only connect when we enable this (deamon may not be ready on load)
-        InitPipeToUserspace();
+        ConnectUserspacePipe();
     }
 
     return STATUS_SUCCESS;

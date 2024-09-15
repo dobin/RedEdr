@@ -120,7 +120,8 @@
     <ClCompile Include="hashcache.c" />
     <ClCompile Include="kapcinjector.c" />
     <ClCompile Include="kcallbacks.c" />
-    <ClCompile Include="pipe.c" />
+    <ClCompile Include="upipe.c" />
+    <ClCompile Include="utils.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
@@ -128,7 +129,8 @@
     <ClInclude Include="hashcache.h" />
     <ClInclude Include="kapcinjector.h" />
     <ClInclude Include="kcallbacks.h" />
-    <ClInclude Include="pipe.h" />
+    <ClInclude Include="upipe.h" />
+    <ClInclude Include="utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

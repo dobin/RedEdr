@@ -7,6 +7,6 @@
 #include <stdio.h>
 #include <fltkernel.h>
 
-int log_event(wchar_t*);
-void close_pipe();
-int InitPipeToUserspace();
+int LogEvent(wchar_t*);
+void DisconnectUserspacePipe();
+int ConnectUserspacePipe();

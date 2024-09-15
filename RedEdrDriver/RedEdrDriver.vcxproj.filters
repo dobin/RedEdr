@@ -27,7 +27,7 @@
     <ClCompile Include="Driver.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="pipe.c">
+    <ClCompile Include="upipe.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="kcallbacks.c">
@@ -42,12 +42,15 @@
     <ClCompile Include="hashcache.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="utils.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="pipe.h">
+    <ClInclude Include="upipe.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="kcallbacks.h">
@@ -60,6 +63,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="hashcache.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

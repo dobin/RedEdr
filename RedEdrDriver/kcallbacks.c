@@ -6,41 +6,13 @@
 #include <fltkernel.h>
 
 #include "common.h"
-#include "pipe.h"
+#include "upipe.h"
 #include "kapcinjector.h"
 #include "kcallbacks.h"
 #include "hashcache.h"
 #include "hashcache.h"
 #include "config.h"
-
-
-// TODO SLOW
-int IsSubstringInUnicodeString(PUNICODE_STRING pDestString, PCWSTR pSubString) {
-    if (pDestString->Length == 0 || pDestString->Buffer == NULL) {
-        return FALSE;
-    }
-    size_t lengthInWchars = pDestString->Length / sizeof(WCHAR);
-    WCHAR tempBuffer[1024];
-    if (lengthInWchars >= sizeof(tempBuffer) / sizeof(WCHAR)) {
-        return FALSE;
-    }
-    memcpy(tempBuffer, pDestString->Buffer, pDestString->Length);
-    tempBuffer[lengthInWchars] = L'\0';
-    int result = wcsstr(tempBuffer, pSubString) != NULL;
-    return result;
-}
-
-
-void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
-{
-    if (!ustr || !dest) {
-        return;  // Invalid arguments
-    }
-    size_t numChars = ustr->Length / sizeof(WCHAR);
-    size_t copyLength = numChars < destSize - 1 ? numChars : destSize - 1;
-    wcsncpy(dest, ustr->Buffer, copyLength);
-    dest[copyLength] = L'\0';
-}
+#include "utils.h"
 
 
 // For: PsSetCreateProcessNotifyRoutineEx()
@@ -71,15 +43,15 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         PUNICODE_STRING parent_processName = NULL;
         SeLocateProcessImageName(parent_process, &parent_processName);
 
-        //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] Process %wZ created\n", processName);
-        //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            PID: %d\n", pid);
-        //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            Created by: %wZ\n", parent_processName);
-        //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            ImageBase: %ws\n", createInfo->ImageFileName->Buffer);
+        //log_message("[RedEdr] Process %wZ created\n", processName);
+        //log_message("            PID: %d\n", pid);
+        //log_message("            Created by: %wZ\n", parent_processName);
+        //log_message("            ImageBase: %ws\n", createInfo->ImageFileName->Buffer);
 
         POBJECT_NAME_INFORMATION objFileDosDeviceName;
         IoQueryFileDosDeviceName(createInfo->FileObject, &objFileDosDeviceName);
-        //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            DOS path: %ws\n", objFileDosDeviceName->Name.Buffer);
-        //DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "            CommandLine: %ws\n", createInfo->CommandLine->Buffer);
+        //log_message("            DOS path: %ws\n", objFileDosDeviceName->Name.Buffer);
+        //log_message("            CommandLine: %ws\n", createInfo->CommandLine->Buffer);
 
         processInfo = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(PROCESS_INFO), 'Proc');
         if (!processInfo) {
@@ -98,7 +70,7 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
                 processInfo->observe = 1;
             }
         }
-        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[RedEdr] Process %d created, observe: %i\n", 
+        log_message("CreateProcessNotify: Process %d created, observe: %i\n", 
             pid, processInfo->observe);
 
         AddProcessInfo(pid, processInfo);
@@ -112,7 +84,7 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
             (unsigned __int64)pid, processInfo->name,
             (unsigned __int64)createInfo->ParentProcessId, processInfo->parent_name,
             processInfo->observe);
-        log_event(line);
+        LogEvent(line);
     }
 }
 
@@ -139,7 +111,7 @@ void CreateThreadNotifyRoutine(HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Create
         (unsigned __int64)ProcessId,
         (unsigned __int64)ThreadId,
         Create);
-    log_event(line);
+    LogEvent(line);
 }
 
 
@@ -170,14 +142,15 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
                 (unsigned __int64)PsGetCurrentProcessId(),
                 (unsigned __int64)ProcessId,
                 ImageName);
-            log_event(line);
+            LogEvent(line);
         }
     }
     if (g_config.enable_kapc_injection) {
         PPROCESS_INFO processInfo = LookupProcessInfo(ProcessId);
         if (processInfo != NULL && processInfo->observe && !processInfo->injected) {
             // TODO lock this?
-            processInfo->injected = kapc_inject(FullImageName, ProcessId, ImageInfo);
+            log_message("Inject DLL into pid: %d\n", ProcessId);
+            processInfo->injected = KapcInjectDll(FullImageName, ProcessId, ImageInfo);
         }
     }
 }
@@ -378,7 +351,7 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
             OriginalDesiredAccess,
             InitialDesiredAccess,
             *DesiredAccess);
-        log_event(line);
+        LogEvent(line);
     } else {
         DbgPrintEx(
             DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL,

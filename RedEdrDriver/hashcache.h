@@ -15,8 +15,19 @@ typedef struct _PROCESS_INFO {
     int injected;
 } PROCESS_INFO, * PPROCESS_INFO;
 
+
+#define HASH_TABLE_SIZE 256
+
+typedef struct _HASH_ENTRY {
+    HANDLE ProcessId;
+    PPROCESS_INFO ProcessInfo;
+    struct _HASH_ENTRY* Next;
+} HASH_ENTRY, * PHASH_ENTRY;
+
+
 NTSTATUS InitializeHashTable();
 NTSTATUS AddProcessInfo(HANDLE ProcessId, PPROCESS_INFO ProcessInfo);
 PPROCESS_INFO LookupProcessInfo(HANDLE ProcessId);
 NTSTATUS RemoveProcessInfo(HANDLE ProcessId);
 VOID FreeHashTable();
+ULONG HashFunction(HANDLE ProcessId);

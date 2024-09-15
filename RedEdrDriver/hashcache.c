@@ -5,21 +5,13 @@
 #include <stdio.h>
 #include <fltkernel.h>
 
-
+#include "utils.h"
 #include "hashcache.h"
-
-#define HASH_TABLE_SIZE 256
-
-
-typedef struct _HASH_ENTRY {
-    HANDLE ProcessId;
-    PPROCESS_INFO ProcessInfo;
-    struct _HASH_ENTRY* Next;
-} HASH_ENTRY, * PHASH_ENTRY;
 
 
 PHASH_ENTRY HashTable[HASH_TABLE_SIZE];
 KSPIN_LOCK HashTableLock;
+
 
 NTSTATUS InitializeHashTable()
 {
@@ -28,10 +20,6 @@ NTSTATUS InitializeHashTable()
     return STATUS_SUCCESS;
 }
 
-ULONG HashFunction(HANDLE ProcessId)
-{
-    return ((ULONG_PTR)ProcessId) % HASH_TABLE_SIZE;
-}
 
 NTSTATUS AddProcessInfo(HANDLE ProcessId, PPROCESS_INFO ProcessInfo)
 {
@@ -59,6 +47,7 @@ NTSTATUS AddProcessInfo(HANDLE ProcessId, PPROCESS_INFO ProcessInfo)
     return STATUS_SUCCESS;
 }
 
+
 PPROCESS_INFO LookupProcessInfo(HANDLE ProcessId)
 {
     ULONG index = HashFunction(ProcessId);
@@ -79,6 +68,7 @@ PPROCESS_INFO LookupProcessInfo(HANDLE ProcessId)
     KeReleaseSpinLock(&HashTableLock, oldIrql);
     return NULL;
 }
+
 
 NTSTATUS RemoveProcessInfo(HANDLE ProcessId)
 {
@@ -143,4 +133,10 @@ VOID FreeHashTable()
     }
 
     KeReleaseSpinLock(&HashTableLock, oldIrql);
+}
+
+
+ULONG HashFunction(HANDLE ProcessId)
+{
+    return ((ULONG_PTR)ProcessId) % HASH_TABLE_SIZE;
 }
