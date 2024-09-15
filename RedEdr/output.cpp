@@ -11,6 +11,8 @@
 
 
 std::vector<std::wstring> output_entries;
+std::mutex output_mutex;
+
 HANDLE webserver_thread;
 httplib::Server svr;
 
@@ -56,21 +58,25 @@ std::wstring ConvertToJSON(const std::wstring& input)
 
 
 void do_output(std::wstring str) {
-    // add
-    //std::wcout << ConvertToJSON(str) << L"\n";
+    // Convert to json and add it to the global list
     std::wstring json = ConvertToJSON(str);
+    output_mutex.lock();
     output_entries.push_back(json);
+    output_mutex.unlock();
     
-    // print
-    std::wcout << str << L"\n";
+    // print it
+    //std::wcout << str << L"\n";
+    std::wcout << L".";
 }
 
 
 void print_all_output() {
     std::wcout << "[" << std::endl;
+    output_mutex.lock();
     for (const auto& str : output_entries) {
         std::wcout << str << ", " << std::endl;
     }
+    output_mutex.unlock();
     std::wcout << "]" << std::endl;
 }
 
@@ -90,6 +96,8 @@ std::string output_as_json() {
     std::wstringstream output;
     int otype = 0;
 
+    output_mutex.lock();
+
     if (otype == 0) { // elastic style one entry per line
         for (auto it = output_entries.begin(); it != output_entries.end(); ++it) {
             output << replace_all(*it, L"\\", L"\\\\") << std::endl;
@@ -106,6 +114,7 @@ std::string output_as_json() {
         output << "]";
     }
     
+    output_mutex.unlock();
 
     std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
     return conv.to_bytes(output.str());
