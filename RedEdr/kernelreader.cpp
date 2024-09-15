@@ -17,7 +17,8 @@
 #pragma comment(lib, "crypt32.lib")
 
 
-std::atomic<bool> KernelReaderThreadStopFlag(false);
+//std::atomic<bool> KernelReaderThreadStopFlag(false);
+bool KernelReaderThreadStopFlag = FALSE;
 HANDLE kernel_pipe = NULL;
 
 
@@ -58,12 +59,12 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
         // Wait for the client to connect
         BOOL result = ConnectNamedPipe(kernel_pipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
         if (!result) {
-            LOG_F(ERROR, "KernelReader: Error connecting to named pipe: %ld", GetLastError());
+            LOG_F(ERROR, "KernelReader: Error connecting the named pipe: %ld", GetLastError());
             CloseHandle(kernel_pipe);
-            return 1;
+            continue;
         }
 
-        LOG_F(INFO, "KernelReader: connected");
+        LOG_F(INFO, "KernelReader: Kernel connected");
 
         while (!KernelReaderThreadStopFlag) {
             // Read data from the pipe
@@ -82,7 +83,7 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
                     }
                 }
                 if (last_potential_str_start == 0) {
-                    LOG_F(ERROR, "No 0x00 0x00 byte found, errornous input?");
+                    LOG_F(ERROR, "KernelReader: No 0x00 0x00 byte found, errornous input?");
                 }
 
                 if (last_potential_str_start != full_len) {
@@ -100,11 +101,11 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
             }
             else {
                 if (GetLastError() == ERROR_BROKEN_PIPE) {
-                    LOG_F(INFO, "KernelReader: Disconnected: %ld", GetLastError());
+                    LOG_F(INFO, "KernelReader: Kernel disconnected from pipe");
                     break;
                 }
                 else {
-                    LOG_F(ERROR, "KernelReader: Error reading from named pipe: %ld", GetLastError());
+                    LOG_F(ERROR, "KernelReader: Error reading from kernel pipe: %ld", GetLastError());
                     break;
                 }
             }
@@ -113,14 +114,14 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
         // Close the pipe
         CloseHandle(kernel_pipe);
     }
-    LOG_F(INFO, "KernelReader: Quit");
+    LOG_F(INFO, "KernelReader: Thread Finished");
 
 }
 
 
-
 void InitializeKernelReader(std::vector<HANDLE>& threads) {
     const wchar_t* data = L"";
+    LOG_F(INFO, "!KernelReader: Start thread");
     HANDLE thread = CreateThread(NULL, 0, KernelReaderProcessingThread, (LPVOID)data, 0, NULL);
     if (thread == NULL) {
         LOG_F(ERROR, "KernelReader: Failed to create thread for trace session logreader");
