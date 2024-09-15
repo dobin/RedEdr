@@ -6,6 +6,20 @@
 #include <winternl.h>
 
 
+VOID log_message(const wchar_t* format, ...)
+{
+    WCHAR message[MAX_BUF_SIZE] = L"[DLL] ";
+    DWORD offset = wcslen(message);
+
+    va_list arg_ptr;
+    va_start(arg_ptr, format);
+    int ret = _vsnwprintf_s(&message[offset], MAX_BUF_SIZE - offset, MAX_BUF_SIZE - offset, format, arg_ptr);
+    va_end(arg_ptr);
+
+    OutputDebugString(message);
+}
+
+
 void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
 {
     if (!ustr || !dest || destSize == 0) {
@@ -51,27 +65,18 @@ void SendDllPipe(wchar_t* buffer) {
         NULL
     );
     if (res == FALSE) {
-        MessageBox(NULL, L"SendDllPipe: Error when sending to pipe", L"RedEdr Injected DLL error", MB_OK);
+        log_message(L"Error when sending to pipe: %d", GetLastError());
     }
 }
 
 
-int InitDllPipe() {
-    hPipe = CreateFile(
-        DLL_PIPE_NAME,
-        GENERIC_WRITE,
-        0,
-        NULL,
-        OPEN_EXISTING,
-        0,
-        NULL);
+void InitDllPipe() {
+    hPipe = CreateFile(DLL_PIPE_NAME, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (hPipe == INVALID_HANDLE_VALUE) {
-        //        printf("Error connecting to named pipe: %ld", GetLastError());
-        MessageBox(NULL, L"Could not open pipe", L"RedEdr Injected DLL error", MB_OK);
-        return 1;
+        log_message(L"Could not open pipe");
     }
-    return 0;
 }
+
 
 LARGE_INTEGER get_time() {
     FILETIME fileTime;
@@ -86,22 +91,6 @@ LARGE_INTEGER get_time() {
 
     return largeInt;
 }
-
-
-
-VOID log_message(const wchar_t* format, ...)
-{
-    WCHAR message[MAX_BUF_SIZE] = L"[DLL] ";
-    DWORD offset = wcslen(message);
-
-    va_list arg_ptr;
-    va_start(arg_ptr, format);
-    int ret = _vsnwprintf_s(&message[offset], MAX_BUF_SIZE - offset, MAX_BUF_SIZE - offset, format, arg_ptr);
-    va_end(arg_ptr);
-
-    OutputDebugString(message);
-}
-
 
 
 //----------------------------------------------------
@@ -364,19 +353,18 @@ DWORD NTAPI LdrGetProcedureAddress(
 ) {
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
-
-    OutputDebugString(L"A6");
-
     wchar_t wideFunctionName[1024] = L"";
+    //UnicodeStringToWChar(FunctionName, wideFunctionName, 1024);
+
     if (FunctionName && FunctionName->Buffer) {
         // Convert ANSI string to wide string
         MultiByteToWideChar(CP_ACP, 0, FunctionName->Buffer, -1, wideFunctionName, 1024);
     }
-
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
         L"type:dll;time:%llu;krn_pid:%llu;func:LdrGetProcedureAddress;module_handle:0x%p;function:%s;ordinal:0x%hx;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ModuleHandle, wideFunctionName, Oridinal);
     SendDllPipe(buf);
+
     return pOriginalLdrGetProcedureAddress(ModuleHandle, FunctionName, Oridinal, FunctionAddress);
 }
 

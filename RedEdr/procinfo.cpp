@@ -89,8 +89,8 @@ bool augment_process_info(Process *process, HANDLE hProcess) {
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
         // this is the first read, and may fail. 
         // dont spam log messages
-        LOG_F(WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
-            process->id, GetLastError());
+        //LOG_F(WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
+        //    process->id, GetLastError());
         return FALSE;
     }
 
@@ -128,6 +128,7 @@ bool augment_process_info(Process *process, HANDLE hProcess) {
 
     // Ldr
     // DLL's ?
+    return TRUE;
 }
 
 
@@ -153,7 +154,7 @@ Process* MakeProcess(DWORD pid) {
     }
 
     augment_process_info(process, hProcess);
-    //return process;
+    // FIXME check return value?
 
     // CHECK: Observe
     BOOL observe = FALSE;

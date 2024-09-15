@@ -3,8 +3,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define PIPE_BUFFER_SIZE 4096 // Default
-#define DATA_BUFFER_SIZE 4096
+#define PIPE_BUFFER_SIZE 8192 // thats the pipe buffer (default 4096)
+#define DATA_BUFFER_SIZE 4096 // all buffers for strings
 
 #define SMALL_PIPE 128
 
