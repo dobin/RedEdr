@@ -8,6 +8,9 @@ Same data as an EDR sees.
 * Verify your anti-EDR techniques work
 * Debug and analyze malware
 
+RedEdr will observe one process, and identify malicious patterns. 
+A normal EDR will observe all processes, and identify malicious processes. 
+
 
 ## Implemented Telemetry Consumers
 
@@ -80,11 +83,23 @@ Only kernel module (callbacks, KAPC DLL injection):
 PS > .\RedEdr.exe --kernel --inject --trace notepad.exe
 ```
 
+Only ETW-TI
+```
+PS > .\RedEdr.exe --etwti --trace notepad.exe
+```
 
-If you want just the events, without any debug output:
+
+All:
 ```
-PS > .\RedEdr.exe --kernel --inject --etw 2>$null
+PS > .\RedEdr.exe --kernel --inject --etw --etwti --trace notepad.exe
 ```
+
+Provide as web on `http://localhost:8080`, and disable output logging for performance
+(and improved stability):
+```
+PS > .\RedEdr.exe --kernel --inject --etw --etwti --web --hide --trace notepad.exe
+```
+
 
 ## Example Output
 
@@ -94,9 +109,8 @@ PS > .\RedEdr.exe --kernel --inject --etw 2>$null
 
 * https://github.com/dobin/RedEdr/blob/master/RedEdrDriver/kcallbacks.c
 * https://github.com/dobin/RedEdr/blob/master/RedEdrDll/dllmain.cpp
-
 * https://github.com/dobin/RedEdr/blob/master/RedEdr/etwreader.cpp
-* https://github.com/dobin/RedEdr/blob/master/RedEdr/injecteddllreader.cpp
+* https://github.com/dobin/RedEdr/blob/master/RedEdr/dllreader.cpp
 * https://github.com/dobin/RedEdr/blob/master/RedEdr/kernelreader.cpp
 
 
