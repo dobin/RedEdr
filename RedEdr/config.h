@@ -20,7 +20,8 @@ public:
 	LPCWSTR driverPath = L"C:\\RedEdr\\RedEdrDriver\\RedEdrDriver.sys";
 
 	LPCSTR inject_dll_path = "C:\\RedEdr\\RedEdrDll.dll";
-	bool full_stdout_log = false;
+	bool hide_full_output = false;
+	bool web_output = false;
 
 	bool do_etw = false;
 	bool do_etwti = false;
@@ -28,7 +29,6 @@ public:
 	bool do_kernelcallback = false;
 	bool do_dllinjection = false;
 	bool debug_dllreader = false;
-	bool web_output = false;
 	//bool do_dllinjection_nochildren = false;
 
 	bool etw_standard = true;

@@ -66,11 +66,11 @@ void do_output(std::wstring str) {
     output_mutex.unlock();
     
     // print it
-    if (g_config.full_stdout_log) {
-        std::wcout << str << L"\n";
+    if (g_config.hide_full_output) {
+        std::wcout << L".";
     }
     else {
-        std::wcout << L".";
+        std::wcout << str << L"\n";
     }
 }
 
