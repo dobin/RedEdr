@@ -15,8 +15,9 @@
 #include "loguru.hpp"
 #include "dllreader.h"
 #include "output.h"
+#include "utils.h"
 
-std::atomic<bool> InjectedDllReaderThreadStopFlag(false);
+bool InjectedDllReaderThreadStopFlag = FALSE;
 
 HANDLE dll_pipe;
 std::vector<std::thread> dll_threads; // for each connected dll client
@@ -33,21 +34,6 @@ void InjectedDllReaderStopAll() {
     }
     DWORD dwWritten;
     BOOL success = WriteFile(hPipe, "", 0, &dwWritten, NULL);
-}
-
-void PrintWcharBufferAsHex(const wchar_t* buffer, size_t bufferSize) {
-    // Cast wchar_t buffer to a byte array
-    const unsigned char* byteBuffer = reinterpret_cast<const unsigned char*>(buffer);
-
-    for (size_t i = 0; i < bufferSize; ++i) {
-        printf("%02X ", byteBuffer[i]);
-
-        // Print a newline every 16 bytes for readability
-        if ((i + 1) % 16 == 0) {
-            printf("\n");
-        }
-    }
-    printf("\n");
 }
 
 

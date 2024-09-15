@@ -6,7 +6,7 @@
 #include "../Shared/common.h"
 
 
-BOOL ppl_service_enable(BOOL e, wchar_t* target_name) {
+BOOL EnablePplService(BOOL e, wchar_t* target_name) {
     DWORD bytesWritten;
     wchar_t buffer[DATA_BUFFER_SIZE] = { 0 };
     HANDLE hPipe;
@@ -57,7 +57,7 @@ BOOL ppl_service_enable(BOOL e, wchar_t* target_name) {
 }
 
 
-BOOL ppl_service_shutdown() {
+BOOL ShutdownPplService() {
     DWORD bytesWritten;
     wchar_t buffer[DATA_BUFFER_SIZE] = { 0 };
     HANDLE hPipe;
@@ -91,7 +91,7 @@ BOOL ppl_service_shutdown() {
 }
 
 
-DWORD install_elam_cert()
+DWORD InstallElamCertPpl()
 {
     DWORD retval = 0;
     HANDLE fileHandle = NULL;
@@ -123,7 +123,7 @@ DWORD install_elam_cert()
 }
 
 
-DWORD install_ppl_service()
+DWORD InstallPplService()
 {
     DWORD retval = 0;
     SERVICE_LAUNCH_PROTECTED_INFO info;
@@ -212,13 +212,14 @@ DWORD install_ppl_service()
 }
 
 
+// No worky as no PPLy
 DWORD remove_ppl_service() {
     DWORD retval = 0;
     SC_HANDLE hSCManager;
     SC_HANDLE hService;
     SERVICE_STATUS_PROCESS ssp;
     DWORD dwBytesNeeded;
-    LOG_F(INFO, "ETW-TI: remove_service() fuckmesideways");
+    LOG_F(INFO, "ETW-TI: remove_service()");
     //LOG_F(INFO, "[REDEDR_PPL] remove_service: Stopping and Deleting Service %s...", SERVICE_NAME);
 
     // Get Handle to Service Manager and Service

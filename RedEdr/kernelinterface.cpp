@@ -12,7 +12,7 @@
 #include "kernelinterface.h"
 
 
-BOOL ioctl_enable_kernel_module(int enable, wchar_t* target) {
+BOOL EnableKernelDriver(int enable, wchar_t* target) {
     HANDLE hDevice = CreateFile(L"\\\\.\\RedEdr",
         GENERIC_READ | GENERIC_WRITE,
         0,
@@ -187,7 +187,8 @@ cleanup:
     return ret;
 }
 
-BOOL DriverIsLoaded() {
+
+BOOL IsKernelDriverLoaded() {
     SC_HANDLE hSCManager = NULL;
     SC_HANDLE hService = NULL;
     SERVICE_STATUS_PROCESS status;

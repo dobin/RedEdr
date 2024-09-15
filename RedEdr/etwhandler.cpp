@@ -302,6 +302,7 @@ void WINAPI EventRecordCallbackApiCalls(PEVENT_RECORD eventRecord) {
     PrintProperties(eventName, eventRecord);
 }
 
+
 void WINAPI EventRecordCallbackWin32(PEVENT_RECORD eventRecord) {
     /*
           <task name="task_0" message="$(string.task_task_0)" value="0" />
@@ -357,7 +358,6 @@ void WINAPI EventRecordCallbackWin32(PEVENT_RECORD eventRecord) {
     }
     PrintProperties(eventName, eventRecord);
 }
-
 
 
 void WINAPI EventRecordCallbackAntimalwareEngine(PEVENT_RECORD eventRecord) {

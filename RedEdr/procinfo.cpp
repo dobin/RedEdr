@@ -24,6 +24,7 @@
 #include "dllinjector.h"
 #include "mypeb.h"
 #include "output.h"
+#include "utils.h"
 #include "../Shared/common.h"
 
 #pragma comment(lib, "ntdll.lib")
@@ -37,24 +38,8 @@ typedef NTSTATUS(NTAPI* pNtQueryInformationProcess)(
     PULONG ReturnLength);
 
 
-// FIXME copy from dll
-LARGE_INTEGER get_time() {
-    FILETIME fileTime;
-    LARGE_INTEGER largeInt;
-
-    // Get the current system time as FILETIME
-    GetSystemTimeAsFileTime(&fileTime);
-
-    // Convert FILETIME to LARGE_INTEGER
-    largeInt.LowPart = fileTime.dwLowDateTime;
-    largeInt.HighPart = fileTime.dwHighDateTime;
-
-    return largeInt;
-}
-
-
 // Gets a UNICODE_STRING content in a remote process as wstring
-std::wstring my_get_str(HANDLE hProcess, UNICODE_STRING* u) {
+std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
     std::wstring s;
     std::vector<wchar_t> commandLine(u->Length / sizeof(wchar_t));
     if (!ReadProcessMemory(hProcess, u->Buffer, commandLine.data(), u->Length, NULL)) {
@@ -67,7 +52,7 @@ std::wstring my_get_str(HANDLE hProcess, UNICODE_STRING* u) {
 }
 
 
-bool augment_process_info(Process *process, HANDLE hProcess) {
+bool RetrieveProcessInfo(Process *process, HANDLE hProcess) {
     HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
     pNtQueryInformationProcess NtQueryInformationProcess = (pNtQueryInformationProcess)GetProcAddress(hNtDll, "NtQueryInformationProcess");
     if (!NtQueryInformationProcess) {
@@ -118,9 +103,9 @@ bool augment_process_info(Process *process, HANDLE hProcess) {
         LOG_F(ERROR, "Error: Could not ReadProcessMemory for %d, error: %d", process->id, GetLastError());
         return FALSE;
     }
-    process->commandline = my_get_str(hProcess, &procParams.CommandLine);
-    process->image_path = my_get_str(hProcess, &procParams.ImagePathName);
-    process->working_dir = my_get_str(hProcess, &procParams.CurrentDirectory.DosPath);
+    process->commandline = GetRemoteUnicodeStr(hProcess, &procParams.CommandLine);
+    process->image_path = GetRemoteUnicodeStr(hProcess, &procParams.ImagePathName);
+    process->working_dir = GetRemoteUnicodeStr(hProcess, &procParams.CurrentDirectory.DosPath);
     
     // No need for these for now
     //std::wstring DllPath = my_get_str(hProcess, &procParams.DllPath);
@@ -129,18 +114,6 @@ bool augment_process_info(Process *process, HANDLE hProcess) {
     // Ldr
     // DLL's ?
     return TRUE;
-}
-
-
-std::wstring format_wstring(const wchar_t* format, ...) {
-    wchar_t buffer[DATA_BUFFER_SIZE];
-
-    va_list args;
-    va_start(args, format);
-    vswprintf(buffer, DATA_BUFFER_SIZE, format, args);
-    va_end(args);
-
-    return std::wstring(buffer);
 }
 
 
@@ -153,7 +126,7 @@ Process* MakeProcess(DWORD pid) {
         return process;
     }
 
-    augment_process_info(process, hProcess);
+    RetrieveProcessInfo(process, hProcess);
     // FIXME check return value?
 
     // CHECK: Observe

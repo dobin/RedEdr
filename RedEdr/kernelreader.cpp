@@ -17,7 +17,6 @@
 #pragma comment(lib, "crypt32.lib")
 
 
-//std::atomic<bool> KernelReaderThreadStopFlag(false);
 bool KernelReaderThreadStopFlag = FALSE;
 HANDLE kernel_pipe = NULL;
 

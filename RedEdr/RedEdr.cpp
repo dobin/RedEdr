@@ -88,7 +88,7 @@ void shutdown_all() {
     // Make kernel module stop emitting events
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
         const wchar_t* target = L"";
-        ioctl_enable_kernel_module(0, (wchar_t*)target);
+        EnableKernelDriver(0, (wchar_t*)target);
     }
     // Shutdown kernel reader
     if (g_config.do_kernelcallback) {
@@ -97,7 +97,7 @@ void shutdown_all() {
     }
     // ETW-TI
     if (g_config.do_etwti) {
-        ppl_service_enable(FALSE, NULL);
+        EnablePplService(FALSE, NULL);
     }
     // Shutdown dll reader
     if (g_config.do_dllinjection || g_config.do_etwti) {
@@ -182,7 +182,7 @@ int main(int argc, char* argv[]) {
         LoadKernelDriver();
         exit(0);
     } else if (result.count("krnreload")) {
-        if (DriverIsLoaded()) {
+        if (IsKernelDriverLoaded()) {
             UnloadKernelDriver();
             LoadKernelDriver();
         }
@@ -195,8 +195,8 @@ int main(int argc, char* argv[]) {
         exit(0);
     }
     else if (result.count("pplstart")) {
-        install_elam_cert();
-        install_ppl_service();
+        InstallElamCertPpl();
+        InstallPplService();
         exit(0);
     }
     else if (result.count("pplstop")) {
@@ -204,7 +204,7 @@ int main(int argc, char* argv[]) {
 
         // Instruct service to exit itself
         // We can replace the exe and start it again
-        ppl_service_shutdown();
+        ShutdownPplService();
         exit(0);
     }
 
@@ -258,7 +258,7 @@ int main(int argc, char* argv[]) {
     // Do kernel module stuff first, as it can fail hard
     // we can then just bail out without tearing down the other threads
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
-        if (DriverIsLoaded()) {
+        if (IsKernelDriverLoaded()) {
             LOG_F(INFO, "Kernel: RedEdr Driver already loaded");
         }
         else {
@@ -278,7 +278,7 @@ int main(int argc, char* argv[]) {
         // Enable it
         LOG_F(INFO, "RedEdr: Tell Kernel to start collecting telemetry of: \"%ls\"", g_config.targetExeName);
         const wchar_t* target = g_config.targetExeName;
-        if (!ioctl_enable_kernel_module(1, (wchar_t*)target)) {
+        if (!EnableKernelDriver(1, (wchar_t*)target)) {
             LOG_F(ERROR, "RedEdr: Could not communicate with kernel driver, aborting.");
             return 1;
         }
@@ -299,7 +299,7 @@ int main(int argc, char* argv[]) {
         LOG_F(INFO, "RedEdr: Start ETW-TI reader");
         Sleep(1000);
         wchar_t* target = (wchar_t* )g_config.targetExeName;
-        ppl_service_enable(TRUE, target);
+        EnablePplService(TRUE, target);
     }
 
     // Wait for all threads to complete

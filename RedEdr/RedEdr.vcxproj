@@ -148,6 +148,7 @@
     <ClCompile Include="pplreader.cpp" />
     <ClCompile Include="procinfo.cpp" />
     <ClCompile Include="RedEdr.cpp" />
+    <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cache.h" />
@@ -167,6 +168,7 @@
     <ClInclude Include="pplmanager.h" />
     <ClInclude Include="pplreader.h" />
     <ClInclude Include="procinfo.h" />
+    <ClInclude Include="utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

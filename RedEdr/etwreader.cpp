@@ -28,7 +28,7 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
 
     // Kernel-Process
     if (g_config.etw_standard) {
-        reader = setup_trace(id++, L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
+        reader = SetupTrace(id++, L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
         if (!reader) {
             LOG_F(ERROR, "ETW: Probably open session/trace. Aborting, try again");
             //readers.push_back(reader);
@@ -37,7 +37,7 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
         }
         readers.push_back(reader);
 
-        reader = setup_trace(id++, L"{e02a841c-75a3-4fa7-afc8-ae09cf9b7f23}", &EventRecordCallbackApiCalls, L"Microsoft-Windows-Kernel-Audit-API-Calls");
+        reader = SetupTrace(id++, L"{e02a841c-75a3-4fa7-afc8-ae09cf9b7f23}", &EventRecordCallbackApiCalls, L"Microsoft-Windows-Kernel-Audit-API-Calls");
         if (!reader) {
             LOG_F(ERROR, "ETW: Probably open session/trace. Aborting, try again");
             //readers.push_back(reader);
@@ -61,7 +61,7 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
 
     // Security-Auditing, special case
     if (g_config.etw_secaudit) {
-        reader = setup_trace_security_auditing(id++);
+        reader = SetupTrace_SecurityAuditing(id++);
         if (!reader) {
             //LOG_F(ERROR, "TODO ERROR");
             //return 1;
@@ -73,23 +73,23 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
 
     // Antimalware
     if (g_config.etw_defender) {
-        reader = setup_trace(id++, L"{0a002690-3839-4e3a-b3b6-96d8df868d99}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Engine");
+        reader = SetupTrace(id++, L"{0a002690-3839-4e3a-b3b6-96d8df868d99}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Engine");
         if (reader != NULL) {
             readers.push_back(reader);
         }
-        reader = setup_trace(id++, L"{8E92DEEF-5E17-413B-B927-59B2F06A3CFC}", &EventRecordCallbackAntimalwareRtp, L"Microsoft-Antimalware-RTP");
+        reader = SetupTrace(id++, L"{8E92DEEF-5E17-413B-B927-59B2F06A3CFC}", &EventRecordCallbackAntimalwareRtp, L"Microsoft-Antimalware-RTP");
         if (reader != NULL) {
             readers.push_back(reader);
         }
-        reader = setup_trace(id++, L"{CFEB0608-330E-4410-B00D-56D8DA9986E6}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-AMFilter");
+        reader = SetupTrace(id++, L"{CFEB0608-330E-4410-B00D-56D8DA9986E6}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-AMFilter");
         if (reader != NULL) {
             readers.push_back(reader);
         }
-        reader = setup_trace(id++, L"{2A576B87-09A7-520E-C21A-4942F0271D67}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Scan-Interface");
+        reader = SetupTrace(id++, L"{2A576B87-09A7-520E-C21A-4942F0271D67}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Scan-Interface");
         if (reader != NULL) {
             readers.push_back(reader);
         }
-        reader = setup_trace(id++, L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Protection");
+        reader = SetupTrace(id++, L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Protection");
         if (reader != NULL) {
             readers.push_back(reader);
         }
@@ -117,7 +117,7 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
 int stopTraceSession(TRACEHANDLE sessionHandle, wchar_t *sessionName) {
     ULONG status;
     EVENT_TRACE_PROPERTIES* sessionProperties;
-    sessionProperties = make_SessionProperties(wcslen(sessionName));
+    sessionProperties = MakeSessionProperties(wcslen(sessionName));
     LOG_F(INFO, "ETW:  Stop Session: %ls", sessionName);
     status = ControlTrace(sessionHandle, sessionName, sessionProperties, EVENT_TRACE_CONTROL_STOP);
     if (status != ERROR_SUCCESS) {
@@ -185,7 +185,7 @@ void EtwReaderStopAll() {
 }
 
 
-Reader* setup_trace(int id, const wchar_t* guid, EventRecordCallbackFuncPtr func, const wchar_t* info) {
+Reader* SetupTrace(int id, const wchar_t* guid, EventRecordCallbackFuncPtr func, const wchar_t* info) {
     ULONG status;
     GUID providerGuid;
     TRACEHANDLE sessionHandle;
@@ -211,7 +211,7 @@ Reader* setup_trace(int id, const wchar_t* guid, EventRecordCallbackFuncPtr func
     wchar_t* sessionNameBuffer = reader->SessionName;
 
     // StartTrace -> SessionHandle
-    EVENT_TRACE_PROPERTIES* sessionProperties = make_SessionProperties(wcslen(sessionNameBuffer));
+    EVENT_TRACE_PROPERTIES* sessionProperties = MakeSessionProperties(wcslen(sessionNameBuffer));
     status = StartTrace(&sessionHandle, sessionNameBuffer, sessionProperties);
     if (status == ERROR_ALREADY_EXISTS) {
         LOG_F(WARNING, "ETW: Session %ls already exists, attempt to stop it", mySessionName.c_str());
@@ -263,7 +263,7 @@ Reader* setup_trace(int id, const wchar_t* guid, EventRecordCallbackFuncPtr func
 // https://github.com/microsoft/krabsetw/blob/e39e9b766a2b77a5266f0ab4b776e0ca367b3409/examples/NativeExamples/user_trace_005.cpp#L4
 // https://github.com/microsoft/krabsetw/issues/79
 // https://github.com/microsoft/krabsetw/issues/5
-Reader* setup_trace_security_auditing(int id) {
+Reader* SetupTrace_SecurityAuditing(int id) {
     // Check: Are we system?
     char user_name[128] = { 0 };
     DWORD user_name_length = 128;
@@ -312,7 +312,7 @@ Reader* setup_trace_security_auditing(int id) {
 
 /** Helpers **/
 
-EVENT_TRACE_PROPERTIES* make_SessionProperties(size_t session_name_len) {
+EVENT_TRACE_PROPERTIES* MakeSessionProperties(size_t session_name_len) {
     EVENT_TRACE_PROPERTIES* sessionProperties;
     ULONG bufferSize = (ULONG) (sizeof(EVENT_TRACE_PROPERTIES) + ((session_name_len + 1) * sizeof(wchar_t)));
     sessionProperties = (EVENT_TRACE_PROPERTIES*) malloc(bufferSize);

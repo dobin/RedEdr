@@ -7,6 +7,7 @@
 #include <locale>
 #include <codecvt>
 
+#include "config.h"
 #include "loguru.hpp"
 
 
@@ -65,8 +66,12 @@ void do_output(std::wstring str) {
     output_mutex.unlock();
     
     // print it
-    //std::wcout << str << L"\n";
-    std::wcout << L".";
+    if (g_config.full_stdout_log) {
+        std::wcout << str << L"\n";
+    }
+    else {
+        std::wcout << L".";
+    }
 }
 
 
@@ -91,6 +96,7 @@ std::wstring replace_all(const std::wstring& str, const std::wstring& from, cons
     }
     return result;
 }
+
 
 std::string output_as_json() {
     std::wstringstream output;
@@ -120,6 +126,7 @@ std::string output_as_json() {
     return conv.to_bytes(output.str());
 }
 
+
 DWORD WINAPI WebserverThread(LPVOID param) {
     LOG_F(INFO, "!WEB: Start Webserver thread");
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
@@ -143,9 +150,9 @@ int InitializeWebServer(std::vector<HANDLE>& threads) {
     return 0;
 }
 
+
 void StopWebServer() {
     if (webserver_thread != NULL) {
         svr.stop();
-        //TerminateThread(webserver_thread, 0);
     }
 }
