@@ -163,12 +163,13 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
     }
     */
 
-    LOG_F(INFO, "DllReader: Quit");
+    LOG_F(INFO, "!DllReader: Quit");
 }
 
 
 void InitializeInjectedDllReader(std::vector<HANDLE>& threads) {
     const wchar_t* data = L"";
+    LOG_F(INFO, "!DllReader: Start thread");
     HANDLE thread = CreateThread(NULL, 0, DllInjectionReaderProcessingThread, (LPVOID)data, 0, NULL);
     if (thread == NULL) {
         LOG_F(ERROR, "DllReader: Failed to create thread ");

@@ -2,7 +2,8 @@
 #include <windows.h>
 #include <cwchar>  // For wcstol
 #include <cstdlib> // For exit()
-
+#include <string.h>
+#include <stdio.h>
 #include "../Shared/common.h"
 #include "loguru.hpp"
 #include "config.h"
@@ -12,13 +13,6 @@
 
 
 BOOL ioctl_enable_kernel_module(int enable, wchar_t* target) {
-    if (enable) {
-        LOG_F(INFO, "Send IOCTL to kernel module: Enable: %ls", target);
-    }
-    else {
-        LOG_F(INFO, "Send IOCTL to kernel module: Disable");
-    }
-
     HANDLE hDevice = CreateFile(L"\\\\.\\RedEdr",
         GENERIC_READ | GENERIC_WRITE,
         0,
@@ -28,7 +22,7 @@ BOOL ioctl_enable_kernel_module(int enable, wchar_t* target) {
         NULL);
 
     if (hDevice == INVALID_HANDLE_VALUE) {
-        LOG_F(ERROR, "Failed to open device. Error: %d", GetLastError());
+        LOG_F(ERROR, "Kernel: Failed to open device. Error: %d", GetLastError());
         return false;
     }
 
@@ -48,13 +42,17 @@ BOOL ioctl_enable_kernel_module(int enable, wchar_t* target) {
         &bytesReturned,
         NULL);
     if (!success) {
-        LOG_F(ERROR, "DeviceIoControl failed. Error: %d", GetLastError());
+        LOG_F(ERROR, "Kernel: DeviceIoControl failed. Error: %d", GetLastError());
         CloseHandle(hDevice);
         return false;
     }
 
-    LOG_F(INFO, "Received from driver: %s", buffer_incoming);
-
+    if (strcmp(buffer_incoming, "OK") == NULL) {
+        LOG_F(INFO, "Kernel: Kernel Driver enabling/disabling (%d) ok", enable);
+    }
+    else {
+        LOG_F(ERROR, "Kernel: Kernel Driver enabling/disabling (%d) failed", enable);
+    }
     CloseHandle(hDevice);
     return true;
 }
@@ -70,7 +68,7 @@ BOOL LoadDriver() {
     // Open the Service Control Manager
     hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hSCManager) {
-        LOG_F(ERROR, "OpenSCManager failed. Error: %lu", GetLastError());
+        LOG_F(ERROR, "Kernel: OpenSCManager failed. Error: %lu", GetLastError());
         return FALSE;
     }
 
@@ -93,16 +91,16 @@ BOOL LoadDriver() {
 
     if (!hService) {
         if (GetLastError() == ERROR_SERVICE_EXISTS) {
-            LOG_F(INFO, "KernelDriver: Service already exists. Opening existing service...");
+            LOG_F(INFO, "Kernel: Service already exists. Opening existing service...");
             hService = OpenService(hSCManager, driverName, SERVICE_ALL_ACCESS);
             if (!hService) {
-                LOG_F(ERROR, "OpenService failed. Error: %lu", GetLastError());
+                LOG_F(ERROR, "Kernel: OpenService failed. Error: %lu", GetLastError());
                 ret = FALSE;
                 goto cleanup;
             }
         }
         else {
-            LOG_F(ERROR, "CreateService failed. Error: %lu", GetLastError());
+            LOG_F(ERROR, "Kernel: CreateService failed. Error: %lu", GetLastError());
             ret = FALSE;
             goto cleanup;
         }
@@ -111,19 +109,19 @@ BOOL LoadDriver() {
     // Start the service (load the driver)
     if (!StartService(hService, 0, NULL)) {
         if (GetLastError() != ERROR_SERVICE_ALREADY_RUNNING) {
-            LOG_F(ERROR, "StartService failed. Error: %lu", GetLastError());
+            LOG_F(ERROR, "Kernel: StartService failed. Error: %lu", GetLastError());
             ret = FALSE;
 
             goto cleanup;
         }
         else {
             ret = FALSE;
-            LOG_F(INFO, "KernelDriver: Servicealready running.");
+            LOG_F(INFO, "Kernel: Servicealready running.");
         }
     }
     else {
         ret = TRUE;
-        LOG_F(INFO, "KernelDriver: Servicestarted successfully.");
+        LOG_F(INFO, "Kernel: Servicestarted successfully.");
     }
 
 cleanup:
@@ -148,38 +146,38 @@ BOOL UnloadDriver() {
 
     hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hSCManager) {
-        LOG_F(ERROR, "OpenSCManager failed. Error: %lu", GetLastError());
+        LOG_F(ERROR, "Kernel: OpenSCManager failed. Error: %lu", GetLastError());
         return FALSE;
     }
 
     hService = OpenService(hSCManager, driverName, SERVICE_STOP | DELETE | SERVICE_QUERY_STATUS);
     if (!hService) {
-        LOG_F(ERROR, "OpenService failed. Error: %lu", GetLastError());
+        LOG_F(ERROR, "Kernel: OpenService failed. Error: %lu", GetLastError());
         ret = FALSE;
         goto cleanup;
     }
 
     if (ControlService(hService, SERVICE_CONTROL_STOP, &status)) {
-        LOG_F(INFO, "KernelDriver: Servicestopped successfully.");
+        LOG_F(INFO, "Kernel: Servicestopped successfully.");
         ret = TRUE;
     }
     else if (GetLastError() == ERROR_SERVICE_NOT_ACTIVE) {
-        LOG_F(INFO, "KernelDriver: Serviceis not running.");
+        LOG_F(INFO, "Kernel: Serviceis not running.");
         ret = TRUE;
     }
     else {
-        LOG_F(ERROR, "ControlService failed. Error: %lu", GetLastError());
+        LOG_F(ERROR, "Kernel: ControlService failed. Error: %lu", GetLastError());
         ret = FALSE;
         goto cleanup;
     }
 
     if (!DeleteService(hService)) {
-        LOG_F(ERROR, "DeleteService failed. Error: %lu", GetLastError());
+        LOG_F(ERROR, "Kernel: DeleteService failed. Error: %lu", GetLastError());
         ret = FALSE;
         goto cleanup;
     }
     else {
-        LOG_F(INFO, "KernelDriver: Servicedeleted successfully.");
+        LOG_F(INFO, "Kernel: Servicedeleted successfully.");
     }
 
 cleanup:
@@ -199,7 +197,7 @@ BOOL DriverIsLoaded() {
 
     hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hSCManager) {
-        LOG_F(ERROR, "OpenSCManager failed. Error: %lu", GetLastError());
+        LOG_F(ERROR, "Kernel: OpenSCManager failed. Error: %lu", GetLastError());
         return FALSE;
     }
 
@@ -217,7 +215,7 @@ BOOL DriverIsLoaded() {
         ret = TRUE;
     }
     else {
-        LOG_F(ERROR, "QueryServiceStatusEx failed. Error: %lu", GetLastError());
+        LOG_F(ERROR, "Kernel: QueryServiceStatusEx failed. Error: %lu", GetLastError());
         ret = FALSE;
     }
 

@@ -81,7 +81,7 @@ BOOL makeMeSeDebug() {
 
 void shutdown_all() {
     if (g_config.do_mplog) {
-        LOG_F(INFO, "-- Stop log reader");
+        LOG_F(INFO, "RedEdr: Stop log reader");
         LogReaderStopAll();
     }
 
@@ -92,7 +92,7 @@ void shutdown_all() {
     }
     // Shutdown kernel reader
     if (g_config.do_kernelcallback) {
-        LOG_F(INFO, "-- Stop kernel reader and injected dll reader");
+        LOG_F(INFO, "RedEdr: Stop kernel reader and injected dll reader");
         KernelReaderStopAll();
     }
     // ETW-TI
@@ -101,22 +101,22 @@ void shutdown_all() {
     }
     // Shutdown dll reader
     if (g_config.do_dllinjection || g_config.do_etwti) {
-        LOG_F(INFO, "-- Stop DLL reader");
+        LOG_F(INFO, "RedEdr: Stop DLL reader");
         InjectedDllReaderStopAll();
     }
     // Special case
     if (g_config.debug_dllreader) {
-        LOG_F(INFO, "-- Stop DLL reader");
+        LOG_F(INFO, "RedEdr: Stop DLL reader");
         InjectedDllReaderStopAll();
     }
     // ETW
     if (g_config.do_etw) {
-        LOG_F(INFO, "-- Stop ETW readers");
+        LOG_F(INFO, "RedEdr: Stop ETW readers");
         EtwReaderStopAll();
     }
     // Web server
     if (g_config.web_output) {
-        LOG_F(INFO, "-- Stop web server");
+        LOG_F(INFO, "RedEdr: Stop web server");
         StopWebServer();
     }
 }
@@ -129,7 +129,7 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     case CTRL_BREAK_EVENT:
     case CTRL_LOGOFF_EVENT:
     case CTRL_SHUTDOWN_EVENT:
-        LOG_F(WARNING, "--! Ctrl-c detected, performing shutdown");
+        LOG_F(WARNING, "RedEdr: Ctrl-c detected, performing shutdown");
         shutdown_all();
         return TRUE; // Indicate that we handled the signal
     default:
@@ -239,12 +239,12 @@ int main(int argc, char* argv[]) {
     // SeDebug
     BOOL dbg = makeMeSeDebug();
     if (!dbg) {
-        LOG_F(ERROR, "--( ERROR MakeMeSeDebug: Did you start with local admin or SYSTEM?");
+        LOG_F(ERROR, "RedEdr: ERROR MakeMeSeDebug: Did you start with local admin or SYSTEM?");
     }
 
     // Ctrl+C
     if (!SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE)) {
-        LOG_F(ERROR, "--( Failed to set control handler");
+        LOG_F(ERROR, "RedEdr: Failed to set control handler");
         return 1;
     }
 
@@ -258,56 +258,56 @@ int main(int argc, char* argv[]) {
     // we can then just bail out without tearing down the other threads
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
         if (DriverIsLoaded()) {
-            LOG_F(INFO, "Kernel Driver already loaded");
+            LOG_F(INFO, "Kernel: RedEdr Driver already loaded");
         }
         else {
-            LOG_F(INFO, "Load Kernel Driver");
+            LOG_F(INFO, "RedEdr: Load Kernel Driver");
             if (!LoadDriver()) {
-                LOG_F(ERROR, "Could not load driver");
+                LOG_F(ERROR, "RedEdr: Could not load driver");
                 return 1;
             }
         }
 
         // Start the kernel server first
         // The kernel module will connect to it
+        LOG_F(INFO, "RedEdr: Start kernel reader  thread");
         InitializeKernelReader(threads);
         Sleep(1000); // the thread with the server is not yet started...
         
         // Enable it
+        LOG_F(INFO, "RedEdr: Tell Kernel to start collecting telemetry of: \"%ls\"", g_config.targetExeName);
         const wchar_t* target = g_config.targetExeName;
         if (!ioctl_enable_kernel_module(1, (wchar_t*)target)) {
-            LOG_F(ERROR, "Could not communicate with kernel driver, aborting.");
+            LOG_F(ERROR, "RedEdr: Could not communicate with kernel driver, aborting.");
             return 1;
         }
     }
     if (g_config.do_etw) {
-        LOG_F(INFO, "--( Input: ETW Reader");
+        LOG_F(INFO, "RedEdr: Start ETW reader thread");
         InitializeEtwReader(threads);
     }
     if (g_config.do_mplog) {
-        LOG_F(INFO, "--( Input: MPLOG Reader");
+        LOG_F(INFO, "RedEdr: Start MPLOG Reader");
         InitializeLogReader(threads);
     }
     if (g_config.do_dllinjection || g_config.debug_dllreader || g_config.do_etwti) {
-        LOG_F(INFO, "--( Input: InjectedDll Reader");
+        LOG_F(INFO, "RedEdr: Start InjectedDll reader thread");
         InitializeInjectedDllReader(threads);
     }
     if (g_config.do_etwti) {
+        LOG_F(INFO, "RedEdr: Start ETW-TI reader");
         Sleep(1000);
         wchar_t* target = (wchar_t* )g_config.targetExeName;
         pplreader_enable(TRUE, target);
     }
 
     // Wait for all threads to complete
-    // NOTE Stops after ctrl-c handler is executed?
-    // etw: ControlTrace EVENT_TRACE_CONTROL_STOP all, which makes the threads return
-    // logreader: threads will persist, but WaitForMultipleObject() will still return
-    LOG_F(INFO, "--( waiting for %llu threads...", threads.size());
+    LOG_F(INFO, "RedEdr: waiting for %llu threads...", threads.size());
     DWORD res = WaitForMultipleObjects((DWORD) threads.size(), threads.data(), TRUE, INFINITE);
     if (res == WAIT_FAILED) {
-        LOG_F(INFO, "--( Wait failed");
+        LOG_F(INFO, "RedEdr: Wait failed");
     }
-    LOG_F(INFO, "--( all %d threads finished", threads.size());
+    LOG_F(INFO, "RedEdr: all %d threads finished", threads.size());
 
     return 0;
 }

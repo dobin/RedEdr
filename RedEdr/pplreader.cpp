@@ -22,40 +22,39 @@ BOOL pplreader_enable(BOOL e, wchar_t *target_name) {
         0,
         NULL);
     if (hPipe == INVALID_HANDLE_VALUE) {
-        LOG_F(ERROR, "Error creating named pipe: %ld\n", GetLastError());
+        LOG_F(ERROR, "ETW-TI: Error creating named pipe: %ld\n", GetLastError());
         return 1;
     }
 
     if (e) {
         if (target_name == NULL) {
-            LOG_F(ERROR, "Enable, but no target name given. Abort.");
+            LOG_F(ERROR, "ETW-TI: Enable, but no target name given. Abort.");
             return FALSE;
         }
         swprintf_s(buffer, sizeof(buffer) / sizeof(buffer[0]), L"start:%s", target_name);
         //wcscpy_s(buffer, DATA_BUFFER_SIZE, L"start");
         len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
         if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
-            LOG_F(ERROR, "Error writing to named pipe: %ld\n", GetLastError());
+            LOG_F(ERROR, "ETW-TI: Error writing to named pipe: %ld\n", GetLastError());
             CloseHandle(hPipe);
             return FALSE;
         }
-        LOG_F(INFO, "ppl reader: Enabled");
+        LOG_F(INFO, "ETW-TI: ppl reader: Enabled");
     }
     else {
         wcscpy_s(buffer, DATA_BUFFER_SIZE, L"stop");
         len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
         if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
-            LOG_F(ERROR, "Error writing to named pipe: %ld\n", GetLastError());
+            LOG_F(ERROR, "ETW-TI: Error writing to named pipe: %ld\n", GetLastError());
             CloseHandle(hPipe);
             return FALSE;
         }
-        LOG_F(INFO, "ppl reader: Disabled");
+        LOG_F(INFO, "ETW-TI: ppl reader: Disabled");
     }
 
     CloseHandle(hPipe);
     return TRUE;
 }
-
 
 
 BOOL pplreader_shutdown() {
@@ -74,18 +73,18 @@ BOOL pplreader_shutdown() {
         0,
         NULL);
     if (hPipe == INVALID_HANDLE_VALUE) {
-        LOG_F(ERROR, "Error creating named pipe: %ld\n", GetLastError());
+        LOG_F(ERROR, "ETW-TI: Error creating named pipe: %ld\n", GetLastError());
         return 1;
     }
 
     wcscpy_s(buffer, DATA_BUFFER_SIZE, L"shutdown");
     len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
     if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
-        LOG_F(ERROR, "Error writing to named pipe: %ld\n", GetLastError());
+        LOG_F(ERROR, "ETW-TI: Error writing to named pipe: %ld\n", GetLastError());
         CloseHandle(hPipe);
         return FALSE;
     }
-    LOG_F(INFO, "ppl reader: Disabled");
+    LOG_F(INFO, "ETW-TI: ppl reader: Disabled");
 
     CloseHandle(hPipe);
     return TRUE;
@@ -98,7 +97,7 @@ DWORD install_elam_cert()
     HANDLE fileHandle = NULL;
     WCHAR driverName[] = DRIVER_NAME;
 
-    LOG_F(INFO, "[PPL_RUNNER] install_elam_cert: Opening driver file: %s", driverName);
+    LOG_F(INFO, "ETW-TI: install_elam_cert: Opening driver file: %s", driverName);
     fileHandle = CreateFile(driverName,
         FILE_READ_DATA,
         FILE_SHARE_READ,
@@ -109,16 +108,16 @@ DWORD install_elam_cert()
     );
     if (fileHandle == INVALID_HANDLE_VALUE) {
         retval = GetLastError();
-        LOG_F(ERROR, "[PPL_RUNNER] install_elam_cert: CreateFile Error: %d", retval);
+        LOG_F(ERROR, "ETW-TI: install_elam_cert: CreateFile Error: %d", retval);
         return retval;
     }
 
     if (InstallELAMCertificateInfo(fileHandle) == FALSE) {
         retval = GetLastError();
-        LOG_F(ERROR, "[PPL_RUNNER] install_elam_cert: install_elam_certificateInfo Error: %d", retval);
+        LOG_F(ERROR, "ETW-TI: install_elam_cert: install_elam_certificateInfo Error: %d", retval);
         return retval;
     }
-    LOG_F(INFO, "[PPL_RUNNER] install_elam_cert: Installed ELAM driver cert");
+    LOG_F(INFO, "ETW-TI: install_elam_cert: Installed ELAM driver cert");
 
     return retval;
 }
@@ -136,7 +135,7 @@ DWORD install_ppl_service()
     hSCManager = OpenSCManager(NULL, NULL, SCManagerAccess);
     if (hSCManager == NULL) {
         retval = GetLastError();
-        LOG_F(ERROR, "[PPL_RUNNER] install_service: OpenSCManager Error: %d", retval);
+        LOG_F(ERROR, "ETW-TI: install_service: OpenSCManager Error: %d", retval);
         return retval;
 
     }
@@ -162,11 +161,11 @@ DWORD install_ppl_service()
     if (hService == NULL) {
         retval = GetLastError();
         if (retval == ERROR_SERVICE_EXISTS) {
-            LOG_F(INFO, "[PPL_RUNNER] install_service: CreateService: Service '%s' Already Exists", SERVICE_NAME);
+            LOG_F(INFO, "ETW-TI: install_service: CreateService: Service '%s' Already Exists", SERVICE_NAME);
             //LOG_F(INFO, "[PPL_RUNNER] install_service: Run 'net start %s' to start the service", SERVICE_NAME);
         }
         else {
-            LOG_F(ERROR, "[PPL_RUNNER] install_service: CreateService Error: %d", retval);
+            LOG_F(ERROR, "ETW-TI: install_service: CreateService Error: %d", retval);
             return retval;
         }
     }
@@ -175,7 +174,7 @@ DWORD install_ppl_service()
         info.dwLaunchProtected = SERVICE_LAUNCH_PROTECTED_ANTIMALWARE_LIGHT;
         if (ChangeServiceConfig2(hService, SERVICE_CONFIG_LAUNCH_PROTECTED, &info) == FALSE) {
             retval = GetLastError();
-            LOG_F(ERROR, "[PPL_RUNNER] install_service: ChangeServiceConfig2 Error: %d", retval);
+            LOG_F(ERROR, "ETW-TI: install_service: ChangeServiceConfig2 Error: %d", retval);
             return retval;
         }
     }
@@ -187,7 +186,7 @@ DWORD install_ppl_service()
     hService = OpenService(hSCManager, SERVICE_NAME, SERVICE_START | SERVICE_QUERY_STATUS);
     if (hService == NULL) {
         retval = GetLastError();
-        LOG_F(ERROR, "OpenService failed, error: %d\n", retval);
+        LOG_F(ERROR, "ETW-TI: OpenService failed, error: %d\n", retval);
         CloseServiceHandle(hSCManager);
         return retval;
     }
@@ -195,14 +194,14 @@ DWORD install_ppl_service()
     if (!bSuccess) {
         retval = GetLastError();
         if (retval == ERROR_SERVICE_ALREADY_RUNNING) {
-            LOG_F(WARNING, "Service is already running.\n");
+            LOG_F(WARNING, "ETW-TI: Service is already running.\n");
         }
         else {
-            LOG_F(ERROR, "StartService failed, error: %d\n", retval);
+            LOG_F(ERROR, "ETW-TI: StartService failed, error: %d\n", retval);
         }
     }
     else {
-        LOG_F(INFO, "Service started successfully.\n");
+        LOG_F(INFO, "ETW-TI: Service started successfully.\n");
     }
 
     // Close handles
@@ -219,21 +218,21 @@ DWORD remove_ppl_service() {
     SC_HANDLE hService;
     SERVICE_STATUS_PROCESS ssp;
     DWORD dwBytesNeeded;
-    LOG_F(INFO, "[REDEDR_PPL] remove_service() fuckmesideways");
+    LOG_F(INFO, "ETW-TI: remove_service() fuckmesideways");
     //LOG_F(INFO, "[REDEDR_PPL] remove_service: Stopping and Deleting Service %s...", SERVICE_NAME);
 
     // Get Handle to Service Manager and Service
     hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (hSCManager == NULL) {
         retval = GetLastError();
-        LOG_F(ERROR, "[REDEDR_PPL] remove_service: OpenSCManager Error: %d", retval);
+        LOG_F(ERROR, "ETW-TI: remove_service: OpenSCManager Error: %d", retval);
         return retval;
 
     }
     hService = OpenService(hSCManager, SERVICE_NAME, SERVICE_ALL_ACCESS);
     if (hService == NULL) {
         retval = GetLastError();
-        LOG_F(ERROR, "[REDEDR_PPL] remove_service: OpenService Error: %d", retval);
+        LOG_F(ERROR, "ETW-TI:  remove_service: OpenService Error: %d", retval);
         return retval;
     }
 
@@ -241,7 +240,7 @@ DWORD remove_ppl_service() {
     if (!QueryServiceStatusEx(
         hService, SC_STATUS_PROCESS_INFO, (LPBYTE)&ssp, sizeof(SERVICE_STATUS_PROCESS), &dwBytesNeeded)) {
         retval = GetLastError();
-        LOG_F(ERROR, "[REDEDR_PPL] remove_service: QueryServiceStatusEx1 Error: %d", retval);
+        LOG_F(ERROR, "ETW-TI: remove_service: QueryServiceStatusEx1 Error: %d", retval);
         return retval;
     }
 
@@ -249,7 +248,7 @@ DWORD remove_ppl_service() {
         // Send a stop code to the service.
         if (!ControlService(hService, SERVICE_CONTROL_STOP, (LPSERVICE_STATUS)&ssp)) {
             retval = GetLastError();
-            LOG_F(ERROR, "[REDEDR_PPL] remove_service: ControlService(Stop) Error: %d", retval);
+            LOG_F(ERROR, "ETW-TI: remove_service: ControlService(Stop) Error: %d", retval);
             return retval;
         }
         if (ssp.dwCurrentState != SERVICE_STOPPED) {
@@ -258,12 +257,12 @@ DWORD remove_ppl_service() {
             if (!QueryServiceStatusEx(
                 hService, SC_STATUS_PROCESS_INFO, (LPBYTE)&ssp, sizeof(SERVICE_STATUS_PROCESS), &dwBytesNeeded)) {
                 retval = GetLastError();
-                LOG_F(ERROR, "[REDEDR_PPL] remove_service: QueryServiceStatusEx2 Error: %d", retval);
+                LOG_F(ERROR, "ETW-TI: remove_service: QueryServiceStatusEx2 Error: %d", retval);
                 return retval;
             }
             if (ssp.dwCurrentState != SERVICE_STOPPED) {
                 retval = ssp.dwCurrentState;
-                LOG_F(ERROR, "[REDEDR_PPL] remove_service: Waited but service still not stopped: %d", retval);
+                LOG_F(ERROR, "ETW-TI: remove_service: Waited but service still not stopped: %d", retval);
                 return retval;
             }
         }
@@ -272,11 +271,11 @@ DWORD remove_ppl_service() {
     // Service stopped, now remove it
     if (!DeleteService(hService)) {
         retval = GetLastError();
-        LOG_F(ERROR, "[REDEDR_PPL] remove_service: DeleteService Error: %d", retval);
+        LOG_F(ERROR, "ETW-TI: remove_service: DeleteService Error: %d", retval);
         return retval;
     }
 
-    LOG_F(INFO, "[REDEDR_PPL] remove_service: Deleted Service %s", SERVICE_NAME);
+    LOG_F(INFO, "ETW-TI: remove_service: Deleted Service %s", SERVICE_NAME);
 
     return retval;
 }
