@@ -389,8 +389,6 @@ DWORD NTAPI NtQueueApcThread(
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
-    OutputDebugString(L"A7");
-
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
         L"type:dll;time:%llu;krn_pid:%llu;func:NtQueueApcThread;thread_handle:0x%p;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle);
@@ -782,8 +780,6 @@ DWORD NTAPI NtCreateTimer2(
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
-    OutputDebugString(L"A19");
-
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
         L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateTimer2;attributes:0x%lx;desired_access:0x%x;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), Attributes, DesiredAccess);
@@ -849,7 +845,7 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
         LdrGetProcedureAddress,
         (LPVOID*)(&pOriginalLdrGetProcedureAddress)
     );
-    MH_CreateHookApi(
+    MH_CreateHookApi( // OK
         L"ntdll",
         "NtQueueApcThread",
         NtQueueApcThread,
@@ -927,7 +923,7 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
         NtCreateTimer,
         (LPVOID*)(&pOriginalNtCreateTimer)
     );
-    MH_CreateHookApi(
+    MH_CreateHookApi( // OK
         L"ntdll",
         "NtCreateTimer2",
         NtCreateTimer2,
