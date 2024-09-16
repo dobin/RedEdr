@@ -337,7 +337,7 @@ int KapcInjectDll(IN PUNICODE_STRING ImageName, IN HANDLE ProcessId, IN PIMAGE_I
 	Apc = (PKAPC)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(KAPC), 'Tag1');
 	if (!Apc)
 	{
-		log_message("[ ] apc error\n");
+		//log_message("[ ] apc error\n");
 		return 0;
 	}
 	//KdPrint(("[+] APC allocated\n"));
