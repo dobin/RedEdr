@@ -22,7 +22,9 @@ BOOL EnablePplService(BOOL e, wchar_t* target_name) {
         0,
         NULL);
     if (hPipe == INVALID_HANDLE_VALUE) {
-        LOG_F(ERROR, "ETW-TI: Error creating named pipe: %ld\n", GetLastError());
+        LOG_F(ERROR, "ETW-TI: Error creating named pipe: error code %ld", GetLastError());
+        LOG_F(ERROR, "ETW-TI: Is RedEdrPplService loaded and running?");
+        LOG_F(ERROR, "ETW-TI:   (requires self-signed kernel and elam driver for ppl)");
         return 1;
     }
 
@@ -35,7 +37,7 @@ BOOL EnablePplService(BOOL e, wchar_t* target_name) {
         //wcscpy_s(buffer, DATA_BUFFER_SIZE, L"start");
         len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
         if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
-            LOG_F(ERROR, "ETW-TI: Error writing to named pipe: %ld\n", GetLastError());
+            LOG_F(ERROR, "ETW-TI: Error writing to named pipe: %ld", GetLastError());
             CloseHandle(hPipe);
             return FALSE;
         }
@@ -45,7 +47,7 @@ BOOL EnablePplService(BOOL e, wchar_t* target_name) {
         wcscpy_s(buffer, DATA_BUFFER_SIZE, L"stop");
         len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
         if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
-            LOG_F(ERROR, "ETW-TI: Error writing to named pipe: %ld\n", GetLastError());
+            LOG_F(ERROR, "ETW-TI: Error writing to named pipe: %ld", GetLastError());
             CloseHandle(hPipe);
             return FALSE;
         }
@@ -73,14 +75,14 @@ BOOL ShutdownPplService() {
         0,
         NULL);
     if (hPipe == INVALID_HANDLE_VALUE) {
-        LOG_F(ERROR, "ETW-TI: Error creating named pipe: %ld\n", GetLastError());
+        LOG_F(ERROR, "ETW-TI: Error creating named pipe: %ld", GetLastError());
         return 1;
     }
 
     wcscpy_s(buffer, DATA_BUFFER_SIZE, L"shutdown");
     len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
     if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
-        LOG_F(ERROR, "ETW-TI: Error writing to named pipe: %ld\n", GetLastError());
+        LOG_F(ERROR, "ETW-TI: Error writing to named pipe: %ld", GetLastError());
         CloseHandle(hPipe);
         return FALSE;
     }
@@ -186,7 +188,7 @@ DWORD InstallPplService()
     hService = OpenService(hSCManager, SERVICE_NAME, SERVICE_START | SERVICE_QUERY_STATUS);
     if (hService == NULL) {
         retval = GetLastError();
-        LOG_F(ERROR, "ETW-TI: OpenService failed, error: %d\n", retval);
+        LOG_F(ERROR, "ETW-TI: OpenService failed, error: %d", retval);
         CloseServiceHandle(hSCManager);
         return retval;
     }
@@ -194,14 +196,14 @@ DWORD InstallPplService()
     if (!bSuccess) {
         retval = GetLastError();
         if (retval == ERROR_SERVICE_ALREADY_RUNNING) {
-            LOG_F(WARNING, "ETW-TI: Service is already running.\n");
+            LOG_F(WARNING, "ETW-TI: Service is already running");
         }
         else {
-            LOG_F(ERROR, "ETW-TI: StartService failed, error: %d\n", retval);
+            LOG_F(ERROR, "ETW-TI: StartService failed, error: %d", retval);
         }
     }
     else {
-        LOG_F(INFO, "ETW-TI: Service started successfully.\n");
+        LOG_F(INFO, "ETW-TI: Service started successfully");
     }
 
     // Close handles

@@ -129,7 +129,7 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     case CTRL_BREAK_EVENT:
     case CTRL_LOGOFF_EVENT:
     case CTRL_SHUTDOWN_EVENT:
-        LOG_F(WARNING, "RedEdr: Ctrl-c detected, performing shutdown");
+        LOG_F(WARNING, "\nRedEdr: Ctrl-c detected, performing shutdown");
         shutdown_all();
         return TRUE; // Indicate that we handled the signal
     default:
