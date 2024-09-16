@@ -160,8 +160,7 @@ int main(int argc, char* argv[]) {
         ("u,hide", "Output: Hide messages (performance. use with --web)", cxxopts::value<bool>()->default_value("false"))
 
         ("1,krnload", "Kernel Module: Load", cxxopts::value<bool>()->default_value("false"))
-        ("2,krnreload", "Kernel Module: ReLoad", cxxopts::value<bool>()->default_value("false"))
-        ("3,krnunload", "Kernel Module: Unload", cxxopts::value<bool>()->default_value("false"))
+        ("2,krnunload", "Kernel Module: Unload", cxxopts::value<bool>()->default_value("false"))
         
         ("4,pplstart", "PPL service: load", cxxopts::value<bool>()->default_value("false"))
         ("5,pplstop", "PPL service: stop", cxxopts::value<bool>()->default_value("false"))
@@ -181,15 +180,6 @@ int main(int argc, char* argv[]) {
 
     if (result.count("krnload")) {
         LoadKernelDriver();
-        exit(0);
-    } else if (result.count("krnreload")) {
-        if (IsKernelDriverLoaded()) {
-            UnloadKernelDriver();
-            LoadKernelDriver();
-        }
-        else {
-            LoadKernelDriver();
-        }
         exit(0);
     } else if (result.count("krnunload")) {
         UnloadKernelDriver();
@@ -260,7 +250,7 @@ int main(int argc, char* argv[]) {
     // Do kernel module stuff first, as it can fail hard
     // we can then just bail out without tearing down the other threads
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
-        if (IsKernelDriverLoaded()) {
+        if (IsServiceRunning(g_config.driverName)) {
             LOG_F(INFO, "Kernel: RedEdr Driver already loaded");
         }
         else {

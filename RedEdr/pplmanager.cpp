@@ -4,6 +4,7 @@
 
 #include "loguru.hpp"
 #include "../Shared/common.h"
+#include "serviceutils.h"
 
 
 BOOL EnablePplService(BOOL e, wchar_t* target_name) {
@@ -12,6 +13,13 @@ BOOL EnablePplService(BOOL e, wchar_t* target_name) {
     HANDLE hPipe;
     int n = 0;
     DWORD len;
+
+    if (!IsServiceRunning(SERVICE_NAME)) {
+        LOG_F(ERROR, "Error: service %ls not found", SERVICE_NAME);
+        LOG_F(ERROR, "ETW-TI: Is RedEdrPplService loaded?");
+        LOG_F(ERROR, "ETW-TI:   (requires self-signed kernel and elam driver for ppl)");
+        return FALSE;
+    }
 
     hPipe = CreateFile(
         PPL_SERVICE_PIPE_NAME,
@@ -23,11 +31,12 @@ BOOL EnablePplService(BOOL e, wchar_t* target_name) {
         NULL);
     if (hPipe == INVALID_HANDLE_VALUE) {
         LOG_F(ERROR, "ETW-TI: Error creating named pipe: error code %ld", GetLastError());
-        LOG_F(ERROR, "ETW-TI: Is RedEdrPplService loaded and running?");
+        LOG_F(ERROR, "ETW-TI: Is RedEdrPplService running?");
         LOG_F(ERROR, "ETW-TI:   (requires self-signed kernel and elam driver for ppl)");
         return 1;
     }
 
+    // Send enable/disable via pipe to PPL aervice
     if (e) {
         if (target_name == NULL) {
             LOG_F(ERROR, "ETW-TI: Enable, but no target name given. Abort.");
