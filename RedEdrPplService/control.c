@@ -13,16 +13,6 @@ HANDLE control_thread = NULL;
 BOOL keep_running = TRUE;
 
 
-void rededr_remove_service() {
-    //wchar_t* cmd = L"C:\\RedEdr\\RedEdr.exe --pplstop";
-    WCHAR childCMD[MAX_BUF_SIZE] = { 0 };
-    //wcscpy_s(childCMD, MAX_BUF_SIZE, L"C:\\windows\\system32\\cmd.exe /c \"echo AAA > c:\\rededr\\aa\"");
-    //wcscpy_s(childCMD, MAX_BUF_SIZE, L"C:\\RedEdr\\RedEdrPplRemover.exe");
-    wcscpy_s(childCMD, MAX_BUF_SIZE, L"C:\\RedEdr\\RedEdr.exe --pplstop");
-    start_child_process(childCMD);
-}
-
-
 DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
     wchar_t buffer[SMALL_PIPE];
     int rest_len = 0;
@@ -90,8 +80,8 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                 else if (wcscmp(buffer, L"shutdown") == 0) {
                     log_message(L"Control: Received command: shutdown");
                     //rededr_remove_service();  // attempt to remove service
-                    stop_control(); // stop this thread
-                    shutdown_etwti_reader(); // also makes main return
+                    StopControl(); // stop this thread
+                    ShutdownEtwtiReader(); // also makes main return
                     break;
                 }
                 else {
@@ -111,7 +101,7 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
 }
 
 
-void start_control() {
+void StartControl() {
     log_message(L"Control: Start Thread");
     control_thread = CreateThread(NULL, 0, ServiceControlPipeThread, NULL, 0, NULL);
     if (control_thread == NULL) {
@@ -120,7 +110,7 @@ void start_control() {
 }
 
 
-void stop_control() {
+void StopControl() {
     log_message(L"Control: Stop Thread");
 
     // Disable the loops
@@ -129,6 +119,20 @@ void stop_control() {
     // Send some stuff so the ReadFile() in the pipe reader thread returns
     DWORD dwWritten;
     BOOL success = WriteFile(control_pipe, "", 0, &dwWritten, NULL);
+}
+
+
+//////
+
+
+// broken atm
+void rededr_remove_service() {
+    //wchar_t* cmd = L"C:\\RedEdr\\RedEdr.exe --pplstop";
+    WCHAR childCMD[MAX_BUF_SIZE] = { 0 };
+    //wcscpy_s(childCMD, MAX_BUF_SIZE, L"C:\\windows\\system32\\cmd.exe /c \"echo AAA > c:\\rededr\\aa\"");
+    //wcscpy_s(childCMD, MAX_BUF_SIZE, L"C:\\RedEdr\\RedEdrPplRemover.exe");
+    wcscpy_s(childCMD, MAX_BUF_SIZE, L"C:\\RedEdr\\RedEdr.exe --pplstop");
+    start_child_process(childCMD);
 }
 
 

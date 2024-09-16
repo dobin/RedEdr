@@ -21,7 +21,7 @@
     <ClCompile Include="emitter.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="consumer.c">
+    <ClCompile Include="etwtireader.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="control.c">
@@ -38,7 +38,7 @@
     <ClInclude Include="emitter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="consumer.h">
+    <ClInclude Include="etwtireader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="control.h">

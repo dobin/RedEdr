@@ -3,7 +3,7 @@
 
 #include "../Shared/common.h"
 #include "utils.h"
-#include "consumer.h"
+#include "etwtireader.h"
 #include "emitter.h"
 #include "control.h"
 
@@ -12,7 +12,7 @@ SERVICE_STATUS        g_ServiceStatus = { 0 };
 SERVICE_STATUS_HANDLE g_StatusHandle = NULL;
 
 
-void service_exit() {
+void ShutdownService() {
     log_message(L"Shutdown");
 
     // Stopping
@@ -33,7 +33,7 @@ void service_exit() {
 }
 
 
-VOID WINAPI service_ctrl_handler(DWORD ctrlCode)
+VOID WINAPI ServiceCtrlHandler(DWORD ctrlCode)
 {
     // As we are PPL, this cannot be invoked really?
     switch (ctrlCode)
@@ -41,7 +41,7 @@ VOID WINAPI service_ctrl_handler(DWORD ctrlCode)
     case SERVICE_CONTROL_STOP:
         if (g_ServiceStatus.dwCurrentState != SERVICE_RUNNING)
             break;
-        service_exit();
+        ShutdownService();
         break;
 
     default:
@@ -57,7 +57,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
     log_message(L"Service Start");
 
     // Register our service control handler with the SCM
-    g_StatusHandle = RegisterServiceCtrlHandler(SERVICE_NAME, service_ctrl_handler);
+    g_StatusHandle = RegisterServiceCtrlHandler(SERVICE_NAME, ServiceCtrlHandler);
     if (g_StatusHandle == NULL)
     {
         retval = GetLastError();
@@ -76,7 +76,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
     SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
 
     // Start Control thread which will listen on a pipe for commands
-    start_control();
+    StartControl();
 
     // Set the service status to RUNNING after initialization is complete
     g_ServiceStatus.dwCurrentState = SERVICE_RUNNING;
@@ -88,19 +88,19 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
     // Service loop or logic here
     while (g_ServiceStatus.dwCurrentState == SERVICE_RUNNING) {
         // Start collecting
-        initialize_etwti_reader(); // BLOCKS atm
+        StartEtwtiReader(); // BLOCKS atm
         break;
     }
 
     log_message(L"ServiceMain: Finished");
-    service_exit();
+    ShutdownService();
 
     return;
 }
 
 
 // Setup the service (from main)
-DWORD service_entry()
+DWORD ServiceEntry()
 {
     DWORD retval = 0;
     SERVICE_TABLE_ENTRY serviceTable[] =
@@ -108,6 +108,8 @@ DWORD service_entry()
         {SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)ServiceMain},
         {NULL, NULL}
     };
+
+    objcache_init();
 
     if (StartServiceCtrlDispatcher(serviceTable) == FALSE)
     {
@@ -123,13 +125,13 @@ DWORD service_entry()
 DWORD main(INT argc, CHAR** argv)
 {
     log_message(L"Start RedEdr PPL Service");
-    service_entry();
+    ServiceEntry();
 
     if (0) {
         objcache_init();
-        start_control();
-        initialize_etwti_reader(); // BLOCKS atm
-        service_exit();
+        StartControl();
+        StartEtwtiReader(); // BLOCKS atm
+        ShutdownService();
     }
 
     return 0;

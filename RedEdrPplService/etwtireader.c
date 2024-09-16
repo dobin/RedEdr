@@ -47,19 +47,19 @@ void PrintProperties(wchar_t *eventName, PEVENT_RECORD eventRecord) {
 
     wchar_t output [1024] = { 0 }; // Buffer to accumulate output
     swprintf(output, sizeof(output) / sizeof(output[0]),
-        L"type:etw;time:%lld;pid:%lu;thread_id:%lu;event:%s;",
+        L"type:etw;time:%lld;pid:%lu;thread_id:%lu;event:%s;provider_name:Microsoft-Windows-Threat-Intelligence;",
         eventRecord->EventHeader.TimeStamp.QuadPart,
         eventRecord->EventHeader.ProcessId,
         eventRecord->EventHeader.ThreadId,
         eventName);
 
-    if (eventInfo->ProviderNameOffset) {
+    /*if (eventInfo->ProviderNameOffset) {
         wcscat_s(output, sizeof(output) / sizeof(output[0]), (wchar_t*)((PBYTE)eventInfo + eventInfo->ProviderNameOffset));
     }
     else {
         wcscat_s(output, sizeof(output) / sizeof(output[0]), L"Unknown");
     }
-    wcscat_s(output, sizeof(output) / sizeof(output[0]), L";");
+    wcscat_s(output, sizeof(output) / sizeof(output[0]), L";");*/
 
     for (DWORD i = 0; i < eventInfo->TopLevelPropertyCount; i++) {
         PROPERTY_DATA_DESCRIPTOR dataDescriptor;
@@ -241,37 +241,117 @@ void WINAPI EventRecordCallbackTi(PEVENT_RECORD eventRecord) {
         return;
     }
 
-    wchar_t buffer[32] = { 0 };
-    swprintf_s(buffer, sizeof(buffer) / sizeof(buffer[0]), L"<%d>", eventRecord->EventHeader.EventDescriptor.Id);
-    PrintProperties(buffer, eventRecord);
+    wchar_t id[128];
+    //swprintf_s(buffer, sizeof(buffer) / sizeof(buffer[0]), L"<%d>", eventRecord->EventHeader.EventDescriptor.Id);
 
-    // Do we want to track this process?
-    //DWORD processId = eventRecord->EventHeader.ProcessId;
-    //if (!g_cache.observe(processId)) {
-    //    return;
-    //}
-    /*
     switch (eventRecord->EventHeader.EventDescriptor.Id) {
     case 1:
-        //log_message(L"-> Start process");
-        SendEmitterPipe(L"-> Sart Process: enabled2: %d", enabled_consumer);
+        wcsncpy_s(id, 128, L"ALLOCVM_REMOTE", _TRUNCATE);
+        break;
+    case 2:
+        wcsncpy_s(id, 128, L"PROTECTVM_REMOTE", _TRUNCATE);
         break;
     case 3:
-        //log_message(L"-> Start thread");
-        //SendEmitterPipe(L"-> Sart thread");
+        wcsncpy_s(id, 128, L"MAPVIEW_REMOTE", _TRUNCATE);
+        break;
+    case 4:
+        wcsncpy_s(id, 128, L"QUEUEUSERAPC_REMOTE", _TRUNCATE);
         break;
     case 5:
-        //log_message(L"-> load image");
+        wcsncpy_s(id, 128, L"SETTHREADCONTEXT_REMOTE", _TRUNCATE);
+        break;
+    case 6:
+        wcsncpy_s(id, 128, L"ALLOCVM_LOCAL", _TRUNCATE);
+        break;
+    case 7:
+        wcsncpy_s(id, 128, L"PROTECTVM_LOCAL", _TRUNCATE);
+        break;
+    case 8:
+        wcsncpy_s(id, 128, L"MAPVIEW_LOCAL", _TRUNCATE);
+        break;
+    case 9:
+        wcsncpy_s(id, 128, L"???", _TRUNCATE);
+        break;
+    case 10:
+        wcsncpy_s(id, 128, L"???", _TRUNCATE);
+        break;
+    case 11:
+        wcsncpy_s(id, 128, L"READVM_LOCAL", _TRUNCATE);
+        break;
+    case 12:
+        wcsncpy_s(id, 128, L"WRITEVM_LOCAL", _TRUNCATE);
+        break;
+    case 13:
+        wcsncpy_s(id, 128, L"READVM_REMOTE", _TRUNCATE);
+        break;
+    case 14:
+        wcsncpy_s(id, 128, L"WRITEVM_REMOTE", _TRUNCATE);
+        break;
+    case 15:
+        wcsncpy_s(id, 128, L"SUSPEND_THREAD", _TRUNCATE);
+        break;
+    case 16:
+        wcsncpy_s(id, 128, L"RESUME_THREAD", _TRUNCATE);
+        break;
+    case 17:
+        wcsncpy_s(id, 128, L"SUSPEND_PROCESS", _TRUNCATE);
+        break;
+    case 18:
+        wcsncpy_s(id, 128, L"RESUME_PROCESS", _TRUNCATE);
+        break;
+    case 19:
+        wcsncpy_s(id, 128, L"FREEZE_PROCESS", _TRUNCATE);
+        break;
+    case 20:
+        wcsncpy_s(id, 128, L"THAW_PROCESS", _TRUNCATE);
+        break;
+    case 21:
+        wcsncpy_s(id, 128, L"ALLOCVM_REMOTE_KERNEL_CALLER", _TRUNCATE);
+        break;
+    case 22:
+        wcsncpy_s(id, 128, L"PROTECTVM_REMOTE_KERNEL_CALLER", _TRUNCATE);
+        break;
+    case 23:
+        wcsncpy_s(id, 128, L"MAPVIEW_REMOTE_KERNEL_CALLER", _TRUNCATE);
+        break;
+    case 24:
+        wcsncpy_s(id, 128, L"QUEUEUSERAPC_REMOTE_KERNEL_CALLER", _TRUNCATE);
+        break;
+    case 25:
+        wcsncpy_s(id, 128, L"SETTHREADCONTEXT_REMOTE_KERNEL_CALLER", _TRUNCATE);
+        break;
+    case 26:
+        wcsncpy_s(id, 128, L"ALLOCVM_LOCAL_KERNEL_CALLER", _TRUNCATE);
+        break;
+    case 27:
+        wcsncpy_s(id, 128, L"PROTECTVM_LOCAL_KERNEL_CALLER", _TRUNCATE);
+        break;
+    case 28:
+        wcsncpy_s(id, 128, L"MAPVIEW_LOCAL_KERNEL_CALLER", _TRUNCATE);
+        break;
+    case 29:
+        wcsncpy_s(id, 128, L"DRIVER_OBJECT_LOAD", _TRUNCATE);
+        break;
+    case 30:
+        wcsncpy_s(id, 128, L"DRIVER_OBJECT_UNLOAD", _TRUNCATE);
+        break;
+    case 31:
+        wcsncpy_s(id, 128, L"DEVICE_OBJECT_LOAD", _TRUNCATE);
+        break;
+    case 32:
+        wcsncpy_s(id, 128, L"DEVICE_OBJECT_UNLOAD", _TRUNCATE);
+        break;
+    default:
+        wcsncpy_s(id, 128, L"???", _TRUNCATE);
         break;
     }
-    */
 
-    //PrintProperties(eventName, eventRecord);
+    PrintProperties(id, eventRecord);
 }
 
 
 DWORD WINAPI TraceProcessingThread(LPVOID param) {
-    setup_trace(L"{f4e1897c-bb5d-5668-f1d8-040f4d8dd344}", &EventRecordCallbackTi, L"Microsoft-Windows-Threat-Intelligence");
+    SetupTrace(L"{f4e1897c-bb5d-5668-f1d8-040f4d8dd344}", &EventRecordCallbackTi, L"Microsoft-Windows-Threat-Intelligence");
     
     // For testing only:
     //setup_trace(L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
@@ -279,7 +359,7 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
 }
 
 
-void initialize_etwti_reader() {
+void StartEtwtiReader() {
     TraceProcessingThread(NULL);
 }
 
@@ -290,7 +370,7 @@ TRACEHANDLE SessionHandle;
 TRACEHANDLE TraceHandle;
 
 
-EVENT_TRACE_PROPERTIES* make_SessionProperties(size_t session_name_len) {
+EVENT_TRACE_PROPERTIES* makeSessionProperties(size_t session_name_len) {
     EVENT_TRACE_PROPERTIES* sessionProperties;
     ULONG bufferSize = (ULONG)(sizeof(EVENT_TRACE_PROPERTIES) + ((session_name_len + 1) * sizeof(wchar_t)));
     sessionProperties = (EVENT_TRACE_PROPERTIES*)malloc(bufferSize);
@@ -308,12 +388,12 @@ EVENT_TRACE_PROPERTIES* make_SessionProperties(size_t session_name_len) {
 }
 
 
-BOOL shutdown_etwti_reader() {
+BOOL ShutdownEtwtiReader() {
     log_message(L"Consumer: Stopping EtwTracing");
     ULONG status;
     EVENT_TRACE_PROPERTIES* sessionProperties;
 
-    sessionProperties = make_SessionProperties(wcslen(SessionName));
+    sessionProperties = makeSessionProperties(wcslen(SessionName));
     if (SessionHandle != NULL) {
         log_message(L"Consumer: Stop Session with ControlTrace(EVENT_TRACE_CONTROL_STOP)");
         status = ControlTrace(SessionHandle, SessionName, sessionProperties, EVENT_TRACE_CONTROL_STOP);
@@ -348,7 +428,7 @@ BOOL shutdown_etwti_reader() {
 }
 
 
-BOOL setup_trace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wchar_t* info) {
+BOOL SetupTrace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wchar_t* info) {
     ULONG status;
     GUID providerGuid;
     SessionHandle = NULL;
@@ -363,7 +443,7 @@ BOOL setup_trace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wch
     }
 
     // StartTrace -> SessionHandle
-    EVENT_TRACE_PROPERTIES* sessionProperties = make_SessionProperties(wcslen(SessionName));
+    EVENT_TRACE_PROPERTIES* sessionProperties = makeSessionProperties(wcslen(SessionName));
     status = StartTrace(&SessionHandle, SessionName, sessionProperties);
     if (status != ERROR_SUCCESS) {
         log_message(L"Consumer: Failed to start trace: %d", status);

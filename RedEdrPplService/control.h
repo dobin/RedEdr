@@ -1,3 +1,3 @@
 
-void start_control();
-void stop_control();
+void StartControl();
+void StopControl();
