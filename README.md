@@ -18,7 +18,7 @@ A normal EDR will observe all processes, and identify malicious processes.
   * Microsoft-Windows-Kernel-Process
   * Microsoft-Windows-Security-Auditing
     * needs SYSTEM
-    * restrictions apply, see gpedit.msc -> Computer Configuration -> Windows Settings -> Security Settings -> Advanced Audit Policy Configuration -> System Audit Policies - Local Group Policy object
+    * restrictions apply, group policy
   * And defender
     * Microsoft-Antimalware-Engine
     * Microsoft-Antimalware-RTP
@@ -73,23 +73,46 @@ I recommend to use it with kernel module. For a quick test, you can use RedEdr w
 RedEdr only traces newly created processes, with the `--trace` argument in the image
 name. After starting RedEdr, just start `notepad.exe`.
 
+
+### Kernel module
+
+Kernel module callbacks. And KAPC DLL injection: 
+```
+PS > .\RedEdr.exe --kernel --inject --trace notepad.exe
+```
+
+This requires self-signed kernel modules to load. 
+
+
+### ETW 
+
+
 Only ETW, no kernel module:
 ```
 PS > .\RedEdr.exe --etw --trace notepad.exe
 ```
 
-Only kernel module (callbacks, KAPC DLL injection): 
-```
-PS > .\RedEdr.exe --kernel --inject --trace notepad.exe
-```
+Start as SYSTEM to gain access to `Microsoft-Windows-Security-Auditing`. 
+See `gpedit.msc -> Computer Configuration -> Windows Settings -> Security Settings -> Advanced Audit Policy Configuration -> System Audit Policies - Local Group Policy object`
+for settings to log.
 
-Only ETW-TI
+
+### ETWI-TI
+
+ETW-TI requires an ELAM driver to start `RedEdrPplService`, 
+and therefore requires self signed kernel driver option. 
+
+Make a snapshot of your VM before doing this. Currently its 
+not possible to remove the PPL service again (try it!). 
+
 ```
 PS > .\RedEdr.exe --etwti --trace notepad.exe
 ```
 
 
-All:
+### Real world usage
+
+All input:
 ```
 PS > .\RedEdr.exe --kernel --inject --etw --etwti --trace notepad.exe
 ```

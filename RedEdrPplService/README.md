@@ -5,6 +5,11 @@
 * As a service
 
 
+References: 
+* https://blog.tofile.dev/2020/12/16/elam.html
+* 
+
+
 ## Startup
 
 * main() -> service_entry() -> ServiceMain()
