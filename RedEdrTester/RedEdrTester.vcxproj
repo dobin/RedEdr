@@ -136,7 +136,11 @@
     <ClCompile Include="..\RedEdr\loguru.cpp" />
     <ClCompile Include="..\RedEdr\output.cpp" />
     <ClCompile Include="..\RedEdr\procinfo.cpp" />
+    <ClCompile Include="..\RedEdr\utils.cpp" />
     <ClCompile Include="RedEdrTester.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="uthash.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
