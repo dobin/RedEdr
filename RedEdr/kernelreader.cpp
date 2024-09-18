@@ -6,11 +6,13 @@
 #include <string>
 #include <iomanip>
 #include <sstream>
+#include <wchar.h>
 
 #include "../Shared/common.h"
 #include "loguru.hpp"
 #include "kernelreader.h"
 #include "output.h"
+#include "cache.h"
 
 #pragma comment (lib, "wintrust.lib")
 #pragma comment(lib, "dbghelp.lib")
@@ -27,6 +29,31 @@ void KernelReaderStopAll() {
     // Send some stuff so the ReadFile() in the reader thread returns
     DWORD dwWritten;
     BOOL success = WriteFile(kernel_pipe, "", 0, &dwWritten, NULL);
+}
+
+
+void CheckForNewProcess(wchar_t* line) {
+    // Check if "observe:1" exists
+    wchar_t* observe_str = wcsstr(line, L"observe:");
+    if (!observe_str) {
+        return;
+    }
+    
+    // something like
+    // "type:kernel;time:133711655617407173;callback:create_process;krn_pid:5564;pid:4240;name:\\Device\\HarddiskVolume2\\Windows\\System32\\notepad.exe;ppid:5564;parent_name:\\Device\\HarddiskVolume2\\Windows\\explorer.exe;observe:1"
+    // find "observe:<int>" and pid from "pid:<int>"
+    int observe_value = 0;
+    swscanf_s(observe_str, L"observe:%d", &observe_value);
+    if (observe_value == 1) {
+        // Now extract the pid
+        wchar_t* pid_str = wcsstr(line, L";pid:");
+        if (pid_str) {
+            int pid = 0;
+            swscanf_s(pid_str, L";pid:%d", &pid);
+            LOG_F(WARNING, "observe: %d, pid: %d\n", observe_value, pid);
+            g_cache.getObject(pid); // FIXME this actually creates the process 
+        }
+    }
 }
 
 
@@ -74,6 +101,9 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
                 for (int i = 0; i < full_len; i += 2) { // 2-byte increments because wide string
                     if (buffer[i] == 0 && buffer[i + 1] == 0) { // check manually for \x00\x00
                         do_output(std::wstring(p));
+
+                        CheckForNewProcess(p);
+
                         //wprintf(L"KRN: %s\n", p); // found \x00\x00, print the previous string
                         i += 2; // skip \x00\x00
                         last_potential_str_start = i; // remember the last zero byte we found
