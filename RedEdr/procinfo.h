@@ -33,6 +33,7 @@ public:
         wprintf(L"         image_base: 0x%p\n", image_base);
     }
 
+
     wchar_t* serialize() const {
         // Calculate the total size needed for the serialized string
         size_t totalSize = 0;
@@ -71,6 +72,7 @@ public:
     DWORD is_protected_process = 0;
     DWORD is_protected_process_light = 0;
     PVOID image_base = 0;
+    LPCVOID PebBaseAddress = 0;
 };
 
 

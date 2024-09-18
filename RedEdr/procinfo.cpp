@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <windows.h>
+#include <stdio.h>
 #include <dbghelp.h>
 #include <wintrust.h>
 #include <Softpub.h>
@@ -10,12 +10,8 @@
 #include <winternl.h>
 #include <cwchar>
 #include <wchar.h>
-
 #include <psapi.h>
 #include <tchar.h>
-#include <stdio.h>
-#include <vector>
-#include <winternl.h>
 
 #include "loguru.hpp"
 #include "config.h"
@@ -30,6 +26,10 @@
 #pragma comment(lib, "ntdll.lib")
 
 
+typedef enum _MEMORY_INFORMATION_CLASS {
+    MemoryBasicInformation
+} MEMORY_INFORMATION_CLASS;
+
 typedef NTSTATUS(NTAPI* pNtQueryInformationProcess)(
     HANDLE ProcessHandle,
     PROCESSINFOCLASS ProcessInformationClass,
@@ -37,13 +37,22 @@ typedef NTSTATUS(NTAPI* pNtQueryInformationProcess)(
     ULONG ProcessInformationLength,
     PULONG ReturnLength);
 
+typedef NTSTATUS(NTAPI* pNtQueryVirtualMemory)(
+    HANDLE                   ProcessHandle,
+    PVOID                    BaseAddress,
+    MEMORY_INFORMATION_CLASS MemoryInformationClass,
+    PVOID                    MemoryInformation,
+    SIZE_T                   MemoryInformationLength,
+    PSIZE_T                  ReturnLength
+);
+
 
 // Gets a UNICODE_STRING content in a remote process as wstring
 std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
     std::wstring s;
     std::vector<wchar_t> commandLine(u->Length / sizeof(wchar_t));
     if (!ReadProcessMemory(hProcess, u->Buffer, commandLine.data(), u->Length, NULL)) {
-        LOG_F(ERROR, "Error: Could not ReadProcessMemory error: %d", GetLastError());
+        LOG_F(ERROR, "Procinfo: Could not ReadProcessMemory error: %d", GetLastError());
     }
     else {
         s.assign(commandLine.begin(), commandLine.end());
@@ -52,30 +61,93 @@ std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
 }
 
 
-bool RetrieveProcessInfo(Process *process, HANDLE hProcess) {
+// Unused, produces a lot of data
+bool QueryMemoryRegions(HANDLE hProcess) {
+    MEMORY_BASIC_INFORMATION mbi;
+    PVOID address = 0;
+    SIZE_T returnLength = 0;
+    char buf[2048];
+    PROCESS_BASIC_INFORMATION pbi;
+    NTSTATUS status;
+
     HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
-    pNtQueryInformationProcess NtQueryInformationProcess = (pNtQueryInformationProcess)GetProcAddress(hNtDll, "NtQueryInformationProcess");
+    if (hNtDll == NULL) {
+        LOG_F(ERROR, "Procinfo: could not find ntdll.dll");
+    }
+
+    pNtQueryVirtualMemory NtQueryVirtualMemory = (pNtQueryVirtualMemory)GetProcAddress(hNtDll, "NtQueryVirtualMemory");
     if (!NtQueryInformationProcess) {
-        LOG_F(ERROR, "Error: Could not get NtQueryInformationProcess error: %d", GetLastError());
+        LOG_F(ERROR, "Procinfo: Could not get NtQueryVirtualMemory error: %d", GetLastError());
         return FALSE;
     }
+    int c = 0, cc = 0;
+    while (NtQueryVirtualMemory(hProcess, address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
+        if (mbi.Type == 0 || mbi.Protect == 0 || mbi.State != MEM_COMMIT) {
+            address = (PVOID)((ULONG_PTR)mbi.BaseAddress + mbi.RegionSize);
+            continue;
+        }
+        // skip IMAGE regions
+        //if (mbi.Type == MEM_IMAGE) {
+        if (mbi.Type != MEM_PRIVATE) {
+            address = (PVOID)((ULONG_PTR)mbi.BaseAddress + mbi.RegionSize);
+            continue;
+        }
+        
+        //printf("addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx\n",
+        //    mbi.BaseAddress, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
+
+        //printf("addr:%p;size:%zu;protect:0x%lx;type:0x%lx\n",
+        //    mbi.BaseAddress, mbi.RegionSize, mbi.Protect, mbi.Type);
+
+        sprintf_s(buf, sizeof(buf), "addr:%p;size:%zu;protect:0x%lx;",
+            mbi.BaseAddress, mbi.RegionSize, mbi.Protect);
+        c += strlen(buf);
+        cc += 1;
+        printf("%s\n", buf);
+
+        //printf("Protection: ");
+        //PrintProtectionFlags(mbi.Protect);
+        address = (PVOID)((ULONG_PTR)mbi.BaseAddress + mbi.RegionSize);
+    }
+
+    printf("Len bytes: %i   lines: %i\n", c, cc);
+
+    return TRUE;
+}
+
+
+bool RetrieveProcessInfo(Process *process, HANDLE hProcess) {
+    HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
+    if (hNtDll == NULL) {
+        LOG_F(ERROR, "Procinfo: could not find ntdll.dll");
+        return FALSE;
+    }
+    pNtQueryInformationProcess NtQueryInformationProcess = (pNtQueryInformationProcess)GetProcAddress(hNtDll, "NtQueryInformationProcess");
+    if (!NtQueryInformationProcess) {
+        LOG_F(ERROR, "Procinfo: Error: Could not get NtQueryInformationProcess error: %d", GetLastError());
+        return FALSE;
+    }
+
     PROCESS_BASIC_INFORMATION pbi;
     ULONG returnLength;
     NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
     if (status != 0) {
-        LOG_F(ERROR, "Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
+        LOG_F(ERROR, "Procinfo: Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
         return FALSE;
     }
 
+    // PBI follows
     DWORD parentPid = (DWORD)pbi.Reserved3; // InheritedFromUniqueProcessId lol
     process->parent_pid = parentPid;
 
+    // PEB follows
     MYPEB peb;
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
         // this is the first read, and may fail. 
         // dont spam log messages
         //LOG_F(WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
         //    process->id, GetLastError());
+        process->PebBaseAddress = pbi.PebBaseAddress;
         return FALSE;
     }
 
@@ -111,10 +183,85 @@ bool RetrieveProcessInfo(Process *process, HANDLE hProcess) {
     //std::wstring DllPath = my_get_str(hProcess, &procParams.DllPath);
     //std::wstring WindowTitle = my_get_str(hProcess, &procParams.WindowTitle);
 
-    // Ldr
-    // DLL's ?
     return TRUE;
 }
+
+
+BOOL PrintLoadedModules(HANDLE hProcess, Process* process) {
+    HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
+    if (hNtDll == NULL) {
+        LOG_F(ERROR, "Procinfo: could not find ntdll.dll");
+        return FALSE;
+    }
+    pNtQueryInformationProcess NtQueryInformationProcess = (pNtQueryInformationProcess)GetProcAddress(hNtDll, "NtQueryInformationProcess");
+    if (!NtQueryInformationProcess) {
+        LOG_F(ERROR, "Procinfo: Error: Could not get NtQueryInformationProcess error: %d", GetLastError());
+        return FALSE;
+    }
+
+    PROCESS_BASIC_INFORMATION pbi;
+    ULONG returnLength;
+    NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
+    if (status != 0) {
+        LOG_F(ERROR, "Procinfo: Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
+        return FALSE;
+    }
+
+    // PEB follows
+    MYPEB peb;
+    if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
+        // this is the first read, and may fail. 
+        // dont spam log messages
+        //LOG_F(WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
+        //    process->id, GetLastError());
+        process->PebBaseAddress = pbi.PebBaseAddress;
+        return FALSE;
+    }
+
+
+    // Read the PEB_LDR_DATA
+    PEB_LDR_DATA ldr;
+    if (!ReadProcessMemory(hProcess, peb.Ldr, &ldr, sizeof(PEB_LDR_DATA), NULL)) {
+        printf("Procinfo: ReadProcessMemory failed for PEB_LDR_DATA\n");
+        return FALSE;
+    }
+
+    // Iterate over the InMemoryOrderModuleList
+    LIST_ENTRY* head = &ldr.InMemoryOrderModuleList;
+    LIST_ENTRY* current = ldr.InMemoryOrderModuleList.Flink;
+    while (current != head) {
+        _LDR_DATA_TABLE_ENTRY entry;
+        if (!ReadProcessMemory(hProcess, CONTAINING_RECORD(current, _LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks),
+            &entry, sizeof(_LDR_DATA_TABLE_ENTRY), NULL)) {
+            printf("Procinfo: ReadProcessMemory failed for LDR_DATA_TABLE_ENTRY\n");
+            return FALSE;
+        }
+        if (entry.DllBase == 0) { // all zero is last one for some reason
+            break;
+        }
+        // Print information about the loaded module
+        WCHAR fullDllName[MAX_PATH];
+        if (!ReadProcessMemory(hProcess, entry.FullDllName.Buffer, fullDllName, entry.FullDllName.Length, NULL)) {
+            printf("Procinfo: ReadProcessMemory failed for FullDllName\n");
+            return FALSE;
+        }
+        fullDllName[entry.FullDllName.Length / sizeof(WCHAR)] = L'\0';  // Null-terminate the string
+
+        //printf("Module: %ls, Base: %p, Size: 0x%lx\n", fullDllName, entry.DllBase, (ULONG)entry.Reserved3[1]); //entry.SizeOfImage);
+        std::wstring o = format_wstring(L"type:ldr;time:%lld;pid:%lld;name:%ls;addr:0x%x;size:0x%x",
+            get_time(),
+            process->id,
+            fullDllName,
+            entry.DllBase,
+            (ULONG)entry.Reserved3[1]);
+        do_output(o.c_str());
+        wprintf(o.c_str()); wprintf(L"\n");
+        // 
+        // Move to the next module in the list
+        current = entry.InMemoryOrderLinks.Flink;
+    }
+}
+
 
 
 Process* MakeProcess(DWORD pid) {
@@ -131,15 +278,16 @@ Process* MakeProcess(DWORD pid) {
 
     // CHECK: Observe
     BOOL observe = FALSE;
+
     //if (wcsstr(process->image_path.c_str(), (LPCWSTR)g_config.targetExeName)) {
     if (process->image_path.find(g_config.targetExeName) != std::wstring::npos) {
         // CHECK: Process name
-        LOG_F(INFO, "Observe CMD: %d %ls", pid, process->image_path.c_str());
+        LOG_F(INFO, "Procinfo: Observe CMD: %d %ls", pid, process->image_path.c_str());
         observe = TRUE;
     } else if (g_cache.containsObject(process->parent_pid)) { // dont recursively resolve all
         // CHECK: Parent observed?
         if (g_cache.getObject(process->parent_pid)->doObserve()) {
-            LOG_F(INFO, "Observe PID: %d (because PPID %d): %ls", pid, process->parent_pid, process->image_path.c_str());
+            LOG_F(INFO, "Procinfo: Observe PID: %d (because PPID %d): %ls", pid, process->parent_pid, process->image_path.c_str());
             observe = TRUE;
         }
     }
@@ -169,7 +317,12 @@ Process* MakeProcess(DWORD pid) {
             process->image_base
             );
         do_output(o);
+
+        PrintLoadedModules(hProcess, process);
     }
+
+    // in RetrieveProcessInfo() atm
+    // LogDllFromProcess(hProcess);
 
     CloseHandle(hProcess);
     return process;
