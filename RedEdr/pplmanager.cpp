@@ -42,8 +42,7 @@ BOOL EnablePplService(BOOL e, wchar_t* target_name) {
             LOG_F(ERROR, "ETW-TI: Enable, but no target name given. Abort.");
             return FALSE;
         }
-        swprintf_s(buffer, sizeof(buffer) / sizeof(buffer[0]), L"start:%s", target_name);
-        //wcscpy_s(buffer, DATA_BUFFER_SIZE, L"start");
+        swprintf_s(buffer, DATA_BUFFER_SIZE, L"start:%s", target_name);
         len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
         if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
             LOG_F(ERROR, "ETW-TI: Error writing to named pipe: %ld", GetLastError());
@@ -190,8 +189,7 @@ DWORD InstallPplService()
         }
     }
 
-    //LOG_F(INFO, "[PPL_RUNNER] install_service: install_service: Created Service: %s", serviceCMD);
-    //LOG_F(INFO, "[PPL_RUNNER] install_service: Run 'net start %s' to start the service", SERVICE_NAME);
+    LOG_F(INFO, "ETW-TI: install_service: Created Service: %ls", serviceCMD);
 
     // Start service
     hService = OpenService(hSCManager, SERVICE_NAME, SERVICE_START | SERVICE_QUERY_STATUS);
