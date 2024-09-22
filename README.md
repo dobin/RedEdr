@@ -11,14 +11,18 @@ Same data as an EDR sees.
 RedEdr will observe one process, and identify malicious patterns. 
 A normal EDR will observe all processes, and identify malicious processes. 
 
+It generates JSON files like [this](https://github.com/dobin/RedEdr/tree/master/Data)
+collecting all telemetry of some C2. 
+
 
 ## Implemented Telemetry Consumers
 
 * ETW
   * Microsoft-Windows-Kernel-Process
+  * Microsoft-Windows-Kernel-Audit-API-Calls
   * Microsoft-Windows-Security-Auditing
     * needs SYSTEM
-    * restrictions apply, group policy
+    * restrictions apply, configure group policy
   * And defender
     * Microsoft-Antimalware-Engine
     * Microsoft-Antimalware-RTP
@@ -31,11 +35,16 @@ A normal EDR will observe all processes, and identify malicious processes.
   * PsSetCreateProcessNotifyRoutine
   * PsSetCreateThreadNotifyRoutine
   * PsSetLoadImageNotifyRoutine
-  * (ObRegisterCallbacks)
+  * (ObRegisterCallbacks, not used atm)
 
 * AMSI ntdll.dll hooking from kernelspace (KAPC from LoadImage callback)
 * AMSI ntdll.dll hooking from userspace (ETW based, unreliable)
 
+* Callstacks
+  * On ntdll.dll hook invocation
+
+* Loaded DLL's
+  * In Userspace, on process create (ETW or Kernel)
 
 
 ## Requirements
