@@ -77,4 +77,5 @@ public:
 
 
 Process* MakeProcess(DWORD pid);
-
+bool QueryMemoryRegion(HANDLE hProcess, PVOID address);
+void LogMyStackTrace();
