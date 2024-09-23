@@ -1,4 +1,4 @@
-# RedEdr
+﻿# RedEdr
 
 Display events from Windows to see the detection surface of your malware.
 
@@ -37,15 +37,18 @@ collecting all telemetry of some C2.
   * PsSetLoadImageNotifyRoutine
   * (ObRegisterCallbacks, not used atm)
 
-* AMSI ntdll.dll hooking from kernelspace (KAPC from LoadImage callback)
-* AMSI ntdll.dll hooking from userspace (ETW based, unreliable)
+* AMSI ntdll.dll hooking 
+  * from kernelspace (KAPC from LoadImage callback)
+  * from userspace (ETW based, unreliable)
 
 * Callstacks
   * On ntdll.dll hook invocation
-
+ 
 * Loaded DLL's
   * In Userspace, on process create (ETW or Kernel)
 
+* process information:
+  * 
 
 ## Requirements
 
@@ -112,7 +115,7 @@ ETW-TI requires an ELAM driver to start `RedEdrPplService`,
 and therefore requires self signed kernel driver option. 
 
 Make a snapshot of your VM before doing this. Currently its 
-not possible to remove the PPL service again (try it!). 
+not possible to remove the PPL service again. 
 
 ```
 PS > .\RedEdr.exe --etwti --trace notepad.exe
@@ -121,15 +124,18 @@ PS > .\RedEdr.exe --etwti --trace notepad.exe
 
 ### Real world usage
 
+* Use `--callstacks` to print the callstack (currently only injected DLL hooks)
+
+
 All input:
 ```
-PS > .\RedEdr.exe --kernel --inject --etw --etwti --trace notepad.exe
+PS > .\RedEdr.exe --kernel --inject --etw --etwti --callstacks --trace notepad.exe
 ```
 
 Provide as web on `http://localhost:8080`, and disable output logging for performance
 (and improved stability):
 ```
-PS > .\RedEdr.exe --kernel --inject --etw --etwti --web --hide --trace notepad.exe
+PS > .\RedEdr.exe --kernel --inject --etw --etwti --callstacks --web --hide --trace notepad.exe
 ```
 
 
@@ -140,6 +146,46 @@ See `Data/` directory:
 
 
 ## Hacking
+
+```
+  RedEdr.exe                                                                                       
+┌────────────┐                    ┌─────────────────┐                                             
+│            │   KERNEL_PIPE      │                 │    KERNEL_PIPE: Events (wchar)              
+│            │◄───────────────────┤   Kernel Module │                                             
+│ Pipe Server│                    │                 │    IOCTL: Config (MY_DRIVER_DATA):          
+│            ├───────────────────►│                 │             filename                        
+│            │   IOCTL            └─────────────────┘             enable                          
+│            │                                                                                    
+│            │                                                                                    
+│            │                                                                                    
+│            │                                                                                    
+│            │                    ┌─────────────────┐                                             
+│            │   DLL_PIPE         │                 │  DLL_PIPE: 1: Config (wchar)   RedEdr -> DLL
+│ Pipe Server│◄───────────────────┤  Injected DLL   │                 "callstack:1;"              
+│            │                    │                 │                                             
+│            │                    │                 │           >1: Events (wchar)   RedEdr <- DLL
+│            │                    └─────────────────┘                                             
+│            │                                                                                    
+│            │                                                                                    
+│            │                                                                                    
+│            │                    ┌─────────────────┐                                             
+│            │   PPL_PIPE         │                 │  DLL_PIPE: Events (wchar)                   
+│ Pipe Server│◄───────────────────┤  ETW-TI Service │                                             
+│            │                    │  PPL            │                                             
+│            │   SERVICE_PIPE     │                 │  SERVICE_PIPE: Config (wchar)               
+│ Pipe Client├───────────────────►│                 │                  "start:<process name>"     
+│            │                    └─────────────────┘                                             
+│            │                                                                                    
+│            │                    ┌─────────────────┐                                             
+│            │◄───────────────────┤                 │                                             
+│            │                    │  ETW            │                                             
+│            │                    │                 │                                             
+│            │                    │                 │                                             
+│            │                    └─────────────────┘                                             
+│            │                                                                                    
+│            │                                                                                    
+└────────────┘                                                                                    
+```
 
 * https://github.com/dobin/RedEdr/blob/master/RedEdrDriver/kcallbacks.c
 * https://github.com/dobin/RedEdr/blob/master/RedEdrDll/dllmain.cpp
