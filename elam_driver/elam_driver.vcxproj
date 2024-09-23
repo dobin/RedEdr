@@ -83,8 +83,7 @@
       </ExceptionHandling>
     </ClCompile>
     <DriverSign>
-      <FileDigestAlgorithm>
-      </FileDigestAlgorithm>
+      <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
     </DriverSign>
     <PostBuildEvent>
       <Command>powershell -ep bypass -f "$(SolutionDir)sign_file.ps1" "$(SolutionDir)rededr_ppl.pfx" "$(TargetDir)$(TargetFileName)"</Command>
