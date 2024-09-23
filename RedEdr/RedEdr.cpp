@@ -218,7 +218,7 @@ int main(int argc, char* argv[]) {
     g_config.debug_dllreader = result["dllreader"].as<bool>();
     g_config.hide_full_output = result["hide"].as<bool>();
     g_config.web_output = result["web"].as<bool>();
-    g_config.do_dllinjection_ucallstack = result["callstack"].as<bool>();
+    g_config.do_dllinjection_ucallstack = result["dllcallstack"].as<bool>();
 
     if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback 
         && !g_config.do_dllinjection && !g_config.debug_dllreader && !g_config.do_etwti) {
