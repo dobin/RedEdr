@@ -146,15 +146,13 @@ BOOL GetStackTraceLogFor(HANDLE hProcess, PVOID address, int idx, wchar_t *buf, 
         return FALSE;
     }
     if (NtQueryVirtualMemory(hProcess, address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) != 0) {
-        swprintf_s(buf, buf_len, L"backtrace:%p;page_addr:%p;idx:%i;size:invalid;state:invalid;protect:invalid;type:invalid",
-            address, mbi.BaseAddress, idx);
-        return TRUE;
-
+        swprintf_s(buf, buf_len, L"idx:%i;backtrace:%p;page_addr:%p;size:invalid;state:invalid;protect:invalid;type:invalid",
+            idx, address, mbi.BaseAddress);
         return FALSE;
     }
     else {
-        swprintf_s(buf, buf_len, L"backtrace:%p;page_addr:%p;idx:%i;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx",
-            address, mbi.BaseAddress, idx, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
+        swprintf_s(buf, buf_len, L"idx:%i;backtrace:%p;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx",
+            idx, address, mbi.BaseAddress, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
         return TRUE;
     }
 }
