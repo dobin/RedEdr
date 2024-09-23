@@ -70,13 +70,7 @@ void SendDllPipe(wchar_t* buffer) {
         return;
     }
     DWORD len = (DWORD)(wcslen(buffer) * 2) + 2; // +2 -> include two trailing 0 bytes
-    res = WriteFile(
-        hPipe,
-        buffer,
-        len,
-        &pipeBytesWritten,
-        NULL
-    );
+    res = WriteFile(hPipe, buffer, len, &pipeBytesWritten, NULL);
     if (res == FALSE) {
         log_message(L"Error when sending to pipe: %d", GetLastError());
     }
@@ -84,9 +78,26 @@ void SendDllPipe(wchar_t* buffer) {
 
 
 void InitDllPipe() {
-    hPipe = CreateFile(DLL_PIPE_NAME, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+    hPipe = CreateFile(DLL_PIPE_NAME, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (hPipe == INVALID_HANDLE_VALUE) {
         log_message(L"Could not open pipe");
+    }
+
+    // Retrieve config (first packet)
+    // this is the only read for this pipe
+    char buffer[256];
+    DWORD bytesRead;
+    if (!ReadFile(hPipe, &buffer, 256, &bytesRead, NULL)) {
+        log_message(L"Could not read first message from pipe from RedEdr.exe: %lu. Abort.", 
+            GetLastError());
+        return;
+    }
+    if (strstr(buffer, "callstack:1")) {
+        Config.do_stacktrace = true;
+        log_message(L"Callstack: Enabled");
+    }
+    else {
+        log_message(L"Callstack: Disabled");
     }
 }
 
@@ -106,7 +117,8 @@ LARGE_INTEGER get_time() {
 }
 
 
-/***/
+/*************** Procinfo stuff ******************/
+ 
 typedef enum _MEMORY_INFORMATION_CLASS {
     MemoryBasicInformation
 } MEMORY_INFORMATION_CLASS;
@@ -134,15 +146,13 @@ BOOL GetStackTraceLogFor(HANDLE hProcess, PVOID address, int idx, wchar_t *buf, 
         return FALSE;
     }
     if (NtQueryVirtualMemory(hProcess, address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) != 0) {
-        swprintf_s(buf, buf_len, L"backtrace:%p;page_addr:%p;idx:%i;size:invalid;state:invalid;protect:invalid;type:invalid",
-            address, mbi.BaseAddress, idx);
-        return TRUE;
-
+        swprintf_s(buf, buf_len, L"idx:%i;backtrace:%p;page_addr:%p;size:invalid;state:invalid;protect:invalid;type:invalid",
+            idx, address, mbi.BaseAddress);
         return FALSE;
     }
     else {
-        swprintf_s(buf, buf_len, L"backtrace:%p;page_addr:%p;idx:%i;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx",
-            address, mbi.BaseAddress, idx, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
+        swprintf_s(buf, buf_len, L"idx:%i;backtrace:%p;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx",
+            idx, address, mbi.BaseAddress, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
         return TRUE;
     }
 }
