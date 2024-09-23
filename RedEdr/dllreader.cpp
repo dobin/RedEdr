@@ -16,6 +16,7 @@
 #include "dllreader.h"
 #include "output.h"
 #include "utils.h"
+#include "config.h"
 
 bool InjectedDllReaderThreadStopFlag = FALSE;
 
@@ -41,7 +42,15 @@ void ClientHandler(HANDLE hPipe) {
     char buffer[DATA_BUFFER_SIZE];
     char* buf_ptr = buffer; // buf_ptr and rest_len are synchronized
     int rest_len = 0;
-    DWORD bytesRead;
+    DWORD bytesRead, bytesWritten;
+    
+    // send config as first packet
+    // this is the only write for this pipe
+    sprintf_s(buffer, DATA_BUFFER_SIZE, "callstack:%d;", g_config.do_dllinjection_ucallstack);
+    if (! WriteFile(hPipe, buffer, strlen(buffer), &bytesWritten, NULL)) {
+        LOG_F(ERROR, "Error when sending first message to injected DLL client. Aborting.");
+        return;
+    }
     memset(buffer, 0, sizeof(buffer));
 
     while (!InjectedDllReaderThreadStopFlag) {
@@ -115,8 +124,8 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
     while (!InjectedDllReaderThreadStopFlag) {
         dll_pipe = CreateNamedPipe(
             DLL_PIPE_NAME,
-            PIPE_ACCESS_INBOUND,
-            PIPE_TYPE_MESSAGE,
+            PIPE_ACCESS_DUPLEX,
+            PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
             PIPE_UNLIMITED_INSTANCES,
             PIPE_BUFFER_SIZE,
             PIPE_BUFFER_SIZE,

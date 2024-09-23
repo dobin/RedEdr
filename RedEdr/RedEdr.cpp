@@ -156,7 +156,7 @@ int main(int argc, char* argv[]) {
         ("m,mplog", "Input: Consume Defender mplog file", cxxopts::value<bool>()->default_value("false"))
         ("k,kernel", "Input: Consume kernel callback events", cxxopts::value<bool>()->default_value("false"))
         ("i,inject", "Input: Consume DLL injection", cxxopts::value<bool>()->default_value("false"))
-        ("c,callstack", "Input: Consume DLL injection hook callstacks", cxxopts::value<bool>()->default_value("false"))
+        ("c,dllcallstack", "Input: Enable DLL injection hook callstacks", cxxopts::value<bool>()->default_value("false"))
         ("w,web", "Output: Web server", cxxopts::value<bool>()->default_value("false"))
         ("u,hide", "Output: Hide messages (performance. use with --web)", cxxopts::value<bool>()->default_value("false"))
 
