@@ -12,6 +12,8 @@
 
 #include "emitter.h"
 #include "objcache.h"
+#include "utils.h"
+
 #pragma comment(lib, "Ole32.lib")
 #pragma comment(lib, "tdh.lib")
 
@@ -22,6 +24,7 @@
 wchar_t* SessionName = L"RedEdrPplServiceEtwTiReader";
 BOOL enabled_consumer = FALSE;
 
+BOOL seen_etwti_event = FALSE;
 
 void enable_consumer(BOOL e) {
     log_message(L"Consumer: Enable: %d", e);
@@ -204,6 +207,10 @@ void PrintProperties(wchar_t *eventName, PEVENT_RECORD eventRecord) {
 void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
     if (eventRecord == NULL || !enabled_consumer) {
         return;
+    }
+    if (!seen_etwti_event) {
+        seen_etwti_event = TRUE;
+        log_message("Consumer: Got a ETW-TI message, all is working");
     }
     DWORD processId = eventRecord->EventHeader.ProcessId;
     struct my_hashmap* obj = get_obj(processId);
@@ -425,6 +432,8 @@ BOOL ShutdownEtwtiReader() {
         }
         TraceHandle = INVALID_PROCESSTRACE_HANDLE;
     }
+
+    return TRUE;
 }
 
 
@@ -477,7 +486,7 @@ BOOL SetupTrace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wcha
     if (TraceHandle == INVALID_PROCESSTRACE_HANDLE) {
         log_message(L"Consumer: Failed to open trace: %d", GetLastError());
         free(sessionProperties);
-        return NULL;
+        return FALSE;
     }
     free(sessionProperties);
 
@@ -490,4 +499,5 @@ BOOL SetupTrace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wcha
     }
 
     log_message(L"Consumer: ETW Listening stopped");
+    return TRUE;
 }

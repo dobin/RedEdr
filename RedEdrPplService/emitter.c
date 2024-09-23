@@ -8,12 +8,33 @@ HANDLE hPipe = NULL;
 
 BOOL ConnectEmitterPipe() {
     log_message(L"Emitter: Connect pipe %s to RedEdr", DLL_PIPE_NAME);
-    hPipe = CreateFile(DLL_PIPE_NAME, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+    hPipe = CreateFile(DLL_PIPE_NAME, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (hPipe == INVALID_HANDLE_VALUE) {
         log_message(L"Emitter: Error connecting to pipe %s error %ld", 
             DLL_PIPE_NAME, GetLastError());
         return FALSE;
     }
+
+    // Retrieve config (first packet)
+    // this is the only read for this pipe
+    char buffer[256];
+    DWORD bytesRead;
+    if (!ReadFile(hPipe, &buffer, 256, &bytesRead, NULL)) {
+        log_message(L"Emitter: Could not read first message from pipe from RedEdr.exe: %lu. Abort.",
+            GetLastError());
+        return;
+    }
+    else {
+        log_message(L"Emitter: Successfully read config");
+    }
+
+    // Ignore config atm
+    /*if (strstr(buffer, "")) {
+    }
+    else {
+    }
+    */
+
     return TRUE;
 }
 
