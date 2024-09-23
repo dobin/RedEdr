@@ -15,9 +15,12 @@ BOOL EnablePplService(BOOL e, wchar_t* target_name) {
     DWORD len;
 
     if (!IsServiceRunning(SERVICE_NAME)) {
-        LOG_F(ERROR, "Error: service %ls not found", SERVICE_NAME);
-        LOG_F(ERROR, "ETW-TI: Is RedEdrPplService loaded?");
-        LOG_F(ERROR, "ETW-TI:   (requires self-signed kernel and elam driver for ppl)");
+        LOG_F(WARNING, "Error: service %ls not found", SERVICE_NAME);
+        LOG_F(WARNING, "ETW-TI: Is RedEdrPplService loaded?");
+        LOG_F(WARNING, "ETW-TI:   (requires self-signed kernel and elam driver for ppl)");
+        LOG_F(WARNING, "ETW-TI: Attempting to load");
+        InstallElamCertPpl();
+        InstallPplService();
         return FALSE;
     }
 
@@ -101,7 +104,7 @@ BOOL ShutdownPplService() {
 }
 
 
-DWORD InstallElamCertPpl()
+BOOL InstallElamCertPpl()
 {
     DWORD retval = 0;
     HANDLE fileHandle = NULL;
@@ -117,23 +120,21 @@ DWORD InstallElamCertPpl()
         NULL
     );
     if (fileHandle == INVALID_HANDLE_VALUE) {
-        retval = GetLastError();
-        LOG_F(ERROR, "ETW-TI: install_elam_cert: CreateFile Error: %d", retval);
-        return retval;
+        LOG_F(ERROR, "ETW-TI: install_elam_cert: CreateFile Error: %d", GetLastError());
+        return FALSE;
     }
 
     if (InstallELAMCertificateInfo(fileHandle) == FALSE) {
-        retval = GetLastError();
-        LOG_F(ERROR, "ETW-TI: install_elam_cert: install_elam_certificateInfo Error: %d", retval);
-        return retval;
+        LOG_F(ERROR, "ETW-TI: install_elam_cert: install_elam_certificateInfo Error: %d", GetLastError());
+        return FALSE;
     }
     LOG_F(INFO, "ETW-TI: install_elam_cert: Installed ELAM driver cert");
 
-    return retval;
+    return TRUE;
 }
 
 
-DWORD InstallPplService()
+BOOL InstallPplService()
 {
     DWORD retval = 0;
     SERVICE_LAUNCH_PROTECTED_INFO info;
@@ -144,10 +145,8 @@ DWORD InstallPplService()
     DWORD SCManagerAccess = SC_MANAGER_ALL_ACCESS;
     hSCManager = OpenSCManager(NULL, NULL, SCManagerAccess);
     if (hSCManager == NULL) {
-        retval = GetLastError();
-        LOG_F(ERROR, "ETW-TI: install_service: OpenSCManager Error: %d", retval);
-        return retval;
-
+        LOG_F(ERROR, "ETW-TI: install_service: OpenSCManager Error: %d", GetLastError());
+        return FALSE;
     }
 
     WCHAR serviceCMD[MAX_BUF_SIZE] = L"c:\\RedEdr\\RedEdrPplService.exe";
@@ -176,16 +175,15 @@ DWORD InstallPplService()
         }
         else {
             LOG_F(ERROR, "ETW-TI: install_service: CreateService Error: %d", retval);
-            return retval;
+            return FALSE;
         }
     }
     else {
         // Mark service as protected
         info.dwLaunchProtected = SERVICE_LAUNCH_PROTECTED_ANTIMALWARE_LIGHT;
         if (ChangeServiceConfig2(hService, SERVICE_CONFIG_LAUNCH_PROTECTED, &info) == FALSE) {
-            retval = GetLastError();
-            LOG_F(ERROR, "ETW-TI: install_service: ChangeServiceConfig2 Error: %d", retval);
-            return retval;
+            LOG_F(ERROR, "ETW-TI: install_service: ChangeServiceConfig2 Error: %d", GetLastError());
+            return FALSE;
         }
     }
 
@@ -194,10 +192,9 @@ DWORD InstallPplService()
     // Start service
     hService = OpenService(hSCManager, SERVICE_NAME, SERVICE_START | SERVICE_QUERY_STATUS);
     if (hService == NULL) {
-        retval = GetLastError();
-        LOG_F(ERROR, "ETW-TI: OpenService failed, error: %d", retval);
+        LOG_F(ERROR, "ETW-TI: OpenService failed, error: %d", GetLastError());
         CloseServiceHandle(hSCManager);
-        return retval;
+        return FALSE;
     }
     bSuccess = StartService(hService, 0, NULL);
     if (!bSuccess) {
@@ -207,6 +204,7 @@ DWORD InstallPplService()
         }
         else {
             LOG_F(ERROR, "ETW-TI: StartService failed, error: %d", retval);
+            return FALSE;
         }
     }
     else {
@@ -217,12 +215,12 @@ DWORD InstallPplService()
     CloseServiceHandle(hService);
     CloseServiceHandle(hSCManager);
 
-    return retval;
+    return TRUE;
 }
 
 
 // No worky as no PPLy
-DWORD remove_ppl_service() {
+BOOL remove_ppl_service() {
     DWORD retval = 0;
     SC_HANDLE hSCManager;
     SC_HANDLE hService;
@@ -236,14 +234,14 @@ DWORD remove_ppl_service() {
     if (hSCManager == NULL) {
         retval = GetLastError();
         LOG_F(ERROR, "ETW-TI: remove_service: OpenSCManager Error: %d", retval);
-        return retval;
+        return FALSE;
 
     }
     hService = OpenService(hSCManager, SERVICE_NAME, SERVICE_ALL_ACCESS);
     if (hService == NULL) {
         retval = GetLastError();
         LOG_F(ERROR, "ETW-TI:  remove_service: OpenService Error: %d", retval);
-        return retval;
+        return FALSE;
     }
 
     // Get status of service
@@ -251,7 +249,7 @@ DWORD remove_ppl_service() {
         hService, SC_STATUS_PROCESS_INFO, (LPBYTE)&ssp, sizeof(SERVICE_STATUS_PROCESS), &dwBytesNeeded)) {
         retval = GetLastError();
         LOG_F(ERROR, "ETW-TI: remove_service: QueryServiceStatusEx1 Error: %d", retval);
-        return retval;
+        return FALSE;
     }
 
     if (ssp.dwCurrentState != SERVICE_STOPPED) {
@@ -259,7 +257,7 @@ DWORD remove_ppl_service() {
         if (!ControlService(hService, SERVICE_CONTROL_STOP, (LPSERVICE_STATUS)&ssp)) {
             retval = GetLastError();
             LOG_F(ERROR, "ETW-TI: remove_service: ControlService(Stop) Error: %d", retval);
-            return retval;
+            return FALSE;
         }
         if (ssp.dwCurrentState != SERVICE_STOPPED) {
             // Wait for service to die
@@ -268,12 +266,12 @@ DWORD remove_ppl_service() {
                 hService, SC_STATUS_PROCESS_INFO, (LPBYTE)&ssp, sizeof(SERVICE_STATUS_PROCESS), &dwBytesNeeded)) {
                 retval = GetLastError();
                 LOG_F(ERROR, "ETW-TI: remove_service: QueryServiceStatusEx2 Error: %d", retval);
-                return retval;
+                return FALSE;
             }
             if (ssp.dwCurrentState != SERVICE_STOPPED) {
                 retval = ssp.dwCurrentState;
                 LOG_F(ERROR, "ETW-TI: remove_service: Waited but service still not stopped: %d", retval);
-                return retval;
+                return FALSE;
             }
         }
     }
@@ -282,10 +280,10 @@ DWORD remove_ppl_service() {
     if (!DeleteService(hService)) {
         retval = GetLastError();
         LOG_F(ERROR, "ETW-TI: remove_service: DeleteService Error: %d", retval);
-        return retval;
+        return FALSE;
     }
 
     LOG_F(INFO, "ETW-TI: remove_service: Deleted Service %ls", SERVICE_NAME);
 
-    return retval;
+    return TRUE;
 }
