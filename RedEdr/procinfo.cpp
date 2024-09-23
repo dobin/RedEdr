@@ -61,69 +61,6 @@ std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
     return s;
 }
 
-std::wstring GetStackTraceLogFor(HANDLE hProcess, PVOID address, int idx) {
-    SIZE_T returnLength = 0;
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
-    MEMORY_BASIC_INFORMATION mbi;
-
-    HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
-    if (hNtDll == NULL) {
-        LOG_F(ERROR, "Procinfo: could not find ntdll.dll");
-        return std::wstring(buf);
-    }
-    pNtQueryVirtualMemory NtQueryVirtualMemory = (pNtQueryVirtualMemory)GetProcAddress(hNtDll, "NtQueryVirtualMemory");
-    if (!NtQueryInformationProcess) {
-        LOG_F(ERROR, "Procinfo: Could not get NtQueryVirtualMemory error: %d", GetLastError());
-        return std::wstring(buf);
-    }
-    if (NtQueryVirtualMemory(hProcess, address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) != 0) {
-        LOG_F(ERROR, "Procinfo: Could not get NtQueryVirtualMemory error: %d", GetLastError());
-        return std::wstring(buf);
-    }
-    if (mbi.Type == 0 || mbi.Protect == 0) {
-        address = (PVOID)((ULONG_PTR)mbi.BaseAddress + mbi.RegionSize);
-        return std::wstring(buf);
-    }
-
-    //printf("backtrace:%p;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx\n",
-    //    address, mbi.BaseAddress, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
-    swprintf_s(buf, DATA_BUFFER_SIZE, L"backtrace:%p;page_addr:%p;idx:%i;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx",
-        address, mbi.BaseAddress, idx, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
-    return std::wstring(buf);
-}
-
-
-// LOG's the stacktrace of THIS function
-void LogMyStackTrace() {
-    void* stack[64];
-    unsigned short frames = CaptureStackBackTrace(0, 64, stack, NULL);
-
-    /* It would look like this:
-        Frame 0: LogMyStackTrace - 0xF4A1AC60           skip
-        Frame 1: wmain - 0xF4A1C170
-        Frame 2: invoke_main - 0xF4A2FFE0
-        Frame 3: __scrt_common_main_seh - 0xF4A2FD90    skip
-        Frame 4: __scrt_common_main - 0xF4A2FD70        skip
-        Frame 5: wmainCRTStartup - 0xF4A300A0           skip
-        Frame 6: BaseThreadInitThunk - 0x3B672560       skip
-        Frame 7: RtlUserThreadStart - 0x3CF2AF00        skip
-    */
-
-    unsigned short start = 0;
-    unsigned short end = frames;
-    if (frames > 6) {
-        start = 1;
-        end = frames - 5;
-    }
-
-    HANDLE hProcess = GetCurrentProcess();
-    int n = 0;
-    for (unsigned short i = start; i < end; i++) {
-        std::wstring backtrace = GetStackTraceLogFor(hProcess, stack[i], i);
-        do_output(backtrace);
-    }
-}
-
 
 // Unused, produces a lot of data
 bool QueryMemoryRegions(HANDLE hProcess) {

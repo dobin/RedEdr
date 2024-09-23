@@ -3,101 +3,11 @@
 #include "pch.h"
 #include "minhook/include/MinHook.h"
 #include "../Shared/common.h"
-#include <winternl.h>
-
-
-VOID log_message(const wchar_t* format, ...)
-{
-    WCHAR message[MAX_BUF_SIZE] = L"[DLL] ";
-    DWORD offset = wcslen(message);
-
-    va_list arg_ptr;
-    va_start(arg_ptr, format);
-    int ret = _vsnwprintf_s(&message[offset], MAX_BUF_SIZE - offset, MAX_BUF_SIZE - offset, format, arg_ptr);
-    va_end(arg_ptr);
-
-    OutputDebugString(message);
-}
-
-
-void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
-{
-    if (!ustr || !dest || destSize == 0) {
-        return;  // Invalid arguments or destination size is zero
-    }
-
-    // Ensure that the source UNICODE_STRING is valid
-    if (ustr->Length == 0 || ustr->Buffer == NULL) {
-        dest[0] = L'\0';  // Set dest to an empty string
-        return;
-    }
-
-    // Get the number of characters to copy (Length is in bytes, so divide by sizeof(WCHAR))
-    size_t numChars = ustr->Length / sizeof(WCHAR);
-
-    // Copy length should be the smaller of the available characters or the destination size minus 1 (for null terminator)
-    size_t copyLength = (numChars < destSize - 1) ? numChars : destSize - 1;
-
-    // Use wcsncpy_s to safely copy the string
-    wcsncpy_s(dest, destSize, ustr->Buffer, copyLength);
-
-    // Ensure the destination string is null-terminated
-    dest[copyLength] = L'\0';
-}
-
-//----------------------------------------------------
-
-HANDLE hPipe = NULL;
-
-void SendDllPipe(wchar_t* buffer) {
-    DWORD pipeBytesWritten = 0;
-    DWORD res = 0;
-
-    if (hPipe == NULL) {
-        return;
-    }
-    DWORD len = (DWORD) (wcslen(buffer) * 2) + 2; // +2 -> include two trailing 0 bytes
-    res = WriteFile(
-        hPipe,
-        buffer,
-        len,
-        &pipeBytesWritten,
-        NULL
-    );
-    if (res == FALSE) {
-        log_message(L"Error when sending to pipe: %d", GetLastError());
-    }
-}
-
-
-void InitDllPipe() {
-    hPipe = CreateFile(DLL_PIPE_NAME, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
-    if (hPipe == INVALID_HANDLE_VALUE) {
-        log_message(L"Could not open pipe");
-    }
-}
-
-
-LARGE_INTEGER get_time() {
-    FILETIME fileTime;
-    LARGE_INTEGER largeInt;
-
-    // Get the current system time as FILETIME
-    GetSystemTimeAsFileTime(&fileTime);
-
-    // Convert FILETIME to LARGE_INTEGER
-    largeInt.LowPart = fileTime.dwLowDateTime;
-    largeInt.HighPart = fileTime.dwHighDateTime;
-
-    return largeInt;
-}
-
-
-//----------------------------------------------------
+#include <winternl.h>  // needs to be on bottom?
+#include "dllhelper.h"
 
 
 /******************* AllocateVirtualMemory ************************/
-
 
 // Defines the prototype of the NtAllocateVirtualMemoryFunction
 typedef DWORD(NTAPI* pNtAllocateVirtualMemory)(
@@ -126,8 +36,7 @@ DWORD NTAPI NtAllocateVirtualMemory(
         L"type:dll;time:%llu;krn_pid:%llu;func:AllocateVirtualMemory;pid:%p;base_addr:%p;zero:%#llx;size:%llu;type:%#lx;protect:%#lx",
         time.QuadPart, (unsigned __int64) GetCurrentProcessId(), ProcessHandle, BaseAddress, ZeroBits, *RegionSize, AllocationType, Protect);
     SendDllPipe(buf);
-
-    // jump on the originate NtAllocateVirtualMemory
+    LogMyStackTrace();
     return pOriginalNtAllocateVirtualMemory(ProcessHandle, BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
 }
 
@@ -181,8 +90,7 @@ DWORD NTAPI NtProtectVirtualMemory(
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle,
         BaseAddress, *NumberOfBytesToProtect, NewAccessProtection, mem_perm);
     SendDllPipe(buf);
-
-    // jump on the originate NtProtectVirtualMemory
+    LogMyStackTrace();
     return pOriginalNtProtectVirtualMemory(ProcessHandle, BaseAddress, NumberOfBytesToProtect, NewAccessProtection, OldAccessProtection);
 }
 
@@ -238,8 +146,8 @@ DWORD NTAPI NtMapViewOfSection(
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(),
         SectionHandle, ProcessHandle, baseAddressValue, ZeroBits, CommitSize,
         sectionOffsetValue, viewSizeValue, InheritDisposition, AllocationType, Protect, mem_perm);
-
     SendDllPipe(buf);
+    LogMyStackTrace();
     return pOriginalNtMapViewOfSection(SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Protect);
 }
 
@@ -270,9 +178,39 @@ DWORD NTAPI NtWriteVirtualMemory(
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(),
         ProcessHandle, BaseAddress, Buffer, NumberOfBytesToWrite);
     SendDllPipe(buf);
-
-    // jump on the originate NtWriteVirtualMemory
+    LogMyStackTrace();
     return pOriginalNtWriteVirtualMemory(ProcessHandle, BaseAddress, Buffer, NumberOfBytesToWrite, NumberOfBytesWritten);
+}
+
+
+/******************* ReadVirtualMemory ************************/
+
+// Defines the prototype of the NtReadVirtualMemory function
+typedef DWORD(NTAPI* pNtReadVirtualMemory)(
+    HANDLE              ProcessHandle,
+    PVOID               BaseAddress,
+    PVOID               Buffer,
+    ULONG               NumberOfBytesToRead,
+    PULONG              NumberOfBytesRead
+    );
+pNtReadVirtualMemory pOriginalNtReadVirtualMemory = NULL;
+DWORD NTAPI NtReadVirtualMemory(
+    HANDLE              ProcessHandle,
+    PVOID               BaseAddress,
+    PVOID               Buffer,
+    ULONG               NumberOfBytesToRead,
+    PULONG              NumberOfBytesRead
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:ReadVirtualMemory;process_handle:0x%p;base_address:0x%p;buffer:0x%p;size:%lu",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(),
+        ProcessHandle, BaseAddress, Buffer, NumberOfBytesToRead);
+    SendDllPipe(buf);
+    LogMyStackTrace();
+    return pOriginalNtReadVirtualMemory(ProcessHandle, BaseAddress, Buffer, NumberOfBytesToRead, NumberOfBytesRead);
 }
 
 
@@ -295,6 +233,7 @@ DWORD NTAPI NtSetContextThread(
         L"type:dll;time:%llu;krn_pid:%llu;func:SetContextThread;thread_handle:0x%p;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle);
     SendDllPipe(buf);
+    LogMyStackTrace();
     return pOriginalNtSetContextThread(ThreadHandle, Context);
 }
 
@@ -393,6 +332,7 @@ DWORD NTAPI NtQueueApcThread(
         L"type:dll;time:%llu;krn_pid:%llu;func:NtQueueApcThread;thread_handle:0x%p;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle);
     SendDllPipe(buf);
+    LogMyStackTrace();
     return pOriginalNtQueueApcThread(ThreadHandle, ApcRoutine, ApcRoutineContext, ApcStatusBlock, ApcReserved);
 }
 
@@ -425,6 +365,7 @@ DWORD NTAPI NtQueueApcThreadEx(
         L"type:dll;time:%llu;krn_pid:%llu;func:NtQueueApcThreadEx;thread_handle:0x%p;apc_thread:0x%p;apc_routine:0x%p;arg1:0x%p;arg2:0x%p;arg3:0x%p;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle, ApcThreadHandle, ApcRoutine, ApcArgument1, ApcArgument2, ApcArgument3);
     SendDllPipe(buf);
+    LogMyStackTrace();
     return pOriginalNtQueueApcThreadEx(ThreadHandle, ApcThreadHandle, ApcRoutine, ApcArgument1, ApcArgument2, ApcArgument3);
 }
 
@@ -461,6 +402,7 @@ DWORD NTAPI NtCreateProcess(
         L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateProcess;process_handle:0x%p;access_mask:0x%x;parent_process:0x%p;inherit_table:%d;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle, DesiredAccess, ParentProcess, InheritObjectTable);
     SendDllPipe(buf);
+    LogMyStackTrace();
     return pOriginalNtCreateProcess(ProcessHandle, DesiredAccess, ObjectAttributes, ParentProcess, InheritObjectTable, SectionHandle, DebugPort, ExceptionPort);
 }
 
@@ -502,6 +444,7 @@ DWORD NTAPI NtCreateThreadEx(
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), 
         ThreadHandle, ProcessHandle, StartRoutine, Argument);
     SendDllPipe(buf);
+    LogMyStackTrace();
     return pOriginalNtCreateThreadEx(ThreadHandle, DesiredAccess, ObjectAttributes, ProcessHandle, StartRoutine, Argument, CreateFlags, ZeroBits, StackSize, MaximumStackSize, AttributeList);
 }
 
@@ -527,6 +470,7 @@ DWORD NTAPI NtOpenProcess(
         L"type:dll;time:%llu;krn_pid:%llu;func:NtOpenProcess;process_handle:0x%p;access_mask:0x%x;client_id_process:0x%p;client_id_thread:0x%p;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle, DesiredAccess, ClientId->UniqueProcess, ClientId->UniqueThread);
     SendDllPipe(buf);
+    LogMyStackTrace();
     return pOriginalNtOpenProcess(ProcessHandle, DesiredAccess, ObjectAttributes, ClientId);
 }
 
@@ -552,6 +496,7 @@ DWORD NTAPI NtLoadDriver(
         L"type:dll;time:%llu;krn_pid:%llu;func:NtLoadDriver;driver_service_name:%ls;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), wDriverServiceName);
     SendDllPipe(buf);
+    LogMyStackTrace();
     return pOriginalNtLoadDriver(DriverServiceName);
 }
 
@@ -625,6 +570,7 @@ DWORD NTAPI NtOpenThread(
         L"type:dll;time:%llu;krn_pid:%llu;func:NtOpenThread;thread_handle:0x%p;access_mask:0x%x;client_id_process:0x%p;client_id_thread:0x%p",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle, DesiredAccess, ClientId->UniqueProcess, ClientId->UniqueThread);
     SendDllPipe(buf);
+    LogMyStackTrace();
     return pOriginalNtOpenThread(ThreadHandle, DesiredAccess, ObjectAttributes, ClientId);
 }
 
@@ -656,6 +602,7 @@ DWORD NTAPI NtCreateSection(
         L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateSection;section_handle:0x%p;access_mask:0x%x;max_size:0x%p;page_protection:0x%x;alloc_attributes:0x%x;file_handle:0x%p;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), SectionHandle, DesiredAccess, MaximumSize, SectionPageProtection, AllocationAttributes, FileHandle);
     SendDllPipe(buf);
+    LogMyStackTrace();
     return pOriginalNtCreateSection(SectionHandle, DesiredAccess, ObjectAttributes, MaximumSize, SectionPageProtection, AllocationAttributes, FileHandle);
 }
 
@@ -694,6 +641,7 @@ DWORD NTAPI NtCreateProcessEx(
         L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateProcessEx;process_handle:0x%p;parent_process:0x%p;flags:0x%lx;section_handle:0x%p;debug_port:0x%p;exception_port:0x%p;in_job:%d;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle, ParentProcess, Flags, SectionHandle, DebugPort, ExceptionPort, InJob);
     SendDllPipe(buf);
+    LogMyStackTrace();
     return pOriginalNtCreateProcessEx(ProcessHandle, DesiredAccess, ObjectAttributes, ParentProcess, Flags, SectionHandle, DebugPort, ExceptionPort, InJob);
 }
 
@@ -800,137 +748,31 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
 
     InitDllPipe();
 
-    MH_CreateHookApi( // OK
-        L"ntdll",                                     // Name of the DLL containing the function to  hook
-        "NtAllocateVirtualMemory",                    // Name of the function to hook
-        NtAllocateVirtualMemory,                      // Address of the function on which to jump when hooking 
-        (LPVOID*)(&pOriginalNtAllocateVirtualMemory) // Address of the original NtAllocateVirtualMemory function
-    );
-    MH_CreateHookApi( // OK
-        L"ntdll",
-        "NtProtectVirtualMemory",
-        NtProtectVirtualMemory,
-        (LPVOID*)(&pOriginalNtProtectVirtualMemory)
-    );
-    
-    MH_CreateHookApi( // OK
-        L"ntdll",
-        "NtMapViewOfSection",
-        NtMapViewOfSection,
-        (LPVOID*)(&pOriginalNtMapViewOfSection)
-    );
-
-    MH_CreateHookApi( // OK
-        L"ntdll",
-        "NtWriteVirtualMemory",
-        NtWriteVirtualMemory,
-        (LPVOID*)(&pOriginalNtWriteVirtualMemory)
-    );
-    MH_CreateHookApi(
-        L"ntdll",
-        "NtSetContextThread",
-        NtSetContextThread,
-        (LPVOID*)(&pOriginalNtSetContextThread)
-    );
-
-    MH_CreateHookApi( // mostly OK
-        L"ntdll",
-        "LdrLoadDll",
-        LdrLoadDll,
-        (LPVOID*)(&pOriginalLdrLoadDll)
-    );
-    MH_CreateHookApi(
-        L"ntdll",
-        "LdrGetProcedureAddress",
-        LdrGetProcedureAddress,
-        (LPVOID*)(&pOriginalLdrGetProcedureAddress)
-    );
-    MH_CreateHookApi( // OK
-        L"ntdll",
-        "NtQueueApcThread",
-        NtQueueApcThread,
-        (LPVOID*)(&pOriginalNtQueueApcThread)
-    );
-    MH_CreateHookApi(
-        L"ntdll",
-        "NtQueueApcThreadEx",
-        NtQueueApcThreadEx,
-        (LPVOID*)(&pOriginalNtQueueApcThreadEx)
-    );
-    MH_CreateHookApi(
-        L"ntdll",
-        "NtCreateProcess",
-        NtCreateProcess,
-        (LPVOID*)(&pOriginalNtCreateProcess)
-    );
-    MH_CreateHookApi(
-        L"ntdll",
-        "NtCreateThreadEx",
-        NtCreateThreadEx,
-        (LPVOID*)(&pOriginalNtCreateThreadEx)
-    );
-    MH_CreateHookApi( // OK
-        L"ntdll",
-        "NtOpenProcess",
-        NtOpenProcess,
-        (LPVOID*)(&pOriginalNtOpenProcess)
-    );
-    MH_CreateHookApi(
-        L"ntdll",
-        "NtLoadDriver",
-        NtLoadDriver,
-        (LPVOID*)(&pOriginalNtLoadDriver)
-    );
-    MH_CreateHookApi(
-        L"ntdll",
-        "NtCreateNamedPipeFile",
-        NtCreateNamedPipeFile,
-        (LPVOID*)(&pOriginalNtCreateNamedPipeFile)
-    );
-    MH_CreateHookApi( // OK
-        L"ntdll",
-        "NtOpenThread",
-        NtOpenThread,
-        (LPVOID*)(&pOriginalNtOpenThread)
-    );
-    MH_CreateHookApi( // OK
-        L"ntdll",
-        "NtCreateSection",
-        NtCreateSection,
-        (LPVOID*)(&pOriginalNtCreateSection)
-    );
-    MH_CreateHookApi(
-        L"ntdll",
-        "NtCreateThreadEx",
-        NtCreateThreadEx,
-        (LPVOID*)(&pOriginalNtCreateThreadEx)
-    );
-    MH_CreateHookApi(
-        L"ntdll",
-        "NtCreateProcessEx",
-        NtCreateProcessEx,
-        (LPVOID*)(&pOriginalNtCreateProcessEx)
-    );
-    MH_CreateHookApi( // OK
-        L"ntdll",
-        "NtCreateEvent",
-        NtCreateEvent,
-        (LPVOID*)(&pOriginalNtCreateEvent)
-    );
-    MH_CreateHookApi( // OK
-        L"ntdll",
-        "NtCreateTimer",
-        NtCreateTimer,
-        (LPVOID*)(&pOriginalNtCreateTimer)
-    );
-    MH_CreateHookApi( // OK
-        L"ntdll",
-        "NtCreateTimer2",
-        NtCreateTimer2,
-        (LPVOID*)(&pOriginalNtCreateTimer2)
-    );
-
+    // Hooks
+    MH_CreateHookApi(L"ntdll", "NtAllocateVirtualMemory", NtAllocateVirtualMemory, (LPVOID*)(&pOriginalNtAllocateVirtualMemory));
+    MH_CreateHookApi(L"ntdll", "NtProtectVirtualMemory", NtProtectVirtualMemory, (LPVOID*)(&pOriginalNtProtectVirtualMemory));
+    MH_CreateHookApi(L"ntdll", "NtMapViewOfSection", NtMapViewOfSection, (LPVOID*)(&pOriginalNtMapViewOfSection));
+    MH_CreateHookApi(L"ntdll", "NtWriteVirtualMemory", NtWriteVirtualMemory, (LPVOID*)(&pOriginalNtWriteVirtualMemory));
+    MH_CreateHookApi(L"ntdll", "NtReadVirtualMemory", NtReadVirtualMemory, (LPVOID*)(&pOriginalNtReadVirtualMemory));
+    MH_CreateHookApi(L"ntdll", "NtSetContextThread", NtSetContextThread, (LPVOID*)(&pOriginalNtSetContextThread));
+    MH_CreateHookApi(L"ntdll", "LdrLoadDll", LdrLoadDll, (LPVOID*)(&pOriginalLdrLoadDll));
+    MH_CreateHookApi(L"ntdll", "LdrGetProcedureAddress", LdrGetProcedureAddress, (LPVOID*)(&pOriginalLdrGetProcedureAddress));
+    MH_CreateHookApi(L"ntdll", "NtQueueApcThread", NtQueueApcThread, (LPVOID*)(&pOriginalNtQueueApcThread));
+    MH_CreateHookApi(L"ntdll", "NtQueueApcThreadEx", NtQueueApcThreadEx, (LPVOID*)(&pOriginalNtQueueApcThreadEx));
+    MH_CreateHookApi(L"ntdll", "NtCreateProcess", NtCreateProcess, (LPVOID*)(&pOriginalNtCreateProcess));
+    MH_CreateHookApi(L"ntdll", "NtCreateThreadEx", NtCreateThreadEx, (LPVOID*)(&pOriginalNtCreateThreadEx));
+    MH_CreateHookApi(L"ntdll", "NtOpenProcess", NtOpenProcess, (LPVOID*)(&pOriginalNtOpenProcess));
+    MH_CreateHookApi(L"ntdll", "NtLoadDriver", NtLoadDriver, (LPVOID*)(&pOriginalNtLoadDriver));
+    MH_CreateHookApi(L"ntdll", "NtCreateNamedPipeFile", NtCreateNamedPipeFile, (LPVOID*)(&pOriginalNtCreateNamedPipeFile));
+    MH_CreateHookApi(L"ntdll", "NtOpenThread", NtOpenThread, (LPVOID*)(&pOriginalNtOpenThread));
+    MH_CreateHookApi(L"ntdll", "NtCreateSection", NtCreateSection, (LPVOID*)(&pOriginalNtCreateSection));
+    MH_CreateHookApi(L"ntdll", "NtCreateThreadEx", NtCreateThreadEx, (LPVOID*)(&pOriginalNtCreateThreadEx));
+    MH_CreateHookApi(L"ntdll", "NtCreateProcessEx", NtCreateProcessEx, (LPVOID*)(&pOriginalNtCreateProcessEx));
+    MH_CreateHookApi(L"ntdll", "NtCreateEvent", NtCreateEvent, (LPVOID*)(&pOriginalNtCreateEvent));
+    MH_CreateHookApi(L"ntdll", "NtCreateTimer", NtCreateTimer, (LPVOID*)(&pOriginalNtCreateTimer));
+    MH_CreateHookApi(L"ntdll", "NtCreateTimer2", NtCreateTimer2, (LPVOID*)(&pOriginalNtCreateTimer2));
     status = MH_EnableHook(MH_ALL_HOOKS);
+
     return status;
 }
 

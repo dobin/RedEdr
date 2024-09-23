@@ -25,4 +25,6 @@ typedef struct _MY_DRIVER_DATA {
 #define DRIVER_NAME L"c:\\RedEdr\\elam_driver.sys"
 #define MAX_BUF_SIZE 2048
 
+#define MAX_CALLSTACK_ENTRIES 8
+
 #endif

@@ -156,6 +156,7 @@ int main(int argc, char* argv[]) {
         ("m,mplog", "Input: Consume Defender mplog file", cxxopts::value<bool>()->default_value("false"))
         ("k,kernel", "Input: Consume kernel callback events", cxxopts::value<bool>()->default_value("false"))
         ("i,inject", "Input: Consume DLL injection", cxxopts::value<bool>()->default_value("false"))
+        ("c,callstack", "Input: Consume DLL injection hook callstacks", cxxopts::value<bool>()->default_value("false"))
         ("w,web", "Output: Web server", cxxopts::value<bool>()->default_value("false"))
         ("u,hide", "Output: Hide messages (performance. use with --web)", cxxopts::value<bool>()->default_value("false"))
 
@@ -217,6 +218,7 @@ int main(int argc, char* argv[]) {
     g_config.debug_dllreader = result["dllreader"].as<bool>();
     g_config.hide_full_output = result["hide"].as<bool>();
     g_config.web_output = result["web"].as<bool>();
+    g_config.do_dllinjection_ucallstack = result["callstack"].as<bool>();
 
     if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback 
         && !g_config.do_dllinjection && !g_config.debug_dllreader && !g_config.do_etwti) {

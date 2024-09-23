@@ -851,8 +851,8 @@ int wmain(int argc, wchar_t* argv[]) {
         FakePplPipeClient();
         break;
     case 13:
-        LogMyStackTrace();
-        //PrintStackTrace2();
+        //LogMyStackTrace();
+        PrintStackTrace2();
         break;
     }
         
