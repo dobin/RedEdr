@@ -148,9 +148,11 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
     if (g_config.enable_kapc_injection) {
         PPROCESS_INFO processInfo = LookupProcessInfo(ProcessId);
         if (processInfo != NULL && processInfo->observe && !processInfo->injected) {
-            // TODO lock this?
-            log_message("Inject DLL into pid: %d\n", ProcessId);
             processInfo->injected = KapcInjectDll(FullImageName, ProcessId, ImageInfo);
+            // TODO lock this?
+            if (processInfo->injected) {
+                log_message("Injected DLL into pid: %d\n", ProcessId);
+            }
         }
     }
 }
