@@ -16,7 +16,7 @@ HANDLE hPipe = NULL;
 // log the event message (write to pipe)
 int LogEvent(wchar_t* message) {
     if (hPipe == NULL) {
-        log_message("uPipe: cannot log as pipe is closed");
+        LOG_A(LOG_INFO, "uPipe: cannot log as pipe is closed");
         return 1;
     }
     NTSTATUS status;
@@ -34,7 +34,7 @@ int LogEvent(wchar_t* message) {
         NULL
     );
     if (!NT_SUCCESS(status)) {
-        log_message(
+        LOG_A(LOG_INFO, 
             "uPipe: ZwWriteFile: Error ZwWriteFile: 0x%0.8x", status);
         hPipe = NULL;
         return 0;
@@ -73,11 +73,11 @@ int ConnectUserspacePipe() {
         0
     );
     if (NT_SUCCESS(status)) {
-        log_message("uPipe: Connecting to userspace server OK");
+        LOG_A(LOG_INFO, "uPipe: Connecting to userspace server OK");
         return 1;
     }
     else {
-        log_message("uPipe: Could not connect to userspace server, RedEdr.exe --kernel running?\n");
+        LOG_A(LOG_INFO, "uPipe: Could not connect to userspace server, RedEdr.exe --kernel running?\n");
         hPipe = NULL;
         return 0;
     }

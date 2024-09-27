@@ -9,7 +9,7 @@
 #include <wchar.h>
 
 #include "../Shared/common.h"
-#include "loguru.hpp"
+#include "logging.h"
 #include "kernelreader.h"
 #include "output.h"
 #include "cache.h"
@@ -50,7 +50,7 @@ void CheckForNewProcess(wchar_t* line) {
         if (pid_str) {
             int pid = 0;
             swscanf_s(pid_str, L";pid:%d", &pid);
-            LOG_F(WARNING, "observe: %d, pid: %d\n", observe_value, pid);
+            LOG_A(LOG_WARNING, "observe: %d, pid: %d\n", observe_value, pid);
             g_cache.getObject(pid); // FIXME this actually creates the process 
         }
     }
@@ -75,21 +75,21 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
             NULL                      // Security attributes (anonymous connection or may be needs credentials. )
         );
         if (kernel_pipe == INVALID_HANDLE_VALUE) {
-            LOG_F(ERROR, "KernelReader: Error creating named pipe: %ld", GetLastError());
+            LOG_A(LOG_ERROR, "KernelReader: Error creating named pipe: %ld", GetLastError());
             return 1;
         }
 
-        LOG_F(INFO, "KernelReader: Waiting for client (Kernel Driver) to connect...");
+        LOG_A(LOG_INFO, "KernelReader: Waiting for client (Kernel Driver) to connect...");
 
         // Wait for the client to connect
         BOOL result = ConnectNamedPipe(kernel_pipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
         if (!result) {
-            LOG_F(ERROR, "KernelReader: Error connecting the named pipe: %ld", GetLastError());
+            LOG_A(LOG_ERROR, "KernelReader: Error connecting the named pipe: %ld", GetLastError());
             CloseHandle(kernel_pipe);
             continue;
         }
 
-        LOG_F(INFO, "KernelReader: Kernel connected");
+        LOG_A(LOG_INFO, "KernelReader: Kernel connected");
 
         while (!KernelReaderThreadStopFlag) {
             // Read data from the pipe
@@ -111,7 +111,7 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
                     }
                 }
                 if (last_potential_str_start == 0) {
-                    LOG_F(ERROR, "KernelReader: No 0x00 0x00 byte found, errornous input?");
+                    LOG_A(LOG_ERROR, "KernelReader: No 0x00 0x00 byte found, errornous input?");
                 }
 
                 if (last_potential_str_start != full_len) {
@@ -129,11 +129,11 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
             }
             else {
                 if (GetLastError() == ERROR_BROKEN_PIPE) {
-                    LOG_F(INFO, "KernelReader: Kernel disconnected from pipe");
+                    LOG_A(LOG_INFO, "KernelReader: Kernel disconnected from pipe");
                     break;
                 }
                 else {
-                    LOG_F(ERROR, "KernelReader: Error reading from kernel pipe: %ld", GetLastError());
+                    LOG_A(LOG_ERROR, "KernelReader: Error reading from kernel pipe: %ld", GetLastError());
                     break;
                 }
             }
@@ -142,17 +142,17 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
         // Close the pipe
         CloseHandle(kernel_pipe);
     }
-    LOG_F(INFO, "KernelReader: Thread Finished");
+    LOG_A(LOG_INFO, "KernelReader: Thread Finished");
 
 }
 
 
 void InitializeKernelReader(std::vector<HANDLE>& threads) {
     const wchar_t* data = L"";
-    LOG_F(INFO, "!KernelReader: Start thread");
+    LOG_A(LOG_INFO, "!KernelReader: Start thread");
     HANDLE thread = CreateThread(NULL, 0, KernelReaderProcessingThread, (LPVOID)data, 0, NULL);
     if (thread == NULL) {
-        LOG_F(ERROR, "KernelReader: Failed to create thread for trace session logreader");
+        LOG_A(LOG_ERROR, "KernelReader: Failed to create thread for trace session logreader");
         return;
     }
     threads.push_back(thread);

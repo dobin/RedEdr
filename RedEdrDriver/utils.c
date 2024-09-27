@@ -5,9 +5,10 @@
 #include "../Shared/common.h"
 
 
-void log_message(const char* format, ...)
+void LOG_A(int severity, const char* format, ...)
 {
-    char message[MAX_BUF_SIZE] = "[RedEdr] ";
+    UNREFERENCED_PARAMETER(severity);
+    char message[MAX_BUF_SIZE] = "[RedEdr KRN] ";
     size_t offset = strlen(message);
 
     va_list arg_ptr;

@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <Windows.h>
 
-#include "emitter.h"
 #include "control.h"
+#include "emitter.h"
 #include "../Shared/common.h"
+#include "logging.h"
+#include "objcache.h"
+#include "etwtireader.h"
 
 DWORD start_child_process(wchar_t* childCMD);
 
@@ -22,20 +25,20 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
         control_pipe = CreateNamedPipeW(PPL_SERVICE_PIPE_NAME, PIPE_ACCESS_INBOUND, PIPE_TYPE_MESSAGE,
             PIPE_UNLIMITED_INSTANCES, SMALL_PIPE, SMALL_PIPE, 0, NULL);
         if (control_pipe == INVALID_HANDLE_VALUE) {
-            log_message(L"Control: Error creating named pipe: %ld", GetLastError());
+            LOG_W(LOG_INFO, L"Control: Error creating named pipe: %ld", GetLastError());
             return 1;
         }
 
-        log_message(L"Control: Waiting for client (RedEdr.exe) to connect...");
+        LOG_W(LOG_INFO, L"Control: Waiting for client (RedEdr.exe) to connect...");
 
         // Wait for the client to connect
         BOOL result = ConnectNamedPipe(control_pipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
         if (!result) {
-            log_message(L"Control: Error connecting to named pipe: %ld", GetLastError());
+            LOG_W(LOG_INFO, L"Control: Error connecting to named pipe: %ld", GetLastError());
             CloseHandle(control_pipe);
             return 1;
         }
-        log_message(L"Control: Client connected");
+        LOG_W(LOG_INFO, L"Control: Client connected");
 
         while (keep_running) {
             memset(buffer, 0, sizeof(buffer));
@@ -43,11 +46,11 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
             // Read data from the pipe
             if (!ReadFile(control_pipe, buffer, SMALL_PIPE, &bytesRead, NULL)) {
                 if (GetLastError() == ERROR_BROKEN_PIPE) {
-                    log_message(L"Control: Disconnected: %ld", GetLastError());
+                    LOG_W(LOG_INFO, L"Control: Disconnected: %ld", GetLastError());
                     break;
                 }
                 else {
-                    log_message(L"Control: Error reading from named pipe: %ld", GetLastError());
+                    LOG_W(LOG_INFO, L"Control: Error reading from named pipe: %ld", GetLastError());
                     break;
                 }
             }
@@ -57,7 +60,7 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                 //if (wcscmp(buffer, L"start") == 0) {
                 if (wcsstr(buffer, L"start:") != NULL) {
                     wchar_t *token = NULL, *context = NULL;
-                    log_message(L"Control: Received command: start");
+                    LOG_W(LOG_INFO, L"Control: Received command: start");
 
                     // should give "start:"
                     token = wcstok_s(buffer, L":", &context);
@@ -65,7 +68,7 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                         // should give the thing after "start:"
                         token = wcstok_s(NULL, L":", &context);
                         if (token != NULL) {
-                            log_message(L"Control: Target: %s", token);
+                            LOG_W(LOG_INFO, L"Control: Target: %s", token);
                             set_target_name(_wcsdup(token));
                             ConnectEmitterPipe(); // Connect to the RedEdr pipe
                             enable_consumer(TRUE);
@@ -73,19 +76,19 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                     }
                 }
                 else if (wcscmp(buffer, L"stop") == 0) {
-                    log_message(L"Control: Received command: stop");
+                    LOG_W(LOG_INFO, L"Control: Received command: stop");
                     enable_consumer(FALSE);
                     DisconnectEmitterPipe(); // Disconnect the RedEdr pipe
                 }
                 else if (wcscmp(buffer, L"shutdown") == 0) {
-                    log_message(L"Control: Received command: shutdown");
+                    LOG_W(LOG_INFO, L"Control: Received command: shutdown");
                     //rededr_remove_service();  // attempt to remove service
                     StopControl(); // stop this thread
                     ShutdownEtwtiReader(); // also makes main return
                     break;
                 }
                 else {
-                    log_message(L"Control: Unknown command: %s", buffer);
+                    LOG_W(LOG_INFO, L"Control: Unknown command: %s", buffer);
                 }
             }
         }
@@ -96,22 +99,22 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
             control_pipe = NULL;
         }
     }
-    log_message(L"Control: Finished");
+    LOG_W(LOG_INFO, L"Control: Finished");
     return 0;
 }
 
 
 void StartControl() {
-    log_message(L"Control: Start Thread");
+    LOG_W(LOG_INFO, L"Control: Start Thread");
     control_thread = CreateThread(NULL, 0, ServiceControlPipeThread, NULL, 0, NULL);
     if (control_thread == NULL) {
-        log_message(L"Control: Failed to create thread");
+        LOG_W(LOG_INFO, L"Control: Failed to create thread");
     }
 }
 
 
 void StopControl() {
-    log_message(L"Control: Stop Thread");
+    LOG_W(LOG_INFO, L"Control: Stop Thread");
 
     // Disable the loops
     keep_running = FALSE;
@@ -140,7 +143,7 @@ DWORD start_child_process(wchar_t* childCMD)
 {
     DWORD retval = 0;
     DWORD dataSize = MAX_BUF_SIZE;
-    log_message(L"start_child_process: Starting");
+    LOG_W(LOG_INFO, L"start_child_process: Starting");
 
     // Create Attribute List
     STARTUPINFOEXW StartupInfoEx = { 0 };
@@ -149,14 +152,14 @@ DWORD start_child_process(wchar_t* childCMD)
     InitializeProcThreadAttributeList(NULL, 1, 0, &AttributeListSize);
     if (AttributeListSize == 0) {
         retval = GetLastError();
-        log_message(L"start_child_process: InitializeProcThreadAttributeList1 Error: %d\n", retval);
+        LOG_W(LOG_INFO, L"start_child_process: InitializeProcThreadAttributeList1 Error: %d\n", retval);
         return retval;
     }
     StartupInfoEx.lpAttributeList =
         (LPPROC_THREAD_ATTRIBUTE_LIST)HeapAlloc(GetProcessHeap(), 0, AttributeListSize);
     if (InitializeProcThreadAttributeList(StartupInfoEx.lpAttributeList, 1, 0, &AttributeListSize) == FALSE) {
         retval = GetLastError();
-        log_message(L"start_child_process: InitializeProcThreadAttributeList2 Error: %d\n", retval);
+        LOG_W(LOG_INFO, L"start_child_process: InitializeProcThreadAttributeList2 Error: %d\n", retval);
         return retval;
     }
 
@@ -171,15 +174,15 @@ DWORD start_child_process(wchar_t* childCMD)
         NULL) == FALSE)
     {
         retval = GetLastError();
-        log_message(L"start_child_process: UpdateProcThreadAttribute Error: %d\n", retval);
+        LOG_W(LOG_INFO, L"start_child_process: UpdateProcThreadAttribute Error: %d\n", retval);
         return retval;
     }
 
     // Start Process (hopefully)
     PROCESS_INFORMATION ProcessInformation = { 0 };
-    log_message(L"start_child_process: Creating Process: '%s'\n", childCMD);
+    LOG_W(LOG_INFO, L"start_child_process: Creating Process: '%s'\n", childCMD);
     if (CreateProcess(NULL,
-        *childCMD,
+        childCMD,
         NULL,
         NULL,
         FALSE,
@@ -191,10 +194,10 @@ DWORD start_child_process(wchar_t* childCMD)
     {
         retval = GetLastError();
         if (retval == ERROR_INVALID_IMAGE_HASH) {
-            log_message(L"start_child_process: CreateProcess Error: Invalid Certificate\n");
+            LOG_W(LOG_INFO, L"start_child_process: CreateProcess Error: Invalid Certificate\n");
         }
         else {
-            log_message(L"start_child_process: CreateProcess Error: %d\n", retval);
+            LOG_W(LOG_INFO, L"start_child_process: CreateProcess Error: %d\n", retval);
         }
         return retval;
     }
@@ -202,6 +205,6 @@ DWORD start_child_process(wchar_t* childCMD)
     // Don't wait on process handle, we're setting our child free into the wild
     // This is to prevent any possible deadlocks
 
-    log_message(L"start_child_process: finished");
+    LOG_W(LOG_INFO, L"start_child_process: finished");
     return retval;
 }

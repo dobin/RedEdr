@@ -16,7 +16,7 @@
 #include <atomic>
 #include <chrono>
 
-#include "loguru.hpp"
+#include "logging.h"
 #include "logreader.h"
 #include "output.h"
 #include "utils.h"
@@ -33,11 +33,11 @@ void LogReaderStopAll() {
 // Stupid but working tail-f implementation
 // Just checks every second for new data
 void tailFileW(const wchar_t* filePath) {
-    LOG_F(INFO, "LOG: Tail -f %ls", filePath);
+    LOG_A(LOG_INFO, "LOG: Tail -f %ls", filePath);
 
     HANDLE hFile = CreateFileW(filePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
-        LOG_F(ERROR, "LOG: Failed to open file. Error: %lu", GetLastError());
+        LOG_A(LOG_ERROR, "LOG: Failed to open file. Error: %lu", GetLastError());
         return;
     }
 
@@ -50,7 +50,7 @@ void tailFileW(const wchar_t* filePath) {
 
     // Get the file size
     if (!GetFileSizeEx(hFile, &fileSize)) {
-        LOG_F(ERROR, "LOG: Failed to get file size. Error: %lu", GetLastError());
+        LOG_A(LOG_ERROR, "LOG: Failed to get file size. Error: %lu", GetLastError());
         CloseHandle(hFile);
         return;
     }
@@ -61,7 +61,7 @@ void tailFileW(const wchar_t* filePath) {
         // Check if there's new data
         LARGE_INTEGER newSize;
         if (!GetFileSizeEx(hFile, &newSize)) {
-            LOG_F(ERROR, "LOG: Failed to get file size. Error: %lu", GetLastError());
+            LOG_A(LOG_ERROR, "LOG: Failed to get file size. Error: %lu", GetLastError());
             break;
         }
 
@@ -71,7 +71,7 @@ void tailFileW(const wchar_t* filePath) {
 
             // Read the new data
             if (!ReadFile(hFile, buffer, bufferSize - sizeof(wchar_t), &bytesRead, NULL)) {
-                LOG_F(INFO, "LOG: Failed to read file. Error: %lu", GetLastError());
+                LOG_A(LOG_INFO, "LOG: Failed to read file. Error: %lu", GetLastError());
                 break;
             }
 
@@ -103,7 +103,7 @@ std::wstring findFiles(const std::wstring& directory, const std::wstring& patter
     hFind = FindFirstFile(fullPattern.c_str(), &findFileData);
 
     if (hFind == INVALID_HANDLE_VALUE) {
-        LOG_F(ERROR, "LOG: No files found matching the pattern: %ls", pattern.c_str());
+        LOG_A(LOG_ERROR, "LOG: No files found matching the pattern: %ls", pattern.c_str());
         return L"";
     }
     else {
@@ -115,7 +115,7 @@ std::wstring findFiles(const std::wstring& directory, const std::wstring& patter
         DWORD dwError = GetLastError();
         FindClose(hFind);
         if (dwError != ERROR_NO_MORE_FILES) {
-            LOG_F(ERROR, "LOG: Error occurred while finding files: %d", dwError);
+            LOG_A(LOG_ERROR, "LOG: Error occurred while finding files: %d", dwError);
             return L"";
         }
     }
@@ -124,9 +124,9 @@ std::wstring findFiles(const std::wstring& directory, const std::wstring& patter
 
 DWORD WINAPI LogReaderProcessingThread(LPVOID param) {
     const wchar_t* path = (wchar_t*)param;
-    LOG_F(INFO, "LOG: Start LogReaderProcessingThread: %ls", path);
+    LOG_A(LOG_INFO, "LOG: Start LogReaderProcessingThread: %ls", path);
     tailFileW(path);
-    LOG_F(INFO, "LOG: Stopped LogReaderProcessingThread");
+    LOG_A(LOG_INFO, "LOG: Stopped LogReaderProcessingThread");
     return 0;
 }
 
@@ -145,14 +145,14 @@ BOOL InitializeLogReader(std::vector<HANDLE>& threads) {
 
     std::wstring path = findFiles(directory, pattern);
     if (path == L"") {
-        LOG_F(ERROR, "LOG: File not found: %ls", pattern.c_str());
+        LOG_A(LOG_ERROR, "LOG: File not found: %ls", pattern.c_str());
         return 1;
     }
 
     wchar_t* real_path = allocateAndCopyWString(path);
     HANDLE thread = CreateThread(NULL, 0, LogReaderProcessingThread, (LPVOID)real_path, 0, NULL);
     if (thread == NULL) {
-        LOG_F(ERROR, "LOG: Failed to create thread for trace session logreader");
+        LOG_A(LOG_ERROR, "LOG: Failed to create thread for trace session logreader");
         return 1;
     }
     threads.push_back(thread);

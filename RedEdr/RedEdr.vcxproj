@@ -105,8 +105,9 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;OUTPUT_STDOUT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Users\hacker\source\repos\RedEdr\RedEdrShared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -133,6 +134,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\RedEdrShared\logging.cpp" />
+    <ClCompile Include="..\RedEdrShared\loguru.cpp" />
     <ClCompile Include="cache.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="dllinjector.cpp" />
@@ -142,7 +145,6 @@
     <ClCompile Include="dllreader.cpp" />
     <ClCompile Include="kernelreader.cpp" />
     <ClCompile Include="logreader.cpp" />
-    <ClCompile Include="loguru.cpp" />
     <ClCompile Include="output.cpp" />
     <ClCompile Include="pplmanager.cpp" />
     <ClCompile Include="pplreader.cpp" />
@@ -152,6 +154,8 @@
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\RedEdrShared\logging.h" />
+    <ClInclude Include="..\RedEdrShared\loguru.hpp" />
     <ClInclude Include="cache.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="cxxops.hpp" />
@@ -163,7 +167,6 @@
     <ClInclude Include="dllreader.h" />
     <ClInclude Include="kernelreader.h" />
     <ClInclude Include="logreader.h" />
-    <ClInclude Include="loguru.hpp" />
     <ClInclude Include="mypeb.h" />
     <ClInclude Include="output.h" />
     <ClInclude Include="pplmanager.h" />

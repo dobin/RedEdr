@@ -43,15 +43,15 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         PUNICODE_STRING parent_processName = NULL;
         SeLocateProcessImageName(parent_process, &parent_processName);
 
-        //log_message("[RedEdr] Process %wZ created\n", processName);
-        //log_message("            PID: %d\n", pid);
-        //log_message("            Created by: %wZ\n", parent_processName);
-        //log_message("            ImageBase: %ws\n", createInfo->ImageFileName->Buffer);
+        //LOG_A(LOG_INFO, "[RedEdr] Process %wZ created\n", processName);
+        //LOG_A(LOG_INFO, "            PID: %d\n", pid);
+        //LOG_A(LOG_INFO, "            Created by: %wZ\n", parent_processName);
+        //LOG_A(LOG_INFO, "            ImageBase: %ws\n", createInfo->ImageFileName->Buffer);
 
         POBJECT_NAME_INFORMATION objFileDosDeviceName;
         IoQueryFileDosDeviceName(createInfo->FileObject, &objFileDosDeviceName);
-        //log_message("            DOS path: %ws\n", objFileDosDeviceName->Name.Buffer);
-        //log_message("            CommandLine: %ws\n", createInfo->CommandLine->Buffer);
+        //LOG_A(LOG_INFO, "            DOS path: %ws\n", objFileDosDeviceName->Name.Buffer);
+        //LOG_A(LOG_INFO, "            CommandLine: %ws\n", createInfo->CommandLine->Buffer);
 
         processInfo = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(PROCESS_INFO), 'Proc');
         if (!processInfo) {
@@ -70,7 +70,7 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
                 processInfo->observe = 1;
             }
         }
-        log_message("CreateProcessNotify: Process %d created, observe: %i\n", 
+        LOG_A(LOG_INFO, "CreateProcessNotify: Process %d created, observe: %i\n", 
             pid, processInfo->observe);
 
         AddProcessInfo(pid, processInfo);
@@ -151,7 +151,7 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
             processInfo->injected = KapcInjectDll(FullImageName, ProcessId, ImageInfo);
             // TODO lock this?
             if (processInfo->injected) {
-                log_message("Injected DLL into pid: %d\n", ProcessId);
+                LOG_A(LOG_INFO, "Injected DLL into pid: %d\n", ProcessId);
             }
         }
     }

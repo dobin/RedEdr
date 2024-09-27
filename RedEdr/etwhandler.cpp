@@ -8,7 +8,7 @@
 #include <iomanip>
 #include <sstream>
 
-#include "loguru.hpp"
+#include "logging.h"
 #include "output.h"
 #include "etwhandler.h"
 #include "config.h"
@@ -416,7 +416,7 @@ void PrintProperties(std::wstring eventName, PEVENT_RECORD eventRecord) {
         status = TdhGetEventInformation(eventRecord, 0, NULL, eventInfo, &bufferSize);
     }
     if (ERROR_SUCCESS != status) {
-        LOG_F(ERROR, "TdhGetEventInformation");
+        LOG_A(LOG_ERROR, "TdhGetEventInformation");
         if (eventInfo) {
             free(eventInfo);
         }

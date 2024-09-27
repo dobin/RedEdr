@@ -12,7 +12,8 @@
 
 #include "emitter.h"
 #include "objcache.h"
-#include "utils.h"
+#include "logging.h"
+#include "etwtireader.h"
 
 #pragma comment(lib, "Ole32.lib")
 #pragma comment(lib, "tdh.lib")
@@ -20,14 +21,17 @@
 
 /* NOTE: Most copied from RedEdr/etwreader.cpp */
 
+typedef void (WINAPI* EventRecordCallbackFuncPtr)(PEVENT_RECORD);
 
-wchar_t* SessionName = L"RedEdrPplServiceEtwTiReader";
+BOOL SetupTrace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wchar_t* info);
+
+wchar_t* SessionName = (wchar_t *) L"RedEdrPplServiceEtwTiReader";
 BOOL enabled_consumer = FALSE;
 
 BOOL seen_etwti_event = FALSE;
 
 void enable_consumer(BOOL e) {
-    log_message(L"Consumer: Enable: %d", e);
+    LOG_W(LOG_INFO, L"Consumer: Enable: %d", e);
     enabled_consumer = e;
 }
 
@@ -41,7 +45,7 @@ void PrintProperties(wchar_t *eventName, PEVENT_RECORD eventRecord) {
         status = TdhGetEventInformation(eventRecord, 0, NULL, eventInfo, &bufferSize);
     }
     if (ERROR_SUCCESS != status) {
-        log_message(L"Consumer: TdhGetEventInformation failed\n");
+        LOG_W(LOG_INFO, L"Consumer: TdhGetEventInformation failed\n");
         if (eventInfo) {
             free(eventInfo);
         }
@@ -171,7 +175,8 @@ void PrintProperties(wchar_t *eventName, PEVENT_RECORD eventRecord) {
             break;
         case TDH_INTYPE_SID: {
             PSID sid = (PSID)propertyBuffer;
-            WCHAR sidString[256];
+            WCHAR sidChar[256];
+            LPWSTR sidString = (LPWSTR) sidChar;
             if (ConvertSidToStringSid(sid, &sidString)) {
                 wcscat_s(output, sizeof(output) / sizeof(output[0]), sidString);
                 wcscat_s(output, sizeof(output) / sizeof(output[0]), L";");
@@ -210,7 +215,7 @@ void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
     }
     if (!seen_etwti_event) {
         seen_etwti_event = TRUE;
-        log_message("Consumer: Got a ETW-TI message, all is working");
+        LOG_W(LOG_INFO, L"Consumer: Got a ETW-TI message, all is working");
     }
     DWORD processId = eventRecord->EventHeader.ProcessId;
     struct my_hashmap* obj = get_obj(processId);
@@ -371,7 +376,6 @@ void StartEtwtiReader() {
 }
 
 
-typedef void (WINAPI* EventRecordCallbackFuncPtr)(PEVENT_RECORD);
 
 TRACEHANDLE SessionHandle;
 TRACEHANDLE TraceHandle;
@@ -382,7 +386,7 @@ EVENT_TRACE_PROPERTIES* makeSessionProperties(size_t session_name_len) {
     ULONG bufferSize = (ULONG)(sizeof(EVENT_TRACE_PROPERTIES) + ((session_name_len + 1) * sizeof(wchar_t)));
     sessionProperties = (EVENT_TRACE_PROPERTIES*)malloc(bufferSize);
     if (sessionProperties == NULL) {
-        log_message(L"Consumer error: Allocating");
+        LOG_W(LOG_INFO, L"Consumer error: Allocating");
         return NULL;
     }
     ZeroMemory(sessionProperties, bufferSize);
@@ -396,39 +400,39 @@ EVENT_TRACE_PROPERTIES* makeSessionProperties(size_t session_name_len) {
 
 
 BOOL ShutdownEtwtiReader() {
-    log_message(L"Consumer: Stopping EtwTracing");
+    LOG_W(LOG_INFO, L"Consumer: Stopping EtwTracing");
     ULONG status;
     EVENT_TRACE_PROPERTIES* sessionProperties;
 
     sessionProperties = makeSessionProperties(wcslen(SessionName));
     if (SessionHandle != NULL) {
-        log_message(L"Consumer: Stop Session with ControlTrace(EVENT_TRACE_CONTROL_STOP)");
+        LOG_W(LOG_INFO, L"Consumer: Stop Session with ControlTrace(EVENT_TRACE_CONTROL_STOP)");
         status = ControlTrace(SessionHandle, SessionName, sessionProperties, EVENT_TRACE_CONTROL_STOP);
         if (status != ERROR_SUCCESS) {
-            log_message(L"Consumer: Failed to stop trace");
+            LOG_W(LOG_INFO, L"Consumer: Failed to stop trace");
         }
         else {
-            log_message(L"Consumer: ControlTrace stopped");
+            LOG_W(LOG_INFO, L"Consumer: ControlTrace stopped");
         }
         SessionHandle = NULL;
     }
     free(sessionProperties);
 
     if (TraceHandle != INVALID_PROCESSTRACE_HANDLE) {
-        log_message(L"Consumer: CloseTrace()");
+        LOG_W(LOG_INFO, L"Consumer: CloseTrace()");
 
         status = CloseTrace(TraceHandle);
         if (status == ERROR_CTX_CLOSE_PENDING) {
             // The call was successful. The ProcessTrace function will stop 
             // after it has processed all real-time events in its buffers 
             // (it will not receive any new events).
-            log_message(L"Consumer: CloseTrace() success but pending");
+            LOG_W(LOG_INFO, L"Consumer: CloseTrace() success but pending");
         }
         else if (status == ERROR_SUCCESS) {
-            log_message(L"Consumer: CloseTrace() success");
+            LOG_W(LOG_INFO, L"Consumer: CloseTrace() success");
         }
         else {
-            log_message(L"Consumer: CloseTrace() failed: %d", status);
+            LOG_W(LOG_INFO, L"Consumer: CloseTrace() failed: %d", status);
         }
         TraceHandle = INVALID_PROCESSTRACE_HANDLE;
     }
@@ -443,11 +447,11 @@ BOOL SetupTrace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wcha
     SessionHandle = NULL;
     TraceHandle = INVALID_PROCESSTRACE_HANDLE;
 
-    log_message(L"Consumer: Setup ETW-TI Reader");
+    LOG_W(LOG_INFO, L"Consumer: Setup ETW-TI Reader");
 
     // Convert CLSID
     if (CLSIDFromString(guid, &providerGuid) != NOERROR) {
-        log_message(L"Consumer: error: Invalid provider GUID format");
+        LOG_W(LOG_INFO, L"Consumer: error: Invalid provider GUID format");
         return FALSE;
     }
 
@@ -455,11 +459,11 @@ BOOL SetupTrace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wcha
     EVENT_TRACE_PROPERTIES* sessionProperties = makeSessionProperties(wcslen(SessionName));
     status = StartTrace(&SessionHandle, SessionName, sessionProperties);
     if (status != ERROR_SUCCESS) {
-        log_message(L"Consumer: Failed to start trace: %d", status);
+        LOG_W(LOG_INFO, L"Consumer: Failed to start trace: %d", status);
         free(sessionProperties);
 
         if (status == ERROR_ALREADY_EXISTS) {
-            log_message(L"Consumer: Trace already exists");
+            LOG_W(LOG_INFO, L"Consumer: Trace already exists");
         }
 
         return FALSE;
@@ -469,9 +473,9 @@ BOOL SetupTrace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wcha
     status = EnableTraceEx2(SessionHandle,  &providerGuid, EVENT_CONTROL_CODE_ENABLE_PROVIDER,
         TRACE_LEVEL_INFORMATION, 0, 0, 0, NULL);
     if (status != ERROR_SUCCESS) {
-        log_message(L"Consumer: Failed to enable provider: %d", status);
+        LOG_W(LOG_INFO, L"Consumer: Failed to enable provider: %d", status);
         if (status == ERROR_ACCESS_DENIED) {
-            log_message(L"Consumer: No permission");
+            LOG_W(LOG_INFO, L"Consumer: No permission");
         }
         return FALSE;
     }
@@ -484,7 +488,7 @@ BOOL SetupTrace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wcha
     traceLogfile.EventRecordCallback = func;
     TraceHandle = OpenTrace(&traceLogfile);
     if (TraceHandle == INVALID_PROCESSTRACE_HANDLE) {
-        log_message(L"Consumer: Failed to open trace: %d", GetLastError());
+        LOG_W(LOG_INFO, L"Consumer: Failed to open trace: %d", GetLastError());
         free(sessionProperties);
         return FALSE;
     }
@@ -492,12 +496,12 @@ BOOL SetupTrace(const wchar_t* guid, EventRecordCallbackFuncPtr func, const wcha
 
     // Start it (blocking)
     TRACEHANDLE traceHandles[] = { TraceHandle };
-    log_message(L"Consumer: ETW Listening start");
+    LOG_W(LOG_INFO, L"Consumer: ETW Listening start");
     status = ProcessTrace(traceHandles, 1, 0, 0);
     if (status != ERROR_SUCCESS) {
-        log_message(L"Consumer: ProcessTrace() failed with error: %d", status);
+        LOG_W(LOG_INFO, L"Consumer: ProcessTrace() failed with error: %d", status);
     }
 
-    log_message(L"Consumer: ETW Listening stopped");
+    LOG_W(LOG_INFO, L"Consumer: ETW Listening stopped");
     return TRUE;
 }

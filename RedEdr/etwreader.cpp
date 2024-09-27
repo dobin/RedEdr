@@ -7,7 +7,7 @@
 #include <iomanip>
 #include <sstream>
 
-#include "loguru.hpp"
+#include "logging.h"
 #include "etwreader.h"
 #include "cache.h"
 #include "config.h"
@@ -30,7 +30,7 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
     if (g_config.etw_standard) {
         reader = SetupTrace(id++, L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}", &EventRecordCallbackKernelProcess, L"Microsoft-Windows-Kernel-Process");
         if (!reader) {
-            LOG_F(ERROR, "ETW: Probably open session/trace. Aborting, try again");
+            LOG_A(LOG_ERROR, "ETW: Probably open session/trace. Aborting, try again");
             //readers.push_back(reader);
             //EtwReaderStopAll();
             return 1;
@@ -39,7 +39,7 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
 
         reader = SetupTrace(id++, L"{e02a841c-75a3-4fa7-afc8-ae09cf9b7f23}", &EventRecordCallbackApiCalls, L"Microsoft-Windows-Kernel-Audit-API-Calls");
         if (!reader) {
-            LOG_F(ERROR, "ETW: Probably open session/trace. Aborting, try again");
+            LOG_A(LOG_ERROR, "ETW: Probably open session/trace. Aborting, try again");
             //readers.push_back(reader);
             //EtwReaderStopAll();
             return 1;
@@ -50,7 +50,7 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
         /*
         reader = setup_trace(id++, L"{8c416c79-d49b-4f01-a467-e56d3aa8234c}", &EventRecordCallbackWin32, L"Microsoft-Windows-Win32k");
         if (!reader) {
-            LOG_F(ERROR, "Probably open session/trace. Aborting, try again");
+            LOG_A(LOG_ERROR, "Probably open session/trace. Aborting, try again");
             //readers.push_back(reader);
             //EtwReaderStopAll();
             return 1;
@@ -63,7 +63,7 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
     if (g_config.etw_secaudit) {
         reader = SetupTrace_SecurityAuditing(id++);
         if (!reader) {
-            //LOG_F(ERROR, "TODO ERROR");
+            //LOG_A(LOG_ERROR, "TODO ERROR");
             //return 1;
         }
         else {
@@ -97,11 +97,11 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
 
     // ProcessTrace() can only handle 1 (one) real-time processing session
     // Create threads instead fuck...
-    LOG_F(INFO, "ETW: Start the tracing threads");
+    LOG_A(LOG_INFO, "ETW: Start the tracing threads");
     for (const auto& reader: readers) {
         HANDLE thread = CreateThread(NULL, 0, TraceProcessingThread, reader, 0, NULL);
         if (thread == NULL) {
-            LOG_F(ERROR, "ETW: Failed to create thread, continue");
+            LOG_A(LOG_ERROR, "ETW: Failed to create thread, continue");
             //return 1;
         }
         else {
@@ -118,13 +118,13 @@ int stopTraceSession(TRACEHANDLE sessionHandle, wchar_t *sessionName) {
     ULONG status;
     EVENT_TRACE_PROPERTIES* sessionProperties;
     sessionProperties = MakeSessionProperties(wcslen(sessionName));
-    LOG_F(INFO, "ETW:  Stop Session: %ls", sessionName);
+    LOG_A(LOG_INFO, "ETW:  Stop Session: %ls", sessionName);
     status = ControlTrace(sessionHandle, sessionName, sessionProperties, EVENT_TRACE_CONTROL_STOP);
     if (status != ERROR_SUCCESS) {
-        LOG_F(WARNING, "ETW:     Failed to stop trace, error: %d", status);
+        LOG_A(LOG_WARNING, "ETW:     Failed to stop trace, error: %d", status);
     }
     else {
-        LOG_F(INFO, "ETW:     ControlTrace stopped");
+        LOG_A(LOG_INFO, "ETW:     ControlTrace stopped");
     }
     free(sessionProperties);
     return status;
@@ -141,7 +141,7 @@ void EtwReaderStopAll() {
     function returns after the controller stops the trace session.
     (Note that there may be a delay of several seconds before the function returns.)
     */
-    LOG_F(INFO, "ETW: Stopping EtwTracing"); fflush(stdout);
+    LOG_A(LOG_INFO, "ETW: Stopping EtwTracing"); fflush(stdout);
     ULONG status;
 
     // Stop trace sessions
@@ -152,7 +152,7 @@ void EtwReaderStopAll() {
         stopTraceSession(reader->SessionHandle, reader->SessionName);
     }
 
-    LOG_F(INFO, "ETW: Tracing finished, cleanup..."); fflush(stdout);
+    LOG_A(LOG_INFO, "ETW: Tracing finished, cleanup..."); fflush(stdout);
     Sleep(500);
     // NOTE if shit is still printing on screen, the following may fail?
 
@@ -160,20 +160,20 @@ void EtwReaderStopAll() {
     for (const auto& reader : readers) {
         // Stop the traces
         if (reader->TraceHandle != INVALID_PROCESSTRACE_HANDLE) {
-            LOG_F(INFO, "ETW:   CloseTrace(): %i", reader->id);
+            LOG_A(LOG_INFO, "ETW:   CloseTrace(): %i", reader->id);
 
             status = CloseTrace(reader->TraceHandle);
             if (status == ERROR_CTX_CLOSE_PENDING) {
                 // The call was successful. The ProcessTrace function will stop 
                 // after it has processed all real-time events in its buffers 
                 // (it will not receive any new events).
-                LOG_F(INFO, "ETW:     CloseTrace() success but pending");
+                LOG_A(LOG_INFO, "ETW:     CloseTrace() success but pending");
             }
             else if (status == ERROR_SUCCESS) {
-                LOG_F(INFO, "ETW:     CloseTrace() success");
+                LOG_A(LOG_INFO, "ETW:     CloseTrace() success");
             }
             else {
-                LOG_F(WARNING, "ETW:     CloseTrace() failed: %d", status);
+                LOG_A(LOG_WARNING, "ETW:     CloseTrace() failed: %d", status);
             }
             reader->TraceHandle = INVALID_PROCESSTRACE_HANDLE;
         }
@@ -181,7 +181,7 @@ void EtwReaderStopAll() {
         // Todo free memory
     }
     Sleep(500);
-    LOG_F(INFO, "ETW: EtwTracing all stopped"); 
+    LOG_A(LOG_INFO, "ETW: EtwTracing all stopped"); 
 }
 
 
@@ -193,7 +193,7 @@ Reader* SetupTrace(int id, const wchar_t* guid, EventRecordCallbackFuncPtr func,
 
     Reader* reader = new Reader();
     reader->id = id;
-    LOG_F(INFO, "ETW: Do Trace %i: %ls: %ls", reader->id, guid, info);
+    LOG_A(LOG_INFO, "ETW: Do Trace %i: %ls: %ls", reader->id, guid, info);
     // For session name omg...
     std::wstring mySessionName = g_config.sessionName + L"_" + std::to_wstring(id);
     size_t len = mySessionName.length() + 1; // +1 for null terminator
@@ -205,7 +205,7 @@ Reader* SetupTrace(int id, const wchar_t* guid, EventRecordCallbackFuncPtr func,
     reader->TraceHandle = INVALID_PROCESSTRACE_HANDLE;
 
     if (CLSIDFromString(guid, &providerGuid) != NOERROR) {
-        LOG_F(ERROR, "ETW: Invalid provider GUID format");
+        LOG_A(LOG_ERROR, "ETW: Invalid provider GUID format");
         return NULL;
     }
     wchar_t* sessionNameBuffer = reader->SessionName;
@@ -214,25 +214,25 @@ Reader* SetupTrace(int id, const wchar_t* guid, EventRecordCallbackFuncPtr func,
     EVENT_TRACE_PROPERTIES* sessionProperties = MakeSessionProperties(wcslen(sessionNameBuffer));
     status = StartTrace(&sessionHandle, sessionNameBuffer, sessionProperties);
     if (status == ERROR_ALREADY_EXISTS) {
-        LOG_F(WARNING, "ETW: Session %ls already exists, attempt to stop it", mySessionName.c_str());
+        LOG_A(LOG_WARNING, "ETW: Session %ls already exists, attempt to stop it", mySessionName.c_str());
         stopTraceSession(NULL, (wchar_t*) mySessionName.c_str());
         Sleep(500);
 
         // Try it again...
-        LOG_F(WARNING, "ETW: Attempt to open trace %ls again..", mySessionName.c_str());
+        LOG_A(LOG_WARNING, "ETW: Attempt to open trace %ls again..", mySessionName.c_str());
         status = StartTrace(&sessionHandle, sessionNameBuffer, sessionProperties);
         if (status != ERROR_SUCCESS) {
-            LOG_F(WARNING, "ETW: Failed to open session %ls", mySessionName.c_str());
+            LOG_A(LOG_WARNING, "ETW: Failed to open session %ls", mySessionName.c_str());
             free(sessionProperties);
             return NULL;
         }
     } else if (status != ERROR_SUCCESS) {
-        LOG_F(ERROR, "ETW: Failed to start trace: %d", status);
+        LOG_A(LOG_ERROR, "ETW: Failed to start trace: %d", status);
         free(sessionProperties);
         return NULL;
     }
 
-    LOG_F(WARNING, "ETW: StartTrace %ls success", mySessionName.c_str());
+    LOG_A(LOG_WARNING, "ETW: StartTrace %ls success", mySessionName.c_str());
 
     // EnableProvider
     EnableProvider(sessionHandle, providerGuid);
@@ -245,7 +245,7 @@ Reader* SetupTrace(int id, const wchar_t* guid, EventRecordCallbackFuncPtr func,
     traceLogfile.EventRecordCallback = func;
     traceHandle = OpenTrace(&traceLogfile);
     if (traceHandle == INVALID_PROCESSTRACE_HANDLE) {
-        LOG_F(ERROR, "ETW: Failed to open trace: %d", GetLastError());
+        LOG_A(LOG_ERROR, "ETW: Failed to open trace: %d", GetLastError());
         //delete[] sessionNameBuffer;
         free(sessionProperties);
         return NULL;
@@ -269,7 +269,7 @@ Reader* SetupTrace_SecurityAuditing(int id) {
     DWORD user_name_length = 128;
     if (!GetUserNameA(user_name, &user_name_length) || strcmp(user_name, "SYSTEM") != 0)
     {
-        LOG_F(ERROR, "ETW: Microsoft-Windows-Security-Auditing can only be traced by SYSTEM");
+        LOG_A(LOG_ERROR, "ETW: Microsoft-Windows-Security-Auditing can only be traced by SYSTEM");
         return NULL;
     }
 
@@ -285,7 +285,7 @@ Reader* SetupTrace_SecurityAuditing(int id) {
     reader->SessionHandle = NULL;
     reader->TraceHandle = INVALID_PROCESSTRACE_HANDLE;
 
-    LOG_F(INFO, "ETW: Do Trace %i: %ls: %ls", reader->id, L"{54849625-5478-4994-A5BA-3E3B0328C30D}", L"Microsoft-Windows-Security-Auditing");
+    LOG_A(LOG_INFO, "ETW: Do Trace %i: %ls: %ls", reader->id, L"{54849625-5478-4994-A5BA-3E3B0328C30D}", L"Microsoft-Windows-Security-Auditing");
 
     // Only one trace session is allowed for this provider: "EventLog-Security"
     // Open a handle to this trace session
@@ -298,7 +298,7 @@ Reader* SetupTrace_SecurityAuditing(int id) {
     // Open trace
     TRACEHANDLE traceHandle = OpenTrace(&trace);
     if (traceHandle == INVALID_PROCESSTRACE_HANDLE) {
-        LOG_F(ERROR, "ETW: Failed to open trace. Error: %d", GetLastError());
+        LOG_A(LOG_ERROR, "ETW: Failed to open trace. Error: %d", GetLastError());
         return FALSE;
     }
 
@@ -317,7 +317,7 @@ EVENT_TRACE_PROPERTIES* MakeSessionProperties(size_t session_name_len) {
     ULONG bufferSize = (ULONG) (sizeof(EVENT_TRACE_PROPERTIES) + ((session_name_len + 1) * sizeof(wchar_t)));
     sessionProperties = (EVENT_TRACE_PROPERTIES*) malloc(bufferSize);
     if (sessionProperties == NULL) {
-        LOG_F(ERROR, "ETW: Allocating");
+        LOG_A(LOG_ERROR, "ETW: Allocating");
         return NULL;
     }
     ZeroMemory(sessionProperties, bufferSize);
@@ -343,20 +343,20 @@ void EnableProvider(TRACEHANDLE sessionHandle, const GUID& providerGuid) {
     );
 
     if (status != ERROR_SUCCESS) {
-        LOG_F(ERROR, "ETW: Failed to enable provider: %d", status);
+        LOG_A(LOG_ERROR, "ETW: Failed to enable provider: %d", status);
     }
 }
 
 
 DWORD WINAPI TraceProcessingThread(LPVOID param) {
     Reader *reader = (Reader*)param;
-    LOG_F(INFO, "!ETW: Start Thread %i", reader->id);
+    LOG_A(LOG_INFO, "!ETW: Start Thread %i", reader->id);
 
     ULONG status = ProcessTrace(&reader->TraceHandle, 1, NULL, NULL);
     if (status != ERROR_SUCCESS) {
-        LOG_F(ERROR, "ETW: Failed to process trace: %d", status);
+        LOG_A(LOG_ERROR, "ETW: Failed to process trace: %d", status);
     }
-    LOG_F(INFO, "!ETW: Exit Thread %i", reader->id);
+    LOG_A(LOG_INFO, "!ETW: Exit Thread %i", reader->id);
     return 0;
 }
 

@@ -13,7 +13,7 @@
 #include <dbghelp.h>
 
 #include "../Shared/common.h"
-#include "loguru.hpp"
+#include "logging.h"
 #include "config.h"
 #include "procinfo.h"
 #include "dllinjector.h"
@@ -606,10 +606,10 @@ DWORD start_child_process(wchar_t* childCMD)
     wprintf(L"[PPL_RUNNER] start_child_process: Starting");
 
     // Get Command to run from registry
-    //log_message(L"[PPL_RUNNER] start_child_process: Looking for command in RegKey: HKLM\\%s\n", CMD_REGKEY);
+    //LOG_W(LOG_INFO, L"[PPL_RUNNER] start_child_process: Looking for command in RegKey: HKLM\\%s\n", CMD_REGKEY);
     //retval = RegGetValue(HKEY_LOCAL_MACHINE, CMD_REGKEY, NULL, RRF_RT_REG_SZ, NULL, &childCMD, &dataSize);
     //if (retval != ERROR_SUCCESS) {
-    //    log_message(L"[PPL_RUNNER] start_child_process: RegGetValue Error: %d\n", retval);
+    //    LOG_W(LOG_INFO, L"[PPL_RUNNER] start_child_process: RegGetValue Error: %d\n", retval);
     //    return retval;
     //}
 
@@ -739,7 +739,7 @@ int wmain(int argc, wchar_t* argv[]) {
         printf("Usage: rededrtester.exe <id> <pid>");
         return 1;
     }
-    LOG_F(INFO, "RedTester");
+    LOG_A(LOG_INFO, "RedTester");
 
     // Args: pid, for 3
     wchar_t* end;

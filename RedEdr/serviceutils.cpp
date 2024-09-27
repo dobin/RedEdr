@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "../Shared/common.h"
-#include "loguru.hpp"
+#include "logging.h"
 #include "config.h"
 #include "procinfo.h"
 #include "dllinjector.h"
@@ -23,25 +23,25 @@ BOOL IsServiceRunning(LPCWSTR driverName) {
 
     hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hSCManager) {
-        LOG_F(ERROR, "Kernel: OpenSCManager failed. Error: %lu", GetLastError());
+        LOG_A(LOG_ERROR, "Kernel: OpenSCManager failed. Error: %lu", GetLastError());
         return FALSE;
     }
 
     hService = OpenService(hSCManager, driverName, SERVICE_QUERY_STATUS);
     if (!hService) {
-        //LOG_F(ERROR, "OpenService failed. Error: %lu", GetLastError());
+        //LOG_A(LOG_ERROR, "OpenService failed. Error: %lu", GetLastError());
         ret = FALSE;
         goto cleanup;
     }
 
     if (QueryServiceStatusEx(hService, SC_STATUS_PROCESS_INFO, (LPBYTE)&status, sizeof(SERVICE_STATUS_PROCESS), &bytesNeeded)) {
-        //LOG_F(ERROR, "KernelDriver: Servicestatus:");
-        //LOG_F(ERROR, "  PID: %lu", status.dwProcessId);
-        //LOG_F(ERROR, "  State: %lu", status.dwCurrentState);
+        //LOG_A(LOG_ERROR, "KernelDriver: Servicestatus:");
+        //LOG_A(LOG_ERROR, "  PID: %lu", status.dwProcessId);
+        //LOG_A(LOG_ERROR, "  State: %lu", status.dwCurrentState);
         ret = TRUE;
     }
     else {
-        LOG_F(ERROR, "Kernel: QueryServiceStatusEx failed. Error: %lu", GetLastError());
+        LOG_A(LOG_ERROR, "Kernel: QueryServiceStatusEx failed. Error: %lu", GetLastError());
         ret = FALSE;
     }
 

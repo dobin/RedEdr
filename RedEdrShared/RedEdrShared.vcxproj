@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{0e6dc31b-3262-49c0-92a2-43651fb44308}</ProjectGuid>
-    <RootNamespace>RedEdrTester</RootNamespace>
+    <ProjectGuid>{7f48fa73-b6a6-4725-bf99-835f2c0e2405}</ProjectGuid>
+    <RootNamespace>RedEdrShared</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -102,9 +102,9 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;OUTPUT_STDOUT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\hacker\source\repos\RedEdr\RedEdr;C:\Users\hacker\source\repos\RedEdr\RedEdrShared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\hacker\source\repos\RedEdr\RedEdrShared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -119,7 +119,6 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\hacker\source\repos\RedEdr\RedEdr;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,20 +128,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\RedEdrShared\logging.cpp" />
-    <ClCompile Include="..\RedEdrShared\loguru.cpp" />
-    <ClCompile Include="..\RedEdr\cache.cpp" />
-    <ClCompile Include="..\RedEdr\config.cpp" />
-    <ClCompile Include="..\RedEdr\dllinjector.cpp" />
-    <ClCompile Include="..\RedEdr\logreader.cpp" />
-    <ClCompile Include="..\RedEdr\output.cpp" />
-    <ClCompile Include="..\RedEdr\procinfo.cpp" />
-    <ClCompile Include="..\RedEdr\utils.cpp" />
-    <ClCompile Include="RedEdrTester.cpp" />
+    <ClCompile Include="logging.cpp" />
+    <ClCompile Include="loguru.cpp" />
+    <ClCompile Include="RedEdrShared.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\RedEdrShared\loguru.hpp" />
-    <ClInclude Include="uthash.h" />
+    <ClInclude Include="logging.h" />
+    <ClInclude Include="loguru.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -35,18 +35,18 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
 
     switch (controlCode) {
     case IOCTL_MY_IOCTL_CODE: {
-        log_message("[IOCTL] Handling IOCTL\n");
+        LOG_A(LOG_INFO, "[IOCTL] Handling IOCTL\n");
 
         // read IOCTL
         PMY_DRIVER_DATA data = (PMY_DRIVER_DATA)Irp->AssociatedIrp.SystemBuffer;
         size_t inputBufferLength = stack->Parameters.DeviceIoControl.InputBufferLength;
 
         if (inputBufferLength != sizeof(MY_DRIVER_DATA)) {
-            log_message("[IOCTL] Size error: %i %i\n", 
+            LOG_A(LOG_INFO, "[IOCTL] Size error: %i %i\n", 
                 inputBufferLength, sizeof(data));
         }
 
-        log_message("[IOCTL] Received from user-space: enabled: %i  filename: %ls\n", data->flag, data->filename);
+        LOG_A(LOG_INFO, "[IOCTL] Received from user-space: enabled: %i  filename: %ls\n", data->flag, data->filename);
         char* answer;
         if (data->flag) {
             g_config.enable_kapc_injection = 1;
@@ -55,16 +55,16 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
 
             int ret = ConnectUserspacePipe();
             if (ret) {
-                log_message("[IOCTL] Start OK\n");
+                LOG_A(LOG_INFO, "[IOCTL] Start OK\n");
                 answer = "OK";
             }
             else {
-                log_message("[IOCTL] Start ERROR\n");
+                LOG_A(LOG_INFO, "[IOCTL] Start ERROR\n");
                 answer = "FAIL";
             }
         }
         else {
-            log_message("[IOCTL] Stop\n");
+            LOG_A(LOG_INFO, "[IOCTL] Stop\n");
             g_config.enable_kapc_injection = 0;
             g_config.enable_logging = 0;
             wcscpy_s(g_config.target, sizeof(g_config.target), data->filename); // should be zero
@@ -99,13 +99,13 @@ void LoadKernelCallbacks() {
     if (g_config.init_processnotify) {
         ret = PsSetCreateProcessNotifyRoutineEx(CreateProcessNotifyRoutine, FALSE);
         if (ret == STATUS_SUCCESS) {
-            log_message("CreateProcessNotifyRoutine launched successfully\n");
+            LOG_A(LOG_INFO, "CreateProcessNotifyRoutine launched successfully\n");
         }
         else if (ret == STATUS_INVALID_PARAMETER) {
-            log_message("ERROR: CreateProcessNotifyRoutine Invalid parameter\n");
+            LOG_A(LOG_INFO, "ERROR: CreateProcessNotifyRoutine Invalid parameter\n");
         }
         else if (ret == STATUS_ACCESS_DENIED) {
-            log_message("ERROR: CreateProcessNotifyRoutine Access denied\n");
+            LOG_A(LOG_INFO, "ERROR: CreateProcessNotifyRoutine Access denied\n");
         }
     }
     
@@ -113,13 +113,13 @@ void LoadKernelCallbacks() {
     if (g_config.init_threadnotify) {
         ret = PsSetCreateThreadNotifyRoutine(CreateThreadNotifyRoutine);
         if (ret == STATUS_SUCCESS) {
-            log_message("CreateThreadNotifyRoutine launched successfully\n");
+            LOG_A(LOG_INFO, "CreateThreadNotifyRoutine launched successfully\n");
         }
         else if (ret == STATUS_INVALID_PARAMETER) {
-            log_message("ERROR: CreateThreadNotifyRoutine Invalid parameter\n");
+            LOG_A(LOG_INFO, "ERROR: CreateThreadNotifyRoutine Invalid parameter\n");
         }
         else if (ret == STATUS_ACCESS_DENIED) {
-            log_message("ERROR: CreateThreadNotifyRoutine Access denied\n");
+            LOG_A(LOG_INFO, "ERROR: CreateThreadNotifyRoutine Access denied\n");
         }
     }
 
@@ -127,13 +127,13 @@ void LoadKernelCallbacks() {
     if (g_config.init_imagenotify) {
         ret = PsSetLoadImageNotifyRoutine(LoadImageNotifyRoutine);
         if (ret == STATUS_SUCCESS) {
-            log_message("LoadImageNotifyRoutine launched successfully\n");
+            LOG_A(LOG_INFO, "LoadImageNotifyRoutine launched successfully\n");
         }
         else if (ret == STATUS_INVALID_PARAMETER) {
-            log_message("ERROR: LoadImageNotifyRoutine Invalid parameter\n");
+            LOG_A(LOG_INFO, "ERROR: LoadImageNotifyRoutine Invalid parameter\n");
         }
         else if (ret == STATUS_ACCESS_DENIED) {
-            log_message("ERROR: LoadImageNotifyRoutine Access denied\n");
+            LOG_A(LOG_INFO, "ERROR: LoadImageNotifyRoutine Access denied\n");
         }
     }
 
@@ -165,13 +165,13 @@ void LoadKernelCallbacks() {
         CBObRegistration.OperationRegistration = CBOperationRegistrations;
         ret = ObRegisterCallbacks(&CBObRegistration, &pCBRegistrationHandle);
         if (ret == STATUS_SUCCESS) {
-            log_message("ObRegister launched successfully\n");
+            LOG_A(LOG_INFO, "ObRegister launched successfully\n");
         }
         else if (ret == STATUS_INVALID_PARAMETER) {
-            log_message("ERROR: ObRegister Invalid parameter\n");
+            LOG_A(LOG_INFO, "ERROR: ObRegister Invalid parameter\n");
         }
         else if (ret == STATUS_ACCESS_DENIED) {
-            log_message("ERROR: ObRegister Access denied\n");
+            LOG_A(LOG_INFO, "ERROR: ObRegister Access denied\n");
         }
     }
 }
@@ -215,7 +215,7 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
     UNREFERENCED_PARAMETER(RegistryPath); // Prevent compiler error such as unreferenced parameter (error 4)
     NTSTATUS status;
 
-    log_message("RedEdr Kernel Driver 0.3\n");
+    LOG_A(LOG_INFO, "RedEdr Kernel Driver 0.3\n");
     InitializeHashTable();
 
     // Setting the unload routine to execute
@@ -240,14 +240,14 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
         &DeviceObject		   // the resulting pointer
     );
     if (!NT_SUCCESS(status)) {
-        log_message("Device creation failed\n");
+        LOG_A(LOG_INFO, "Device creation failed\n");
         return status;
     }
 
     // Creating the symlink that we will use to contact our driver
     status = IoCreateSymbolicLink(&symlinkName, &deviceName);
     if (!NT_SUCCESS(status)) {
-        log_message("Symlink creation failed\n");
+        LOG_A(LOG_INFO, "Symlink creation failed\n");
         IoDeleteDevice(DeviceObject);
         return status;
     }

@@ -308,7 +308,7 @@ int KapcInjectDll(IN PUNICODE_STRING ImageName, IN HANDLE ProcessId, IN PIMAGE_I
 	if (!(FsRtlIsNameInExpression(&kernel32unicodeString, ImageName, TRUE, NULL))) {
 		return 0;
 	}
-	//log_message("[+] INJECT into pid %d\n", ProcessId);
+	//LOG_A(LOG_INFO, "[+] INJECT into pid %d\n", ProcessId);
 	/*
 	* How it was done in the original:
 	3) Hash variable its actually a global variable(in real production malware this would be change) defined like this GET_ADDRESS Hash.
@@ -337,7 +337,7 @@ int KapcInjectDll(IN PUNICODE_STRING ImageName, IN HANDLE ProcessId, IN PIMAGE_I
 	Apc = (PKAPC)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(KAPC), 'Tag1');
 	if (!Apc)
 	{
-		//log_message("[ ] apc error\n");
+		//LOG_A(LOG_INFO, "[ ] apc error\n");
 		return 0;
 	}
 	//KdPrint(("[+] APC allocated\n"));

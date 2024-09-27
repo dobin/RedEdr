@@ -11,7 +11,6 @@
 #include <cstdlib>
 #include <string.h>
 
-#include "loguru.hpp"
 #include "cxxops.hpp"
 
 #include "config.h"
@@ -26,6 +25,7 @@
 #include "kernelinterface.h"
 #include "pplmanager.h"
 #include "../Shared/common.h"
+#include "logging.h"
 
 
 // Function to enable a privilege for the current process
@@ -34,7 +34,7 @@ BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpszPrivilege, BOOL bEnablePrivilege) {
     LUID luid;
 
     if (!LookupPrivilegeValue(NULL, lpszPrivilege, &luid)) {
-        LOG_F(ERROR, "LookupPrivilegeValue error: %d", GetLastError());
+        LOG_A(LOG_ERROR, "LookupPrivilegeValue error: %d", GetLastError());
         return FALSE;
     }
 
@@ -44,12 +44,12 @@ BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpszPrivilege, BOOL bEnablePrivilege) {
 
     // Enable the privilege or disable all privileges.
     if (!AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL)) {
-        LOG_F(ERROR, "AdjustTokenPrivileges error: %d", GetLastError());
+        LOG_A(LOG_ERROR, "AdjustTokenPrivileges error: %d", GetLastError());
         return FALSE;
     }
 
     if (GetLastError() == ERROR_NOT_ALL_ASSIGNED) {
-        LOG_F(ERROR, "The token does not have the specified privilege.");
+        LOG_A(LOG_ERROR, "The token does not have the specified privilege.");
         return FALSE;
     }
 
@@ -61,27 +61,27 @@ BOOL makeMeSeDebug() {
     // Get a handle to the current process token
     HANDLE hToken;
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken)) {
-        LOG_F(ERROR, "OpenProcessToken failed: %d", GetLastError());
+        LOG_A(LOG_ERROR, "OpenProcessToken failed: %d", GetLastError());
         return FALSE;
     }
 
     // Enable SeDebugPrivilege
     if (!SetPrivilege(hToken, SE_DEBUG_NAME, TRUE)) {
-        LOG_F(ERROR, "Failed to enable SeDebugPrivilege.");
+        LOG_A(LOG_ERROR, "Failed to enable SeDebugPrivilege.");
         CloseHandle(hToken);
         return FALSE;
     }
 
     CloseHandle(hToken);
 
-    LOG_F(INFO, "--[ Enable SE_DEBUG: OK");
+    LOG_A(LOG_INFO, "--[ Enable SE_DEBUG: OK");
     return TRUE;
 }
 
 
 void shutdown_all() {
     if (g_config.do_mplog) {
-        LOG_F(INFO, "RedEdr: Stop log reader");
+        LOG_A(LOG_INFO, "RedEdr: Stop log reader");
         LogReaderStopAll();
     }
 
@@ -92,7 +92,7 @@ void shutdown_all() {
     }
     // Shutdown kernel reader
     if (g_config.do_kernelcallback) {
-        LOG_F(INFO, "RedEdr: Stop kernel reader and injected dll reader");
+        LOG_A(LOG_INFO, "RedEdr: Stop kernel reader and injected dll reader");
         KernelReaderStopAll();
     }
     // ETW-TI
@@ -101,22 +101,22 @@ void shutdown_all() {
     }
     // Shutdown dll reader
     if (g_config.do_dllinjection || g_config.do_etwti) {
-        LOG_F(INFO, "RedEdr: Stop DLL reader");
+        LOG_A(LOG_INFO, "RedEdr: Stop DLL reader");
         InjectedDllReaderStopAll();
     }
     // Special case
     if (g_config.debug_dllreader) {
-        LOG_F(INFO, "RedEdr: Stop DLL reader");
+        LOG_A(LOG_INFO, "RedEdr: Stop DLL reader");
         InjectedDllReaderStopAll();
     }
     // ETW
     if (g_config.do_etw) {
-        LOG_F(INFO, "RedEdr: Stop ETW readers");
+        LOG_A(LOG_INFO, "RedEdr: Stop ETW readers");
         EtwReaderStopAll();
     }
     // Web server
     if (g_config.web_output) {
-        LOG_F(INFO, "RedEdr: Stop web server");
+        LOG_A(LOG_INFO, "RedEdr: Stop web server");
         StopWebServer();
     }
 }
@@ -129,7 +129,7 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     case CTRL_BREAK_EVENT:
     case CTRL_LOGOFF_EVENT:
     case CTRL_SHUTDOWN_EVENT:
-        LOG_F(WARNING, "\nRedEdr: Ctrl-c detected, performing shutdown");
+        LOG_A(LOG_WARNING, "\nRedEdr: Ctrl-c detected, performing shutdown");
         shutdown_all();
         return TRUE; // Indicate that we handled the signal
     default:
@@ -228,18 +228,18 @@ int main(int argc, char* argv[]) {
 
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
-    LOG_F(INFO, "--( RedEdr 0.2");
-    LOG_F(INFO, "--( Tracing process name %ls and its children", g_config.targetExeName);
+    LOG_A(LOG_INFO, "--( RedEdr 0.2");
+    LOG_A(LOG_INFO, "--( Tracing process name %ls and its children", g_config.targetExeName);
 
     // SeDebug
     BOOL dbg = makeMeSeDebug();
     if (!dbg) {
-        LOG_F(ERROR, "RedEdr: ERROR MakeMeSeDebug: Did you start with local admin or SYSTEM?");
+        LOG_A(LOG_ERROR, "RedEdr: ERROR MakeMeSeDebug: Did you start with local admin or SYSTEM?");
     }
 
     // Ctrl+C
     if (!SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE)) {
-        LOG_F(ERROR, "RedEdr: Failed to set control handler");
+        LOG_A(LOG_ERROR, "RedEdr: Failed to set control handler");
         return 1;
     }
 
@@ -253,56 +253,56 @@ int main(int argc, char* argv[]) {
     // we can then just bail out without tearing down the other threads
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
         if (IsServiceRunning(g_config.driverName)) {
-            LOG_F(INFO, "Kernel: RedEdr Driver already loaded");
+            LOG_A(LOG_INFO, "Kernel: RedEdr Driver already loaded");
         }
         else {
-            LOG_F(INFO, "RedEdr: Load Kernel Driver");
+            LOG_A(LOG_INFO, "RedEdr: Load Kernel Driver");
             if (!LoadKernelDriver()) {
-                LOG_F(ERROR, "RedEdr: Could not load driver");
+                LOG_A(LOG_ERROR, "RedEdr: Could not load driver");
                 return 1;
             }
         }
 
         // Start the kernel server first
         // The kernel module will connect to it
-        LOG_F(INFO, "RedEdr: Start kernel reader  thread");
+        LOG_A(LOG_INFO, "RedEdr: Start kernel reader  thread");
         InitializeKernelReader(threads);
         Sleep(1000); // the thread with the server is not yet started...
         
         // Enable it
-        LOG_F(INFO, "RedEdr: Tell Kernel to start collecting telemetry of: \"%ls\"", g_config.targetExeName);
+        LOG_A(LOG_INFO, "RedEdr: Tell Kernel to start collecting telemetry of: \"%ls\"", g_config.targetExeName);
         const wchar_t* target = g_config.targetExeName;
         if (!EnableKernelDriver(1, (wchar_t*)target)) {
-            LOG_F(ERROR, "RedEdr: Could not communicate with kernel driver, aborting.");
+            LOG_A(LOG_ERROR, "RedEdr: Could not communicate with kernel driver, aborting.");
             return 1;
         }
     }
     if (g_config.do_etw) {
-        LOG_F(INFO, "RedEdr: Start ETW reader thread");
+        LOG_A(LOG_INFO, "RedEdr: Start ETW reader thread");
         InitializeEtwReader(threads);
     }
     if (g_config.do_mplog) {
-        LOG_F(INFO, "RedEdr: Start MPLOG Reader");
+        LOG_A(LOG_INFO, "RedEdr: Start MPLOG Reader");
         InitializeLogReader(threads);
     }
     if (g_config.do_dllinjection || g_config.debug_dllreader || g_config.do_etwti) {
-        LOG_F(INFO, "RedEdr: Start InjectedDll reader thread");
+        LOG_A(LOG_INFO, "RedEdr: Start InjectedDll reader thread");
         InitializeInjectedDllReader(threads);
     }
     if (g_config.do_etwti) {
-        LOG_F(INFO, "RedEdr: Start ETW-TI reader");
+        LOG_A(LOG_INFO, "RedEdr: Start ETW-TI reader");
         Sleep(1000);
         wchar_t* target = (wchar_t* )g_config.targetExeName;
         EnablePplService(TRUE, target);
     }
 
     // Wait for all threads to complete
-    LOG_F(INFO, "RedEdr: waiting for %llu threads...", threads.size());
+    LOG_A(LOG_INFO, "RedEdr: waiting for %llu threads...", threads.size());
     DWORD res = WaitForMultipleObjects((DWORD) threads.size(), threads.data(), TRUE, INFINITE);
     if (res == WAIT_FAILED) {
-        LOG_F(INFO, "RedEdr: Wait failed");
+        LOG_A(LOG_INFO, "RedEdr: Wait failed");
     }
-    LOG_F(INFO, "RedEdr: all %llu threads finished", threads.size());
+    LOG_A(LOG_INFO, "RedEdr: all %llu threads finished", threads.size());
 
     return 0;
 }

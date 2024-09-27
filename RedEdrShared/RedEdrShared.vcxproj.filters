@@ -15,39 +15,21 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="RedEdrPplService.cpp">
+    <ClCompile Include="RedEdrShared.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="emitter.cpp">
+    <ClCompile Include="logging.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="etwtireader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="control.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="objcache.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdrShared\logging.cpp">
+    <ClCompile Include="loguru.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="emitter.h">
+    <ClInclude Include="logging.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="etwtireader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="control.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="uthash.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="objcache.h">
+    <ClInclude Include="loguru.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

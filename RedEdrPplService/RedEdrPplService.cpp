@@ -2,18 +2,20 @@
 #include <Windows.h>
 
 #include "../Shared/common.h"
-#include "utils.h"
 #include "etwtireader.h"
 #include "emitter.h"
 #include "control.h"
-
+#include "logging.h"
+#include "objcache.h"
 
 SERVICE_STATUS        g_ServiceStatus = { 0 };
 SERVICE_STATUS_HANDLE g_StatusHandle = NULL;
 
+LPWSTR lServiceName = (wchar_t*) SERVICE_NAME;
+
 
 void ShutdownService() {
-    log_message(L"Shutdown");
+    LOG_W(LOG_INFO, L"Shutdown");
 
     // Stopping
     g_ServiceStatus.dwControlsAccepted = 0;
@@ -54,14 +56,14 @@ VOID WINAPI ServiceCtrlHandler(DWORD ctrlCode)
 VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 {
     DWORD retval = 0;
-    log_message(L"Service Start");
+    LOG_W(LOG_INFO, L"Service Start");
 
     // Register our service control handler with the SCM
     g_StatusHandle = RegisterServiceCtrlHandler(SERVICE_NAME, ServiceCtrlHandler);
     if (g_StatusHandle == NULL)
     {
         retval = GetLastError();
-        log_message(L"ServiceMain: Registerservice_ctrl_handler Error: %d", retval);
+        LOG_W(LOG_INFO, L"ServiceMain: Registerservice_ctrl_handler Error: %d", retval);
         return;
     }
 
@@ -92,7 +94,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
         break;
     }
 
-    log_message(L"ServiceMain: Finished");
+    LOG_W(LOG_INFO, L"ServiceMain: Finished");
     ShutdownService();
 
     return;
@@ -105,7 +107,7 @@ DWORD ServiceEntry()
     DWORD retval = 0;
     SERVICE_TABLE_ENTRY serviceTable[] =
     {
-        {SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+        {lServiceName, (LPSERVICE_MAIN_FUNCTION)ServiceMain},
         {NULL, NULL}
     };
 
@@ -114,7 +116,7 @@ DWORD ServiceEntry()
     if (StartServiceCtrlDispatcher(serviceTable) == FALSE)
     {
         retval = GetLastError();
-        log_message(L"service_entry: StartServiceCtrlDispatcher error: %d", retval);
+        LOG_W(LOG_INFO, L"service_entry: StartServiceCtrlDispatcher error: %d", retval);
         return retval;
     }
 
@@ -124,7 +126,7 @@ DWORD ServiceEntry()
 
 DWORD main(INT argc, CHAR** argv)
 {
-    log_message(L"Start RedEdr PPL Service");
+    LOG_W(LOG_INFO, L"Start RedEdr PPL Service");
     ServiceEntry();
 
     if (0) {

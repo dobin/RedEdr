@@ -3,8 +3,8 @@
 #include "uthash.h"
 #include <psapi.h>
 
-#include "utils.h"
 #include "objcache.h"
+#include "logging.h"
 
 struct my_hashmap* map = NULL;
 HANDLE mutex;
@@ -36,24 +36,24 @@ struct my_hashmap* get_obj(int pid) {
     hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
     if (hProcess == NULL) {
         // We dont care
-        //log_message(L"Could not open process %lu error %lu\n", pid, GetLastError());
+        //LOG_W(LOG_INFO, L"Could not open process %lu error %lu\n", pid, GetLastError());
     }
     else {
         if (target_name != NULL) {
             if (GetModuleFileNameEx(hProcess, NULL, exePath, MAX_PATH)) {
                 wchar_t* result = wcsstr(exePath, target_name);
                 if (result) {
-                    log_message(L"Objcache: observe process %lu executable path: %s\n", pid, exePath);
-                    //log_message(L"Substring found in: %s\n", exePath);
+                    LOG_W(LOG_INFO, L"Objcache: observe process %lu executable path: %s\n", pid, exePath);
+                    //LOG_W(LOG_INFO, L"Substring found in: %s\n", exePath);
                     observe = 1;
                 }
                 else {
-                    //log_message(L"Substring not found %lu: %s\n", pid, exePath);
+                    //LOG_W(LOG_INFO, L"Substring not found %lu: %s\n", pid, exePath);
                     observe = 0;
                 }
             }
             else {
-                //log_message(L"Failed to get executable path: %lu\n", GetLastError());
+                //LOG_W(LOG_INFO, L"Failed to get executable path: %lu\n", GetLastError());
             }
             CloseHandle(hProcess);
         }
@@ -67,7 +67,7 @@ struct my_hashmap* get_obj(int pid) {
 struct my_hashmap* add_obj(int pid, int observe) {
     struct my_hashmap* entry = NULL;
 
-    entry = malloc(sizeof(struct my_hashmap));
+    entry = (struct my_hashmap*) malloc(sizeof(struct my_hashmap));
     entry->key = pid;
     entry->value = observe;
     WaitForSingleObject(mutex, INFINITE);

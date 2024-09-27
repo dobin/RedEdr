@@ -8,7 +8,7 @@
 #include <codecvt>
 
 #include "config.h"
-#include "loguru.hpp"
+#include "logging.h"
 
 
 std::vector<std::wstring> output_entries;
@@ -128,13 +128,13 @@ std::string output_as_json() {
 
 
 DWORD WINAPI WebserverThread(LPVOID param) {
-    LOG_F(INFO, "!WEB: Start Webserver thread");
+    LOG_A(LOG_INFO, "!WEB: Start Webserver thread");
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
         res.set_content(output_as_json(), "application/json; charset=UTF-8");
         });
-    LOG_F(INFO, "WEB: Web Server listening on http://localhost:8080");
+    LOG_A(LOG_INFO, "WEB: Web Server listening on http://localhost:8080");
     svr.listen("localhost", 8080);
-    LOG_F(INFO, "!WEB: Exit Webserver thread");
+    LOG_A(LOG_INFO, "!WEB: Exit Webserver thread");
     
     return 0;
 }
@@ -143,7 +143,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
 int InitializeWebServer(std::vector<HANDLE>& threads) {
     webserver_thread = CreateThread(NULL, 0, WebserverThread, NULL, 0, NULL);
     if (webserver_thread == NULL) {
-        LOG_F(ERROR, "WEB: Failed to create thread for webserver");
+        LOG_A(LOG_ERROR, "WEB: Failed to create thread for webserver");
         return 1;
     }
     threads.push_back(webserver_thread);

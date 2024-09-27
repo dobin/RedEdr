@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "../Shared/common.h"
-#include "loguru.hpp"
+#include "logging.h"
 #include "dllreader.h"
 #include "output.h"
 #include "utils.h"
@@ -48,7 +48,7 @@ void ClientHandler(HANDLE hPipe) {
     // this is the only write for this pipe
     sprintf_s(buffer, DATA_BUFFER_SIZE, "callstack:%d;", g_config.do_dllinjection_ucallstack);
     if (! WriteFile(hPipe, buffer, strlen(buffer), &bytesWritten, NULL)) {
-        LOG_F(ERROR, "Error when sending first message to injected DLL client. Aborting.");
+        LOG_A(LOG_ERROR, "Error when sending first message to injected DLL client. Aborting.");
         return;
     }
     memset(buffer, 0, sizeof(buffer));
@@ -69,7 +69,7 @@ void ClientHandler(HANDLE hPipe) {
                 }
             }
             if (last_potential_str_start == 0) {
-                LOG_F(ERROR, "DllReader: No 0x00 0x00 byte found, errornous input?");
+                LOG_A(LOG_ERROR, "DllReader: No 0x00 0x00 byte found, errornous input?");
             }
 
             if (last_potential_str_start != full_len) {
@@ -87,11 +87,11 @@ void ClientHandler(HANDLE hPipe) {
         }
         else {
             if (GetLastError() == ERROR_BROKEN_PIPE) {
-                LOG_F(INFO, "DllReader: Client disconnected: %ld", GetLastError());
+                LOG_A(LOG_INFO, "DllReader: Client disconnected: %ld", GetLastError());
                 break;
             }
             else {
-                LOG_F(ERROR, "DllReader: Error reading from named pipe: %ld", GetLastError());
+                LOG_A(LOG_ERROR, "DllReader: Error reading from named pipe: %ld", GetLastError());
                 break;
             }
         }
@@ -113,7 +113,7 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
         SDDL_REVISION_1,
         &pSD,
         NULL)) {
-        LOG_F(ERROR, "DllReader: Failed to create security descriptor. Error: %lu", GetLastError());
+        LOG_A(LOG_ERROR, "DllReader: Failed to create security descriptor. Error: %lu", GetLastError());
         return 1;
     }
     sa.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -133,20 +133,20 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
             &sa
         );
         if (dll_pipe == INVALID_HANDLE_VALUE) {
-            LOG_F(ERROR, "DllReader: Error creating named pipe: %ld", GetLastError());
+            LOG_A(LOG_ERROR, "DllReader: Error creating named pipe: %ld", GetLastError());
             return 1;
         }
 
-        //LOG_F(INFO, "DllReader: Waiting for client to connect...");
+        //LOG_A(LOG_INFO, "DllReader: Waiting for client to connect...");
 
         // Wait for the client to connect
         BOOL result = ConnectNamedPipe(dll_pipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
         if (!result) {
-            LOG_F(ERROR, "DllReader: Error handling client connection: %ld", GetLastError());
+            LOG_A(LOG_ERROR, "DllReader: Error handling client connection: %ld", GetLastError());
             CloseHandle(dll_pipe);
             continue;
         }
-        LOG_F(INFO, "DllReader: Client connected (handle in new thread)");
+        LOG_A(LOG_INFO, "DllReader: Client connected (handle in new thread)");
         dll_threads.push_back(std::thread(ClientHandler, dll_pipe));
     }
 
@@ -158,16 +158,16 @@ DWORD WINAPI DllInjectionReaderProcessingThread(LPVOID param) {
     }
     */
 
-    LOG_F(INFO, "!DllReader: Quit");
+    LOG_A(LOG_INFO, "!DllReader: Quit");
 }
 
 
 void InitializeInjectedDllReader(std::vector<HANDLE>& threads) {
     const wchar_t* data = L"";
-    LOG_F(INFO, "!DllReader: Start thread");
+    LOG_A(LOG_INFO, "!DllReader: Start thread");
     HANDLE thread = CreateThread(NULL, 0, DllInjectionReaderProcessingThread, (LPVOID)data, 0, NULL);
     if (thread == NULL) {
-        LOG_F(ERROR, "DllReader: Failed to create thread ");
+        LOG_A(LOG_ERROR, "DllReader: Failed to create thread ");
         return;
     }
     threads.push_back(thread);

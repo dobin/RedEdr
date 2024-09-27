@@ -106,8 +106,9 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;OUTPUT_PPL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Users\hacker\source\repos\RedEdr\RedEdrShared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,12 +136,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="etwtireader.c" />
-    <ClCompile Include="control.c" />
-    <ClCompile Include="emitter.c" />
-    <ClCompile Include="objcache.c" />
-    <ClCompile Include="RedEdrPplService.c" />
-    <ClCompile Include="utils.c" />
+    <ClCompile Include="..\RedEdrShared\logging.cpp" />
+    <ClCompile Include="etwtireader.cpp" />
+    <ClCompile Include="control.cpp" />
+    <ClCompile Include="emitter.cpp" />
+    <ClCompile Include="objcache.cpp" />
+    <ClCompile Include="RedEdrPplService.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="etwtireader.h" />
@@ -148,7 +149,6 @@
     <ClInclude Include="emitter.h" />
     <ClInclude Include="objcache.h" />
     <ClInclude Include="uthash.h" />
-    <ClInclude Include="utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

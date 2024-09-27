@@ -1,11 +1,11 @@
 #include "pch.h"
-#include <stdio.h>
 
 #include "dllhelper.h"
 #include "../Shared/common.h"
 #include <winternl.h>  // needs to be on bottom?
 #include <dbghelp.h>
 #include <stdio.h>
+#include "logging.h"
 
 #pragma comment(lib, "dbghelp.lib")
 
@@ -30,20 +30,6 @@ typedef NTSTATUS(NTAPI* pNtQueryVirtualMemory)(
     );
 
 pNtQueryVirtualMemory NtQueryVirtualMemory = nullptr;
-
-
-VOID log_message(const wchar_t* format, ...)
-{
-    WCHAR message[MAX_BUF_SIZE] = L"[DLL] ";
-    DWORD offset = wcslen(message);
-
-    va_list arg_ptr;
-    va_start(arg_ptr, format);
-    int ret = _vsnwprintf_s(&message[offset], MAX_BUF_SIZE - offset, MAX_BUF_SIZE - offset, format, arg_ptr);
-    va_end(arg_ptr);
-
-    OutputDebugString(message);
-}
 
 
 void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
@@ -86,13 +72,13 @@ void SendDllPipe(wchar_t* buffer) {
     DWORD res = 0;
 
     if (hPipe == NULL) {
-        log_message(L"Pipe closed");
+        LOG_W(LOG_INFO, L"Pipe closed");
         return;
     }
     DWORD len = (DWORD)(wcslen(buffer) * 2) + 2; // +2 -> include two trailing 0 bytes
     res = WriteFile(hPipe, buffer, len, &pipeBytesWritten, NULL);
     if (res == FALSE) {
-        log_message(L"Error when sending to pipe: %d", GetLastError());
+        LOG_W(LOG_INFO, L"Error when sending to pipe: %d", GetLastError());
     }
 }
 
@@ -105,7 +91,7 @@ void InitDllPipe() {
 
     hPipe = CreateFile(DLL_PIPE_NAME, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (hPipe == INVALID_HANDLE_VALUE) {
-        log_message(L"Could not open pipe");
+        LOG_W(LOG_INFO, L"Could not open pipe");
     }
 
     // Retrieve config (first packet)
@@ -113,16 +99,16 @@ void InitDllPipe() {
     char buffer[256];
     DWORD bytesRead;
     if (!ReadFile(hPipe, &buffer, 256, &bytesRead, NULL)) {
-        log_message(L"Could not read first message from pipe from RedEdr.exe: %lu. Abort.", 
+        LOG_W(LOG_INFO, L"Could not read first message from pipe from RedEdr.exe: %lu. Abort.", 
             GetLastError());
         return;
     }
     if (strstr(buffer, "callstack:1")) {
         Config.do_stacktrace = true;
-        log_message(L"Callstack: Enabled");
+        LOG_W(LOG_INFO, L"Callstack: Enabled");
     }
     else {
-        log_message(L"Callstack: Disabled");
+        LOG_W(LOG_INFO, L"Callstack: Disabled");
     }
 }
 
