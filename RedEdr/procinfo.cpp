@@ -226,7 +226,7 @@ BOOL PrintLoadedModules(HANDLE hProcess, Process* process) {
         printf("Procinfo: ReadProcessMemory failed for PEB_LDR_DATA\n");
         return FALSE;
     }
-
+    /*
     // Iterate over the InMemoryOrderModuleList
     LIST_ENTRY* head = &ldr.InMemoryOrderModuleList;
     LIST_ENTRY* current = ldr.InMemoryOrderModuleList.Flink;
@@ -259,7 +259,7 @@ BOOL PrintLoadedModules(HANDLE hProcess, Process* process) {
 
         // Move to the next module in the list
         current = entry.InMemoryOrderLinks.Flink;
-    }
+    }*/
 }
 
 
