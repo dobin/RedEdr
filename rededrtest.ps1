@@ -17,15 +17,10 @@ if ($arg -eq "dll") {
         "timeout /t 3 &",  # Wait for 5 seconds
         "taskkill /im notepad.exe /f"  # Kill notepad.exe
     )
-
-    # Run the DLL reader
-    Start-Process -Wait "C:\rededr\rededr.exe" -ArgumentList "--dllreader --trace Notepad"
-
-    # Kill any remaining notepad process if it exists
+    Start-Process -Wait "C:\rededr\rededr.exe" -ArgumentList "--dllreader --trace otepad"
     Stop-Process -Name notepad -Force -ErrorAction SilentlyContinue
 }
 elseif ($arg -eq "kernel") {
-    # Start a new cmd session and pass the script inside it, split into multiple lines
     Start-Process cmd -ArgumentList @(
         "/c",
         "timeout /t 2 &",
@@ -33,7 +28,15 @@ elseif ($arg -eq "kernel") {
         "timeout /t 3 &",
         "taskkill /im notepad.exe /f"
     )
-
-    # Run the kernel trace
-    Start-Process "C:\rededr\rededr.exe"  -ArgumentList "--kernel --trace Notepad"
+    Start-Process -Wait "C:\rededr\rededr.exe"  -ArgumentList "--kernel --trace otepad"
+}
+elseif ($arg -eq "etw") {
+    Start-Process cmd -ArgumentList @(
+        "/c",
+        "timeout /t 2 &",
+        "start notepad.exe &",
+        "timeout /t 3 &",
+        "taskkill /im notepad.exe /f"
+    )
+    Start-Process -Wait "C:\rededr\rededr.exe"  -ArgumentList "--etw --trace otepad"
 }
