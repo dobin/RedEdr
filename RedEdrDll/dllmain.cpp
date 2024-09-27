@@ -5,6 +5,7 @@
 #include "../Shared/common.h"
 #include <winternl.h>  // needs to be on bottom?
 #include "dllhelper.h"
+#include "logging.h"
 
 
 /******************* AllocateVirtualMemory ************************/
@@ -36,7 +37,10 @@ DWORD NTAPI NtAllocateVirtualMemory(
         L"type:dll;time:%llu;krn_pid:%llu;func:AllocateVirtualMemory;pid:%p;base_addr:%p;zero:%#llx;size:%llu;type:%#lx;protect:%#lx",
         time.QuadPart, (unsigned __int64) GetCurrentProcessId(), ProcessHandle, BaseAddress, ZeroBits, *RegionSize, AllocationType, Protect);
     SendDllPipe(buf);
-    LogMyStackTrace();
+
+    // Broken atm?
+    //LogMyStackTrace();
+
     return pOriginalNtAllocateVirtualMemory(ProcessHandle, BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
 }
 
@@ -209,7 +213,11 @@ DWORD NTAPI NtReadVirtualMemory(
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(),
         ProcessHandle, BaseAddress, Buffer, NumberOfBytesToRead);
     SendDllPipe(buf);
-    LogMyStackTrace();
+
+    // Currently makes notepad.exe crash on save dialog open on win11.
+    // And its a lot of data
+    //LogMyStackTrace();
+
     return pOriginalNtReadVirtualMemory(ProcessHandle, BaseAddress, Buffer, NumberOfBytesToRead, NumberOfBytesRead);
 }
 
@@ -745,6 +753,8 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
         return -1;
     }
     MH_STATUS status;
+
+    LOG_A(LOG_INFO, "Injected DLL Main thread started");
 
     InitDllPipe();
 
