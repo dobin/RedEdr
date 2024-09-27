@@ -13,6 +13,7 @@
 
 std::vector<std::wstring> output_entries;
 std::mutex output_mutex;
+unsigned int output_count = 0;
 
 HANDLE webserver_thread;
 httplib::Server svr;
@@ -64,10 +65,24 @@ void do_output(std::wstring str) {
     output_mutex.lock();
     output_entries.push_back(json);
     output_mutex.unlock();
+
+    output_count++;
     
     // print it
     if (g_config.hide_full_output) {
-        std::wcout << L".";
+        if (output_count >= 100) {
+            if (output_count % 100 == 0) {
+                std::wcout << L"O";
+            }
+        }
+        else if (output_count >= 10) {
+            if (output_count % 10 == 0) {
+                std::wcout << L"o";
+            }
+        }
+        else {
+            std::wcout << L".";
+        }
     }
     else {
         std::wcout << str << L"\n";
