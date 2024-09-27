@@ -50,5 +50,8 @@
     <ClInclude Include="objcache.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\RedEdrShared\logging.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
