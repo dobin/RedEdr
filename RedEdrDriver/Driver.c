@@ -41,15 +41,18 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
         PMY_DRIVER_DATA data = (PMY_DRIVER_DATA)Irp->AssociatedIrp.SystemBuffer;
         size_t inputBufferLength = stack->Parameters.DeviceIoControl.InputBufferLength;
 
-        if (inputBufferLength != sizeof(MY_DRIVER_DATA)) {
+        /*if (inputBufferLength != sizeof(MY_DRIVER_DATA)) {
             LOG_A(LOG_INFO, "[IOCTL] Size error: %i %i\n", 
                 inputBufferLength, sizeof(data));
-        }
+        }*/
 
-        LOG_A(LOG_INFO, "[IOCTL] Received from user-space: enabled: %i  filename: %ls\n", data->flag, data->filename);
+        LOG_A(LOG_INFO, "[IOCTL] Received from user-space: enabled: %i/%i  filename: %ls\n", 
+            data->enable, data->dll_inject, data->filename);
         char* answer;
-        if (data->flag) {
-            g_config.enable_kapc_injection = 1;
+        if (data->enable) {
+            if (data->dll_inject) {
+                g_config.enable_kapc_injection = 1;
+            }
             g_config.enable_logging = 1;
             wcscpy_s(g_config.target, sizeof(g_config.target), data->filename);
 
