@@ -4,13 +4,32 @@
 #include "dllhelper.h"
 #include "../Shared/common.h"
 #include <winternl.h>  // needs to be on bottom?
+#include <dbghelp.h>
+#include <stdio.h>
 
+#pragma comment(lib, "dbghelp.lib")
 
 typedef struct __Config {
     BOOL do_stacktrace = true;
 } config;
 
 config Config;
+
+typedef enum _MEMORY_INFORMATION_CLASS {
+    MemoryBasicInformation
+} MEMORY_INFORMATION_CLASS;
+
+
+typedef NTSTATUS(NTAPI* pNtQueryVirtualMemory)(
+    HANDLE                   ProcessHandle,
+    PVOID                    BaseAddress,
+    MEMORY_INFORMATION_CLASS MemoryInformationClass,
+    PVOID                    MemoryInformation,
+    SIZE_T                   MemoryInformationLength,
+    PSIZE_T                  ReturnLength
+    );
+
+pNtQueryVirtualMemory NtQueryVirtualMemory = nullptr;
 
 
 VOID log_message(const wchar_t* format, ...)
@@ -67,6 +86,7 @@ void SendDllPipe(wchar_t* buffer) {
     DWORD res = 0;
 
     if (hPipe == NULL) {
+        log_message(L"Pipe closed");
         return;
     }
     DWORD len = (DWORD)(wcslen(buffer) * 2) + 2; // +2 -> include two trailing 0 bytes
@@ -78,6 +98,11 @@ void SendDllPipe(wchar_t* buffer) {
 
 
 void InitDllPipe() {
+    HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
+    if (hNtdll) {
+        NtQueryVirtualMemory = (pNtQueryVirtualMemory)GetProcAddress(hNtdll, "NtQueryVirtualMemory");
+    }
+
     hPipe = CreateFile(DLL_PIPE_NAME, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (hPipe == INVALID_HANDLE_VALUE) {
         log_message(L"Could not open pipe");
@@ -118,92 +143,75 @@ LARGE_INTEGER get_time() {
 
 
 /*************** Procinfo stuff ******************/
- 
-typedef enum _MEMORY_INFORMATION_CLASS {
-    MemoryBasicInformation
-} MEMORY_INFORMATION_CLASS;
-
-
-typedef NTSTATUS(NTAPI* pNtQueryVirtualMemory)(
-    HANDLE                   ProcessHandle,
-    PVOID                    BaseAddress,
-    MEMORY_INFORMATION_CLASS MemoryInformationClass,
-    PVOID                    MemoryInformation,
-    SIZE_T                   MemoryInformationLength,
-    PSIZE_T                  ReturnLength
-    );
-
-pNtQueryVirtualMemory NtQueryVirtualMemory = nullptr;
-
-
-BOOL GetStackTraceLogFor(HANDLE hProcess, PVOID address, int idx, wchar_t *buf, size_t buf_len) {
-    SIZE_T returnLength = 0;
-    MEMORY_BASIC_INFORMATION mbi;
-
-    HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
-    if (hNtDll == NULL) {
-        log_message(L"Procinfo: could not find ntdll.dll");
-        return FALSE;
-    }
-    if (NtQueryVirtualMemory(hProcess, address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) != 0) {
-        swprintf_s(buf, buf_len, L"idx:%i;backtrace:%p;page_addr:%p;size:invalid;state:invalid;protect:invalid;type:invalid",
-            idx, address, mbi.BaseAddress);
-        return FALSE;
-    }
-    else {
-        swprintf_s(buf, buf_len, L"idx:%i;backtrace:%p;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx",
-            idx, address, mbi.BaseAddress, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
-        return TRUE;
-    }
-}
-
 
 // LOG's the stacktrace of THIS function
 void LogMyStackTrace() {
-    void* stack[64];
-    unsigned short frames = CaptureStackBackTrace(0, 64, stack, NULL);
+    CONTEXT context;
+    STACKFRAME64 stackFrame;
+    DWORD machineType;
+    HANDLE hProcess = GetCurrentProcess();
+    HANDLE hThread = GetCurrentThread();
+    wchar_t buf[DATA_BUFFER_SIZE] = { 0 };
 
-    if (NtQueryVirtualMemory == NULL) {
-        HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
-        if (hNtdll) {
-            NtQueryVirtualMemory = (pNtQueryVirtualMemory)GetProcAddress(hNtdll, "NtQueryVirtualMemory");
+    // Capture the context of the current thread
+    RtlCaptureContext(&context);
+
+    // Initialize DbgHelp for symbol resolution
+    //SymInitialize(hProcess, NULL, TRUE);
+
+    ZeroMemory(&stackFrame, sizeof(STACKFRAME64));
+
+    // x64 (64-bit) architecture
+    machineType = IMAGE_FILE_MACHINE_AMD64;
+    stackFrame.AddrPC.Offset = context.Rip;
+    stackFrame.AddrPC.Mode = AddrModeFlat;
+    stackFrame.AddrFrame.Offset = context.Rsp;
+    stackFrame.AddrFrame.Mode = AddrModeFlat;
+    stackFrame.AddrStack.Offset = context.Rsp;
+    stackFrame.AddrStack.Mode = AddrModeFlat;
+
+    MEMORY_BASIC_INFORMATION mbi;
+    size_t written = 0;
+    int n = 0;
+    SIZE_T returnLength = 0;
+    while (StackWalk64(machineType, hProcess, hThread, &stackFrame, &context,
+        NULL, NULL, NULL, NULL))
+    {
+        if (n > 5) {
+            break;
+        }
+        DWORD64 address = stackFrame.AddrPC.Offset;
+
+        if (NtQueryVirtualMemory(hProcess, (PVOID) address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) != 0) {
+            written = swprintf_s(buf, DATA_BUFFER_SIZE, L"idx:%i;backtrace:%p;page_addr:invalid;size:invalid;state:invalid;protect:invalid;type:invalid",
+                n, address);
         }
         else {
-            log_message(L"Stacktrace error");
+            written = swprintf_s(buf, DATA_BUFFER_SIZE, L"idx:%i;backtrace:%p;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx",
+                n, address, mbi.BaseAddress, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
         }
-    }
+        SendDllPipe(buf);
 
-    /* It would look like this:
-        Frame 0: LogMyStackTrace - 0xF4A1AC60           skip
-        Frame 1: wmain - 0xF4A1C170
-        Frame 2: invoke_main - 0xF4A2FFE0
-        Frame 3: __scrt_common_main_seh - 0xF4A2FD90    skip
-        Frame 4: __scrt_common_main - 0xF4A2FD70        skip
-        Frame 5: wmainCRTStartup - 0xF4A300A0           skip
-        Frame 6: BaseThreadInitThunk - 0x3B672560       skip
-        Frame 7: RtlUserThreadStart - 0x3CF2AF00        skip
+        // Resolve the symbol at this address
+        /*char symbolBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
+        PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)symbolBuffer;
+        pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+        pSymbol->MaxNameLen = MAX_SYM_NAME;
 
-        but with MAX_CALLSTACK_ENTRIES unskipped, starting from 1
-    */
-
-    unsigned short start = 0;
-    unsigned short end = frames;
-    if (frames > 6) {
-        start = 1;
-        end = frames - 5;
-    }
-    if (frames > (6 + MAX_CALLSTACK_ENTRIES)) {
-        end = start + MAX_CALLSTACK_ENTRIES;
-    }
-
-    HANDLE hProcess = GetCurrentProcess();
-    int n = 0;
-    wchar_t buf[1024];
-    for (unsigned short i = start; i < end; i++) {
-        BOOL ret = GetStackTraceLogFor(hProcess, stack[i], i, buf, 1024);
-        if (ret) {
-            //log_message(buf);
-            SendDllPipe(buf);
+        if (SymFromAddr(hProcess, address, 0, pSymbol))
+        {
+            printf("  %s - 0x%0llX\n", pSymbol->Name, pSymbol->Address);
         }
+        else
+        {
+            printf("  [Unknown symbol] - 0x%0llX\n", address);
+        }*/
+
+        n += 1;
     }
+
+    // Cleanup after stack walk
+    //SymCleanup(hProcess);
+
+    return;
 }
