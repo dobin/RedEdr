@@ -5,6 +5,7 @@
 #include "loguru.hpp"
 #include "../Shared/common.h"
 #include "serviceutils.h"
+#include "pplmanager.h"
 
 
 BOOL EnablePplService(BOOL e, wchar_t* target_name) {
