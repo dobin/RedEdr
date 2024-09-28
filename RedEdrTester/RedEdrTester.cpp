@@ -696,9 +696,7 @@ void omfg() {
 }
 
 
-
-
-void PrintStackTrace2() {
+void PrintStackTrace() {
     // Initialize the symbol handler for the current process
     HANDLE process = GetCurrentProcess();
     SymInitialize(process, NULL, TRUE);
@@ -731,6 +729,94 @@ void PrintStackTrace2() {
     // Cleanup
     free(symbol);
     SymCleanup(process);
+}
+
+
+void LogMyStackTrace2(wchar_t* buf, size_t buf_size) {
+    CONTEXT context;
+    STACKFRAME64 stackFrame;
+    DWORD machineType;
+    HANDLE hProcess = GetCurrentProcess();
+    HANDLE hThread = GetCurrentThread();
+
+    // Capture the context of the current thread
+    RtlCaptureContext(&context);
+
+    // Initialize DbgHelp for symbol resolution
+    //SymInitialize(hProcess, NULL, TRUE);
+
+    ZeroMemory(&stackFrame, sizeof(STACKFRAME64));
+
+    // x64 (64-bit) architecture
+    machineType = IMAGE_FILE_MACHINE_AMD64;
+    stackFrame.AddrPC.Offset = context.Rip;
+    stackFrame.AddrPC.Mode = AddrModeFlat;
+    stackFrame.AddrFrame.Offset = context.Rsp;
+    stackFrame.AddrFrame.Mode = AddrModeFlat;
+    stackFrame.AddrStack.Offset = context.Rsp;
+    stackFrame.AddrStack.Mode = AddrModeFlat;
+
+    MEMORY_BASIC_INFORMATION mbi;
+    size_t written = 0;
+    int n = 0;
+    SIZE_T returnLength = 0;
+    while (StackWalk64(machineType, hProcess, hThread, &stackFrame, &context,
+        NULL, NULL, NULL, NULL))
+    {
+        if (n > MAX_CALLSTACK_ENTRIES) {
+            // dont go too deep
+            break;
+        }
+        if (buf_size > DATA_BUFFER_SIZE) {
+            // as buf_size is size_t, it will underflow when too much callstack is appended
+            LOG_A(LOG_WARNING, "StackWalk: Not enough space for whole stack, stopped at %i", n);
+            break;
+        }
+        DWORD64 address = stackFrame.AddrPC.Offset;
+
+        written = swprintf_s(buf, buf_size, L"bt_%i:backtrace.address:%p_page_addr.invalid_size.invalid_state.invalid_protect.invalid_type.invalid;",
+            n, address);
+        buf_size -= written;
+        buf += written;
+        printf("Left: %d\n", buf_size);
+        
+        // Resolve the symbol at this address
+        /*char symbolBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
+        PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)symbolBuffer;
+        pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+        pSymbol->MaxNameLen = MAX_SYM_NAME;
+
+        if (SymFromAddr(hProcess, address, 0, pSymbol))
+        {
+            printf("  %s - 0x%0llX\n", pSymbol->Name, pSymbol->Address);
+        }
+        else
+        {
+            printf("  [Unknown symbol] - 0x%0llX\n", address);
+        }*/
+
+        n += 1;
+    }
+
+    // Cleanup after stack walk
+    //SymCleanup(hProcess);
+
+    return;
+}
+
+void teststr() {
+    LARGE_INTEGER time = { 0 };
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateTimer2;attributes:0x%lx;desired_access:0x%x;",
+        time.QuadPart, (unsigned __int64)GetCurrentProcessId(), 0x444, 0x123);
+
+    size_t len = wcslen(buf);
+    //AddMyStackTrace(buf + len, DATA_BUFFER_SIZE - len);
+    LogMyStackTrace2(buf + len, DATA_BUFFER_SIZE - len);
+
+    wprintf(L"Done: %s\n", buf);
 }
 
 
@@ -852,7 +938,10 @@ int wmain(int argc, wchar_t* argv[]) {
         break;
     case 13:
         //LogMyStackTrace();
-        PrintStackTrace2();
+        //PrintStackTrace2();
+        break;
+    case 14:
+        teststr();
         break;
     }
         
