@@ -14,7 +14,7 @@
  */
 
 
-#ifdef OUTPUT_STDOUT
+#if defined OUTPUT_STDOUT
 
 #include <iostream>
 #include <windows.h>
@@ -81,24 +81,20 @@ void LOG_W(int verbosity, const wchar_t* format, ...)
     va_end(args);
 }
 
-#endif
-
-#ifdef OUTPUT_DLL
+#elif defined OUTPUT_DLL
 
 #include <windows.h>
 #include <stdio.h>
 #include "../Shared/common.h"
 
-#define MAX_BUF_SIZE 1024
-
 void LOG_A(int verbosity, const char* format, ...)
 {
-    char message[MAX_BUF_SIZE] = "[RedEdr DLL] ";
+    char message[DATA_BUFFER_SIZE] = "[RedEdr DLL] ";
     DWORD offset = strlen(message);
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
-    int ret = vsnprintf_s(&message[offset], MAX_BUF_SIZE - offset, MAX_BUF_SIZE - offset, format, arg_ptr);
+    int ret = vsnprintf_s(&message[offset], DATA_BUFFER_SIZE - offset, MAX_BUF_SIZE - offset, format, arg_ptr);
     va_end(arg_ptr);
 
     OutputDebugStringA(message);
@@ -107,20 +103,19 @@ void LOG_A(int verbosity, const char* format, ...)
 
 void LOG_W(int verbosity, const wchar_t* format, ...)
 {
-    WCHAR message[MAX_BUF_SIZE] = L"[RedEdr DLL] ";
+    WCHAR message[WCHAR_BUFFER_SIZE] = L"[RedEdr DLL] ";
     DWORD offset = wcslen(message);
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
-    int ret = vswprintf(&message[offset], MAX_BUF_SIZE - offset, format, arg_ptr);
+    int ret = vswprintf(&message[offset], WCHAR_BUFFER_SIZE - offset, format, arg_ptr);
     va_end(arg_ptr);
 
-    OutputDebugString(message);
+    OutputDebugStringW(message);
 }
 
-#endif
 
-#ifdef OUTPUT_PPL
+#elif defined OUTPUT_PPL
 
 #include <iostream>
 #include <windows.h>
@@ -128,16 +123,14 @@ void LOG_W(int verbosity, const wchar_t* format, ...)
 #include <stdio.h>
 #include "../Shared/common.h"
 
-#define MAX_BUF_SIZE 1024
-
 void LOG_A(int verbosity, const char* format, ...)
 {
-    char message[MAX_BUF_SIZE] = "[RedEdr PPL] ";
+    char message[DATA_BUFFER_SIZE] = "[RedEdr PPL] ";
     DWORD offset = strlen(message);
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
-    int ret = vsnprintf_s(&message[offset], MAX_BUF_SIZE - offset, MAX_BUF_SIZE - offset, format, arg_ptr);
+    int ret = vsnprintf_s(&message[offset], DATA_BUFFER_SIZE - offset, MAX_BUF_SIZE - offset, format, arg_ptr);
     va_end(arg_ptr);
 
     OutputDebugStringA(message);
@@ -146,15 +139,26 @@ void LOG_A(int verbosity, const char* format, ...)
 
 void LOG_W(int verbosity, const wchar_t* format, ...)
 {
-    WCHAR message[MAX_BUF_SIZE] = L"[RedEdr PPL] ";
+    WCHAR message[WCHAR_BUFFER_SIZE] = L"[RedEdr PPL] ";
     DWORD offset = wcslen(message);
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
-    int ret = vswprintf(&message[offset], MAX_BUF_SIZE - offset, format, arg_ptr);
+    int ret = vswprintf(&message[offset], WCHAR_BUFFER_SIZE - offset, format, arg_ptr);
     va_end(arg_ptr);
 
     OutputDebugString(message);
+}
+
+#else 
+
+void LOG_A(int verbosity, const char* format, ...)
+{
+}
+
+
+void LOG_W(int verbosity, const wchar_t* format, ...)
+{
 }
 
 #endif
