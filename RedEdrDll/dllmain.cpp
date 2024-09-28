@@ -754,7 +754,7 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     }
     MH_STATUS status;
 
-    LOG_A(LOG_INFO, "Injected DLL Main thread started");
+    LOG_A(LOG_INFO, "Injected DLL Main thread started on pid %lu", GetCurrentProcessId());
 
     InitDllPipe();
 
