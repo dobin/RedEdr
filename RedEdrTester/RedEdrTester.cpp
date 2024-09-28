@@ -223,7 +223,8 @@ int ioctl_enable_kernel_module() {
     //char buffer[128] = "Hello kernel!";
     MY_DRIVER_DATA dataToSend = { 0 };
     wcscpy_s(dataToSend.filename, L"notepad.exe");
-    dataToSend.flag = 1;
+    dataToSend.enable = 1;
+    dataToSend.dll_inject = 0;
 
     char buffer_incoming[128] = {0};
     DWORD bytesReturned = 0;

@@ -85,7 +85,7 @@ BOOL PipeServer::Send(wchar_t* buffer) {
 BOOL PipeServer::Receive(wchar_t* buffer, size_t buffer_len) {
     buffer_len *= 2; // Convert to bytes
     if (!ReadFile(hPipe, buffer, buffer_len, NULL, NULL)) {
-        LOG_W(LOG_ERROR, L"Piping Server: Error when reading from pipe: %d", GetLastError());
+        //LOG_W(LOG_INFO, L"Piping Server: Error when reading from pipe: %d", GetLastError());
         return FALSE;
     }
     return TRUE;

@@ -31,7 +31,7 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
         while (keep_running) {
             memset(buffer, 0, sizeof(buffer));
             if (!pipeServer.Receive(buffer, WCHAR_SMALL_PIPE)) {
-                LOG_A(LOG_ERROR, "Error waiting for RedEdr.exe config");
+                //LOG_A(LOG_ERROR, "Error waiting for RedEdr.exe config");
                 break;
             }
 
