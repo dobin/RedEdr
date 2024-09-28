@@ -6,8 +6,8 @@
 #include <fltkernel.h>
 
 #include "../Shared/common.h"
-#include "common.h"
 #include "utils.h"
+
 
 // Handle that we will use to communicate with the named pipe to userspace
 HANDLE hPipe = NULL;
@@ -21,7 +21,7 @@ int LogEvent(wchar_t* message) {
     }
     NTSTATUS status;
     IO_STATUS_BLOCK io_stat_block;
-    ULONG len = (ULONG) wcslen(message) * 2 + 2; // include end \x00\x00
+    ULONG len = (ULONG) (wcslen(message)+1) * 2; // include end \x00\x00
     status = ZwWriteFile(
         hPipe,
         NULL,

@@ -54,9 +54,6 @@ void LOG_A(int verbosity, const char* format, ...)
 
 void LOG_W(int verbosity, const wchar_t* format, ...)
 {
-    wprintf(L"%s\n"); fflush(stdout);
-    return;
-
     va_list args;
     va_start(args, format);
     wchar_t wide_buffer[DATA_BUFFER_SIZE];

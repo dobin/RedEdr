@@ -124,7 +124,6 @@
     <ClCompile Include="utils.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="common.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="hashcache.h" />
     <ClInclude Include="kapcinjector.h" />

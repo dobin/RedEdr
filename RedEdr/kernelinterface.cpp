@@ -25,11 +25,14 @@ BOOL EnableKernelDriver(int enable, wchar_t* target) {
         LOG_A(LOG_ERROR, "Kernel: Failed to open device. Error: %d", GetLastError());
         return false;
     }
-    MY_DRIVER_DATA dataToSend = { 0 }; // all zero means all disabled by chance
+    MY_DRIVER_DATA dataToSend = { 0 };
     if (enable) {
         wcscpy_s(dataToSend.filename, target);
         dataToSend.dll_inject = g_config.do_dllinjection;
         dataToSend.enable = enable;
+    }
+    else {
+        dataToSend.enable = 0;
     }
     char buffer_incoming[128] = { 0 };
     DWORD bytesReturned = 0;

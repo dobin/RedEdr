@@ -77,7 +77,7 @@ bool QueryMemoryRegions(HANDLE hProcess) {
     }
 
     pNtQueryVirtualMemory NtQueryVirtualMemory = (pNtQueryVirtualMemory)GetProcAddress(hNtDll, "NtQueryVirtualMemory");
-    if (!NtQueryInformationProcess) {
+    if (NtQueryInformationProcess == NULL) {
         LOG_A(LOG_ERROR, "Procinfo: Could not get NtQueryVirtualMemory error: %d", GetLastError());
         return FALSE;
     }
@@ -220,13 +220,14 @@ BOOL PrintLoadedModules(HANDLE hProcess, Process* process) {
     }
 
 
+    /*
     // Read the PEB_LDR_DATA
     PEB_LDR_DATA ldr;
     if (!ReadProcessMemory(hProcess, peb.Ldr, &ldr, sizeof(PEB_LDR_DATA), NULL)) {
         printf("Procinfo: ReadProcessMemory failed for PEB_LDR_DATA\n");
         return FALSE;
     }
-    /*
+    
     // Iterate over the InMemoryOrderModuleList
     LIST_ENTRY* head = &ldr.InMemoryOrderModuleList;
     LIST_ENTRY* current = ldr.InMemoryOrderModuleList.Flink;

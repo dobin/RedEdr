@@ -39,9 +39,9 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
 
         // read IOCTL
         PMY_DRIVER_DATA data = (PMY_DRIVER_DATA)Irp->AssociatedIrp.SystemBuffer;
-        size_t inputBufferLength = stack->Parameters.DeviceIoControl.InputBufferLength;
+        /*size_t inputBufferLength = stack->Parameters.DeviceIoControl.InputBufferLength;
 
-        /*if (inputBufferLength != sizeof(MY_DRIVER_DATA)) {
+        if (inputBufferLength != sizeof(MY_DRIVER_DATA)) {
             LOG_A(LOG_INFO, "[IOCTL] Size error: %i %i\n", 
                 inputBufferLength, sizeof(data));
         }*/

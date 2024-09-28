@@ -93,7 +93,7 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
 
         while (!KernelReaderThreadStopFlag) {
             // Read data from the pipe
-            if (ReadFile(kernel_pipe, buffer, DATA_BUFFER_SIZE, &bytesRead, NULL)) {
+            if (ReadFile(kernel_pipe, buf_ptr, sizeof(buffer) - rest_len, &bytesRead, NULL)) {
                 int full_len = rest_len + bytesRead; // full len including the previous shit, if any
                 wchar_t* p = (wchar_t*)buffer; // pointer to the string we will print. points to buffer
                 // which always contains the beginning of a string
@@ -101,7 +101,6 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
                 for (int i = 0; i < full_len; i += 2) { // 2-byte increments because wide string
                     if (buffer[i] == 0 && buffer[i + 1] == 0) { // check manually for \x00\x00
                         do_output(std::wstring(p));
-
                         CheckForNewProcess(p);
 
                         //wprintf(L"KRN: %s\n", p); // found \x00\x00, print the previous string

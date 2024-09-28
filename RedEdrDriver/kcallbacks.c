@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <fltkernel.h>
 
-#include "common.h"
 #include "upipe.h"
 #include "kapcinjector.h"
 #include "kcallbacks.h"
@@ -13,6 +12,7 @@
 #include "hashcache.h"
 #include "config.h"
 #include "utils.h"
+#include "../Shared/common.h"
 
 
 // For: PsSetCreateProcessNotifyRoutineEx()
@@ -77,7 +77,7 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
     }
 
     if (g_config.enable_logging) {
-        wchar_t line[MESSAGE_SIZE] = { 0 };
+        wchar_t line[DATA_BUFFER_SIZE] = { 0 };
         swprintf(line, L"type:kernel;time:%llu;callback:create_process;krn_pid:%llu;pid:%llu;name:%s;ppid:%llu;parent_name:%s;observe:%d",
             systemTime,
             (unsigned __int64)PsGetCurrentProcessId(),
@@ -94,9 +94,7 @@ void CreateThreadNotifyRoutine(HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Create
     if (!g_config.enable_logging) {
         return;
     }
-    if (!g_config.enable_logging) {
-        return;
-    }
+
     PROCESS_INFO* procInfo = LookupProcessInfo(ProcessId);
     if (procInfo == NULL || !procInfo->observe) {
         return;
@@ -104,7 +102,7 @@ void CreateThreadNotifyRoutine(HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Create
     ULONG64 systemTime;
     KeQuerySystemTime(&systemTime);
 
-    wchar_t line[MESSAGE_SIZE] = { 0 };
+    wchar_t line[DATA_BUFFER_SIZE] = { 0 };
     swprintf(line, L"type:kernel;time:%llu;callback:thread;krn_pid:%llu;pid:%llu;threadid:%llu;create:%d",
         systemTime,
         (unsigned __int64)PsGetCurrentProcessId(),
@@ -129,7 +127,7 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
     KeQuerySystemTime(&systemTime);
 
     UNREFERENCED_PARAMETER(ImageInfo);
-    wchar_t line[MESSAGE_SIZE] = { 0 };
+    wchar_t line[DATA_BUFFER_SIZE] = { 0 };
     wchar_t ImageName[128] = { 0 };
 
     // We may only have KAPC injection, and no logging
@@ -334,7 +332,7 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
     );*/
 
     if (1) {
-        wchar_t line[MESSAGE_SIZE] = { 0 };
+        wchar_t line[DATA_BUFFER_SIZE] = { 0 };
         swprintf(line, L"%p:%p;%p;%ls;%ls;%d,0x%x,0x%x,0x%x",
             /*"ObCallbackTest: CBTdPreOperationCallback\n"
             "    Client Id:    %p:%p\n"
