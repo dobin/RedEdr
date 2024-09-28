@@ -136,6 +136,7 @@
   <ItemGroup>
     <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\loguru.cpp" />
+    <ClCompile Include="..\RedEdrShared\piping.cpp" />
     <ClCompile Include="cache.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="dllinjector.cpp" />

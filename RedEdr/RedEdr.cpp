@@ -102,12 +102,12 @@ void shutdown_all() {
     // Shutdown dll reader
     if (g_config.do_dllinjection || g_config.do_etwti) {
         LOG_A(LOG_INFO, "RedEdr: Stop DLL reader");
-        InjectedDllReaderStopAll();
+        DllReaderShutdown();
     }
     // Special case
     if (g_config.debug_dllreader) {
         LOG_A(LOG_INFO, "RedEdr: Stop DLL reader");
-        InjectedDllReaderStopAll();
+        DllReaderShutdown();
     }
     // ETW
     if (g_config.do_etw) {
@@ -287,7 +287,7 @@ int main(int argc, char* argv[]) {
     }
     if (g_config.do_dllinjection || g_config.debug_dllreader || g_config.do_etwti) {
         LOG_A(LOG_INFO, "RedEdr: Start InjectedDll reader thread");
-        InitializeInjectedDllReader(threads);
+        DllReaderInit(threads);
     }
     if (g_config.do_etwti) {
         LOG_A(LOG_INFO, "RedEdr: Start ETW-TI reader");

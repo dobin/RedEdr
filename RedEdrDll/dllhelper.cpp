@@ -5,15 +5,23 @@
 #include <winternl.h>  // needs to be on bottom?
 #include <dbghelp.h>
 #include <stdio.h>
+#include "piping.h"
 #include "logging.h"
 
 #pragma comment(lib, "dbghelp.lib")
 
+// Runtime config
+// Taken from server on pipe connect
 typedef struct __Config {
     BOOL do_stacktrace = true;
 } config;
 
 config Config;
+
+// The pipe to RedEdr.exe
+// Read first message as config,
+// then send all the data
+PipeClient pipeClient;
 
 typedef enum _MEMORY_INFORMATION_CLASS {
     MemoryBasicInformation
@@ -32,100 +40,41 @@ typedef NTSTATUS(NTAPI* pNtQueryVirtualMemory)(
 pNtQueryVirtualMemory NtQueryVirtualMemory = nullptr;
 
 
-void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
-{
-    if (!ustr || !dest || destSize == 0) {
-        return;  // Invalid arguments or destination size is zero
-    }
-
-    // Ensure that the source UNICODE_STRING is valid
-    if (ustr->Length == 0 || ustr->Buffer == NULL) {
-        dest[0] = L'\0';  // Set dest to an empty string
-        return;
-    }
-
-    // Get the number of characters to copy (Length is in bytes, so divide by sizeof(WCHAR))
-    size_t numChars = ustr->Length / sizeof(WCHAR);
-
-    // Copy length should be the smaller of the available characters or the destination size minus 1 (for null terminator)
-    size_t copyLength = (numChars < destSize - 1) ? numChars : destSize - 1;
-
-    // Use wcsncpy_s to safely copy the string
-    wcsncpy_s(dest, destSize, ustr->Buffer, copyLength);
-
-    // Ensure the destination string is null-terminated
-    dest[copyLength] = L'\0';
-}
-
 //----------------------------------------------------
+// Pipe stuff
 
-HANDLE hPipe = NULL;
-
-void sendDllPipeCallstack(wchar_t* buffer) {
-    if (Config.do_stacktrace) {
-        SendDllPipe(buffer);
-    }
-}
-
-void SendDllPipe(wchar_t* buffer) {
-    DWORD pipeBytesWritten = 0;
-    DWORD res = 0;
-
-    if (hPipe == NULL) {
-        LOG_W(LOG_INFO, L"Pipe closed");
-        return;
-    }
-    DWORD len = (DWORD)(wcslen(buffer) * 2) + 2; // +2 -> include two trailing 0 bytes
-    res = WriteFile(hPipe, buffer, len, &pipeBytesWritten, NULL);
-    if (res == FALSE) {
-        LOG_W(LOG_INFO, L"Error when sending to pipe: %d", GetLastError());
-    }
-}
-
-
+// Pipe Init
 void InitDllPipe() {
     HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
     if (hNtdll) {
         NtQueryVirtualMemory = (pNtQueryVirtualMemory)GetProcAddress(hNtdll, "NtQueryVirtualMemory");
     }
-
-    hPipe = CreateFile(DLL_PIPE_NAME, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
-    if (hPipe == INVALID_HANDLE_VALUE) {
-        LOG_W(LOG_INFO, L"Could not open pipe");
+    if (!pipeClient.Connect(DLL_PIPE_NAME)) {
+        LOG_W(LOG_ERROR, L"Could not connect to RedEdr.exe at %s", DLL_PIPE_NAME);
+        return;
     }
 
     // Retrieve config (first packet)
-    // this is the only read for this pipe
-    char buffer[256];
-    DWORD bytesRead;
-    if (!ReadFile(hPipe, &buffer, 256, &bytesRead, NULL)) {
-        LOG_W(LOG_INFO, L"Could not read first message from pipe from RedEdr.exe: %lu. Abort.", 
-            GetLastError());
-        return;
-    }
-    if (strstr(buffer, "callstack:1")) {
-        Config.do_stacktrace = true;
-        LOG_W(LOG_INFO, L"Callstack: Enabled");
-    }
-    else {
-        LOG_W(LOG_INFO, L"Callstack: Disabled");
+    //   this is the only time we read from this pipe
+    LOG_A(LOG_INFO, "Waiting for config...");
+    wchar_t buffer[WCHAR_BUFFER_SIZE];
+    if (pipeClient.Receive(buffer, WCHAR_BUFFER_SIZE)) {
+        if (wcsstr(buffer, L"callstack:1") != NULL) {
+            Config.do_stacktrace = true;
+            LOG_W(LOG_INFO, L"Config: Callstack Enabled");
+        }
+        else {
+            LOG_W(LOG_INFO, L"Config: Callstack Disabled");
+        }
     }
 }
 
 
-LARGE_INTEGER get_time() {
-    FILETIME fileTime;
-    LARGE_INTEGER largeInt;
-
-    // Get the current system time as FILETIME
-    GetSystemTimeAsFileTime(&fileTime);
-
-    // Convert FILETIME to LARGE_INTEGER
-    largeInt.LowPart = fileTime.dwLowDateTime;
-    largeInt.HighPart = fileTime.dwHighDateTime;
-
-    return largeInt;
+// Pipe send
+void SendDllPipe(wchar_t* buffer) {
+    pipeClient.Send(buffer);
 }
+
 
 
 /*************** Procinfo stuff ******************/
@@ -137,7 +86,7 @@ void LogMyStackTrace() {
     DWORD machineType;
     HANDLE hProcess = GetCurrentProcess();
     HANDLE hThread = GetCurrentThread();
-    wchar_t buf[DATA_BUFFER_SIZE] = { 0 };
+    wchar_t buf[WCHAR_BUFFER_SIZE] = { 0 };
 
     // Capture the context of the current thread
     RtlCaptureContext(&context);
@@ -169,14 +118,14 @@ void LogMyStackTrace() {
         DWORD64 address = stackFrame.AddrPC.Offset;
 
         if (NtQueryVirtualMemory(hProcess, (PVOID) address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) != 0) {
-            written = swprintf_s(buf, DATA_BUFFER_SIZE, L"idx:%i;backtrace:%p;page_addr:invalid;size:invalid;state:invalid;protect:invalid;type:invalid",
+            written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"idx:%i;backtrace:%p;page_addr:invalid;size:invalid;state:invalid;protect:invalid;type:invalid",
                 n, address);
         }
         else {
-            written = swprintf_s(buf, DATA_BUFFER_SIZE, L"idx:%i;backtrace:%p;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx",
+            written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"idx:%i;backtrace:%p;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx",
                 n, address, mbi.BaseAddress, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
         }
-        SendDllPipe(buf);
+        pipeClient.Send(buf);
 
         // Resolve the symbol at this address
         /*char symbolBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
@@ -201,3 +150,48 @@ void LogMyStackTrace() {
 
     return;
 }
+
+
+/************************/
+// Utils
+
+LARGE_INTEGER get_time() {
+    FILETIME fileTime;
+    LARGE_INTEGER largeInt;
+
+    // Get the current system time as FILETIME
+    GetSystemTimeAsFileTime(&fileTime);
+
+    // Convert FILETIME to LARGE_INTEGER
+    largeInt.LowPart = fileTime.dwLowDateTime;
+    largeInt.HighPart = fileTime.dwHighDateTime;
+
+    return largeInt;
+}
+
+
+void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
+{
+    if (!ustr || !dest || destSize == 0) {
+        return;  // Invalid arguments or destination size is zero
+    }
+
+    // Ensure that the source UNICODE_STRING is valid
+    if (ustr->Length == 0 || ustr->Buffer == NULL) {
+        dest[0] = L'\0';  // Set dest to an empty string
+        return;
+    }
+
+    // Get the number of characters to copy (Length is in bytes, so divide by sizeof(WCHAR))
+    size_t numChars = ustr->Length / sizeof(WCHAR);
+
+    // Copy length should be the smaller of the available characters or the destination size minus 1 (for null terminator)
+    size_t copyLength = (numChars < destSize - 1) ? numChars : destSize - 1;
+
+    // Use wcsncpy_s to safely copy the string
+    wcsncpy_s(dest, destSize, ustr->Buffer, copyLength);
+
+    // Ensure the destination string is null-terminated
+    dest[copyLength] = L'\0';
+}
+

@@ -7,5 +7,5 @@
 #include <sstream>
 
 
-void InitializeInjectedDllReader(std::vector<HANDLE>& threads);
-void InjectedDllReaderStopAll();
+void DllReaderInit(std::vector<HANDLE>& threads);
+void DllReaderShutdown();

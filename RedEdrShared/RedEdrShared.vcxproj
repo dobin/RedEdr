@@ -130,11 +130,13 @@
   <ItemGroup>
     <ClCompile Include="logging.cpp" />
     <ClCompile Include="loguru.cpp" />
+    <ClCompile Include="piping.cpp" />
     <ClCompile Include="RedEdrShared.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="logging.h" />
     <ClInclude Include="loguru.hpp" />
+    <ClInclude Include="piping.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -24,12 +24,18 @@
     <ClCompile Include="loguru.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="piping.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="logging.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="loguru.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="piping.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
