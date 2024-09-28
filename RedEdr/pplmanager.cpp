@@ -6,12 +6,14 @@
 #include "../Shared/common.h"
 #include "serviceutils.h"
 #include "pplmanager.h"
+#include "piping.h"
 
+
+PipeClient pipeClient;
 
 BOOL EnablePplService(BOOL e, wchar_t* target_name) {
     DWORD bytesWritten;
-    wchar_t buffer[DATA_BUFFER_SIZE] = { 0 };
-    HANDLE hPipe;
+    wchar_t buffer[WCHAR_SMALL_PIPE] = { 0 };
     int n = 0;
     DWORD len;
 
@@ -25,19 +27,11 @@ BOOL EnablePplService(BOOL e, wchar_t* target_name) {
         return FALSE;
     }
 
-    hPipe = CreateFile(
-        PPL_SERVICE_PIPE_NAME,
-        GENERIC_WRITE,
-        0,
-        NULL,
-        OPEN_EXISTING,
-        0,
-        NULL);
-    if (hPipe == INVALID_HANDLE_VALUE) {
-        LOG_A(LOG_ERROR, "ETW-TI: Error creating named pipe: error code %ld", GetLastError());
+    if (!pipeClient.Connect(PPL_SERVICE_PIPE_NAME)) {
+        LOG_A(LOG_ERROR, "ETW-TI: Error connecting to RedEdrPplService pipe: error code %ld", GetLastError());
         LOG_A(LOG_ERROR, "ETW-TI: Is RedEdrPplService running?");
         LOG_A(LOG_ERROR, "ETW-TI:   (requires self-signed kernel and elam driver for ppl)");
-        return 1;
+        return FALSE;
     }
 
     // Send enable/disable via pipe to PPL aervice
@@ -46,27 +40,21 @@ BOOL EnablePplService(BOOL e, wchar_t* target_name) {
             LOG_A(LOG_ERROR, "ETW-TI: Enable, but no target name given. Abort.");
             return FALSE;
         }
-        swprintf_s(buffer, DATA_BUFFER_SIZE, L"start:%s", target_name);
-        len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
-        if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
-            LOG_A(LOG_ERROR, "ETW-TI: Error writing to named pipe: %ld", GetLastError());
-            CloseHandle(hPipe);
+        swprintf_s(buffer, WCHAR_SMALL_PIPE, L"start:%s", target_name);
+        if (!pipeClient.Send(buffer)) {
             return FALSE;
         }
         LOG_A(LOG_INFO, "ETW-TI: ppl reader: Enabled");
     }
     else {
         wcscpy_s(buffer, DATA_BUFFER_SIZE, L"stop");
-        len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
-        if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
-            LOG_A(LOG_ERROR, "ETW-TI: Error writing to named pipe: %ld", GetLastError());
-            CloseHandle(hPipe);
+        if (!pipeClient.Send(buffer)) {
             return FALSE;
         }
         LOG_A(LOG_INFO, "ETW-TI: ppl reader: Disabled");
     }
 
-    CloseHandle(hPipe);
+    pipeClient.Disconnect();
     return TRUE;
 }
 

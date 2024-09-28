@@ -7,97 +7,69 @@
 #include "logging.h"
 #include "objcache.h"
 #include "etwtireader.h"
+#include "piping.h"
+
 
 DWORD start_child_process(wchar_t* childCMD);
 
 
-HANDLE control_pipe = NULL;
 HANDLE control_thread = NULL;
 BOOL keep_running = TRUE;
 
+PipeServer pipeServer;
+
 
 DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
-    wchar_t buffer[SMALL_PIPE];
-    int rest_len = 0;
-    DWORD bytesRead;
+    wchar_t buffer[WCHAR_SMALL_PIPE];
 
     while (keep_running) {
-        control_pipe = CreateNamedPipeW(PPL_SERVICE_PIPE_NAME, PIPE_ACCESS_INBOUND, PIPE_TYPE_MESSAGE,
-            PIPE_UNLIMITED_INSTANCES, SMALL_PIPE, SMALL_PIPE, 0, NULL);
-        if (control_pipe == INVALID_HANDLE_VALUE) {
-            LOG_W(LOG_INFO, L"Control: Error creating named pipe: %ld", GetLastError());
-            return 1;
-        }
-
         LOG_W(LOG_INFO, L"Control: Waiting for client (RedEdr.exe) to connect...");
-
-        // Wait for the client to connect
-        BOOL result = ConnectNamedPipe(control_pipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
-        if (!result) {
-            LOG_W(LOG_INFO, L"Control: Error connecting to named pipe: %ld", GetLastError());
-            CloseHandle(control_pipe);
-            return 1;
+        if (!pipeServer.StartAndWaitForClient(PPL_SERVICE_PIPE_NAME, false)) {
+            LOG_A(LOG_ERROR, "Error waiting for RedEdr.exe");
+            continue;
         }
-        LOG_W(LOG_INFO, L"Control: Client connected");
-
         while (keep_running) {
             memset(buffer, 0, sizeof(buffer));
-
-            // Read data from the pipe
-            if (!ReadFile(control_pipe, buffer, SMALL_PIPE, &bytesRead, NULL)) {
-                if (GetLastError() == ERROR_BROKEN_PIPE) {
-                    LOG_W(LOG_INFO, L"Control: Disconnected: %ld", GetLastError());
-                    break;
-                }
-                else {
-                    LOG_W(LOG_INFO, L"Control: Error reading from named pipe: %ld", GetLastError());
-                    break;
-                }
+            if (!pipeServer.Receive(buffer, WCHAR_SMALL_PIPE)) {
+                LOG_A(LOG_ERROR, "Error waiting for RedEdr.exe config");
+                break;
             }
-            else {
-                //buffer[bytesRead] = L"\0";
-                
-                //if (wcscmp(buffer, L"start") == 0) {
-                if (wcsstr(buffer, L"start:") != NULL) {
-                    wchar_t *token = NULL, *context = NULL;
-                    LOG_W(LOG_INFO, L"Control: Received command: start");
 
-                    // should give "start:"
-                    token = wcstok_s(buffer, L":", &context);
+            //if (wcscmp(buffer, L"start") == 0) {
+            if (wcsstr(buffer, L"start:") != NULL) {
+                wchar_t* token = NULL, * context = NULL;
+                LOG_W(LOG_INFO, L"Control: Received command: start");
+
+                // should give "start:"
+                token = wcstok_s(buffer, L":", &context);
+                if (token != NULL) {
+                    // should give the thing after "start:"
+                    token = wcstok_s(NULL, L":", &context);
                     if (token != NULL) {
-                        // should give the thing after "start:"
-                        token = wcstok_s(NULL, L":", &context);
-                        if (token != NULL) {
-                            LOG_W(LOG_INFO, L"Control: Target: %s", token);
-                            set_target_name(_wcsdup(token));
-                            ConnectEmitterPipe(); // Connect to the RedEdr pipe
-                            enable_consumer(TRUE);
-                        }
+                        LOG_W(LOG_INFO, L"Control: Target: %s", token);
+                        set_target_name(_wcsdup(token));
+                        ConnectEmitterPipe(); // Connect to the RedEdr pipe
+                        enable_consumer(TRUE);
                     }
                 }
-                else if (wcscmp(buffer, L"stop") == 0) {
-                    LOG_W(LOG_INFO, L"Control: Received command: stop");
-                    enable_consumer(FALSE);
-                    DisconnectEmitterPipe(); // Disconnect the RedEdr pipe
-                }
-                else if (wcscmp(buffer, L"shutdown") == 0) {
-                    LOG_W(LOG_INFO, L"Control: Received command: shutdown");
-                    //rededr_remove_service();  // attempt to remove service
-                    StopControl(); // stop this thread
-                    ShutdownEtwtiReader(); // also makes main return
-                    break;
-                }
-                else {
-                    LOG_W(LOG_INFO, L"Control: Unknown command: %s", buffer);
-                }
+            }
+            else if (wcscmp(buffer, L"stop") == 0) {
+                LOG_W(LOG_INFO, L"Control: Received command: stop");
+                enable_consumer(FALSE);
+                DisconnectEmitterPipe(); // Disconnect the RedEdr pipe
+            }
+            else if (wcscmp(buffer, L"shutdown") == 0) {
+                LOG_W(LOG_INFO, L"Control: Received command: shutdown");
+                //rededr_remove_service();  // attempt to remove service
+                StopControl(); // stop this thread
+                ShutdownEtwtiReader(); // also makes main return
+                break;
+            }
+            else {
+                LOG_W(LOG_INFO, L"Control: Unknown command: %s", buffer);
             }
         }
-
-        // Close the pipe
-        if (control_pipe != NULL) {
-            CloseHandle(control_pipe);
-            control_pipe = NULL;
-        }
+        pipeServer.Shutdown();
     }
     LOG_W(LOG_INFO, L"Control: Finished");
     return 0;
@@ -120,8 +92,7 @@ void StopControl() {
     keep_running = FALSE;
 
     // Send some stuff so the ReadFile() in the pipe reader thread returns
-    DWORD dwWritten;
-    BOOL success = WriteFile(control_pipe, "", 0, &dwWritten, NULL);
+    pipeServer.Send((wchar_t *) L"");
 }
 
 

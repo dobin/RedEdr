@@ -33,6 +33,9 @@
     <ClCompile Include="..\RedEdrShared\logging.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\RedEdrShared\piping.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="emitter.h">
