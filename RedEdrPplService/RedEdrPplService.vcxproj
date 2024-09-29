@@ -136,8 +136,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\RedEdrShared\etwconsumer.cpp" />
     <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\piping.cpp" />
+    <ClCompile Include="etwtihandler.cpp" />
     <ClCompile Include="etwtireader.cpp" />
     <ClCompile Include="control.cpp" />
     <ClCompile Include="emitter.cpp" />
@@ -146,6 +148,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\RedEdrShared\logging.h" />
+    <ClInclude Include="etwtihandler.h" />
     <ClInclude Include="etwtireader.h" />
     <ClInclude Include="control.h" />
     <ClInclude Include="emitter.h" />

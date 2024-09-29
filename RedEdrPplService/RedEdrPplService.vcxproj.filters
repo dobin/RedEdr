@@ -36,6 +36,12 @@
     <ClCompile Include="..\RedEdrShared\piping.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="etwtihandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\etwconsumer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="emitter.h">
@@ -54,6 +60,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\RedEdrShared\logging.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="etwtihandler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
