@@ -16,7 +16,7 @@ DWORD start_child_process(wchar_t* childCMD);
 HANDLE control_thread = NULL;
 BOOL keep_running = TRUE;
 
-PipeServer pipeServer;
+PipeServer pipeServer(L"EtwTi");
 
 
 DWORD WINAPI ServiceControlPipeThread(LPVOID param) {

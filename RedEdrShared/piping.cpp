@@ -12,8 +12,9 @@
 
 /* Server */
 
-PipeServer::PipeServer() {
+PipeServer::PipeServer(const wchar_t *pipe_name) {
     hPipe = NULL;
+    name = pipe_name;
 }
 
 

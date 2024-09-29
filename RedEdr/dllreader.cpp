@@ -51,7 +51,7 @@ void DllReaderInit(std::vector<HANDLE>& threads) {
 DWORD WINAPI DllReaderThread(LPVOID param) {
     // Loop which accepts new clients
     while (!DllReaderThreadStop) {
-        PipeServer* pipeServer = new PipeServer();
+        PipeServer* pipeServer = new PipeServer(L"DllReader");
         if(! pipeServer->StartAndWaitForClient(DLL_PIPE_NAME, TRUE)) {
             LOG_A(LOG_ERROR, "WTF");
             pipeServer->Shutdown();

@@ -264,21 +264,55 @@ BOOL PrintLoadedModules(HANDLE hProcess, Process* process) {
 }
 
 
-Process* MakeProcess(DWORD pid) {
+Process* MakeProcess(DWORD pid, LPCWSTR target_name) {
     Process* process = new Process(pid);
 
+    HANDLE hProcess;
+    WCHAR exePath[MAX_PATH];
+
+    hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    if (hProcess == NULL) {
+        // We dont care
+        //LOG_W(LOG_INFO, L"Could not open process %lu error %lu\n", pid, GetLastError());
+    }
+    else {
+        if (target_name != NULL) {
+            if (GetModuleFileNameEx(hProcess, NULL, exePath, MAX_PATH)) {
+                wchar_t* result = wcsstr(exePath, target_name);
+                if (result) {
+                    LOG_W(LOG_INFO, L"Objcache: observe process %lu executable path: %s\n", pid, exePath);
+                    //LOG_W(LOG_INFO, L"Substring found in: %s\n", exePath);
+                    process->observe = 1;
+                }
+                else {
+                    //LOG_W(LOG_INFO, L"Substring not found %lu: %s\n", pid, exePath);
+                    process->observe = 0;
+                }
+            }
+            else {
+                //LOG_W(LOG_INFO, L"Failed to get executable path: %lu\n", GetLastError());
+            }
+        }
+    }
+    
+    CloseHandle(hProcess);
+    return process;
+}
+
+
+BOOL AugmentProcess(DWORD pid, Process *process) {
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
     if (!hProcess) {
         //LOG_A(LOG_WARNING, "Could not open process pid: %lu error %lu", pid, GetLastError());
-        return process;
+        return FALSE;
     }
 
     RetrieveProcessInfo(process, hProcess);
     // FIXME check return value?
 
+    /*
     // CHECK: Observe
     BOOL observe = FALSE;
-
     //if (wcsstr(process->image_path.c_str(), (LPCWSTR)g_config.targetExeName)) {
     if (process->image_path.find(g_config.targetExeName) != std::wstring::npos) {
         // CHECK: Process name
@@ -295,35 +329,7 @@ Process* MakeProcess(DWORD pid) {
         //LOG_A(LOG_INFO, "Dont observe: %ls because %ls", process->image_path.c_str(), g_config.targetExeName);
     }
     process->observe = observe;
-
-    // every new pid comes through here
-    // if everything worked
-    // if we observe it, we need to DLL inject it too
-    if (observe && g_config.do_udllinjection) {
-        remote_inject(pid);
-    }
-
-    if (observe) {
-        std::wstring o = format_wstring(L"type:peb;time:%lld;id:%lld;parent_pid:%lld;image_path:%ls;commandline:%ls;working_dir:%ls;is_debugged:%d;is_protected_process:%d;is_protected_process_light:%d;image_base:0x%p",
-            get_time(),
-            process->id,
-            process->parent_pid,
-            process->image_path.c_str(),
-            process->commandline.c_str(),
-            process->working_dir.c_str(),
-            process->is_debugged,
-            process->is_protected_process,
-            process->is_protected_process_light,
-            process->image_base
-            );
-        do_output(o);
-
-        PrintLoadedModules(hProcess, process);
-    }
-
-    // in RetrieveProcessInfo() atm
-    // LogDllFromProcess(hProcess);
-
+    */
     CloseHandle(hProcess);
-    return process;
+    return TRUE;
 }
