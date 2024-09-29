@@ -128,12 +128,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="etwconsumer.cpp" />
     <ClCompile Include="logging.cpp" />
     <ClCompile Include="loguru.cpp" />
     <ClCompile Include="piping.cpp" />
     <ClCompile Include="RedEdrShared.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="etwconsumer.h" />
     <ClInclude Include="logging.h" />
     <ClInclude Include="loguru.hpp" />
     <ClInclude Include="piping.h" />

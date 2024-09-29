@@ -72,6 +72,9 @@
     <ClCompile Include="..\RedEdrShared\piping.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\RedEdrShared\etwconsumer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="etwreader.h">

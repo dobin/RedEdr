@@ -250,7 +250,7 @@ BOOL remove_ppl_service() {
         }
         if (ssp.dwCurrentState != SERVICE_STOPPED) {
             // Wait for service to die
-            Sleep(3000);
+            Sleep(1000);
             if (!QueryServiceStatusEx(
                 hService, SC_STATUS_PROCESS_INFO, (LPBYTE)&ssp, sizeof(SERVICE_STATUS_PROCESS), &dwBytesNeeded)) {
                 retval = GetLastError();

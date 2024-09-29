@@ -13,6 +13,7 @@
 #include "etwhandler.h"
 #include "config.h"
 #include "cache.h"
+#include "etwconsumer.h"
 
 
 void WINAPI EventRecordCallbackSecurityAuditing(PEVENT_RECORD eventRecord)
@@ -62,125 +63,126 @@ void WINAPI EventRecordCallbackSecurityAuditing(PEVENT_RECORD eventRecord)
     5145	A network share object was checked to see whether client can be granted desired access.
     5379	Credential Manager credentials were read.
     */
-    std::wstring event_name = L"";
+    std::wstring eventName = L"";
     switch (eventRecord->EventHeader.EventDescriptor.Id) {
     case 4624:	
-        event_name = L"AccountLogonSuccess";
+        eventName = L"AccountLogonSuccess";
         break;
     case 4625:	
-        event_name = L"AccountLogonFail";
+        eventName = L"AccountLogonFail";
         break;
     case  4627:	
-        event_name = L"GroupMembershipInformation.";
+        eventName = L"GroupMembershipInformation.";
         break;
     case 4634:	
-        event_name = L"AccountLogoff";
+        eventName = L"AccountLogoff";
         break;
     case 4647:	
-        event_name = L"UserLogoff";
+        eventName = L"UserLogoff";
         break;
     case 4648:	
-        event_name = L"ExplicitLogon";
+        eventName = L"ExplicitLogon";
         break;
     case 4656:	
-        event_name = L"ObjectHandleRequest";
+        eventName = L"ObjectHandleRequest";
         break;
     case 4657:	
-        event_name = L"RegistryValueModified";
+        eventName = L"RegistryValueModified";
         break;
     case 4660:	
-        event_name = L"ObjectDelete";
+        eventName = L"ObjectDelete";
         break;
     case 4661:	
-        event_name = L"ObjectHandleRequest";
+        eventName = L"ObjectHandleRequest";
         break;
     case 4662:	
-        event_name = L"ObjectOperation";
+        eventName = L"ObjectOperation";
         break;
     case 4663:	
-        event_name = L"ObjectAccess";
+        eventName = L"ObjectAccess";
         break;
     case 4664:	
-        event_name = L"CreateHardLink";
+        eventName = L"CreateHardLink";
         break;
     case 4672:	
-        event_name = L"LogonSpecialPrivileges";
+        eventName = L"LogonSpecialPrivileges";
         break;
     case 4673:	
-        event_name = L"PrivilegedServiceInstalled";
+        eventName = L"PrivilegedServiceInstalled";
         break;
     case 4674:	
-        event_name = L"PrivilegedObjectOperation";
+        eventName = L"PrivilegedObjectOperation";
         break;
     case 4688:	
-        event_name = L"ProcessCreate";
+        eventName = L"ProcessCreate";
         break;
     case 4689:	
-        event_name = L"ProcessExit";
+        eventName = L"ProcessExit";
         break;
     case 4690:	
-        event_name = L"ObjectHandleDuplicate";
+        eventName = L"ObjectHandleDuplicate";
         break;
     case 4696:	
-        event_name = L"ProcessPrimaryTokenAssign";
+        eventName = L"ProcessPrimaryTokenAssign";
         break;
     case 4697:	
-        event_name = L"ServiceInstalled";
+        eventName = L"ServiceInstalled";
         break;
     case 4698:	
-        event_name = L"ScheduledTaskCreate";
+        eventName = L"ScheduledTaskCreate";
         break;
     case 4699:	
-        event_name = L"ScheduledTaskDelete";
+        eventName = L"ScheduledTaskDelete";
         break;
     case 4700:	
-        event_name = L"ScheduledTaskEnable";
+        eventName = L"ScheduledTaskEnable";
         break;
     case 4701:	
-        event_name = L"ScheduledTaskDisable";
+        eventName = L"ScheduledTaskDisable";
         break;
     case 4702:	
-        event_name = L"ScheduledTaskUpdated";
+        eventName = L"ScheduledTaskUpdated";
         break;
     case 4703:	
-        event_name = L"UserRightsAdjusted";
+        eventName = L"UserRightsAdjusted";
         break;
     case 4741:	
-        event_name = L"ComputerAccountCreated";
+        eventName = L"ComputerAccountCreated";
         break;
     case 4742:	
-        event_name = L"ComputerAccountChanged";
+        eventName = L"ComputerAccountChanged";
         break;
     case 4743:	
-        event_name = L"ComputerAccountDeleted";
+        eventName = L"ComputerAccountDeleted";
         break;
     case 4768:	
-        event_name = L"KerberosTgtRequest";
+        eventName = L"KerberosTgtRequest";
         break;
     case 4769:	
-        event_name = L"KerberosServiceTicketRequest";
+        eventName = L"KerberosServiceTicketRequest";
         break;
     case 4770:	
-        event_name = L"KerberosServiceTicketRenew";
+        eventName = L"KerberosServiceTicketRenew";
         break;
     case 4771:	
-        event_name = L"KerberosPreAuthFail";
+        eventName = L"KerberosPreAuthFail";
         break;
     case 4798:	
-        event_name = L"LocalGroupEnum";
+        eventName = L"LocalGroupEnum";
         break;
     case 5145:	
-        event_name = L"NetworkShareCheck";
+        eventName = L"NetworkShareCheck";
         break;
     case 5379:	
-        event_name = L"CredentialManagerRead";
+        eventName = L"CredentialManagerRead";
         break;
     default:
-        event_name = L"<unknown>";
+        eventName = L"<unknown>";
         return;
     }
 
-    PrintProperties(event_name, eventRecord);
+    std::wstring eventStr = EtwEventToStr(eventName, eventRecord);
+    do_output(eventStr);
 }
 
 
@@ -243,7 +245,8 @@ void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
         }
     }
 
-    PrintProperties(eventName, eventRecord);
+    std::wstring eventStr = EtwEventToStr(eventName, eventRecord);
+    do_output(eventStr);
 }
 
 
@@ -299,7 +302,8 @@ void WINAPI EventRecordCallbackApiCalls(PEVENT_RECORD eventRecord) {
         break;
     }
 
-    PrintProperties(eventName, eventRecord);
+    std::wstring eventStr = EtwEventToStr(eventName, eventRecord);
+    do_output(eventStr);
 }
 
 
@@ -356,7 +360,9 @@ void WINAPI EventRecordCallbackWin32(PEVENT_RECORD eventRecord) {
     if (!g_cache.observe(processId)) {
         return;
     }
-    PrintProperties(eventName, eventRecord);
+
+    std::wstring eventStr = EtwEventToStr(eventName, eventRecord);
+    do_output(eventStr);
 }
 
 
@@ -372,8 +378,8 @@ void WINAPI EventRecordCallbackAntimalwareEngine(PEVENT_RECORD eventRecord) {
         return;
     }
 
-    // Rest
-    PrintProperties(eventName, eventRecord);
+    std::wstring eventStr = EtwEventToStr(eventName, eventRecord);
+    do_output(eventStr);
 }
 
 
@@ -390,8 +396,8 @@ void WINAPI EventRecordCallbackAntimalwareRtp(PEVENT_RECORD eventRecord) {
         return;
     }
 
-    // Rest
-    PrintProperties(eventName, eventRecord);
+    std::wstring eventStr = EtwEventToStr(eventName, eventRecord);
+    do_output(eventStr);
 }
 
 
@@ -402,95 +408,6 @@ void WINAPI EventRecordCallbackPrintAll(PEVENT_RECORD eventRecord) {
         return;
     }
 
-    // All
-    PrintProperties(eventName, eventRecord);
-}
-
-
-void PrintProperties(std::wstring eventName, PEVENT_RECORD eventRecord) {
-    DWORD bufferSize = 0;
-    PTRACE_EVENT_INFO eventInfo = NULL;
-    TDHSTATUS status = TdhGetEventInformation(eventRecord, 0, NULL, eventInfo, &bufferSize);
-    if (status == ERROR_INSUFFICIENT_BUFFER) {
-        eventInfo = (PTRACE_EVENT_INFO)malloc(bufferSize);
-        status = TdhGetEventInformation(eventRecord, 0, NULL, eventInfo, &bufferSize);
-    }
-    if (ERROR_SUCCESS != status) {
-        LOG_A(LOG_ERROR, "TdhGetEventInformation");
-        if (eventInfo) {
-            free(eventInfo);
-        }
-        return;
-    }
-
-    // String stream to accumulate output
-    std::wstringstream output;
-    output << L"type:etw;time:" << static_cast<__int64>(eventRecord->EventHeader.TimeStamp.QuadPart) << L";";
-    output << L"pid:" << eventRecord->EventHeader.ProcessId << L";";
-    output << L"thread_id:" << eventRecord->EventHeader.ThreadId << L";";
-    output << L"event:" << eventName << L";";
-
-    //output << L"EventID:" << eventRecord->EventHeader.EventDescriptor.Id << L";";
-    output << L"provider_name:" << (eventInfo->ProviderNameOffset ? (PCWSTR)((PBYTE)eventInfo + eventInfo->ProviderNameOffset) : L"Unknown") << L";";
-
-    for (DWORD i = 0; i < eventInfo->TopLevelPropertyCount; i++) {
-        PROPERTY_DATA_DESCRIPTOR dataDescriptor;
-        dataDescriptor.PropertyName = (ULONGLONG)((PBYTE)eventInfo + eventInfo->EventPropertyInfoArray[i].NameOffset);
-        dataDescriptor.ArrayIndex = ULONG_MAX;
-
-        bufferSize = 0;
-        status = TdhGetPropertySize(eventRecord, 0, NULL, 1, &dataDescriptor, &bufferSize);
-        if (status != ERROR_SUCCESS) {
-            continue;
-        }
-
-        std::vector<BYTE> propertyBuffer(bufferSize);
-        status = TdhGetProperty(eventRecord, 0, NULL, 1, &dataDescriptor, bufferSize, propertyBuffer.data());
-        if (status != ERROR_SUCCESS) {
-            continue;
-        }
-
-        output << reinterpret_cast<PCWSTR>((PBYTE)eventInfo + eventInfo->EventPropertyInfoArray[i].NameOffset) << L":";
-
-        switch (eventInfo->EventPropertyInfoArray[i].nonStructType.InType) {
-        case TDH_INTYPE_UINT32:
-            output << *reinterpret_cast<PULONG>(propertyBuffer.data()) << L";";
-            break;
-        case TDH_INTYPE_UINT64:
-            output << *reinterpret_cast<PULONG64>(propertyBuffer.data()) << L";";
-            break;
-        case TDH_INTYPE_UNICODESTRING:
-            output << reinterpret_cast<PCWSTR>(propertyBuffer.data()) << L";";
-            break;
-        case TDH_INTYPE_ANSISTRING:
-            output << reinterpret_cast<PCSTR>(propertyBuffer.data()) << L";";
-            break;
-        case TDH_INTYPE_POINTER:  // hex
-            output << L"0x" << reinterpret_cast<PVOID>(propertyBuffer.data()) << L";";
-            break;
-        case TDH_INTYPE_FILETIME:
-        {
-            FILETIME fileTime = *reinterpret_cast<PFILETIME>(propertyBuffer.data());
-            SYSTEMTIME stUTC, stLocal;
-            FileTimeToSystemTime(&fileTime, &stUTC);
-            SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
-            output << stLocal.wYear << L"/" << stLocal.wMonth << L"/" << stLocal.wDay << L" "
-                << stLocal.wHour << L":" << stLocal.wMinute << L":" << stLocal.wSecond << L";";
-            break;
-        }
-        default:
-            output << L"(Unknown type);";
-            break;
-        }
-    }
-
-    // Free the event information structure
-    if (eventInfo) {
-        free(eventInfo);
-    }
-
-    do_output(output.str());
-    // Print the accumulated string
-    //std::wcout << output.str() << L"\n";
-    //fflush(stdout);
+    std::wstring eventStr = EtwEventToStr(eventName, eventRecord);
+    do_output(eventStr);
 }
