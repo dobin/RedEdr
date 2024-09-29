@@ -6,6 +6,7 @@
 #include <string>
 #include <iomanip>
 #include <sstream>
+#include <sddl.h>
 
 #include "logging.h"
 #include "etwconsumer.h"
@@ -263,6 +264,178 @@ std::wstring EtwEventToStr(std::wstring eventName, PEVENT_RECORD eventRecord) {
     }
 
     return output.str();
+}
+
+
+void PrintProperties_2(wchar_t* eventName, PEVENT_RECORD eventRecord) {
+    DWORD bufferSize = 0;
+    PTRACE_EVENT_INFO eventInfo = NULL;
+    TDHSTATUS status = TdhGetEventInformation(eventRecord, 0, NULL, eventInfo, &bufferSize);
+    if (status == ERROR_INSUFFICIENT_BUFFER) {
+        eventInfo = (PTRACE_EVENT_INFO)malloc(bufferSize);
+        status = TdhGetEventInformation(eventRecord, 0, NULL, eventInfo, &bufferSize);
+    }
+    if (ERROR_SUCCESS != status) {
+        LOG_W(LOG_INFO, L"Consumer: TdhGetEventInformation failed\n");
+        if (eventInfo) {
+            free(eventInfo);
+        }
+        return;
+    }
+
+    wchar_t output[1024] = { 0 }; // Buffer to accumulate output
+    swprintf(output, sizeof(output) / sizeof(output[0]),
+        L"type:etw;time:%lld;pid:%lu;thread_id:%lu;event:%s;provider_name:Microsoft-Windows-Threat-Intelligence;",
+        eventRecord->EventHeader.TimeStamp.QuadPart,
+        eventRecord->EventHeader.ProcessId,
+        eventRecord->EventHeader.ThreadId,
+        eventName);
+
+    /*if (eventInfo->ProviderNameOffset) {
+        wcscat_s(output, sizeof(output) / sizeof(output[0]), (wchar_t*)((PBYTE)eventInfo + eventInfo->ProviderNameOffset));
+    }
+    else {
+        wcscat_s(output, sizeof(output) / sizeof(output[0]), L"Unknown");
+    }
+    wcscat_s(output, sizeof(output) / sizeof(output[0]), L";");*/
+
+    for (DWORD i = 0; i < eventInfo->TopLevelPropertyCount; i++) {
+        PROPERTY_DATA_DESCRIPTOR dataDescriptor;
+        dataDescriptor.PropertyName = (ULONGLONG)((PBYTE)eventInfo + eventInfo->EventPropertyInfoArray[i].NameOffset);
+        dataDescriptor.ArrayIndex = ULONG_MAX;
+
+        bufferSize = 0;
+        status = TdhGetPropertySize(eventRecord, 0, NULL, 1, &dataDescriptor, &bufferSize);
+        if (status != ERROR_SUCCESS) {
+            continue;
+        }
+
+        BYTE* propertyBuffer = (BYTE*)malloc(bufferSize);
+        status = TdhGetProperty(eventRecord, 0, NULL, 1, &dataDescriptor, bufferSize, propertyBuffer);
+        if (status != ERROR_SUCCESS) {
+            free(propertyBuffer);
+            continue;
+        }
+
+        wcscat_s(output, sizeof(output) / sizeof(output[0]), (wchar_t*)((PBYTE)eventInfo + eventInfo->EventPropertyInfoArray[i].NameOffset));
+        wcscat_s(output, sizeof(output) / sizeof(output[0]), L":");
+
+        switch (eventInfo->EventPropertyInfoArray[i].nonStructType.InType) {
+        case TDH_INTYPE_UINT32:
+            swprintf(output + wcslen(output), 32, L"%lu;", *(PULONG)propertyBuffer);
+            break;
+        case TDH_INTYPE_UINT64:
+            swprintf(output + wcslen(output), 32, L"%llu;", *(PULONG64)propertyBuffer);
+            break;
+        case TDH_INTYPE_UNICODESTRING:
+            wcscat_s(output, sizeof(output) / sizeof(output[0]), (PCWSTR)propertyBuffer);
+            wcscat_s(output, sizeof(output) / sizeof(output[0]), L";");
+            break;
+        case TDH_INTYPE_ANSISTRING: {
+            size_t convertedChars = 0;
+            wchar_t convertedString[256];
+            mbstowcs_s(&convertedChars, convertedString, sizeof(convertedString) / sizeof(convertedString[0]), (PCSTR)propertyBuffer, bufferSize);
+            wcscat_s(output, sizeof(output) / sizeof(output[0]), convertedString);
+            wcscat_s(output, sizeof(output) / sizeof(output[0]), L";");
+            break;
+        }
+        case TDH_INTYPE_POINTER:
+            swprintf(output + wcslen(output), 32, L"0x%p;", *(PVOID*)propertyBuffer);
+            break;
+        case TDH_INTYPE_FILETIME: {
+            FILETIME fileTime = *(PFILETIME)propertyBuffer;
+            SYSTEMTIME stUTC, stLocal;
+            FileTimeToSystemTime(&fileTime, &stUTC);
+            SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
+            swprintf(output + wcslen(output), 64, L"%04d/%02d/%02d %02d:%02d:%02d;",
+                stLocal.wYear, stLocal.wMonth, stLocal.wDay,
+                stLocal.wHour, stLocal.wMinute, stLocal.wSecond);
+            break;
+        }
+
+        case TDH_INTYPE_INT8:
+            swprintf(output + wcslen(output), 32, L"%d;", *(PCHAR)propertyBuffer);
+            break;
+        case TDH_INTYPE_UINT8:
+            swprintf(output + wcslen(output), 32, L"%u;", *(PUCHAR)propertyBuffer);
+            break;
+        case TDH_INTYPE_INT16:
+            swprintf(output + wcslen(output), 32, L"%d;", *(PSHORT)propertyBuffer);
+            break;
+        case TDH_INTYPE_UINT16:
+            swprintf(output + wcslen(output), 32, L"%u;", *(PUSHORT)propertyBuffer);
+            break;
+        case TDH_INTYPE_INT32:
+            swprintf(output + wcslen(output), 32, L"%d;", *(PLONG)propertyBuffer);
+            break;
+        case TDH_INTYPE_INT64:
+            swprintf(output + wcslen(output), 32, L"%lld;", *(PLONGLONG)propertyBuffer);
+            break;
+        case TDH_INTYPE_FLOAT:
+            swprintf(output + wcslen(output), 32, L"%f;", *(PFLOAT)propertyBuffer);
+            break;
+        case TDH_INTYPE_DOUBLE:
+            swprintf(output + wcslen(output), 32, L"%lf;", *(DOUBLE*)propertyBuffer);
+            break;
+        case TDH_INTYPE_BOOLEAN:
+            swprintf(output + wcslen(output), 32, L"%d;", *(PBOOL)propertyBuffer);
+            break;
+        case TDH_INTYPE_BINARY: {
+            // Print each byte in hexadecimal
+            for (ULONG j = 0; j < bufferSize; j++) {
+                swprintf(output + wcslen(output), 4, L"%02X", ((PBYTE)propertyBuffer)[j]);
+            }
+            wcscat_s(output, sizeof(output) / sizeof(output[0]), L";");
+            break;
+        }
+        case TDH_INTYPE_GUID: {
+            GUID* guid = (GUID*)propertyBuffer;
+            swprintf(output + wcslen(output), 64, L"{%08x-%04x-%04x-%04x-%012x};", guid->Data1, guid->Data2, guid->Data3, *((USHORT*)guid->Data4), *((ULONG*)&guid->Data4[2]));
+            break;
+        }
+        case TDH_INTYPE_SYSTEMTIME: {
+            SYSTEMTIME* st = (SYSTEMTIME*)propertyBuffer;
+            swprintf(output + wcslen(output), 64, L"%04d-%02d-%02d %02d:%02d:%02d;", st->wYear, st->wMonth, st->wDay, st->wHour, st->wMinute, st->wSecond);
+            break;
+        }
+        case TDH_INTYPE_HEXINT32:
+            swprintf(output + wcslen(output), 32, L"0x%08X;", *(PULONG)propertyBuffer);
+            break;
+        case TDH_INTYPE_HEXINT64:
+            swprintf(output + wcslen(output), 32, L"0x%016llX;", *(PULONG64)propertyBuffer);
+            break;
+        case TDH_INTYPE_SID: {
+            PSID sid = (PSID)propertyBuffer;
+            WCHAR sidChar[256];
+            LPWSTR sidString = (LPWSTR)sidChar;
+            if (ConvertSidToStringSid(sid, &sidString)) {
+                wcscat_s(output, sizeof(output) / sizeof(output[0]), sidString);
+                wcscat_s(output, sizeof(output) / sizeof(output[0]), L";");
+            }
+            break;
+        }
+
+        default:
+            swprintf(output + wcslen(output), 32, L"%d:0x%x;",
+                eventInfo->EventPropertyInfoArray[i].nonStructType.InType,
+                propertyBuffer
+            );
+
+            //wcscat_s(output, sizeof(output) / sizeof(output[0]), L"(Unknown type);");
+            break;
+        }
+
+        free(propertyBuffer);
+    }
+
+    if (eventInfo) {
+        free(eventInfo);
+    }
+
+    // Output the accumulated string
+    //wprintf(L"%s\n", output);
+
+//    SendEmitterPipe(output);
 }
 
 
