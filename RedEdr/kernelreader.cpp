@@ -141,7 +141,7 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
         // Close the pipe
         CloseHandle(kernel_pipe);
     }
-    LOG_A(LOG_INFO, "KernelReader: Thread Finished");
+    LOG_A(LOG_INFO, "!KernelReader: Thread Finished");
 
 }
 

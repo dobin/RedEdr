@@ -71,12 +71,13 @@ BOOL PipeServer::StartAndWaitForClient(const wchar_t *pipeName, BOOL allow_all) 
 
 BOOL PipeServer::Send(wchar_t* buffer) {
     if (hPipe == NULL) {
-        LOG_W(LOG_ERROR, L"Piping Server: Pipe closed");
+        LOG_W(LOG_ERROR, L"Piping Server: Attempt to send to closed pipe");
         return FALSE;
     }
     DWORD len = (DWORD)(wcslen(buffer) + 1) * 2; // -> include two trailing 0 bytes
     if (! WriteFile(hPipe, buffer, len, NULL, NULL)) {
-        LOG_W(LOG_ERROR, L"Piping Server: Error when sending to pipe: %d", GetLastError());
+        // Let caller handle it
+        //LOG_W(LOG_ERROR, L"Piping Server: Error when sending to pipe: %d", GetLastError());
         return FALSE;
     }
     return TRUE;

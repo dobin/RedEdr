@@ -26,6 +26,7 @@ bool DllReaderThreadStop = FALSE;
 
 // Threads for each connected DLL process
 std::vector<std::thread> DllReaderClientThreads; // for each connected dll client
+std::vector<PipeServer*> DllReaderPipeServers; // for each connected dll client
 
 // Private Function Definitions
 void DllReaderInit(std::vector<HANDLE>& threads);
@@ -37,8 +38,7 @@ void DllReaderShutdown();
 // Init
 void DllReaderInit(std::vector<HANDLE>& threads) {
     const wchar_t* data = L"";
-    LOG_A(LOG_INFO, "!DllReader: Start thread");
-    HANDLE thread = CreateThread(NULL, 0, DllReaderThread, (LPVOID)data, 0, NULL);
+    HANDLE thread = CreateThread(NULL, 0, DllReaderThread, NULL, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "DllReader: Failed to create thread");
         return;
@@ -49,6 +49,8 @@ void DllReaderInit(std::vector<HANDLE>& threads) {
 
 // Pipe Reader Thread: Server
 DWORD WINAPI DllReaderThread(LPVOID param) {
+    LOG_A(LOG_INFO, "!DllReader Server Thread: begin");
+
     // Loop which accepts new clients
     while (!DllReaderThreadStop) {
         PipeServer* pipeServer = new PipeServer(L"DllReader");
@@ -62,17 +64,15 @@ DWORD WINAPI DllReaderThread(LPVOID param) {
         LOG_A(LOG_INFO, "DllReader: Client connected (handle in new thread)");
         DllReaderClientThreads.push_back(std::thread(DllReaderClientThread, pipeServer));
     }
-
-    /*
+    
     // Wait for all client threads to exit
     for (auto& t : DllReaderClientThreads) {
         if (t.joinable()) {
             t.join();
         }
     }
-    */
 
-    LOG_A(LOG_INFO, "!DllReader: Quit");
+    LOG_A(LOG_INFO, "!DllReader Server Thread: end");
     return 0;
 }
 
@@ -84,7 +84,7 @@ void DllReaderClientThread(PipeServer* pipeServer) {
     wchar_t config[WCHAR_SMALL_PIPE];
     swprintf_s(config, WCHAR_SMALL_PIPE, L"callstack:%d;", g_config.do_dllinjection_ucallstack);
     pipeServer->Send(config);
-    
+
     // Now receive only
     char buffer[DATA_BUFFER_SIZE] = {0};
     char* buf_ptr = buffer; // buf_ptr and rest_len are synchronized
@@ -110,9 +110,17 @@ void DllReaderClientThread(PipeServer* pipeServer) {
 void DllReaderShutdown() {
     DllReaderThreadStop = TRUE;
 
+    // Disconnect all connected client pipes
+    for (auto& t : DllReaderPipeServers) {
+        t->Shutdown();
+    }
+
+    // Disconnect server pipe
     // Send some stuff so the ReadFile() in the reader thread returns
     PipeClient pipeClient;
+    wchar_t buf[WCHAR_SMALL_PIPE] = { 0 };
     pipeClient.Connect(DLL_PIPE_NAME);
+    pipeClient.Receive(buf, WCHAR_SMALL_PIPE);
     pipeClient.Send((wchar_t *) L"");
     pipeClient.Disconnect();
 }

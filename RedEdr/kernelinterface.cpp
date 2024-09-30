@@ -23,7 +23,7 @@ BOOL EnableKernelDriver(int enable, wchar_t* target) {
 
     if (hDevice == INVALID_HANDLE_VALUE) {
         LOG_A(LOG_ERROR, "Kernel: Failed to open device. Error: %d", GetLastError());
-        return false;
+        return FALSE;
     }
     MY_DRIVER_DATA dataToSend = { 0 };
     if (enable) {
@@ -47,17 +47,19 @@ BOOL EnableKernelDriver(int enable, wchar_t* target) {
     if (!success) {
         LOG_A(LOG_ERROR, "Kernel: DeviceIoControl failed. Error: %d", GetLastError());
         CloseHandle(hDevice);
-        return false;
+        return FALSE;
     }
 
     if (strcmp(buffer_incoming, "OK") == NULL) {
         LOG_A(LOG_INFO, "Kernel: Kernel Driver enabling/disabling (%d) ok", enable);
+        CloseHandle(hDevice);
+        return TRUE;
     }
     else {
         LOG_A(LOG_ERROR, "Kernel: Kernel Driver enabling/disabling (%d) failed", enable);
+        CloseHandle(hDevice);
+        return FALSE;
     }
-    CloseHandle(hDevice);
-    return true;
 }
 
 

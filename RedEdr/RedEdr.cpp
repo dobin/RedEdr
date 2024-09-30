@@ -85,15 +85,18 @@ void shutdown_all() {
         LogReaderStopAll();
     }
 
+    
+    // Shutdown kernel reader
+    // NOTE: Has to be BEFORE EnableKernelDriver(0) or ctrl-c will block
+    // As it will disconnect the pipe
+    if (g_config.do_kernelcallback) {
+        LOG_A(LOG_INFO, "RedEdr: Stop kernel reader");
+        KernelReaderStopAll();
+    }
     // Make kernel module stop emitting events
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
         const wchar_t* target = L"";
         EnableKernelDriver(0, (wchar_t*)target);
-    }
-    // Shutdown kernel reader
-    if (g_config.do_kernelcallback) {
-        LOG_A(LOG_INFO, "RedEdr: Stop kernel reader and injected dll reader");
-        KernelReaderStopAll();
     }
     // ETW-TI
     if (g_config.do_etwti) {
@@ -267,7 +270,7 @@ int main(int argc, char* argv[]) {
         // The kernel module will connect to it
         LOG_A(LOG_INFO, "RedEdr: Start kernel reader  thread");
         InitializeKernelReader(threads);
-        //Sleep(1000); // the thread with the server is not yet started...
+        Sleep(200); // TODO required. the thread with the server is not yet started...
         
         // Enable it
         LOG_A(LOG_INFO, "RedEdr: Tell Kernel to start collecting telemetry of: \"%ls\"", g_config.targetExeName);
