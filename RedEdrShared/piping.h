@@ -16,6 +16,8 @@ public:
 	BOOL Receive(wchar_t* buffer, size_t buffer_len);
 	std::vector<std::wstring> ReceiveBatch();
 	void Shutdown();
+	BOOL IsConnected();
+
 	
 private:
 	HANDLE hPipe;

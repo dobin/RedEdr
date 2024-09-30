@@ -85,32 +85,35 @@ void shutdown_all() {
         LogReaderStopAll();
     }
 
-    
-    // Shutdown kernel reader
-    // NOTE: Has to be BEFORE EnableKernelDriver(0) or ctrl-c will block
-    // As it will disconnect the pipe
-    if (g_config.do_kernelcallback) {
-        LOG_A(LOG_INFO, "RedEdr: Stop kernel reader");
-        KernelReaderStopAll();
-    }
+
     // Make kernel module stop emitting events
+    //    Disconnects KernelPipe client
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
+        LOG_A(LOG_INFO, "RedEdr: Disable kernel driver");
         const wchar_t* target = L"";
         EnableKernelDriver(0, (wchar_t*)target);
     }
-    // ETW-TI
-    if (g_config.do_etwti) {
-        EnablePplService(FALSE, NULL);
+    // Shutdown kernel reader
+    if (g_config.do_kernelcallback) {
+        LOG_A(LOG_INFO, "RedEdr: Stop kernel reader");
+        KernelReaderShutdown();
     }
+
     // Shutdown dll reader
     if (g_config.do_dllinjection || g_config.do_etwti) {
         LOG_A(LOG_INFO, "RedEdr: Stop DLL reader");
         DllReaderShutdown();
     }
+
     // Special case
     if (g_config.debug_dllreader) {
         LOG_A(LOG_INFO, "RedEdr: Stop DLL reader");
         DllReaderShutdown();
+    }
+
+    // ETW-TI
+    if (g_config.do_etwti) {
+        EnablePplService(FALSE, NULL);
     }
     // ETW
     if (g_config.do_etw) {
@@ -269,7 +272,7 @@ int main(int argc, char* argv[]) {
         // Start the kernel server first
         // The kernel module will connect to it
         LOG_A(LOG_INFO, "RedEdr: Start kernel reader  thread");
-        InitializeKernelReader(threads);
+        KernelReaderInit(threads);
         Sleep(200); // TODO required. the thread with the server is not yet started...
         
         // Enable it

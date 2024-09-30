@@ -54,6 +54,7 @@ BOOL PipeServer::StartAndWaitForClient(const wchar_t *pipeName, BOOL allow_all) 
     );
     if (hPipe == INVALID_HANDLE_VALUE) {
         LOG_A(LOG_ERROR, "Piping Server: Error creating named pipe: %ld", GetLastError());
+        hPipe = NULL;
         return FALSE;
     }
 
@@ -62,6 +63,7 @@ BOOL PipeServer::StartAndWaitForClient(const wchar_t *pipeName, BOOL allow_all) 
     if (! ConnectNamedPipe(hPipe, NULL)) {
         LOG_A(LOG_ERROR, "Piping Server: Error handling client connection: %ld", GetLastError());
         CloseHandle(hPipe);
+        hPipe = NULL;
         return FALSE;
     }
 
@@ -135,6 +137,7 @@ std::vector<std::wstring> PipeServer::ReceiveBatch() {
     else {
         if (GetLastError() == ERROR_BROKEN_PIPE) {
             LOG_A(LOG_INFO, "DllReader: Injected DLL disconnected");
+            hPipe = NULL;
         }
         else {
             LOG_A(LOG_ERROR, "DllReader: Error reading from named pipe: %ld", GetLastError());
@@ -146,10 +149,23 @@ std::vector<std::wstring> PipeServer::ReceiveBatch() {
 
 
 void PipeServer::Shutdown() {
+    if (hPipe == NULL) {
+        return;
+    }
     DisconnectNamedPipe(hPipe);
     CloseHandle(hPipe);
+    hPipe = NULL;
 }
 
+
+BOOL PipeServer::IsConnected() {
+    if (hPipe == NULL) {
+        return FALSE;
+    }
+    else {
+        return TRUE;
+    }
+}
 
 
 /* Client */
