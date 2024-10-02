@@ -104,7 +104,7 @@ void KernelReaderShutdown() {
     if (! kernelPipeServer->IsConnected()) {
         PipeClient pipeClient;
         wchar_t buf[WCHAR_SMALL_PIPE] = { 0 };
-        pipeClient.Connect(DLL_PIPE_NAME);
+        pipeClient.Connect(KERNEL_PIPE_NAME);
         pipeClient.Receive(buf, WCHAR_SMALL_PIPE);
         pipeClient.Send((wchar_t*)L"");
         pipeClient.Disconnect();
