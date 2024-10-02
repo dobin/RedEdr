@@ -26,7 +26,6 @@ BOOL EnablePplService(BOOL e, wchar_t* target_name) {
         InstallPplService();
         return FALSE;
     }
-
     if (!pipeClient.Connect(PPL_SERVICE_PIPE_NAME)) {
         LOG_A(LOG_ERROR, "ETW-TI: Error connecting to RedEdrPplService pipe: error code %ld", GetLastError());
         LOG_A(LOG_ERROR, "ETW-TI: Is RedEdrPplService running?");
@@ -42,12 +41,14 @@ BOOL EnablePplService(BOOL e, wchar_t* target_name) {
         }
         swprintf_s(buffer, WCHAR_SMALL_PIPE, L"start:%s", target_name);
         if (!pipeClient.Send(buffer)) {
+            LOG_A(LOG_INFO, "ETW-TI: Error sending: %s to ppl service", buffer);
             return FALSE;
         }
         LOG_A(LOG_INFO, "ETW-TI: ppl reader: Enabled");
     }
     else {
-        wcscpy_s(buffer, DATA_BUFFER_SIZE, L"stop");
+        //wcscpy_s(buffer, DATA_BUFFER_SIZE, L"stop");
+        swprintf_s(buffer, WCHAR_SMALL_PIPE, L"stop");
         if (!pipeClient.Send(buffer)) {
             return FALSE;
         }
