@@ -8,7 +8,7 @@ void SendDllPipe(wchar_t* buffer);
 
 
 // Proc
-void LogMyStackTrace();
+void LogMyStackTrace(wchar_t* buf, size_t buf_size);
 
 // Utils
 LARGE_INTEGER get_time();

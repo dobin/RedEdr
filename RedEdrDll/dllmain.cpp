@@ -39,7 +39,7 @@ DWORD NTAPI NtAllocateVirtualMemory(
     SendDllPipe(buf);
 
     // Broken atm?
-    //LogMyStackTrace();
+    //LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
 
     return pOriginalNtAllocateVirtualMemory(ProcessHandle, BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
 }
@@ -93,8 +93,8 @@ DWORD NTAPI NtProtectVirtualMemory(
         L"type:dll;time:%llu;krn_pid:%llu;func:ProtectVirtualMemory;pid:%p;base_addr:%p;size:%lu;new_access:%#lx;new_access_str:%ls",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle,
         BaseAddress, *NumberOfBytesToProtect, NewAccessProtection, mem_perm);
+    LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
-    LogMyStackTrace();
     return pOriginalNtProtectVirtualMemory(ProcessHandle, BaseAddress, NumberOfBytesToProtect, NewAccessProtection, OldAccessProtection);
 }
 
@@ -150,8 +150,8 @@ DWORD NTAPI NtMapViewOfSection(
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(),
         SectionHandle, ProcessHandle, baseAddressValue, ZeroBits, CommitSize,
         sectionOffsetValue, viewSizeValue, InheritDisposition, AllocationType, Protect, mem_perm);
+    LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
-    LogMyStackTrace();
     return pOriginalNtMapViewOfSection(SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Protect);
 }
 
@@ -181,8 +181,8 @@ DWORD NTAPI NtWriteVirtualMemory(
         L"type:dll;time:%llu;krn_pid:%llu;func:WriteVirtualMemory;process_handle:0x%p;base_address:0x%p;buffer:0x%p;size:%lu",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(),
         ProcessHandle, BaseAddress, Buffer, NumberOfBytesToWrite);
+    LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
-    LogMyStackTrace();
     return pOriginalNtWriteVirtualMemory(ProcessHandle, BaseAddress, Buffer, NumberOfBytesToWrite, NumberOfBytesWritten);
 }
 
@@ -216,7 +216,7 @@ DWORD NTAPI NtReadVirtualMemory(
 
     // Currently makes notepad.exe crash on save dialog open on win11.
     // And its a lot of data
-    //LogMyStackTrace();
+    //LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
 
     return pOriginalNtReadVirtualMemory(ProcessHandle, BaseAddress, Buffer, NumberOfBytesToRead, NumberOfBytesRead);
 }
@@ -241,10 +241,9 @@ DWORD NTAPI NtSetContextThread(
         L"type:dll;time:%llu;krn_pid:%llu;func:SetContextThread;thread_handle:0x%p;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle);
     SendDllPipe(buf);
-    LogMyStackTrace();
+    LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     return pOriginalNtSetContextThread(ThreadHandle, Context);
 }
-
 
 
 /******************* LdrLoadDll ************************/
@@ -327,7 +326,7 @@ typedef DWORD(NTAPI* pNtQueueApcThread)(
     );
 pNtQueueApcThread pOriginalNtQueueApcThread = NULL;
 DWORD NTAPI NtQueueApcThread(
-    IN HANDLE               ThreadHandle,
+    IN HANDLE               ThreadHandle,    
     IN PIO_APC_ROUTINE      ApcRoutine,
     IN PVOID                ApcRoutineContext OPTIONAL,
     IN PIO_STATUS_BLOCK     ApcStatusBlock OPTIONAL,
@@ -339,8 +338,8 @@ DWORD NTAPI NtQueueApcThread(
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
         L"type:dll;time:%llu;krn_pid:%llu;func:NtQueueApcThread;thread_handle:0x%p;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle);
+    LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
-    LogMyStackTrace();
     return pOriginalNtQueueApcThread(ThreadHandle, ApcRoutine, ApcRoutineContext, ApcStatusBlock, ApcReserved);
 }
 
@@ -372,8 +371,8 @@ DWORD NTAPI NtQueueApcThreadEx(
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
         L"type:dll;time:%llu;krn_pid:%llu;func:NtQueueApcThreadEx;thread_handle:0x%p;apc_thread:0x%p;apc_routine:0x%p;arg1:0x%p;arg2:0x%p;arg3:0x%p;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle, ApcThreadHandle, ApcRoutine, ApcArgument1, ApcArgument2, ApcArgument3);
+    LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
-    LogMyStackTrace();
     return pOriginalNtQueueApcThreadEx(ThreadHandle, ApcThreadHandle, ApcRoutine, ApcArgument1, ApcArgument2, ApcArgument3);
 }
 
@@ -409,8 +408,8 @@ DWORD NTAPI NtCreateProcess(
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
         L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateProcess;process_handle:0x%p;access_mask:0x%x;parent_process:0x%p;inherit_table:%d;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle, DesiredAccess, ParentProcess, InheritObjectTable);
+    LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
-    LogMyStackTrace();
     return pOriginalNtCreateProcess(ProcessHandle, DesiredAccess, ObjectAttributes, ParentProcess, InheritObjectTable, SectionHandle, DebugPort, ExceptionPort);
 }
 
@@ -451,8 +450,8 @@ DWORD NTAPI NtCreateThreadEx(
         L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateThreadEx;thread_handle:0x%p;process_handle:0x%p;start_routine:0x%p;argument:0x%p;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), 
         ThreadHandle, ProcessHandle, StartRoutine, Argument);
+    LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
-    LogMyStackTrace();
     return pOriginalNtCreateThreadEx(ThreadHandle, DesiredAccess, ObjectAttributes, ProcessHandle, StartRoutine, Argument, CreateFlags, ZeroBits, StackSize, MaximumStackSize, AttributeList);
 }
 
@@ -477,8 +476,8 @@ DWORD NTAPI NtOpenProcess(
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
         L"type:dll;time:%llu;krn_pid:%llu;func:NtOpenProcess;process_handle:0x%p;access_mask:0x%x;client_id_process:0x%p;client_id_thread:0x%p;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle, DesiredAccess, ClientId->UniqueProcess, ClientId->UniqueThread);
+    LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
-    LogMyStackTrace();
     return pOriginalNtOpenProcess(ProcessHandle, DesiredAccess, ObjectAttributes, ClientId);
 }
 
@@ -503,8 +502,8 @@ DWORD NTAPI NtLoadDriver(
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
         L"type:dll;time:%llu;krn_pid:%llu;func:NtLoadDriver;driver_service_name:%ls;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), wDriverServiceName);
+    LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
-    LogMyStackTrace();
     return pOriginalNtLoadDriver(DriverServiceName);
 }
 
@@ -577,8 +576,8 @@ DWORD NTAPI NtOpenThread(
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
         L"type:dll;time:%llu;krn_pid:%llu;func:NtOpenThread;thread_handle:0x%p;access_mask:0x%x;client_id_process:0x%p;client_id_thread:0x%p",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle, DesiredAccess, ClientId->UniqueProcess, ClientId->UniqueThread);
+    LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
-    LogMyStackTrace();
     return pOriginalNtOpenThread(ThreadHandle, DesiredAccess, ObjectAttributes, ClientId);
 }
 
@@ -609,8 +608,8 @@ DWORD NTAPI NtCreateSection(
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
         L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateSection;section_handle:0x%p;access_mask:0x%x;max_size:0x%p;page_protection:0x%x;alloc_attributes:0x%x;file_handle:0x%p;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), SectionHandle, DesiredAccess, MaximumSize, SectionPageProtection, AllocationAttributes, FileHandle);
+    LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
-    LogMyStackTrace();
     return pOriginalNtCreateSection(SectionHandle, DesiredAccess, ObjectAttributes, MaximumSize, SectionPageProtection, AllocationAttributes, FileHandle);
 }
 
@@ -648,8 +647,8 @@ DWORD NTAPI NtCreateProcessEx(
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
         L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateProcessEx;process_handle:0x%p;parent_process:0x%p;flags:0x%lx;section_handle:0x%p;debug_port:0x%p;exception_port:0x%p;in_job:%d;",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle, ParentProcess, Flags, SectionHandle, DebugPort, ExceptionPort, InJob);
+    LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
-    LogMyStackTrace();
     return pOriginalNtCreateProcessEx(ProcessHandle, DesiredAccess, ObjectAttributes, ParentProcess, Flags, SectionHandle, DebugPort, ExceptionPort, InJob);
 }
 

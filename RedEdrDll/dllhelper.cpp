@@ -80,13 +80,12 @@ void SendDllPipe(wchar_t* buffer) {
 /*************** Procinfo stuff ******************/
 
 // LOG's the stacktrace of THIS function
-void LogMyStackTrace() {
+void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
     CONTEXT context;
     STACKFRAME64 stackFrame;
     DWORD machineType;
     HANDLE hProcess = GetCurrentProcess();
     HANDLE hThread = GetCurrentThread();
-    wchar_t buf[WCHAR_BUFFER_SIZE] = { 0 };
 
     // Capture the context of the current thread
     RtlCaptureContext(&context);
@@ -105,6 +104,11 @@ void LogMyStackTrace() {
     stackFrame.AddrStack.Offset = context.Rsp;
     stackFrame.AddrStack.Mode = AddrModeFlat;
 
+    // FUUUUU
+    int l = wcscat_s(buf, buf_size, L";callstack:[");
+    buf_size -= 12;
+    buf += 12;
+
     MEMORY_BASIC_INFORMATION mbi;
     size_t written = 0;
     int n = 0;
@@ -112,20 +116,23 @@ void LogMyStackTrace() {
     while (StackWalk64(machineType, hProcess, hThread, &stackFrame, &context,
         NULL, NULL, NULL, NULL))
     {
-        if (n > 5) {
+        if (n > MAX_CALLSTACK_ENTRIES) {
+            // dont go too deep
+            break;
+        }
+        if (buf_size > DATA_BUFFER_SIZE - 2) { // -2 for ending ]
+            // as buf_size is size_t, it will underflow when too much callstack is appended
+            LOG_A(LOG_WARNING, "StackWalk: Not enough space for whole stack, stopped at %i", n);
             break;
         }
         DWORD64 address = stackFrame.AddrPC.Offset;
 
-        if (NtQueryVirtualMemory(hProcess, (PVOID) address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) != 0) {
-            written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"idx:%i;backtrace:%p;page_addr:invalid;size:invalid;state:invalid;protect:invalid;type:invalid",
-                n, address);
-        }
-        else {
-            written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"idx:%i;backtrace:%p;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx",
+        if (NtQueryVirtualMemory(hProcess, (PVOID)address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
+            written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"idx:%i;addr:%p;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx",
                 n, address, mbi.BaseAddress, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
         }
-        pipeClient.Send(buf);
+        buf_size -= written;
+        buf += written;
 
         // Resolve the symbol at this address
         /*char symbolBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
@@ -144,6 +151,9 @@ void LogMyStackTrace() {
 
         n += 1;
     }
+
+    // We should have space...
+    l = wcscat_s(buf, buf_size, L"]");
 
     // Cleanup after stack walk
     //SymCleanup(hProcess);
