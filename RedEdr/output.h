@@ -1,5 +1,6 @@
 #pragma once
 
+std::wstring convertToJson(const std::wstring& inputw);
 void do_output(std::wstring str);
 void print_all_output();
 std::string output_as_json();

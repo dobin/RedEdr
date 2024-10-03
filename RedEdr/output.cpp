@@ -19,49 +19,55 @@ HANDLE webserver_thread;
 httplib::Server svr;
 
 
-std::wstring ConvertToJSON(const std::wstring& input)
-{
-    std::vector<std::pair<std::wstring, std::wstring>> keyValuePairs;
-    std::wstringstream wss(input);
-    std::wstring token;
+// Function to parse the input and convert it into JSON
+std::wstring convertToJson(const std::wstring& input) {
+    std::wstring result;
+    result += L"{\"";
 
-    // Split by ';'
-    while (std::getline(wss, token, L';'))
-    {
-        std::wstringstream kvStream(token);
-        std::wstring key, value;
+    for (size_t i = 0; i < input.size(); ++i) {
+        wchar_t ch = input[i];
+        wchar_t n = input[i + 1];
 
-        // Split by ':'
-        if (std::getline(kvStream, key, L':') && std::getline(kvStream, value))
-        {
-            keyValuePairs.emplace_back(key, value);
+        if (ch == L':') {
+            if (n == L'[') {
+                result += L"\""; // Add closing quote 
+                result += ch;
+            }
+            else {
+                result += L"\""; // Add opening quote 
+                result += ch;
+                result += L"\""; // Add closing quote 
+            }
+        } else if (ch == L';') {
+            result += L"\""; // Add opening quote 
+            result += L',';
+            result += L"\""; // Add closing quote 
+        }
+        else if (ch == L'{') {
+            result += ch;
+            result += L"\""; // Add opening quote
+        }
+        else if (ch == L'}') {
+            result += L"\""; // Add closing quote
+            result += ch;
+        }
+        else if (ch == L',' && n == L']') {
+            // ignore trailing ,]
+        }
+        else {
+            // Copy the character as-is
+            result += ch;
         }
     }
-
-    // Construct JSON
-    std::wstringstream jsonStream;
-    jsonStream << L"{";
-
-    bool first = true;
-    for (const auto& pair : keyValuePairs)
-    {
-        if (!first)
-        {
-            jsonStream << L", ";
-        }
-        jsonStream << L"\"" << pair.first << L"\": \"" << pair.second << L"\"";
-        first = false;
-    }
-
-    jsonStream << L"}";
-
-    return jsonStream.str();
+    result += L"}";
+    return result;
 }
+
 
 
 void do_output(std::wstring str) {
     // Convert to json and add it to the global list
-    std::wstring json = ConvertToJSON(str);
+    std::wstring json = convertToJson(str);
     output_mutex.lock();
     output_entries.push_back(json);
     output_mutex.unlock();
