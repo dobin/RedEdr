@@ -61,35 +61,17 @@ BOOL EnablePplService(BOOL e, wchar_t* target_name) {
 
 
 BOOL ShutdownPplService() {
-    DWORD bytesWritten;
-    wchar_t buffer[DATA_BUFFER_SIZE] = { 0 };
-    HANDLE hPipe;
-    int n = 0;
-    DWORD len;
 
-    hPipe = CreateFile(
-        PPL_SERVICE_PIPE_NAME,
-        GENERIC_WRITE,
-        0,
-        NULL,
-        OPEN_EXISTING,
-        0,
-        NULL);
-    if (hPipe == INVALID_HANDLE_VALUE) {
+    PipeClient pipeClient;
+    if (!pipeClient.Connect(PPL_SERVICE_PIPE_NAME)) {
         LOG_A(LOG_ERROR, "ETW-TI: Error creating named pipe: %ld", GetLastError());
-        return 1;
-    }
-
-    wcscpy_s(buffer, DATA_BUFFER_SIZE, L"shutdown");
-    len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
-    if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
-        LOG_A(LOG_ERROR, "ETW-TI: Error writing to named pipe: %ld", GetLastError());
-        CloseHandle(hPipe);
         return FALSE;
     }
-    LOG_A(LOG_INFO, "ETW-TI: ppl reader: Disabled");
-
-    CloseHandle(hPipe);
+    if (!pipeClient.Send((wchar_t*)L"shutdown")) {
+        LOG_A(LOG_ERROR, "ETW-TI: Error writing to named pipe: %ld", GetLastError());
+        return FALSE;
+    }
+    pipeClient.Disconnect();
     return TRUE;
 }
 
