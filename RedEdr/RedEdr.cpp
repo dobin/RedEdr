@@ -277,7 +277,6 @@ int main(int argc, char* argv[]) {
         // The kernel module will connect to it
         LOG_A(LOG_INFO, "RedEdr: Start kernel reader  thread");
         KernelReaderInit(threads);
-        Sleep(200); // TODO required. the thread with the server is not yet started...
         
         // Enable it
         LOG_A(LOG_INFO, "RedEdr: Tell Kernel to start collecting telemetry of: \"%ls\"", g_config.targetExeName);

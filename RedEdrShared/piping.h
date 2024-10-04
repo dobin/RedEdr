@@ -11,13 +11,14 @@ class PipeServer {
 public:
 	PipeServer(const wchar_t* pipe_name);
 	BOOL StartAndWaitForClient(const wchar_t* pipeName, BOOL allow_all);
+	BOOL WaitForClient();
+	BOOL Start(const wchar_t* pipeName, BOOL allow_all);
 
 	BOOL Send(wchar_t* buffer);
 	BOOL Receive(wchar_t* buffer, size_t buffer_len);
 	std::vector<std::wstring> ReceiveBatch();
 	void Shutdown();
 	BOOL IsConnected();
-
 	
 private:
 	HANDLE hPipe;

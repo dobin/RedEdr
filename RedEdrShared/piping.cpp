@@ -18,10 +18,17 @@ PipeServer::PipeServer(const wchar_t *pipe_name) {
 }
 
 
-BOOL PipeServer::StartAndWaitForClient(const wchar_t *pipeName, BOOL allow_all) {
+BOOL PipeServer::StartAndWaitForClient(const wchar_t* pipeName, BOOL allow_all) {
+    if (!Start(pipeName, allow_all)) {
+        return FALSE;
+    }
+    return WaitForClient();
+}
+
+BOOL PipeServer::Start(const wchar_t* pipeName, BOOL allow_all) {
     // Permissions
     // Allow processes of all privilege levels to access this pipe
-    SECURITY_ATTRIBUTES *sa_ptr = NULL;
+    SECURITY_ATTRIBUTES* sa_ptr = NULL;
     if (allow_all) {
         // "D:(A;OICI;GA;;;WD)" translates to: Allow (A) All Users (WD) Generic Access (GA)
         LPCWSTR securityDescriptorString = L"D:(A;OICI;GA;;;WD)";
@@ -31,7 +38,7 @@ BOOL PipeServer::StartAndWaitForClient(const wchar_t *pipeName, BOOL allow_all) 
             securityDescriptorString,
             SDDL_REVISION_1,
             &pSD,
-            NULL)) 
+            NULL))
         {
             LOG_A(LOG_ERROR, "Piping Server: Failed to create security descriptor. Error: %lu", GetLastError());
             return NULL;
@@ -57,7 +64,10 @@ BOOL PipeServer::StartAndWaitForClient(const wchar_t *pipeName, BOOL allow_all) 
         hPipe = NULL;
         return FALSE;
     }
+}
 
+
+BOOL PipeServer::WaitForClient() {
     //LOG_A(LOG_INFO, "DllReader: Waiting for client to connect...");
     // Wait for the client to connect
     if (! ConnectNamedPipe(hPipe, NULL)) {

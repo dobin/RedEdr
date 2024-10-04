@@ -8,6 +8,11 @@
 #include <sstream>
 #include <wchar.h>
 
+#include <mutex>
+#include <condition_variable>
+
+#include <thread>
+
 #include "../Shared/common.h"
 #include "logging.h"
 #include "kernelreader.h"
@@ -22,8 +27,8 @@
 
 bool KernelReaderThreadStopFlag = FALSE;
 HANDLE kernel_pipe = NULL;
-
 PipeServer* kernelPipeServer = NULL;
+HANDLE threadReadyness;
 
 // Private functions
 DWORD WINAPI KernelReaderProcessingThread(LPVOID param);
@@ -32,12 +37,16 @@ void CheckForNewProcess(wchar_t* line);
 
 void KernelReaderInit(std::vector<HANDLE>& threads) {
     const wchar_t* data = L"";
+    threadReadyness = CreateEvent(NULL, TRUE, FALSE, NULL);
+
     LOG_A(LOG_INFO, "!KernelReader: Start thread");
     HANDLE thread = CreateThread(NULL, 0, KernelReaderProcessingThread, (LPVOID)data, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "KernelReader: Failed to create thread for trace session logreader");
         return;
     }
+
+    WaitForSingleObject(threadReadyness, INFINITE);
     threads.push_back(thread);
 }
 
@@ -46,8 +55,10 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
     // Loop which accepts new clients
     while (!KernelReaderThreadStopFlag) {
         kernelPipeServer = new PipeServer(L"KernelReader");
-        if (!kernelPipeServer->StartAndWaitForClient(KERNEL_PIPE_NAME, TRUE)) {
-            LOG_A(LOG_ERROR, "WTF");
+        kernelPipeServer->Start(KERNEL_PIPE_NAME, TRUE);
+        SetEvent(threadReadyness); // signal the event
+        if (!kernelPipeServer->WaitForClient()) {
+            LOG_A(LOG_ERROR, "KernelReader: WaitForClient failed");
             kernelPipeServer->Shutdown();
             continue;
         }
