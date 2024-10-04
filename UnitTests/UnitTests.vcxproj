@@ -157,8 +157,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\RedEdrShared\logging.cpp" />
+    <ClCompile Include="..\RedEdr\cache.cpp" />
     <ClCompile Include="..\RedEdr\config.cpp" />
     <ClCompile Include="..\RedEdr\output.cpp" />
+    <ClCompile Include="..\RedEdr\procinfo.cpp" />
+    <ClCompile Include="..\RedEdr\utils.cpp" />
+    <ClCompile Include="UnitTestCache.cpp" />
     <ClCompile Include="UnitTestOutput.cpp" />
     <ClCompile Include="UnitTests.cpp" />
   </ItemGroup>

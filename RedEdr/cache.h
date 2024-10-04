@@ -28,7 +28,5 @@ private:
     std::unordered_map<DWORD, Process> cache;
 };
 
-
-// Omg
-extern Cache g_cache; // Declare a global instance
-void test();
+// Declare a global instance
+extern Cache g_cache; 

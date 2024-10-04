@@ -150,6 +150,50 @@ void LOG_W(int verbosity, const wchar_t* format, ...)
     OutputDebugString(message);
 }
 
+#elif defined _DEBUG
+
+#include <iostream>
+#include <windows.h>
+#include <dbghelp.h>
+#include <stdio.h>
+#include "../Shared/common.h"
+#include <windows.h>
+#include <tlhelp32.h>
+#include <tchar.h>
+#include <iostream>
+
+#include "CppUnitTest.h"
+
+// Retarded vs2022 doesnt fucking log stdout/stderr on unittest?!
+// Great fucking thing, i fucking love it how fucking productive i am
+
+void LOG_A(int verbosity, const char* format, ...)
+{
+    char message[DATA_BUFFER_SIZE] = "[RedEdr PPL] ";
+    DWORD offset = strlen(message);
+
+    va_list arg_ptr;
+    va_start(arg_ptr, format);
+    int ret = vsnprintf_s(&message[offset], DATA_BUFFER_SIZE - offset, MAX_BUF_SIZE - offset, format, arg_ptr);
+    va_end(arg_ptr);
+
+    Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage(message);
+}
+
+
+void LOG_W(int verbosity, const wchar_t* format, ...)
+{
+    WCHAR message[WCHAR_BUFFER_SIZE] = L"[RedEdr PPL] ";
+    DWORD offset = wcslen(message);
+
+    va_list arg_ptr;
+    va_start(arg_ptr, format);
+    int ret = vswprintf(&message[offset], WCHAR_BUFFER_SIZE - offset, format, arg_ptr);
+    va_end(arg_ptr);
+
+    Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage(message);
+}
+
 #else 
 
 void LOG_A(int verbosity, const char* format, ...)

@@ -16,11 +16,11 @@
 #include "logging.h"
 #include "config.h"
 #include "procinfo.h"
-#include "cache.h"
-#include "dllinjector.h"
+//#include "cache.h"
+//#include "dllinjector.h"
+//#include "output.h"
+//#include "utils.h"
 #include "mypeb.h"
-#include "output.h"
-#include "utils.h"
 #include "../Shared/common.h"
 
 #pragma comment(lib, "ntdll.lib")

@@ -77,6 +77,4 @@ public:
 
 
 Process* MakeProcess(DWORD pid, LPCWSTR target_name);
-bool QueryMemoryRegion(HANDLE hProcess, PVOID address);
-void LogMyStackTrace();
 BOOL AugmentProcess(DWORD pid, Process* process);
