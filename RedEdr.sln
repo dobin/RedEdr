@@ -17,6 +17,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "elam_driver", "elam_driver\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RedEdrShared", "RedEdrShared\RedEdrShared.vcxproj", "{7F48FA73-B6A6-4725-BF99-835F2C0E2405}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnitTests", "UnitTests\UnitTests.vcxproj", "{03C805F3-51C4-4EF4-BA8A-B7B339C11BA2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -123,6 +125,18 @@ Global
 		{7F48FA73-B6A6-4725-BF99-835F2C0E2405}.Release|x64.Build.0 = Release|x64
 		{7F48FA73-B6A6-4725-BF99-835F2C0E2405}.Release|x86.ActiveCfg = Release|Win32
 		{7F48FA73-B6A6-4725-BF99-835F2C0E2405}.Release|x86.Build.0 = Release|Win32
+		{03C805F3-51C4-4EF4-BA8A-B7B339C11BA2}.Debug|ARM64.ActiveCfg = Debug|x64
+		{03C805F3-51C4-4EF4-BA8A-B7B339C11BA2}.Debug|ARM64.Build.0 = Debug|x64
+		{03C805F3-51C4-4EF4-BA8A-B7B339C11BA2}.Debug|x64.ActiveCfg = Debug|x64
+		{03C805F3-51C4-4EF4-BA8A-B7B339C11BA2}.Debug|x64.Build.0 = Debug|x64
+		{03C805F3-51C4-4EF4-BA8A-B7B339C11BA2}.Debug|x86.ActiveCfg = Debug|Win32
+		{03C805F3-51C4-4EF4-BA8A-B7B339C11BA2}.Debug|x86.Build.0 = Debug|Win32
+		{03C805F3-51C4-4EF4-BA8A-B7B339C11BA2}.Release|ARM64.ActiveCfg = Release|x64
+		{03C805F3-51C4-4EF4-BA8A-B7B339C11BA2}.Release|ARM64.Build.0 = Release|x64
+		{03C805F3-51C4-4EF4-BA8A-B7B339C11BA2}.Release|x64.ActiveCfg = Release|x64
+		{03C805F3-51C4-4EF4-BA8A-B7B339C11BA2}.Release|x64.Build.0 = Release|x64
+		{03C805F3-51C4-4EF4-BA8A-B7B339C11BA2}.Release|x86.ActiveCfg = Release|Win32
+		{03C805F3-51C4-4EF4-BA8A-B7B339C11BA2}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

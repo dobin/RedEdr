@@ -20,7 +20,7 @@ httplib::Server svr;
 
 
 // Function to parse the input and convert it into JSON
-std::wstring convertToJson(const std::wstring& input) {
+std::wstring ConvertLineToJson(const std::wstring& input) {
     std::wstring result;
     result += L"{\"";
 
@@ -64,10 +64,9 @@ std::wstring convertToJson(const std::wstring& input) {
 }
 
 
-
 void do_output(std::wstring str) {
     // Convert to json and add it to the global list
-    std::wstring json = convertToJson(str);
+    std::wstring json = ConvertLineToJson(str);
     output_mutex.lock();
     output_entries.push_back(json);
     output_mutex.unlock();
@@ -113,13 +112,13 @@ std::wstring replace_all(const std::wstring& str, const std::wstring& from, cons
     size_t start_pos = 0;
     while ((start_pos = result.find(from, start_pos)) != std::wstring::npos) {
         result.replace(start_pos, from.length(), to);
-        start_pos += to.length(); // Move past the last replaced occurrence
+        start_pos += to.length();
     }
     return result;
 }
 
 
-std::string output_as_json() {
+std::string GetJsonFromEntries() {
     std::wstringstream output;
     int otype = 0;
 
@@ -151,7 +150,7 @@ std::string output_as_json() {
 DWORD WINAPI WebserverThread(LPVOID param) {
     LOG_A(LOG_INFO, "!WEB: Start Webserver thread");
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content(output_as_json(), "application/json; charset=UTF-8");
+        res.set_content(GetJsonFromEntries(), "application/json; charset=UTF-8");
         });
     LOG_A(LOG_INFO, "WEB: Web Server listening on http://localhost:8080");
     svr.listen("localhost", 8080);

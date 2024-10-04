@@ -128,7 +128,7 @@ void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
         DWORD64 address = stackFrame.AddrPC.Offset;
 
         if (NtQueryVirtualMemory(hProcess, (PVOID)address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
-            written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"idx:%i;addr:%p;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx",
+            written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{idx:%i;addr:%p;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx},",
                 n, address, mbi.BaseAddress, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
         }
         buf_size -= written;
