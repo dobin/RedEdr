@@ -1,3 +1,5 @@
+
+
 #include <stdio.h>
 #include <windows.h>
 #include <cwchar>  // For wcstol
@@ -5,13 +7,15 @@
 
 #include <string>
 #include <sstream>
-//#include <map>
+#include <map>
 #include <vector>
+#include <iostream>
 
 #include <wchar.h>
 #include <stdio.h>
 #include <dbghelp.h>
 
+#include "json.hpp"
 #include "../Shared/common.h"
 #include "logging.h"
 #include "config.h"
@@ -140,7 +144,7 @@ BOOL FakeDllPipeClient() {
 
 void query_process(DWORD pid) {
     // Test: Process information
-    Process* process = MakeProcess(pid);
+    Process* process = MakeProcess(pid, L"");
     process->display();
 
     // Test: process name matching
@@ -172,18 +176,18 @@ void pipeparser_test() {
     for (int n = 0; n < 4; n++) {
         // PIPE READ
         int read_len = lens[n];
-        memcpy_s(buf_ptr, 1024-rest_len, str[n], read_len);
+        memcpy_s(buf_ptr, 1024 - rest_len, str[n], read_len);
 
         int full_len = rest_len + read_len; // full len including the previous shit, if any
-        wchar_t* p = (wchar_t*) buffer; // pointer to the string we will print. points to buffer
-                                        // which always contains the beginning of a string
+        wchar_t* p = (wchar_t*)buffer; // pointer to the string we will print. points to buffer
+        // which always contains the beginning of a string
         int last_potential_str_start = 0;
-        for (int i = 0; i < full_len; i+=2) { // 2-byte increments because wide string
+        for (int i = 0; i < full_len; i += 2) { // 2-byte increments because wide string
             if (buffer[i] == 0 && buffer[i + 1] == 0) { // check manually for \x00\x00
                 wprintf(L"  -> %s\n", p); // found \x00\x00, print the previous string
                 i += 2; // skip \x00\x00
                 last_potential_str_start = i; // remember the last zero byte we found
-                p = (wchar_t*) & buffer[i]; // init p with (potential) next string
+                p = (wchar_t*)&buffer[i]; // init p with (potential) next string
             }
         }
         if (last_potential_str_start == 0) {
@@ -226,7 +230,7 @@ int ioctl_enable_kernel_module() {
     dataToSend.enable = 1;
     dataToSend.dll_inject = 0;
 
-    char buffer_incoming[128] = {0};
+    char buffer_incoming[128] = { 0 };
     DWORD bytesReturned = 0;
     BOOL success = DeviceIoControl(hDevice,
         IOCTL_MY_IOCTL_CODE,
@@ -497,7 +501,7 @@ std::wstring format_wstring2(const wchar_t* format, ...) {
 }
 
 
-char* GetMemoryPermissions(char *buf, DWORD protection) {
+char* GetMemoryPermissions(char* buf, DWORD protection) {
     //char permissions[4] = "---"; // Initialize as "---"
     strcpy_s(buf, 16, "---");
 
@@ -537,7 +541,7 @@ BOOL FakePplPipeClient() {
             return 1;
         }
         DWORD len;
-//        while (TRUE) {
+        //        while (TRUE) {
         if (1) {
             //swprintf_s(buffer, sizeof(buffer), L"Test:RedEdrTester:FakeDllPipeClient:%d", n++);
             wcscpy_s(buffer, DATA_BUFFER_SIZE, L"start");
@@ -579,7 +583,7 @@ BOOL FakePplPipeClient() {
             }
             wprintf(L"Wrote: %s\n", buffer);
             Sleep(1000);
-        //} else {
+            //} else {
             wcscpy_s(buffer, DATA_BUFFER_SIZE, L"shutdown");
             len = (wcslen(buffer) * 2) + 2; // w is 2 bytes, and include trailing \0 as delimitier
             if (!WriteFile(hPipe, buffer, len, &bytesWritten, NULL)) {
@@ -588,9 +592,9 @@ BOOL FakePplPipeClient() {
                 return 1;
             }
             wprintf(L"Wrote: %s\n", buffer);
-            
+
         }
-//        }
+        //        }
 
         CloseHandle(hPipe);
     }
@@ -732,6 +736,9 @@ void PrintStackTrace() {
     SymCleanup(process);
 }
 
+typedef enum _MEMORY_INFORMATION_CLASS {
+    MemoryBasicInformation
+} MEMORY_INFORMATION_CLASS;
 
 void LogMyStackTrace2(wchar_t* buf, size_t buf_size) {
     CONTEXT context;
@@ -775,12 +782,14 @@ void LogMyStackTrace2(wchar_t* buf, size_t buf_size) {
         }
         DWORD64 address = stackFrame.AddrPC.Offset;
 
-        written = swprintf_s(buf, buf_size, L"bt_%i:backtrace.address:%p_page_addr.invalid_size.invalid_state.invalid_protect.invalid_type.invalid;",
-            n, address);
+        /*if (NtQueryVirtualMemory(hProcess, (PVOID)address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) != 0) {
+            written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"idx:%i;backtrace:%p;page_addr:invalid;size:invalid;state:invalid;protect:invalid;type:invalid",
+                n, address);
+        }
         buf_size -= written;
         buf += written;
         printf("Left: %d\n", buf_size);
-        
+        */
         // Resolve the symbol at this address
         /*char symbolBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
         PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)symbolBuffer;
@@ -821,6 +830,73 @@ void teststr() {
 }
 
 
+using json = nlohmann::json;
+
+// Helper function to parse a single object string like "{key1:value1;key2:value2}"
+json parseObject(const std::string& objString) {
+    std::istringstream objStream(objString);
+    std::string item;
+    json objJson;
+
+    while (std::getline(objStream, item, ';')) {
+        if (item.empty()) continue;
+        auto delimiterPos = item.find(':');
+        if (delimiterPos != std::string::npos) {
+            std::string key = item.substr(0, delimiterPos);
+            std::string value = item.substr(delimiterPos + 1);
+            objJson[key] = value;
+        }
+    }
+    return objJson;
+}
+
+// Function to parse the input and convert it into JSON
+json ConvertLineToJson(const std::string& input) {
+    std::map<std::string, std::string> dataMap;
+    std::vector<json> callstackArray;
+
+    std::istringstream stream(input);
+    std::string segment;
+    std::string key, value;
+
+    json jsonObj;
+
+    while (std::getline(stream, segment, ';')) {
+        if (segment.empty()) continue;
+
+        auto delimiterPos = segment.find(':');
+        if (delimiterPos == std::string::npos) continue; // No key-value pair found
+
+        key = segment.substr(0, delimiterPos);
+        value = segment.substr(delimiterPos + 1);
+
+        // If the value starts with "[{", it's an array of objects
+        if (value.find("[{") == 0 && value.find("}]") == value.length() - 2) {
+            std::string arrayContent = value.substr(2, value.length() - 4); // Remove "[{" and "}]"
+            std::istringstream arrayStream(arrayContent);
+            std::string arrayItem;
+
+            std::vector<json> jsonArray;
+
+            while (std::getline(arrayStream, arrayItem, '}')) {  // Split by `}`
+                if (arrayItem.empty()) continue;
+                arrayItem = arrayItem.substr(arrayItem.find('{') + 1); // Get content inside {}
+                json objJson = parseObject(arrayItem);
+                jsonArray.push_back(objJson);
+                // Move past potential comma
+                if (arrayStream.peek() == ',') arrayStream.get();
+            }
+            jsonObj[key] = jsonArray;
+        }
+        else {
+            // Regular key-value pair
+            jsonObj[key] = value;
+        }
+    }
+
+    return jsonObj;
+}
+
 int wmain(int argc, wchar_t* argv[]) {
     if (argc != 3) {
         printf("Usage: rededrtester.exe <id> <pid>");
@@ -858,7 +934,7 @@ int wmain(int argc, wchar_t* argv[]) {
     case 4:
         // Query process information
     { // WTF
-        printf("Query process information\n");
+        /*printf("Query process information\n");
         Process* process = MakeProcess(pid);
         if (process != NULL) {
             process->display();
@@ -876,7 +952,7 @@ int wmain(int argc, wchar_t* argv[]) {
                 process->image_base
             );
             do_output(o);
-        }
+        }*/
     }
     break;
 
@@ -945,7 +1021,7 @@ int wmain(int argc, wchar_t* argv[]) {
         teststr();
         break;
     }
-        
+
 
 
 }

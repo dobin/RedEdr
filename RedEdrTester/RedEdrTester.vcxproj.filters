@@ -50,8 +50,8 @@
     <ClInclude Include="uthash.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\RedEdrShared\loguru.hpp">
-      <Filter>Resource Files</Filter>
+    <ClInclude Include="..\RedEdr\json.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

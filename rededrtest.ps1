@@ -13,11 +13,11 @@ if ($arg -eq "dll") {
     Start-Process cmd -ArgumentList @(
         "/c",
         "timeout /t 1 &"
-        ".\x64\Debug\RedEdrTester.exe 3 $($notepadProcessPid) &",
-        "timeout /t 3 &",  # Wait for 5 seconds
-        "taskkill /im notepad.exe /f"  # Kill notepad.exe
+        ".\x64\Debug\RedEdrTester.exe 3 $($notepadProcessPid) &"
+        #"timeout /t 3 &",  # Wait for 5 seconds
+        #"taskkill /im notepad.exe /f"  # Kill notepad.exe
     )
-    Start-Process -Wait "C:\rededr\rededr.exe" -ArgumentList "--dllreader --trace otepad"
+    Start-Process -Wait "C:\rededr\rededr.exe" -ArgumentList "--web --hide --dllreader --trace otepad"
     Stop-Process -Name notepad -Force -ErrorAction SilentlyContinue
 }
 elseif ($arg -eq "kernel") {
@@ -39,4 +39,14 @@ elseif ($arg -eq "etw") {
         "taskkill /im notepad.exe /f"
     )
     Start-Process -Wait "C:\rededr\rededr.exe"  -ArgumentList "--etw --trace otepad"
+}
+elseif ($arg -eq "etwti") {
+    Start-Process cmd -ArgumentList @(
+        "/c",
+        "timeout /t 2 &",
+        'start C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe &',
+        "timeout /t 3 &",
+        "taskkill /im msedge.exe /f"
+    )
+    Start-Process -Wait "C:\rededr\rededr.exe"  -ArgumentList "--etwti --trace otepad"
 }
