@@ -85,6 +85,17 @@ void shutdown_all() {
         LogReaderStopAll();
     }
 
+    // Lets shut down ETW stuff first, its more important
+    // ETW-TI
+    if (g_config.do_etwti) {
+        LOG_A(LOG_INFO, "RedEdr: Stop ETWTI reader");
+        EnablePplService(FALSE, NULL);
+    }
+    // ETW
+    if (g_config.do_etw) {
+        LOG_A(LOG_INFO, "RedEdr: Stop ETW readers");
+        EtwReaderStopAll();
+    }
 
     // Make kernel module stop emitting events
     //    Disconnects KernelPipe client
@@ -93,12 +104,13 @@ void shutdown_all() {
         const wchar_t* target = L"";
         EnableKernelDriver(0, (wchar_t*)target);
     }
+
+    // The following may crash?
     // Shutdown kernel reader
     if (g_config.do_kernelcallback) {
         LOG_A(LOG_INFO, "RedEdr: Stop kernel reader");
         KernelReaderShutdown();
     }
-
     // Shutdown dll reader
     if (g_config.do_dllinjection || g_config.do_etwti) {
         LOG_A(LOG_INFO, "RedEdr: Stop DLL reader");
@@ -111,15 +123,7 @@ void shutdown_all() {
         DllReaderShutdown();
     }
 
-    // ETW-TI
-    if (g_config.do_etwti) {
-        EnablePplService(FALSE, NULL);
-    }
-    // ETW
-    if (g_config.do_etw) {
-        LOG_A(LOG_INFO, "RedEdr: Stop ETW readers");
-        EtwReaderStopAll();
-    }
+
     // Web server
     if (g_config.web_output) {
         LOG_A(LOG_INFO, "RedEdr: Stop web server");
