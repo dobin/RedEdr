@@ -102,7 +102,7 @@ void CheckForNewProcess(wchar_t* line) {
         if (pid_str) {
             int pid = 0;
             swscanf_s(pid_str, L";pid:%d", &pid);
-            LOG_A(LOG_WARNING, "observe: %d, pid: %d\n", observe_value, pid);
+            LOG_A(LOG_WARNING, "KernelReader: observe pid: %d (%d)", pid, observe_value);
             g_cache.getObject(pid); // FIXME this actually creates the process 
         }
     }

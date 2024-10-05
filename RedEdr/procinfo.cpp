@@ -313,7 +313,7 @@ Process* MakeProcess(DWORD pid, LPCWSTR target_name) {
             if (GetModuleFileNameEx(hProcess, NULL, exePath, MAX_PATH)) {
                 wchar_t* result = wcsstr(exePath, target_name);
                 if (result) {
-                    LOG_W(LOG_INFO, L"Objcache: observe process %lu executable path: %s\n", pid, exePath);
+                    LOG_W(LOG_INFO, L"Objcache: observe process %lu executable path: %s", pid, exePath);
                     //LOG_W(LOG_INFO, L"Substring found in: %s\n", exePath);
                     process->observe = 1;
                 }
