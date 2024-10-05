@@ -32,7 +32,7 @@ HANDLE threadReadyness;
 
 // Private functions
 DWORD WINAPI KernelReaderProcessingThread(LPVOID param);
-void CheckForNewProcess(wchar_t* line);
+void CheckEventForNewObservable(wchar_t* line);
 
 
 void KernelReaderInit(std::vector<HANDLE>& threads) {
@@ -70,7 +70,7 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
             }
             for (const auto& event : events) {
                 do_output(event);
-                CheckForNewProcess((wchar_t*) event.c_str());
+                CheckEventForNewObservable((wchar_t*) event.c_str());
             }
         }
 
@@ -84,7 +84,7 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
 }
 
 
-void CheckForNewProcess(wchar_t* line) {
+void CheckEventForNewObservable(wchar_t* line) {
     // Check if "observe:1" exists
     wchar_t* observe_str = wcsstr(line, L"observe:");
     if (!observe_str) {

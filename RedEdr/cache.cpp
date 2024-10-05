@@ -90,19 +90,3 @@ BOOL Cache::observe(DWORD id) {
 void Cache::removeObject(DWORD id) {
     cache.erase(id);
 }
-
-
-void test() {
-    //Cache cache;
-
-    // Try to retrieve an object (which will be created if not found)
-    Process* obj = g_cache.getObject(9592); // admin, c:\temp
-    if (obj) {
-        obj->display();
-    }
-
-    /*obj = cache.getObject(2460);
-    if (obj) {
-        obj->display();
-    }*/
-}

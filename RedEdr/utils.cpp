@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <algorithm>
 
 #include "../Shared/common.h"
 
@@ -55,5 +56,23 @@ std::wstring format_wstring(const wchar_t* format, ...) {
     va_end(args);
 
     return std::wstring(buffer);
+}
+
+
+std::wstring to_lowercase(const std::wstring& str) {
+    std::wstring lower_str = str;
+    std::transform(lower_str.begin(), lower_str.end(), lower_str.begin(), ::towlower);
+    return lower_str;
+}
+
+void remove_all_occurrences_case_insensitive(std::wstring& str, const std::wstring& to_remove) {
+    std::wstring lower_str = to_lowercase(str);
+    std::wstring lower_to_remove = to_lowercase(to_remove);
+
+    size_t pos;
+    while ((pos = lower_str.find(lower_to_remove)) != std::wstring::npos) {
+        str.erase(pos, to_remove.length());  // Erase from the original string
+        lower_str.erase(pos, lower_to_remove.length());  // Keep erasing from the lowercase copy
+    }
 }
 
