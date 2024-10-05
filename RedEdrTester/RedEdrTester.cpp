@@ -14,14 +14,14 @@
 #include <wchar.h>
 #include <stdio.h>
 #include <dbghelp.h>
-
-#include "json.hpp"
+#include <tlhelp32.h>
 #include "../Shared/common.h"
 #include "logging.h"
 #include "config.h"
 #include "procinfo.h"
 #include "dllinjector.h"
 #include "output.h"
+#include "cache.h"
 
 #pragma comment(lib, "Dbghelp.lib")
 
@@ -830,74 +830,43 @@ void teststr() {
 }
 
 
-using json = nlohmann::json;
 
-// Helper function to parse a single object string like "{key1:value1;key2:value2}"
-json parseObject(const std::string& objString) {
-    std::istringstream objStream(objString);
-    std::string item;
-    json objJson;
-
-    while (std::getline(objStream, item, ';')) {
-        if (item.empty()) continue;
-        auto delimiterPos = item.find(':');
-        if (delimiterPos != std::string::npos) {
-            std::string key = item.substr(0, delimiterPos);
-            std::string value = item.substr(delimiterPos + 1);
-            objJson[key] = value;
-        }
+// Helper
+DWORD FindProcessId(const std::wstring& processName) {
+    DWORD processId = 0;
+    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hSnapshot == INVALID_HANDLE_VALUE) {
+        return 0;
     }
-    return objJson;
+
+    PROCESSENTRY32 pe;
+    pe.dwSize = sizeof(PROCESSENTRY32);
+    if (Process32First(hSnapshot, &pe)) {
+        do {
+            if (!_wcsicmp(pe.szExeFile, processName.c_str())) {
+                processId = pe.th32ProcessID;
+                break;
+            }
+        } while (Process32Next(hSnapshot, &pe));
+    }
+
+    CloseHandle(hSnapshot);
+    return processId;
 }
 
-// Function to parse the input and convert it into JSON
-json ConvertLineToJson(const std::string& input) {
-    std::map<std::string, std::string> dataMap;
-    std::vector<json> callstackArray;
 
-    std::istringstream stream(input);
-    std::string segment;
-    std::string key, value;
+void test_cache_procinfo() {
+    g_config.targetExeName = L"notepad.exe";
 
-    json jsonObj;
+    DWORD pid = FindProcessId(std::wstring(g_config.targetExeName));
+    g_cache.getObject(pid);
 
-    while (std::getline(stream, segment, ';')) {
-        if (segment.empty()) continue;
-
-        auto delimiterPos = segment.find(':');
-        if (delimiterPos == std::string::npos) continue; // No key-value pair found
-
-        key = segment.substr(0, delimiterPos);
-        value = segment.substr(delimiterPos + 1);
-
-        // If the value starts with "[{", it's an array of objects
-        if (value.find("[{") == 0 && value.find("}]") == value.length() - 2) {
-            std::string arrayContent = value.substr(2, value.length() - 4); // Remove "[{" and "}]"
-            std::istringstream arrayStream(arrayContent);
-            std::string arrayItem;
-
-            std::vector<json> jsonArray;
-
-            while (std::getline(arrayStream, arrayItem, '}')) {  // Split by `}`
-                if (arrayItem.empty()) continue;
-                arrayItem = arrayItem.substr(arrayItem.find('{') + 1); // Get content inside {}
-                json objJson = parseObject(arrayItem);
-                jsonArray.push_back(objJson);
-                // Move past potential comma
-                if (arrayStream.peek() == ',') arrayStream.get();
-            }
-            jsonObj[key] = jsonArray;
-        }
-        else {
-            // Regular key-value pair
-            jsonObj[key] = value;
-        }
-    }
-
-    return jsonObj;
 }
 
 int wmain(int argc, wchar_t* argv[]) {
+    test_cache_procinfo();
+    return 1;
+
     if (argc != 3) {
         printf("Usage: rededrtester.exe <id> <pid>");
         return 1;

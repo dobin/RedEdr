@@ -71,7 +71,7 @@ Process* Cache::getObject(DWORD id) {
         do_output(o);
 
         // Broken atm
-        //PrintLoadedModules(hProcess, process);
+        PrintLoadedModules(id, process);
     }
 
     cache[id] = *process;

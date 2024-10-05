@@ -141,7 +141,6 @@
     <ClCompile Include="RedEdrTester.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\RedEdr\json.hpp" />
     <ClInclude Include="uthash.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

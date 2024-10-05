@@ -51,7 +51,7 @@ std::wstring format_wstring(const wchar_t* format, ...) {
 
     va_list args;
     va_start(args, format);
-    vswprintf(buffer, DATA_BUFFER_SIZE / sizeof(buffer[0]), format, args);
+    vswprintf(buffer, DATA_BUFFER_SIZE, format, args);
     va_end(args);
 
     return std::wstring(buffer);

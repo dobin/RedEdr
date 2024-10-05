@@ -12,10 +12,13 @@
 #include <wchar.h>
 #include <psapi.h>
 #include <tchar.h>
+#include <algorithm>
 
 #include "logging.h"
 #include "config.h"
 #include "procinfo.h"
+#include "utils.h"
+#include "output.h"
 //#include "cache.h"
 //#include "dllinjector.h"
 //#include "output.h"
@@ -188,7 +191,32 @@ bool RetrieveProcessInfo(Process *process, HANDLE hProcess) {
 }
 
 
-BOOL PrintLoadedModules(HANDLE hProcess, Process* process) {
+std::wstring to_lowercase(const std::wstring& str) {
+    std::wstring lower_str = str;
+    std::transform(lower_str.begin(), lower_str.end(), lower_str.begin(), ::towlower);
+    return lower_str;
+}
+
+void remove_all_occurrences_case_insensitive(std::wstring& str, const std::wstring& to_remove) {
+    std::wstring lower_str = to_lowercase(str);
+    std::wstring lower_to_remove = to_lowercase(to_remove);
+
+    size_t pos;
+    while ((pos = lower_str.find(lower_to_remove)) != std::wstring::npos) {
+        str.erase(pos, to_remove.length());  // Erase from the original string
+        lower_str.erase(pos, lower_to_remove.length());  // Keep erasing from the lowercase copy
+    }
+}
+
+
+BOOL PrintLoadedModules(DWORD pid, Process* process) {
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    if (hProcess == NULL) {
+        // We dont care
+        LOG_W(LOG_INFO, L"Could not open process %lu error %lu\n", pid, GetLastError());
+        return FALSE;
+    }
+
     HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
     if (hNtDll == NULL) {
         LOG_A(LOG_ERROR, "Procinfo: could not find ntdll.dll");
@@ -220,7 +248,6 @@ BOOL PrintLoadedModules(HANDLE hProcess, Process* process) {
     }
 
 
-    /*
     // Read the PEB_LDR_DATA
     PEB_LDR_DATA ldr;
     if (!ReadProcessMemory(hProcess, peb.Ldr, &ldr, sizeof(PEB_LDR_DATA), NULL)) {
@@ -231,10 +258,12 @@ BOOL PrintLoadedModules(HANDLE hProcess, Process* process) {
     // Iterate over the InMemoryOrderModuleList
     LIST_ENTRY* head = &ldr.InMemoryOrderModuleList;
     LIST_ENTRY* current = ldr.InMemoryOrderModuleList.Flink;
+    std::wstring csv;
     while (current != head) {
         _LDR_DATA_TABLE_ENTRY entry;
         if (!ReadProcessMemory(hProcess, CONTAINING_RECORD(current, _LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks),
-            &entry, sizeof(_LDR_DATA_TABLE_ENTRY), NULL)) {
+            &entry, sizeof(_LDR_DATA_TABLE_ENTRY), NULL))
+        {
             printf("Procinfo: ReadProcessMemory failed for LDR_DATA_TABLE_ENTRY\n");
             return FALSE;
         }
@@ -247,20 +276,24 @@ BOOL PrintLoadedModules(HANDLE hProcess, Process* process) {
             printf("Procinfo: ReadProcessMemory failed for FullDllName\n");
             return FALSE;
         }
-        fullDllName[entry.FullDllName.Length] = L'\0';  // Null-terminate the string
+        fullDllName[entry.FullDllName.Length / sizeof(WCHAR)] = L'\0';  // Null-terminate the string
 
-        //printf("Module: %ls, Base: %p, Size: 0x%lx\n", fullDllName, entry.DllBase, (ULONG)entry.Reserved3[1]); //entry.SizeOfImage);
-        std::wstring o = format_wstring(L"type:loaded_dll;time:%lld;pid:%lld;name:%ls;addr:0x%x;size:0x%x",
-            get_time(),
-            process->id,
-            fullDllName,
+        csv += format_wstring(L"{addr:0x%x;size:0x%x;name:%ls},",
             entry.DllBase,
-            (ULONG)entry.Reserved3[1]);
-        do_output(o.c_str());
+            (ULONG)entry.Reserved3[1],
+            fullDllName);
 
         // Move to the next module in the list
         current = entry.InMemoryOrderLinks.Flink;
-    }*/
+    }
+
+    std::wstring o = format_wstring(L"type:loaded_dll;time:%lld;pid:%lld;dlls:[%s]",
+        get_time(),
+        process->id,
+        csv.c_str()
+    );
+    remove_all_occurrences_case_insensitive(o, std::wstring(L"C:\\Windows\\system32\\"));
+    do_output(o);
 }
 
 

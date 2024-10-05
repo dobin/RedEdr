@@ -78,3 +78,4 @@ public:
 
 Process* MakeProcess(DWORD pid, LPCWSTR target_name);
 BOOL AugmentProcess(DWORD pid, Process* process);
+BOOL PrintLoadedModules(DWORD pid, Process* process);
