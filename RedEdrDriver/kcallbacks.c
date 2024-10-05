@@ -76,7 +76,7 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         AddProcessInfo(pid, processInfo);
     }
 
-    if (g_config.enable_logging) {
+    if (g_config.enable_logging && processInfo->observe) {
         wchar_t line[DATA_BUFFER_SIZE] = { 0 };
         swprintf(line, L"type:kernel;time:%llu;callback:create_process;krn_pid:%llu;pid:%llu;name:%s;ppid:%llu;parent_name:%s;observe:%d",
             systemTime,
