@@ -26,9 +26,8 @@ std::wstring ConvertLineToJson(const std::wstring& input) {
 
     for (size_t i = 0; i < input.size(); ++i) {
         wchar_t ch = input[i];
-        wchar_t n = input[i + 1];
-
-        if (ch == L':') {
+        wchar_t n = (i<input.size() - 1) ? input[i + 1] : L' ';
+        if (ch == L':' && n != L'\\') {
             if (n == L'[') {
                 result += L"\""; // Add closing quote 
                 result += ch;
@@ -59,7 +58,15 @@ std::wstring ConvertLineToJson(const std::wstring& input) {
             result += ch;
         }
     }
-    result += L"}";
+
+    // FUUUU
+    if (result[result.size() - 1] == L']') {
+        result += L"}";
+    }
+    else {
+        result += L"\"}";
+    }
+    
     return result;
 }
 
@@ -134,7 +141,7 @@ std::string GetJsonFromEntries() {
         for (auto it = output_entries.begin(); it != output_entries.end(); ++it) {
             output << replace_all(*it, L"\\", L"\\\\");
             if (std::next(it) != output_entries.end()) {
-                output << ", ";  // Add comma only if it's not the last element
+                output << ",";  // Add comma only if it's not the last element
             }
         }
         output << "]";
