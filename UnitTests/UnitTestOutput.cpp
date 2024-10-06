@@ -13,7 +13,7 @@ namespace UnitTests
 	{
 	public:
 
-		TEST_METHOD(TestConvertLineToJson)
+		TEST_METHOD(TestConvertLineToJson_Dll)
 		{
             std::wstring input = L"type:dll;time:133723719791285666;krn_pid:14496;func:NtOpenThread;"
                 "thread_handle:0x000000642EB7F1D8;access_mask:0x5a;client_id_process:0x0000000000000000;"
@@ -28,5 +28,13 @@ namespace UnitTests
             std::wstring result = ConvertLineToJson(input);
             Assert::AreEqual(expect.c_str(), result.c_str());
 		}
+
+        TEST_METHOD(TestConvertLineToJson_Etw)
+        {
+            std::wstring input = L"type:etw;time:133727141764849648;pid:6256;thread_id:7288;event:LoadImage;provider_name:Microsoft-Windows-Kernel-Process;ImageBase:0x0000029EF25623D0;ImageSize:0x0000029EF2561CA0;ProcessID:6256;ImageCheckSum:0;TimeDateStamp:1726304632;DefaultBase:0x0000029EF2561E80;ImageName:\Device\HarddiskVolume2\RedEdr\msf\loader.exe;";
+            std::wstring expect = L"{\"type\":\"etw\",\"time\":\"133727141764849648\",\"pid\":\"6256\",\"thread_id\":\"7288\",\"event\":\"LoadImage\",\"provider_name\":\"Microsoft-Windows-Kernel-Process\",\"ImageBase\":\"0x0000029EF25623D0\",\"ImageSize\":\"0x0000029EF2561CA0\",\"ProcessID\":\"6256\",\"ImageCheckSum\":\"0\",\"TimeDateStamp\":\"1726304632\",\"DefaultBase\":\"0x0000029EF2561E80\",\"ImageName\":\"DeviceHarddiskVolume2RedEdrmsfloader.exe\",\"}";
+            std::wstring result = ConvertLineToJson(input);
+            Assert::AreEqual(expect.c_str(), result.c_str());
+        }
 	};
 }
