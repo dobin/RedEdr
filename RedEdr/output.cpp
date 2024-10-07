@@ -27,7 +27,18 @@ std::wstring ConvertLineToJson(const std::wstring& input) {
     for (size_t i = 0; i < input.size(); ++i) {
         wchar_t ch = input[i];
         wchar_t n = (i<input.size() - 1) ? input[i + 1] : L' ';
-        if (ch == L':' && n != L'\\') {
+        wchar_t p = (i > 0) ? input[i - 1] : L' ';
+        
+        if (ch == L';' && i == input.size() - 1) {
+            continue; // break basically, dont add
+        }
+
+        if (ch == L':') {
+            if ((p == L'C' || p == L'c') && n == L'\\') { // skip "C:\" 
+                result += ch;
+                continue;
+            }
+
             if (n == L'[') {
                 result += L"\""; // Add closing quote 
                 result += ch;
@@ -127,7 +138,7 @@ std::wstring replace_all(const std::wstring& str, const std::wstring& from, cons
 
 std::string GetJsonFromEntries() {
     std::wstringstream output;
-    int otype = 0;
+    int otype = 1;
 
     output_mutex.lock();
 
@@ -136,7 +147,7 @@ std::string GetJsonFromEntries() {
             output << replace_all(*it, L"\\", L"\\\\") << std::endl;
         }
     }
-    else if (otype == 1) { // 1 line json
+    else if (otype == 1) { // 1 line json array
         output << "[";
         for (auto it = output_entries.begin(); it != output_entries.end(); ++it) {
             output << replace_all(*it, L"\\", L"\\\\");
