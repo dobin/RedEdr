@@ -135,7 +135,7 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
         PROCESS_INFO* procInfo = LookupProcessInfo(ProcessId);
         if (procInfo != NULL && procInfo->observe) {
             UnicodeStringToWChar(FullImageName, ImageName, 128);
-            swprintf(line, L"type:kernel;time:%llu;callback:image;krn_pid:%llu;pid:%llu:image:%s", 
+            swprintf(line, L"type:kernel;time:%llu;callback:image;krn_pid:%llu;pid:%llu;image:%s", 
                 systemTime,
                 (unsigned __int64)PsGetCurrentProcessId(),
                 (unsigned __int64)ProcessId,

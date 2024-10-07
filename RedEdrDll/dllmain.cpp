@@ -146,7 +146,7 @@ DWORD NTAPI NtMapViewOfSection(
     PVOID baseAddressValue = (BaseAddress != NULL) ? *BaseAddress : NULL;
 
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:MapViewOfSection;section_handle:0x%p;process_handle:0x%p;base_address:0x%p;zero_bits:%llu;size:%llu;section_offset:%lld;view_size:%llu;inherit_disposition:%x;alloc_type:%x;protect:%x;protect_str:%ls;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:MapViewOfSection;section_handle:0x%p;process_handle:0x%p;base_address:0x%p;zero_bits:%llu;size:%llu;section_offset:%lld;view_size:%llu;inherit_disposition:%x;alloc_type:%x;protect:%x;protect_str:%ls",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(),
         SectionHandle, ProcessHandle, baseAddressValue, ZeroBits, CommitSize,
         sectionOffsetValue, viewSizeValue, InheritDisposition, AllocationType, Protect, mem_perm);
@@ -238,7 +238,7 @@ DWORD NTAPI NtSetContextThread(
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:SetContextThread;thread_handle:0x%p;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:SetContextThread;thread_handle:0x%p",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle);
     SendDllPipe(buf);
     LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
@@ -271,7 +271,7 @@ DWORD NTAPI LdrLoadDll(
     ULONG dllCharacteristics = (DllCharacteristics != NULL) ? *DllCharacteristics : 0;
 
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:LdrLoadDll;search_path:%ls;dll_characteristics:0x%lx;dll_name:%ls;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:LdrLoadDll;search_path:%ls;dll_characteristics:0x%lx;dll_name:%ls",
         time.QuadPart,
         (unsigned __int64)GetCurrentProcessId(),
         searchPath,
@@ -307,7 +307,7 @@ DWORD NTAPI LdrGetProcedureAddress(
         MultiByteToWideChar(CP_ACP, 0, FunctionName->Buffer, -1, wideFunctionName, 1024);
     }
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:LdrGetProcedureAddress;module_handle:0x%p;function:%s;ordinal:0x%hx;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:LdrGetProcedureAddress;module_handle:0x%p;function:%s;ordinal:0x%hx",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ModuleHandle, wideFunctionName, Oridinal);
     SendDllPipe(buf);
 
@@ -336,7 +336,7 @@ DWORD NTAPI NtQueueApcThread(
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:NtQueueApcThread;thread_handle:0x%p;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtQueueApcThread;thread_handle:0x%p",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle);
     LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
@@ -369,7 +369,7 @@ DWORD NTAPI NtQueueApcThreadEx(
     OutputDebugString(L"A8");
 
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:NtQueueApcThreadEx;thread_handle:0x%p;apc_thread:0x%p;apc_routine:0x%p;arg1:0x%p;arg2:0x%p;arg3:0x%p;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtQueueApcThreadEx;thread_handle:0x%p;apc_thread:0x%p;apc_routine:0x%p;arg1:0x%p;arg2:0x%p;arg3:0x%p",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ThreadHandle, ApcThreadHandle, ApcRoutine, ApcArgument1, ApcArgument2, ApcArgument3);
     LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
@@ -406,7 +406,7 @@ DWORD NTAPI NtCreateProcess(
     OutputDebugString(L"A9");
 
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateProcess;process_handle:0x%p;access_mask:0x%x;parent_process:0x%p;inherit_table:%d;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateProcess;process_handle:0x%p;access_mask:0x%x;parent_process:0x%p;inherit_table:%d",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle, DesiredAccess, ParentProcess, InheritObjectTable);
     LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
@@ -447,7 +447,7 @@ DWORD NTAPI NtCreateThreadEx(
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateThreadEx;thread_handle:0x%p;process_handle:0x%p;start_routine:0x%p;argument:0x%p;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateThreadEx;thread_handle:0x%p;process_handle:0x%p;start_routine:0x%p;argument:0x%p",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), 
         ThreadHandle, ProcessHandle, StartRoutine, Argument);
     LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
@@ -474,7 +474,7 @@ DWORD NTAPI NtOpenProcess(
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:NtOpenProcess;process_handle:0x%p;access_mask:0x%x;client_id_process:0x%p;client_id_thread:0x%p;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtOpenProcess;process_handle:0x%p;access_mask:0x%x;client_id_process:0x%p;client_id_thread:0x%p",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle, DesiredAccess, ClientId->UniqueProcess, ClientId->UniqueThread);
     LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
@@ -500,7 +500,7 @@ DWORD NTAPI NtLoadDriver(
     UnicodeStringToWChar(DriverServiceName, wDriverServiceName, 1024);
 
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:NtLoadDriver;driver_service_name:%ls;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtLoadDriver;driver_service_name:%ls",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), wDriverServiceName);
     LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
@@ -549,7 +549,7 @@ DWORD NTAPI NtCreateNamedPipeFile(
     OutputDebugString(L"A13");
 
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateNamedPipeFile;pipe_handle:0x%p;access_mask:0x%x;share_access:0x%x;pipe_type:0x%x;read_mode:0x%x;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateNamedPipeFile;pipe_handle:0x%p;access_mask:0x%x;share_access:0x%x;pipe_type:0x%x;read_mode:0x%x",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), NamedPipeFileHandle, DesiredAccess, ShareAccess, NamedPipeType, ReadMode);
     SendDllPipe(buf);
     return pOriginalNtCreateNamedPipeFile(NamedPipeFileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, CreateDisposition, CreateOptions, NamedPipeType, ReadMode, CompletionMode, MaximumInstances, InboundQuota, OutboundQuota, DefaultTimeout);
@@ -606,7 +606,7 @@ DWORD NTAPI NtCreateSection(
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateSection;section_handle:0x%p;access_mask:0x%x;max_size:0x%p;page_protection:0x%x;alloc_attributes:0x%x;file_handle:0x%p;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateSection;section_handle:0x%p;access_mask:0x%x;max_size:0x%p;page_protection:0x%x;alloc_attributes:0x%x;file_handle:0x%p",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), SectionHandle, DesiredAccess, MaximumSize, SectionPageProtection, AllocationAttributes, FileHandle);
     LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
@@ -645,7 +645,7 @@ DWORD NTAPI NtCreateProcessEx(
     OutputDebugString(L"A16");
 
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateProcessEx;process_handle:0x%p;parent_process:0x%p;flags:0x%lx;section_handle:0x%p;debug_port:0x%p;exception_port:0x%p;in_job:%d;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateProcessEx;process_handle:0x%p;parent_process:0x%p;flags:0x%lx;section_handle:0x%p;debug_port:0x%p;exception_port:0x%p;in_job:%d",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle, ParentProcess, Flags, SectionHandle, DebugPort, ExceptionPort, InJob);
     LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
     SendDllPipe(buf);
@@ -678,7 +678,7 @@ DWORD NTAPI NtCreateEvent(
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateEvent;desired_access:0x%x;event_type:%d;initial_state:%d;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateEvent;desired_access:0x%x;event_type:%d;initial_state:%d",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), DesiredAccess, EventType, InitialState);
     SendDllPipe(buf);
     return pOriginalNtCreateEvent(EventHandle, DesiredAccess, ObjectAttributes, EventType, InitialState);
@@ -708,7 +708,7 @@ DWORD NTAPI NtCreateTimer(
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateTimer;desired_access:0x%x;timer_type:%d;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateTimer;desired_access:0x%x;timer_type:%d",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), DesiredAccess, TimerType);
     SendDllPipe(buf);
     return pOriginalNtCreateTimer(TimerHandle, DesiredAccess, ObjectAttributes, TimerType);
@@ -736,7 +736,7 @@ DWORD NTAPI NtCreateTimer2(
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
     int ret = swprintf_s(buf, DATA_BUFFER_SIZE,
-        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateTimer2;attributes:0x%lx;desired_access:0x%x;",
+        L"type:dll;time:%llu;krn_pid:%llu;func:NtCreateTimer2;attributes:0x%lx;desired_access:0x%x",
         time.QuadPart, (unsigned __int64)GetCurrentProcessId(), Attributes, DesiredAccess);
     SendDllPipe(buf);
     return pOriginalNtCreateTimer2(TimerHandle, Reserved1, Reserved2, Attributes, DesiredAccess);
