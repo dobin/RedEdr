@@ -33,7 +33,9 @@ std::wstring ConvertLineToJson(const std::wstring& input) {
             continue; // break basically, dont add
         }
 
-        if (ch == L':') {
+        if (ch == L'"') {
+            continue; // skip
+        } else if (ch == L':') {
             if ((p == L'C' || p == L'c') && n == L'\\') { // skip "C:\" 
                 result += ch;
                 continue;
