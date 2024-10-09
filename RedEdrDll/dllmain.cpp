@@ -7,7 +7,14 @@
 #include "dllhelper.h"
 #include "logging.h"
 
-
+BOOL addrIsLowStack(PVOID addr) {
+    PNT_TIB tib = (PNT_TIB)NtCurrentTeb();
+    // grows down
+    if (addr > tib->StackLimit && addr < tib->StackBase) {
+        return TRUE;
+    }
+    return FALSE;
+}
 /******************* AllocateVirtualMemory ************************/
 
 // Defines the prototype of the NtAllocateVirtualMemoryFunction
@@ -48,6 +55,9 @@ DWORD NTAPI NtAllocateVirtualMemory(
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%llu;", *RegionSize);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:%#lx;", AllocationType);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%#lx;", Protect);
+    if (BaseAddress > 0 && addrIsLowStack(BaseAddress)) {
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"is_lstack:1;");
+    }
 
     SendDllPipe(buf);
 
@@ -117,7 +127,9 @@ DWORD NTAPI NtProtectVirtualMemory(
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%lu;", *NumberOfBytesToProtect);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"new_access:%#lx;", NewAccessProtection);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"new_access_str:%ls;", mem_perm);
-
+    if (BaseAddress > 0 && addrIsLowStack(BaseAddress)) {
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"is_lstack:1;");
+    }
     LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
     SendDllPipe(buf);
     return pOriginalNtProtectVirtualMemory(ProcessHandle, BaseAddress, NumberOfBytesToProtect, NewAccessProtection, OldAccessProtection);
@@ -193,7 +205,9 @@ DWORD NTAPI NtMapViewOfSection(
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"alloc_type:%x;", AllocationType);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%x;", Protect);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect_str:%ls;", mem_perm);
-
+    if (BaseAddress > 0 && addrIsLowStack(BaseAddress)) {
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"is_lstack:1;");
+    }
     LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
     SendDllPipe(buf);
     return pOriginalNtMapViewOfSection(SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Protect);
