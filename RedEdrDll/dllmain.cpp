@@ -46,8 +46,8 @@ DWORD NTAPI NtAllocateVirtualMemory(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:AllocateVirtualMemory;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%p;", ProcessHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"base_addr:%p;", BaseAddress);
@@ -55,9 +55,6 @@ DWORD NTAPI NtAllocateVirtualMemory(
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%llu;", *RegionSize);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:%#lx;", AllocationType);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%#lx;", Protect);
-    if (BaseAddress > 0 && addrIsLowStack(BaseAddress)) {
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"is_lstack:1;");
-    }
 
     SendDllPipe(buf);
 
@@ -119,17 +116,15 @@ DWORD NTAPI NtProtectVirtualMemory(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:ProtectVirtualMemory;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%p;", ProcessHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"base_addr:%p;", BaseAddress);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%lu;", *NumberOfBytesToProtect);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"new_access:%#lx;", NewAccessProtection);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"new_access_str:%ls;", mem_perm);
-    if (BaseAddress > 0 && addrIsLowStack(BaseAddress)) {
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"is_lstack:1;");
-    }
+    
     LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
     SendDllPipe(buf);
     return pOriginalNtProtectVirtualMemory(ProcessHandle, BaseAddress, NumberOfBytesToProtect, NewAccessProtection, OldAccessProtection);
@@ -191,8 +186,8 @@ DWORD NTAPI NtMapViewOfSection(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:MapViewOfSection;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"section_handle:0x%p;", SectionHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"process_handle:0x%p;", ProcessHandle);
@@ -205,9 +200,6 @@ DWORD NTAPI NtMapViewOfSection(
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"alloc_type:%x;", AllocationType);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%x;", Protect);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect_str:%ls;", mem_perm);
-    if (BaseAddress > 0 && addrIsLowStack(BaseAddress)) {
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"is_lstack:1;");
-    }
     LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
     SendDllPipe(buf);
     return pOriginalNtMapViewOfSection(SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Protect);
@@ -243,8 +235,8 @@ DWORD NTAPI NtWriteVirtualMemory(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:WriteVirtualMemory;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"process_handle:0x%p;", ProcessHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"base_address:0x%p;", BaseAddress);
@@ -286,8 +278,8 @@ DWORD NTAPI NtReadVirtualMemory(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:ReadVirtualMemory;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"process_handle:0x%p;", ProcessHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"base_address:0x%p;", BaseAddress);
@@ -325,8 +317,8 @@ DWORD NTAPI NtSetContextThread(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:SetContextThread;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:0x%p;", ThreadHandle);
 
@@ -371,8 +363,8 @@ DWORD NTAPI LdrLoadDll(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:LdrLoadDll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"search_path:%ls;", searchPath);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"dll_characteristics:0x%lx;", dllCharacteristics);
@@ -413,8 +405,8 @@ DWORD NTAPI LdrGetProcedureAddress(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:LdrGetProcedureAddress;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"module_handle:0x%p;", ModuleHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"function:%s;", wideFunctionName);
@@ -452,8 +444,8 @@ DWORD NTAPI NtQueueApcThread(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtQueueApcThread;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:0x%p;", ThreadHandle);
 
@@ -494,8 +486,8 @@ DWORD NTAPI NtQueueApcThreadEx(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtQueueApcThreadEx;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:0x%p;", ThreadHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"apc_thread:0x%p;", ApcThreadHandle);
@@ -545,8 +537,8 @@ DWORD NTAPI NtCreateProcess(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtCreateProcess;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"process_handle:0x%p;", ProcessHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"access_mask:0x%x;", DesiredAccess);
@@ -598,8 +590,8 @@ DWORD NTAPI NtCreateThreadEx(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtCreateThreadEx;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:0x%p;", ThreadHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"process_handle:0x%p;", ProcessHandle);
@@ -635,8 +627,8 @@ DWORD NTAPI NtOpenProcess(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtOpenProcess;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"process_handle:0x%p;", ProcessHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"access_mask:0x%x;", DesiredAccess);
@@ -672,8 +664,8 @@ DWORD NTAPI NtLoadDriver(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtLoadDriver;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"driver_service_name:%ls;", wDriverServiceName);
 
@@ -730,8 +722,8 @@ DWORD NTAPI NtCreateNamedPipeFile(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtCreateNamedPipeFile;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pipe_handle:0x%p;", NamedPipeFileHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"access_mask:0x%x;", DesiredAccess);
@@ -768,8 +760,8 @@ DWORD NTAPI NtOpenThread(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtOpenThread;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:0x%p;", ThreadHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"access_mask:0x%x;", DesiredAccess);
@@ -811,8 +803,8 @@ DWORD NTAPI NtCreateSection(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtCreateSection;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"section_handle:0x%p;", SectionHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"access_mask:0x%x;", DesiredAccess);
@@ -864,8 +856,8 @@ DWORD NTAPI NtCreateProcessEx(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtCreateProcessEx;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"process_handle:0x%p;", ProcessHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"parent_process:0x%p;", ParentProcess);
@@ -912,8 +904,8 @@ DWORD NTAPI NtCreateEvent(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtCreateEvent;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"desired_access:0x%x;", DesiredAccess);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"event_type:%d;", EventType);
@@ -952,8 +944,8 @@ DWORD NTAPI NtCreateTimer(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtCreateTimer;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"desired_access:0x%x;", DesiredAccess);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"timer_type:%d;", TimerType);
@@ -990,8 +982,8 @@ DWORD NTAPI NtCreateTimer2(
     int offset = 0;
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%llu;", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%llu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtCreateTimer2;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"attributes:0x%lx;", Attributes);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"desired_access:0x%x;", DesiredAccess);
@@ -1015,8 +1007,6 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     InitDllPipe();
 
     // Hooks
-    MH_CreateHookApi(L"ntdll", "NtAllocateVirtualMemory", NtAllocateVirtualMemory, (LPVOID*)(&pOriginalNtAllocateVirtualMemory));
-    MH_CreateHookApi(L"ntdll", "NtProtectVirtualMemory", NtProtectVirtualMemory, (LPVOID*)(&pOriginalNtProtectVirtualMemory));
     MH_CreateHookApi(L"ntdll", "NtMapViewOfSection", NtMapViewOfSection, (LPVOID*)(&pOriginalNtMapViewOfSection));
     MH_CreateHookApi(L"ntdll", "NtWriteVirtualMemory", NtWriteVirtualMemory, (LPVOID*)(&pOriginalNtWriteVirtualMemory));
     MH_CreateHookApi(L"ntdll", "NtReadVirtualMemory", NtReadVirtualMemory, (LPVOID*)(&pOriginalNtReadVirtualMemory));
@@ -1037,6 +1027,8 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     MH_CreateHookApi(L"ntdll", "NtCreateEvent", NtCreateEvent, (LPVOID*)(&pOriginalNtCreateEvent));
     MH_CreateHookApi(L"ntdll", "NtCreateTimer", NtCreateTimer, (LPVOID*)(&pOriginalNtCreateTimer));
     MH_CreateHookApi(L"ntdll", "NtCreateTimer2", NtCreateTimer2, (LPVOID*)(&pOriginalNtCreateTimer2));
+    MH_CreateHookApi(L"ntdll", "NtAllocateVirtualMemory", NtAllocateVirtualMemory, (LPVOID*)(&pOriginalNtAllocateVirtualMemory));
+    MH_CreateHookApi(L"ntdll", "NtProtectVirtualMemory", NtProtectVirtualMemory, (LPVOID*)(&pOriginalNtProtectVirtualMemory)); // should be last
     status = MH_EnableHook(MH_ALL_HOOKS);
 
     return status;
