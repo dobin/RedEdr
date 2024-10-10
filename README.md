@@ -1,5 +1,7 @@
 ﻿# RedEdr
 
+** Not ready to use yet :-( it will not work well **
+
 Display events from Windows to see the detection surface of your malware.
 
 Same data as an EDR sees. 
