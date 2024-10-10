@@ -1,6 +1,6 @@
 ﻿# RedEdr
 
-** Not ready to use yet :-( it will not work well **
+**Not ready to use yet :-( it will not work well**
 
 Display events from Windows to see the detection surface of your malware.
 
