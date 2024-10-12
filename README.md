@@ -1,6 +1,6 @@
 ﻿# RedEdr
 
-**Note: Not yet stable, things may work, or they may not**
+**Note: Work in progress**
 
 Display events from Windows to see the detection surface of your malware.
 
@@ -44,7 +44,7 @@ collecting all telemetry of some C2.
   * from userspace (ETW based, unreliable)
 
 * Callstacks
-  * On ntdll.dll hook invocation
+  * **broken** On ntdll.dll hook invocation
  
 * Loaded DLL's
   * In Userspace, on process create (ETW or Kernel)
