@@ -18,16 +18,6 @@ BOOL skip_rw_r_virtualprotect = FALSE; // TODO
 DWORD MyThreadId = -1;
 
 
-BOOL addrIsLowStack(PVOID addr) {
-    PNT_TIB tib = (PNT_TIB)NtCurrentTeb();
-    // grows down
-    if (addr > tib->StackLimit && addr < tib->StackBase) {
-        return TRUE;
-    }
-    return FALSE;
-}
-
-
 /******************* AllocateVirtualMemory ************************/
 
 
@@ -53,9 +43,6 @@ static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
     if ((DWORD)GetCurrentThreadId() != MyThreadId) { // dont log our own hooking
-        //    int ret = swprintf_s(buf, DATA_BUFFER_SIZE, 
-        //        L"type:dll;time:%llu;krn_pid:%llu;func:AllocateVirtualMemory;pid:%p;base_addr:%p;zero:%#llx;size:%llu;type:%#lx;protect:%#lx",
-        //        time.QuadPart, (unsigned __int64) GetCurrentProcessId(), ProcessHandle, BaseAddress, ZeroBits, *RegionSize, AllocationType, Protect);
         int offset = 0;
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
@@ -122,10 +109,6 @@ static NTSTATUS NTAPI Catch_NtProtectVirtualMemory(
         memset(mem_perm, 0, sizeof(mem_perm));
         GetMemoryPermissions(mem_perm, NewAccessProtection);
 
-        //int ret = swprintf_s(buf, DATA_BUFFER_SIZE, 
-        //    L"type:dll;time:%llu;krn_pid:%llu;func:ProtectVirtualMemory;pid:%p;base_addr:%p;size:%lu;new_access:%#lx;new_access_str:%ls",
-        //    time.QuadPart, (unsigned __int64)GetCurrentProcessId(), ProcessHandle,
-        //    BaseAddress, *NumberOfBytesToProtect, NewAccessProtection, mem_perm);
         int offset = 0;
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
@@ -1045,7 +1028,6 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     DetourRestoreAfterWith();
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
-    //DetourAttach(&(PVOID&)TrueSleepEx, TimedSleepEx);
     //DetourAttach(&(PVOID&)Real_NtAllocateVirtualMemory, Catch_NtAllocateVirtualMemory);
     DetourAttach(&(PVOID&)Real_NtProtectVirtualMemory, Catch_NtProtectVirtualMemory);
     error = DetourTransactionCommit();
