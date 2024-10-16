@@ -4,8 +4,11 @@
 #include "minhook/include/MinHook.h"
 #include "../Shared/common.h"
 #include <winternl.h>  // needs to be on bottom?
+#include <dbghelp.h>
+
 #include "dllhelper.h"
 #include "logging.h"
+#include "detours.h"
 
 BOOL skip_self_readprocess = TRUE;
 BOOL skip_rw_r_virtualprotect = FALSE; // TODO
@@ -27,26 +30,25 @@ BOOL addrIsLowStack(PVOID addr) {
 
 /******************* AllocateVirtualMemory ************************/
 
-// Defines the prototype of the NtAllocateVirtualMemoryFunction
-typedef DWORD(NTAPI* pNtAllocateVirtualMemory)(
-    HANDLE ProcessHandle,
-    PVOID* BaseAddress,
-    ULONG_PTR ZeroBits,
-    PSIZE_T RegionSize,
-    ULONG AllocationType,
-    ULONG Protect
-    );
 
-// Pointer to the trampoline function used to call the original NtAllocateVirtualMemory
-pNtAllocateVirtualMemory pOriginalNtAllocateVirtualMemory = NULL;
-DWORD NTAPI NtAllocateVirtualMemory(
+NTSTATUS(NTAPI* Real_NtAllocateVirtualMemory)(
     HANDLE ProcessHandle,
     PVOID* BaseAddress,
     ULONG_PTR ZeroBits,
     PSIZE_T RegionSize,
     ULONG AllocationType,
     ULONG Protect
-) {
+    ) = NULL;
+
+
+static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
+    HANDLE ProcessHandle,
+    PVOID* BaseAddress,
+    ULONG_PTR ZeroBits,
+    PSIZE_T RegionSize,
+    ULONG AllocationType,
+    ULONG Protect)
+{
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
@@ -70,9 +72,9 @@ DWORD NTAPI NtAllocateVirtualMemory(
         SendDllPipe(buf);
 
         // Broken atm?
-        //LogMyStackTrace(&buf[ret], DATA_BUFFER_SIZE - ret);
+        //LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
     }
-    return pOriginalNtAllocateVirtualMemory(ProcessHandle, BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
+    return Real_NtAllocateVirtualMemory(ProcessHandle, BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
 }
 
 
@@ -97,16 +99,15 @@ wchar_t* GetMemoryPermissions(wchar_t* buf, DWORD protection) {
     return buf;
 }
 
-// Defines the prototype of the NtProtectVirtualMemoryFunction
-typedef DWORD(NTAPI* pNtProtectVirtualMemory)(
+NTSTATUS(NTAPI* Real_NtProtectVirtualMemory)(
     HANDLE ProcessHandle,
     PVOID* BaseAddress,
     PULONG NumberOfBytesToProtect,
     ULONG NewAccessProtection,
     PULONG OldAccessProtection
-    );
-pNtProtectVirtualMemory pOriginalNtProtectVirtualMemory = NULL;
-DWORD NTAPI NtProtectVirtualMemory(
+    ) = NULL;
+
+static NTSTATUS NTAPI Catch_NtProtectVirtualMemory(
     HANDLE ProcessHandle,
     PVOID* BaseAddress,
     PULONG NumberOfBytesToProtect,
@@ -140,7 +141,7 @@ DWORD NTAPI NtProtectVirtualMemory(
         LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
         SendDllPipe(buf);
     }
-    return pOriginalNtProtectVirtualMemory(ProcessHandle, BaseAddress, NumberOfBytesToProtect, NewAccessProtection, OldAccessProtection);
+    return Real_NtProtectVirtualMemory(ProcessHandle, BaseAddress, NumberOfBytesToProtect, NewAccessProtection, OldAccessProtection);
 }
 
 
@@ -1014,11 +1015,12 @@ DWORD NTAPI NtCreateTimer2(
 
 // This function initializes the hooks via the MinHook library
 DWORD WINAPI InitHooksThread(LPVOID param) {
-    if (MH_Initialize() != MH_OK) {
-        return -1;
+    LONG error;
+
+    if (DetourIsHelperProcess()) {
+        return TRUE;
     }
     MyThreadId = GetCurrentThreadId();
-    MH_STATUS status;
     wchar_t start_str[1024] = { 0 };
     wchar_t stop_str[1024] = { 0 };
 
@@ -1027,11 +1029,37 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     swprintf(stop_str, 1024, L"type:dll;func:hooking_finished;pid:%lu;tid:%lu;",
         (DWORD)GetCurrentProcessId(), (DWORD)GetCurrentThreadId());
 
-    LOG_A(LOG_INFO, "Injected DLL Main thread started on pid %lu  threadid %lu", 
+    LOG_A(LOG_INFO, "Injected DLL Detours Main thread started on pid %lu  threadid %lu", 
         GetCurrentProcessId(), GetCurrentThreadId());
     InitDllPipe();
     SendDllPipe(start_str);
 
+
+    Real_NtAllocateVirtualMemory
+        = ((NTSTATUS(NTAPI*)(HANDLE, PVOID*, ULONG_PTR, PSIZE_T, ULONG, ULONG))
+            DetourFindFunction("ntdll.dll", "NtAllocateVirtualMemory"));
+    Real_NtProtectVirtualMemory
+        = ((NTSTATUS(NTAPI*)(HANDLE, PVOID*, PULONG, ULONG, PULONG))
+            DetourFindFunction("ntdll.dll", "NtProtectVirtualMemory"));
+
+    DetourRestoreAfterWith();
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+    //DetourAttach(&(PVOID&)TrueSleepEx, TimedSleepEx);
+    //DetourAttach(&(PVOID&)Real_NtAllocateVirtualMemory, Catch_NtAllocateVirtualMemory);
+    DetourAttach(&(PVOID&)Real_NtProtectVirtualMemory, Catch_NtProtectVirtualMemory);
+    error = DetourTransactionCommit();
+    if (error == NO_ERROR) {
+        LOG_A(LOG_INFO, "simple" DETOURS_STRINGIFY(DETOURS_BITS) ".dll: Detoured SleepEx().\n");
+    }
+    else {
+        LOG_A(LOG_ERROR, "simple" DETOURS_STRINGIFY(DETOURS_BITS) ".dll:Error detouring SleepEx(): %ld\n", error);
+    }
+
+    SendDllPipe(stop_str);
+
+
+    /*
     // Hooks
     MH_CreateHookApi(L"ntdll", "NtWriteVirtualMemory", NtWriteVirtualMemory, (LPVOID*)(&pOriginalNtWriteVirtualMemory));
     MH_CreateHookApi(L"ntdll", "NtSetContextThread", NtSetContextThread, (LPVOID*)(&pOriginalNtSetContextThread));
@@ -1055,38 +1083,38 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     MH_CreateHookApi(L"ntdll", "NtOpenThread", NtOpenThread, (LPVOID*)(&pOriginalNtOpenThread));
     MH_CreateHookApi(L"ntdll", "NtAllocateVirtualMemory", NtAllocateVirtualMemory, (LPVOID*)(&pOriginalNtAllocateVirtualMemory));
     MH_CreateHookApi(L"ntdll", "NtProtectVirtualMemory", NtProtectVirtualMemory, (LPVOID*)(&pOriginalNtProtectVirtualMemory)); // should be last
-    
-    status = MH_EnableHook(MH_ALL_HOOKS);
-    SendDllPipe(stop_str);
-    return status;
+     */
+
+
+    return 0;
 }
 
 
-// Here is the DllMain of our DLL
-BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved) {
-    switch (ul_reason_for_call) {
-    case DLL_PROCESS_ATTACH: {
-        // This DLL will not be loaded by any thread so we simply disable DLL_TRHEAD_ATTACH and DLL_THREAD_DETACH
-        DisableThreadLibraryCalls(hModule);
 
-        // Calling WinAPI32 functions from the DllMain is a very bad practice 
-        // since it can basically lock the program loading the DLL
-        // Microsoft recommends not using any functions here except a few one like 
-        // CreateThread IF AND ONLY IF there is no need for synchronization
-        // So basically we are creating a thread that will execute the InitHooksThread function 
-        // thus allowing us hooking the NtAllocateVirtualMemory function
-        HANDLE hThread = CreateThread(NULL, 0, InitHooksThread, NULL, 0, NULL);
-        if (hThread != NULL) {
-            CloseHandle(hThread);
-        }
-        /*hThread = CreateThread(NULL, 0, InitPipeThread, NULL, 0, NULL);
-        if (hThread != NULL) {
-            CloseHandle(hThread);
-        }*/
-        break;
+
+BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved)
+{
+    LONG error;
+    (void)hinst;
+    (void)reserved;
+
+    if (DetourIsHelperProcess()) {
+        return TRUE;
     }
-    case DLL_PROCESS_DETACH:
-        break;
+
+    if (dwReason == DLL_PROCESS_ATTACH) {
+        InitHooksThread(NULL);
+    }
+    else if (dwReason == DLL_PROCESS_DETACH) {
+       /* DetourTransactionBegin();
+        DetourUpdateThread(GetCurrentThread());
+        DetourDetach(&(PVOID&)TrueSleepEx, TimedSleepEx);
+        error = DetourTransactionCommit();
+
+        printf("simple" DETOURS_STRINGIFY(DETOURS_BITS) ".dll:"
+            " Removed SleepEx() (result=%ld), slept %ld ticks.\n", error, dwSlept);
+        fflush(stdout);
+        */
     }
     return TRUE;
 }

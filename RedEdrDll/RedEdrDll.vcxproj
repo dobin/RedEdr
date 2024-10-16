@@ -142,6 +142,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
+      <AdditionalDependencies>detours.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -165,6 +166,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\RedEdrShared\logging.h" />
+    <ClInclude Include="detours.h" />
     <ClInclude Include="dllhelper.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="minhook\include\MinHook.h" />

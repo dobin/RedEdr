@@ -5,6 +5,7 @@
 #include <winternl.h>  // needs to be on bottom?
 #include <dbghelp.h>
 #include <stdio.h>
+#include <mutex>
 #include "piping.h"
 #include "logging.h"
 
@@ -78,8 +79,88 @@ void SendDllPipe(wchar_t* buffer) {
 
 
 /*************** Procinfo stuff ******************/
+std::mutex myMutex;  // Declare a mutex
 
-// LOG's the stacktrace of THIS function
+BOOL is_init = FALSE;
+
+// Crashes
+void LogMyStackTrace_2(wchar_t* buf, size_t buf_size) {
+    // Initialize the symbol handler for the current process
+    HANDLE process = GetCurrentProcess();
+    
+    // Capture stack trace
+    void* stack[64];
+
+    myMutex.lock();  // Manually acquire the mutex
+    unsigned short frames = CaptureStackBackTrace(0, 8, stack, NULL);
+    myMutex.unlock();  // Manually release the mutex
+
+    return;
+    // Allocate memory for symbol information
+    //SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+    //if (symbol == NULL) {
+    //    return;
+    //}
+    //symbol->MaxNameLen = 255;
+    //symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+
+    HANDLE hProcess = GetCurrentProcess();
+    HANDLE hThread = GetCurrentThread();
+
+    // FUUUUU
+    int l = wcscat_s(buf, buf_size, L";callstack:[");
+    buf_size -= 12;
+    buf += 12;
+
+    // Print each frame of the stack trace
+    size_t written = 0;
+    SIZE_T returnLength = 0;
+    MEMORY_BASIC_INFORMATION mbi;
+    for (unsigned short i = 0; i < frames; i++) {
+        void* address = stack[i];
+
+        if (i > MAX_CALLSTACK_ENTRIES) {
+            // dont go too deep
+            break;
+        }
+        if (buf_size > DATA_BUFFER_SIZE - 2) { // -2 for ending ]
+            // as buf_size is size_t, it will underflow when too much callstack is appended
+            LOG_A(LOG_WARNING, "StackWalk: Not enough space for whole stack, stopped at %i", i);
+            break;
+        }
+        /*
+        if (NtQueryVirtualMemory(hProcess, (PVOID)address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
+            written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{idx:%i;addr:%p;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx},",
+                i, address, mbi.BaseAddress, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
+        }*/
+
+        written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{idx:%i;addr:%p;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx},",
+            i, address, 0, 0, 0, 0, 0);
+
+        buf_size -= written;
+        buf += written;
+
+        // Get symbol information for the current stack address
+        //if (SymFromAddr(process, address, 0, symbol)) {
+           // printf("Frame %d: %s - 0x%0X\n", i, symbol->Name, (unsigned int)symbol->Address);
+        //printf("Frame %d: %p\n", i, address);
+
+        //}
+    //else {
+        //printf("Frame %d: Error getting symbol info (error code: %lu)\n", i, GetLastError());
+        //}
+    }
+
+    l = wcscat_s(buf, buf_size, L"]");
+
+
+    // Cleanup
+    //free(symbol);
+    //SymCleanup(process);
+}
+
+
+// Gives wrong answer (5)
 void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
     CONTEXT context;
     STACKFRAME64 stackFrame;
@@ -87,21 +168,19 @@ void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
     HANDLE hProcess = GetCurrentProcess();
     HANDLE hThread = GetCurrentThread();
 
-    // Capture the context of the current thread
+    if (!is_init) {
+        SymInitialize(hProcess, NULL, TRUE);
+        is_init = TRUE;
+    }
+
     RtlCaptureContext(&context);
-
-    // Initialize DbgHelp for symbol resolution
-    //SymInitialize(hProcess, NULL, TRUE);
-
     ZeroMemory(&stackFrame, sizeof(STACKFRAME64));
-
-    // x64 (64-bit) architecture
     machineType = IMAGE_FILE_MACHINE_AMD64;
     stackFrame.AddrPC.Offset = context.Rip;
-    stackFrame.AddrPC.Mode = AddrModeFlat;
-    stackFrame.AddrFrame.Offset = context.Rsp;
-    stackFrame.AddrFrame.Mode = AddrModeFlat;
+    stackFrame.AddrFrame.Offset = context.Rbp;
     stackFrame.AddrStack.Offset = context.Rsp;
+    stackFrame.AddrPC.Mode = AddrModeFlat;
+    stackFrame.AddrFrame.Mode = AddrModeFlat;
     stackFrame.AddrStack.Mode = AddrModeFlat;
 
     // FUUUUU
@@ -116,6 +195,15 @@ void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
     while (StackWalk64(machineType, hProcess, hThread, &stackFrame, &context,
         NULL, NULL, NULL, NULL))
     {
+        DWORD64 address = stackFrame.AddrPC.Offset;
+        written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{idx:%i;addr:0x%llx},",
+            n, address);
+        buf_size -= written;
+        buf += written;
+        n += 1;
+        continue;
+
+
         if (n > MAX_CALLSTACK_ENTRIES) {
             // dont go too deep
             break;
@@ -125,7 +213,6 @@ void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
             LOG_A(LOG_WARNING, "StackWalk: Not enough space for whole stack, stopped at %i", n);
             break;
         }
-        DWORD64 address = stackFrame.AddrPC.Offset;
 
         if (NtQueryVirtualMemory(hProcess, (PVOID)address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
             written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{idx:%i;addr:%p;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx},",
