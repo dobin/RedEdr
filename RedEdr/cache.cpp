@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <memory>
 #include <tchar.h>
+#include <mutex>
 
 #include "cache.h"
 #include "utils.h"
@@ -16,6 +17,8 @@
 #include "output.h"
 
 Cache g_cache;
+std::mutex cache_mutex;
+
 
 Cache::Cache() {
 
@@ -23,11 +26,15 @@ Cache::Cache() {
 
 // Add an object to the cache
 void Cache::addObject(DWORD id, const Process& obj) {
+    cache_mutex.lock();
     cache[id] = obj;
+    cache_mutex.unlock();
 }
 
 BOOL Cache::containsObject(DWORD pid) {
+    cache_mutex.lock();
     auto it = cache.find(pid);
+    cache_mutex.unlock();
     if (it != cache.end()) {
         return TRUE;
     }
@@ -38,7 +45,9 @@ BOOL Cache::containsObject(DWORD pid) {
 
 // Get an object from the cache
 Process* Cache::getObject(DWORD id) {
+    cache_mutex.lock();
     auto it = cache.find(id);
+    cache_mutex.unlock();
     if (it != cache.end()) {
         return &it->second; // Return a pointer to the object
     }
@@ -69,12 +78,12 @@ Process* Cache::getObject(DWORD id) {
             process->image_base
         );
         do_output(o);
-
-        // Broken atm
         PrintLoadedModules(id, process);
     }
 
+    cache_mutex.lock();
     cache[id] = *process;
+    cache_mutex.unlock();
     return &cache[id];
 }
 
@@ -88,5 +97,7 @@ BOOL Cache::observe(DWORD id) {
 
 // Remove an object from the cache
 void Cache::removeObject(DWORD id) {
+    cache_mutex.lock();
     cache.erase(id);
+    cache_mutex.unlock();
 }
