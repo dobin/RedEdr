@@ -18,6 +18,24 @@ BOOL skip_rw_r_virtualprotect = FALSE; // TODO
 DWORD MyThreadId = -1;
 
 
+wchar_t* GetMemoryPermissions(wchar_t* buf, DWORD protection) {
+    //char permissions[4] = "---"; // Initialize as "---"
+    wcscpy_s(buf, 16, L"---");
+
+    if (protection & (PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
+        buf[0] = L'R'; // Readable
+    }
+    if (protection & (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
+        buf[1] = L'W'; // Writable
+    }
+    if (protection & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
+        buf[2] = L'X'; // Executable
+    }
+    buf[3] = L'\x00';
+
+    return buf;
+}
+
 /******************* AllocateVirtualMemory ************************/
 
 
@@ -43,6 +61,10 @@ static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
     if ((DWORD)GetCurrentThreadId() != MyThreadId) { // dont log our own hooking
+        wchar_t protect_str[16] = L"";
+        memset(protect_str, 0, sizeof(protect_str));
+        GetMemoryPermissions(protect_str, Protect);
+
         int offset = 0;
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
@@ -55,6 +77,7 @@ static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%llu;", *RegionSize);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:%#lx;", AllocationType);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%#lx;", Protect);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect_str:%ls;", protect_str);
 
         SendDllPipe(buf);
 
@@ -68,23 +91,6 @@ static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
 /******************* ProtectVirtualMemory ************************/
 
 
-wchar_t* GetMemoryPermissions(wchar_t* buf, DWORD protection) {
-    //char permissions[4] = "---"; // Initialize as "---"
-    wcscpy_s(buf, 16, L"---");
-
-    if (protection & (PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
-        buf[0] = L'R'; // Readable
-    }
-    if (protection & (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
-        buf[1] = L'W'; // Writable
-    }
-    if (protection & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
-        buf[2] = L'X'; // Executable
-    }
-    buf[3] = L'\x00';
-
-    return buf;
-}
 
 NTSTATUS(NTAPI* Real_NtProtectVirtualMemory)(
     HANDLE ProcessHandle,
@@ -118,8 +124,8 @@ static NTSTATUS NTAPI Catch_NtProtectVirtualMemory(
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%p;", ProcessHandle);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"base_addr:%p;", BaseAddress);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%lu;", *NumberOfBytesToProtect);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"new_access:%#lx;", NewAccessProtection);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"new_access_str:%ls;", mem_perm);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%#lx;", NewAccessProtection);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect_str:%ls;", mem_perm);
 
         LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
         SendDllPipe(buf);
