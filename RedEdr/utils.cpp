@@ -76,3 +76,12 @@ void remove_all_occurrences_case_insensitive(std::wstring& str, const std::wstri
     }
 }
 
+
+std::wstring ReplaceAll(std::wstring str, const std::wstring& from, const std::wstring& to) {
+    size_t start_pos = 0;
+    while ((start_pos = str.find(from, start_pos)) != std::wstring::npos) {
+        str.replace(start_pos, from.length(), to);
+        start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
+    }
+    return str;
+}

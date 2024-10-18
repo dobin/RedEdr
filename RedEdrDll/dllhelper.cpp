@@ -105,9 +105,10 @@ void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
     stackFrame.AddrStack.Mode = AddrModeFlat;
 
     // FUUUUU
-    int l = wcscat_s(buf, buf_size, L";callstack:[");
-    buf_size -= 12;
-    buf += 12;
+    wchar_t* begin_str = (wchar_t *) L"callstack:[";
+    int l = wcscat_s(buf, buf_size, begin_str);
+    buf_size -= wcslen(begin_str);
+    buf += wcslen(begin_str);
 
     MEMORY_BASIC_INFORMATION mbi;
     size_t written = 0;
