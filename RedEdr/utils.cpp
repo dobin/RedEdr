@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <locale>
+#include <codecvt>
 
 #include "../Shared/common.h"
 
@@ -87,6 +89,28 @@ std::wstring ReplaceAll(std::wstring str, const std::wstring& from, const std::w
     return str;
 }
 
+std::string ReplaceAllA(std::string str, const std::string& from, const std::string& to) {
+    size_t start_pos = 0;
+    while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
+        str.replace(start_pos, from.length(), to);
+        start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
+    }
+    return str;
+}
+
+/*
+std::wstring replace_all(const std::wstring& str, const std::wstring& from, const std::wstring& to) {
+    std::wstring result = str;
+    if (from.empty()) return result;
+    size_t start_pos = 0;
+    while ((start_pos = result.find(from, start_pos)) != std::wstring::npos) {
+        result.replace(start_pos, from.length(), to);
+        start_pos += to.length();
+    }
+    return result;
+}
+*/
+
 
 bool contains_case_insensitive(const std::wstring& haystack, const std::wstring& needle) {
     std::wstring haystack_lower = to_lowercase(haystack);
@@ -101,3 +125,16 @@ wchar_t* ConvertCharToWchar(const char* arg) {
     MultiByteToWideChar(CP_ACP, 0, arg, -1, wargv, len);
     return wargv;
 }
+
+
+std::string wstring_to_utf8(std::wstring& wide_string)
+{
+    static std::wstring_convert<std::codecvt_utf8<wchar_t>> utf8_conv;
+    return utf8_conv.to_bytes(wide_string);
+}
+
+
+/*
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
+    return conv.to_bytes(output.str());
+*/

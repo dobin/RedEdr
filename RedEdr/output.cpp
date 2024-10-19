@@ -9,18 +9,29 @@
 
 #include "config.h"
 #include "logging.h"
+#include "utils.h"
+#include "json.hpp"
 
 
-std::vector<std::wstring> output_entries;
+// JSON should be UTF-8 which is std::string...
+std::vector<std::string> output_entries;
 std::mutex output_mutex;
 unsigned int output_count = 0;
 
+// Analyzer
+HANDLE analyzer_thread;
+std::condition_variable cv;
+size_t read_index = 0;  // Index to track the last read entry
+bool done = false;  // Flag to signal when to stop the consumer thread
+std::mutex analyzer_shutdown_mtx;
+
+// Web
 HANDLE webserver_thread;
 httplib::Server svr;
 
 
-// Function to parse the input and convert it into JSON
-std::wstring ConvertLineToJson(const std::wstring& input) {
+// Function to parse the input and convert it into UTF8 JSON
+std::string ConvertLineToJson(const std::wstring& input) {
     std::wstring result;
     result += L"{\"";
 
@@ -66,6 +77,9 @@ std::wstring ConvertLineToJson(const std::wstring& input) {
         else if (ch == L',' && n == L']') {
             // ignore trailing ,]
         }
+        else if (ch == L'\\') { // escape backslash
+            result += ch + ch;
+        }
         else {
             // Copy the character as-is
             result += ch;
@@ -73,24 +87,24 @@ std::wstring ConvertLineToJson(const std::wstring& input) {
     }
 
     // FUUUU
-    if (result[result.size() - 1] == L']') {
+    if (result[result.size() - 1] == ']') {
         result += L"}";
     }
     else {
         result += L"\"}";
     }
-    
-    return result;
+
+    std::string eventStrUtf8 = wstring_to_utf8(result);
+    return eventStrUtf8;
 }
 
 
-void do_output(std::wstring str) {
+void do_output(std::wstring eventWstr) {
     // Convert to json and add it to the global list
-    std::wstring json = ConvertLineToJson(str);
+    std::string json = ConvertLineToJson(eventWstr);
     output_mutex.lock();
     output_entries.push_back(json);
     output_mutex.unlock();
-
     output_count++;
     
     // print it
@@ -110,62 +124,118 @@ void do_output(std::wstring str) {
         }
     }
     else {
-        std::wcout << str << L"\n";
+        std::wcout << eventWstr << L"\n";
     }
+
+    // Notify the analyzer thread
+    cv.notify_one();
 }
 
 
 void print_all_output() {
-    std::wcout << "[" << std::endl;
+    std::cout << "[" << std::endl;
     output_mutex.lock();
     for (const auto& str : output_entries) {
-        std::wcout << str << ", " << std::endl;
+        std::cout << str << ", " << std::endl;
     }
     output_mutex.unlock();
-    std::wcout << "]" << std::endl;
-}
-
-
-std::wstring replace_all(const std::wstring& str, const std::wstring& from, const std::wstring& to) {
-    std::wstring result = str;
-    if (from.empty()) return result;
-    size_t start_pos = 0;
-    while ((start_pos = result.find(from, start_pos)) != std::wstring::npos) {
-        result.replace(start_pos, from.length(), to);
-        start_pos += to.length();
-    }
-    return result;
+    std::cout << "]" << std::endl;
 }
 
 
 std::string GetJsonFromEntries() {
-    std::wstringstream output;
-    int otype = 1;
+    std::stringstream output;
+    output << "[";
 
     output_mutex.lock();
-
-    if (otype == 0) { // elastic style one entry per line
-        for (auto it = output_entries.begin(); it != output_entries.end(); ++it) {
-            output << replace_all(*it, L"\\", L"\\\\") << std::endl;
+    for (auto it = output_entries.begin(); it != output_entries.end(); ++it) {
+        output << ReplaceAllA(*it, "\\", "\\\\");
+        if (std::next(it) != output_entries.end()) {
+            output << ",";  // Add comma only if it's not the last element
         }
     }
-    else if (otype == 1) { // 1 line json array
-        output << "[";
-        for (auto it = output_entries.begin(); it != output_entries.end(); ++it) {
-            output << replace_all(*it, L"\\", L"\\\\");
-            if (std::next(it) != output_entries.end()) {
-                output << ",";  // Add comma only if it's not the last element
-            }
-        }
-        output << "]";
-    }
-    
     output_mutex.unlock();
 
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
-    return conv.to_bytes(output.str());
+    output << "]";
+    return output.str();
 }
 
+
+/*** Analyzer ***/
+
+void AnalyzeEvent(std::string eventStr) {
+    //std::cout << L"Processing: " << eventStr << std::endl;
+    LOG_A(LOG_INFO, "Proc: %s", eventStr.c_str());
+
+    try
+    {
+        nlohmann::json j = nlohmann::json::parse(eventStr);
+    }
+    catch (const nlohmann::json::exception& e)
+    {
+        LOG_A(LOG_WARNING, "JSON Parser Exception msg: %s", e.what());
+        LOG_A(LOG_WARNING, "JSON Parser Exception event: %s", eventStr.c_str());
+        return;
+    }
+
+
+    // Parse event
+
+    
+
+}
+
+
+DWORD WINAPI AnalyzerThread(LPVOID param) {
+    LOG_A(LOG_INFO, "!Analyzer: Start thread");
+    size_t arrlen = 0;
+
+    while (true) {
+        std::unique_lock<std::mutex> lock(analyzer_shutdown_mtx);
+        cv.wait(lock, [] { return read_index < output_entries.size() || done; });  // Wait for new data or termination signal
+
+        output_mutex.lock();
+        arrlen = output_entries.size();
+        output_mutex.unlock();
+
+        // If done and no more entries to read, break the loop
+        if (done && read_index >= arrlen) {
+            break;
+        }
+
+        // Process all new entries from the current read_index
+        while (read_index < arrlen) {
+            output_mutex.lock();
+            std::string entry = output_entries[read_index];
+            output_mutex.unlock();
+            AnalyzeEvent(entry);
+            ++read_index;  // Move to the next unread entry
+        }
+    }
+
+    LOG_A(LOG_INFO, "!Analyzer: Exit thread");
+    return 0;
+}
+
+
+int InitializeAnalyzer(std::vector<HANDLE>& threads) {
+    analyzer_thread = CreateThread(NULL, 0, AnalyzerThread, NULL, 0, NULL);
+    if (analyzer_thread == NULL) {
+        LOG_A(LOG_ERROR, "WEB: Failed to create thread for webserver");
+        return 1;
+    }
+    threads.push_back(analyzer_thread);
+    return 0;
+}
+
+
+void StopAnalyzer() {
+    if (analyzer_thread != NULL) {
+    }
+}
+
+
+/*** Web ***/
 
 DWORD WINAPI WebserverThread(LPVOID param) {
     LOG_A(LOG_INFO, "!WEB: Start Webserver thread");

@@ -162,6 +162,7 @@
     <ClInclude Include="config.h" />
     <ClInclude Include="cxxops.hpp" />
     <ClInclude Include="dllinjector.h" />
+    <ClInclude Include="json.hpp" />
     <ClInclude Include="kernelinterface.h" />
     <ClInclude Include="etwhandler.h" />
     <ClInclude Include="etwreader.h" />

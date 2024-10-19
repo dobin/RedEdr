@@ -2,6 +2,9 @@
 #include "CppUnitTest.h"
 
 #include "output.h"
+#include "utils.h"
+#include "json.hpp"
+#include "logging.h"
 
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -12,7 +15,6 @@ namespace UnitTests
 	TEST_CLASS(Output)
 	{
 	public:
-
 		TEST_METHOD(TestConvertLineToJson_Dll)
 		{
             std::wstring input = L"type:dll;time:133723719791285666;krn_pid:14496;func:NtOpenThread;"
@@ -57,6 +59,27 @@ namespace UnitTests
             Assert::AreEqual(expect.c_str(), result.c_str());
         }
 
-        // 
+        TEST_METHOD(TestParseEventAsJson)
+        {
+            std::string eventStr = "{\"type\":\"kernel\",\"time\":\"133727882463689912\",\"callback\":\"create_process\",\"krn_pid\":\"996\",\"pid\":\"1544\",\"name\":\"\\\\Device\\\\HarddiskVolume2\\\\Windows\\\\System32\\\\notepad.exe\"}";
+            nlohmann::json j = nlohmann::json::parse(eventStr);
+
+            Assert::AreEqual("kernel", j["type"].get<std::string>().c_str());
+            Assert::AreEqual("133727882463689912", j["time"].get<std::string>().c_str());
+            Assert::AreEqual("\\Device\\HarddiskVolume2\\Windows\\System32\\notepad.exe", j["name"].get<std::string>().c_str());
+
+            /*
+            // Debug:
+            try
+            {
+                nlohmann::json j = nlohmann::json::parse(eventStrUtf8);
+            }
+            catch (const nlohmann::json::exception& e)
+            {
+                LOG_A(LOG_INFO, "Exception: %s", e.what());
+            }
+            */
+        }
+
 	};
 }

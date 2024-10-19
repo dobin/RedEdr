@@ -44,13 +44,13 @@ collecting all telemetry of some C2.
   * from userspace (ETW based, unreliable)
 
 * Callstacks
-  * **broken** On ntdll.dll hook invocation
+  * On ntdll.dll hook invocation
  
 * Loaded DLL's
   * In Userspace, on process create (ETW or Kernel)
 
 * process information:
-  * 
+  * PEB
 
 ## Requirements
 
@@ -221,3 +221,9 @@ To run as PPL:
 * https://github.com/pathtofile/PPLRunner/
 * No license
 
+
+## Libraries used
+
+* https://github.com/jarro2783/cxxopts, MIT
+* https://github.com/yhirose/cpp-httplib, MIT
+* https://github.com/nlohmann/json, MIT

@@ -137,5 +137,8 @@
     <ClInclude Include="..\RedEdrShared\loguru.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="json.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

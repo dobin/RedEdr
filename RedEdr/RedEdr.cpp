@@ -126,7 +126,6 @@ void shutdown_all() {
         DllReaderShutdown();
     }
 
-
     // Web server
     if (g_config.web_output) {
         LOG_A(LOG_INFO, "RedEdr: Stop web server");
@@ -135,6 +134,9 @@ void shutdown_all() {
 
     // Keyboard reader
     keyboard_reader_flag = FALSE;
+
+    // Analyzer
+    StopAnalyzer();
 }
 
 
@@ -318,6 +320,7 @@ int main(int argc, char* argv[]) {
         EnablePplService(TRUE, target);
     }
 
+    // Keyboard reader
     HANDLE thread = CreateThread(NULL, 0, KeyboardReaderThread, NULL, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "Failed to create thread");
@@ -325,6 +328,8 @@ int main(int argc, char* argv[]) {
     }
     threads.push_back(thread);
 
+    // Analyzer
+    InitializeAnalyzer(threads);
 
     // Wait for all threads to complete
     LOG_A(LOG_INFO, "RedEdr: waiting for %llu threads...", threads.size());
