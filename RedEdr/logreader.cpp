@@ -20,6 +20,7 @@
 #include "logreader.h"
 #include "output.h"
 #include "utils.h"
+#include "event_producer.h"
 
 // Will be checked each second and exit thread if true
 bool LogReaderThreadStopFlag = FALSE;
@@ -79,7 +80,7 @@ void tailFileW(const wchar_t* filePath) {
             buffer[bytesRead / sizeof(wchar_t)] = L'\0';
 
             // Print the new data (including newline?)
-            do_output(std::wstring(buffer));
+            g_EventProducer.do_output(std::wstring(buffer));
             //wprintf(L"%s", buffer);
 
             // Update the offset

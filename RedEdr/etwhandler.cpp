@@ -14,6 +14,7 @@
 #include "config.h"
 #include "cache.h"
 #include "etwconsumer.h"
+#include "event_producer.h"
 
 
 void WINAPI EventRecordCallbackSecurityAuditing(PEVENT_RECORD eventRecord)
@@ -182,7 +183,7 @@ void WINAPI EventRecordCallbackSecurityAuditing(PEVENT_RECORD eventRecord)
     }
 
     std::wstring eventStr = EtwEventToStr(eventName, eventRecord);
-    do_output(eventStr);
+    g_EventProducer.do_output(eventStr);
 }
 
 
@@ -246,7 +247,7 @@ void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
     }
 
     std::wstring eventStr = EtwEventToStr(eventName, eventRecord);
-    do_output(eventStr);
+    g_EventProducer.do_output(eventStr);
 }
 
 
@@ -303,7 +304,7 @@ void WINAPI EventRecordCallbackApiCalls(PEVENT_RECORD eventRecord) {
     }
 
     std::wstring eventStr = EtwEventToStr(eventName, eventRecord);
-    do_output(eventStr);
+    g_EventProducer.do_output(eventStr);
 }
 
 
@@ -362,7 +363,7 @@ void WINAPI EventRecordCallbackWin32(PEVENT_RECORD eventRecord) {
     }
 
     std::wstring eventStr = EtwEventToStr(eventName, eventRecord);
-    do_output(eventStr);
+    g_EventProducer.do_output(eventStr);
 }
 
 
@@ -379,7 +380,7 @@ void WINAPI EventRecordCallbackAntimalwareEngine(PEVENT_RECORD eventRecord) {
     }
 
     std::wstring eventStr = EtwEventToStr(eventName, eventRecord);
-    do_output(eventStr);
+    g_EventProducer.do_output(eventStr);
 }
 
 
@@ -397,7 +398,7 @@ void WINAPI EventRecordCallbackAntimalwareRtp(PEVENT_RECORD eventRecord) {
     }
 
     std::wstring eventStr = EtwEventToStr(eventName, eventRecord);
-    do_output(eventStr);
+    g_EventProducer.do_output(eventStr);
 }
 
 
@@ -409,5 +410,5 @@ void WINAPI EventRecordCallbackPrintAll(PEVENT_RECORD eventRecord) {
     }
 
     std::wstring eventStr = EtwEventToStr(eventName, eventRecord);
-    do_output(eventStr);
+    g_EventProducer.do_output(eventStr);
 }

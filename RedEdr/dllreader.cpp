@@ -19,6 +19,7 @@
 #include "utils.h"
 #include "config.h"
 #include "piping.h"
+#include "event_producer.h"
 
 
 // Set to TRUE when shutting down client threads
@@ -97,7 +98,7 @@ void DllReaderClientThread(PipeServer* pipeServer) {
             return;
         }
         for (const auto& wstr : result) {
-            do_output(wstr);
+            g_EventProducer.do_output(wstr);
         }
     }
 

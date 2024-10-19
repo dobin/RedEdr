@@ -141,6 +141,7 @@
     <ClCompile Include="cache.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="dllinjector.cpp" />
+    <ClCompile Include="event_producer.cpp" />
     <ClCompile Include="kernelinterface.cpp" />
     <ClCompile Include="etwhandler.cpp" />
     <ClCompile Include="etwreader.cpp" />
@@ -162,6 +163,7 @@
     <ClInclude Include="config.h" />
     <ClInclude Include="cxxops.hpp" />
     <ClInclude Include="dllinjector.h" />
+    <ClInclude Include="event_producer.h" />
     <ClInclude Include="json.hpp" />
     <ClInclude Include="kernelinterface.h" />
     <ClInclude Include="etwhandler.h" />

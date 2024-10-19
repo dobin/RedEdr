@@ -23,6 +23,7 @@
 //#include "output.h"
 //#include "utils.h"
 #include "mypeb.h"
+#include "event_producer.h"
 #include "../Shared/common.h"
 
 #pragma comment(lib, "ntdll.lib")
@@ -275,7 +276,7 @@ BOOL PrintLoadedModules(DWORD pid, Process* process) {
         csv.c_str()
     );
     remove_all_occurrences_case_insensitive(o, std::wstring(L"C:\\Windows\\system32\\"));
-    do_output(o);
+    g_EventProducer.do_output(o);
 }
 
 

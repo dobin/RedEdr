@@ -75,6 +75,9 @@
     <ClCompile Include="..\RedEdrShared\etwconsumer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="event_producer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="etwreader.h">
@@ -139,6 +142,9 @@
     </ClInclude>
     <ClInclude Include="json.hpp">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event_producer.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

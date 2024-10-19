@@ -19,6 +19,7 @@
 #include "output.h"
 #include "cache.h"
 #include "piping.h"
+#include "event_producer.h"
 
 #pragma comment (lib, "wintrust.lib")
 #pragma comment(lib, "dbghelp.lib")
@@ -69,7 +70,7 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
                 break;
             }
             for (const auto& event : events) {
-                do_output(event);
+                g_EventProducer.do_output(event);
                 CheckEventForNewObservable((wchar_t*) event.c_str());
             }
         }
