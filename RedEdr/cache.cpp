@@ -101,3 +101,9 @@ void Cache::removeObject(DWORD id) {
     cache.erase(id);
     cache_mutex.unlock();
 }
+
+void Cache::removeAll() {
+    cache_mutex.lock();
+    cache.clear();
+    cache_mutex.unlock();
+}
