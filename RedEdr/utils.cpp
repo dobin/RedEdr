@@ -65,6 +65,7 @@ std::wstring to_lowercase(const std::wstring& str) {
     return lower_str;
 }
 
+
 void remove_all_occurrences_case_insensitive(std::wstring& str, const std::wstring& to_remove) {
     std::wstring lower_str = to_lowercase(str);
     std::wstring lower_to_remove = to_lowercase(to_remove);
@@ -84,4 +85,11 @@ std::wstring ReplaceAll(std::wstring str, const std::wstring& from, const std::w
         start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
     }
     return str;
+}
+
+
+bool contains_case_insensitive(const std::wstring& haystack, const std::wstring& needle) {
+    std::wstring haystack_lower = to_lowercase(haystack);
+    std::wstring needle_lower = to_lowercase(needle);
+    return haystack_lower.find(needle_lower) != std::wstring::npos;
 }
