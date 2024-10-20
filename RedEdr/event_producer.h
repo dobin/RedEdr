@@ -15,6 +15,8 @@ public:
 	std::string GetAllAsJson();
 	void PrintAll();
 	void ResetData();
+	size_t GetEventCount();
+	int GetLastPrintIndex();
 
 	// Only support one consumer, as it tracks its last used element
 	BOOL HasMoreEvents();

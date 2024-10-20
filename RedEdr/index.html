@@ -8,7 +8,7 @@
 
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: "Courier New", Courier, monospace;
             margin: 0;
             padding: 0;
         }
@@ -49,6 +49,17 @@
             border: 1px solid #ccc;
         }
 
+        .container {
+            display: flex; /* Makes elements inside the container align horizontally */
+            gap: 10px; /* Adds space between the elements */
+        }
+
+        .item {
+            padding: 10px;
+            background-color: rgb(27, 77, 24);
+            border: 1px solid #ccc;
+        }
+
         .event {
             padding: 5px;
             border: 1px solid #ccc;
@@ -59,10 +70,22 @@
 <body>
 
     <header>
-        <div class="stats" hx-get="/api/stats" hx-trigger="every 1s">
-        </div>
+        <div class="container">
+            <div class="item">
+                <div class="stats" hx-get="/api/stats" hx-trigger="every 1s">
+                </div>
+            </div>
 
-        <button onclick="fetchData()">Refresh</button>
+            <div class="item">
+                <button onclick="fetchData()">Refresh</button>
+                <button hx-get="/api/reset" hx-trigger="click" hx-target="#response">
+                    Reset
+                </button>
+            </div>
+
+            <div class="item" id="response">
+            </div>
+        </div>
     </header>
 
     <div class="tabs">
@@ -101,7 +124,6 @@
         tabElement.classList.add('active');
         }
         }
-
 
         // Function to display events in Tab 1
         function displayEvents(events) {

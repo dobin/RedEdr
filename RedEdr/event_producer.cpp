@@ -135,6 +135,16 @@ void EventProducer::ResetData() {
 }
 
 
+size_t EventProducer::GetEventCount() {
+    return output_entries.size();
+}
+
+
+int EventProducer::GetLastPrintIndex() {
+    return last;
+}
+
+
 // Returns a vector of all new events starting from last (which starts at -1)
 std::vector<std::string> EventProducer::GetEventsFrom() {
     std::vector<std::string> newEvents;

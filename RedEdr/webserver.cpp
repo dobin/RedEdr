@@ -6,6 +6,7 @@
 #include "utils.h"
 #include "json.hpp"
 #include "webserver.h"
+#include "cache.h"
 
 HANDLE webserver_thread;
 httplib::Server svr;
@@ -37,8 +38,22 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
 
     svr.Get("/api/stats", [](const httplib::Request&, httplib::Response& res) {
-        std::string stats = "{ \"bla\": 1, \"gna\": 2 }";
+        size_t event_count = g_EventProducer.GetEventCount();
+        int last_print = g_EventProducer.GetLastPrintIndex();
+
+        std::stringstream ss;
+        ss << "Event Count:" << event_count << "<br>";
+        ss << "Last Print :" << last_print + 1; // +1 so it looks nicer
+
+        std::string stats = ss.str();
         res.set_content(stats, "application/json; charset=UTF-8");
+    });
+
+
+    svr.Get("/api/reset", [](const httplib::Request&, httplib::Response& res) {
+        LOG_A(LOG_INFO, "Reset stats");
+        g_EventProducer.ResetData();
+        g_cache.removeAll();
     });
 
     LOG_A(LOG_INFO, "WEB: Web Server listening on http://localhost:8080");
