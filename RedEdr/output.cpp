@@ -25,11 +25,10 @@ httplib::Server svr;
 
 void AnalyzeEvent(std::string eventStr) {
     //std::cout << L"Processing: " << eventStr << std::endl;
-    LOG_A(LOG_INFO, "Proc: %s", eventStr.c_str());
-
+    nlohmann::json j;
     try
     {
-        nlohmann::json j = nlohmann::json::parse(eventStr);
+        j = nlohmann::json::parse(eventStr);
     }
     catch (const nlohmann::json::exception& e)
     {
@@ -38,8 +37,23 @@ void AnalyzeEvent(std::string eventStr) {
         return;
     }
 
-
     // Parse event
+    //std::string protectStr = j["protect_str"].get<std::string>();
+    //std::string callstackStr = j["callstack"].dump();
+
+    if (j["protect_str"] == "RWX") {
+        LOG_A(LOG_WARNING, "Analyzer: RWX detected: ");
+    }
+
+    for (const auto& callstack_entry: j["callstack"]) {
+        if (callstack_entry["protect"] == "0x40" || callstack_entry["protect"] == "0x40") {
+            LOG_A(LOG_WARNING, "Analyzer: Suspicious callstack detected: RWX");
+        }
+
+        if (callstack_entry["type"] != "0x1000000") {
+            LOG_A(LOG_WARNING, "Analyzer: Suspicious callstack detected: Non-image");
+        }
+    }
 }
 
 // cant be function variable?
