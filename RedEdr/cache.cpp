@@ -14,7 +14,6 @@
 #include "utils.h"
 #include "procinfo.h"
 #include "config.h"
-#include "output.h"
 #include "event_producer.h"
 
 Cache g_cache;

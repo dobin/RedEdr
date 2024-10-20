@@ -138,6 +138,7 @@
     <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\loguru.cpp" />
     <ClCompile Include="..\RedEdrShared\piping.cpp" />
+    <ClCompile Include="analyzer.cpp" />
     <ClCompile Include="cache.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="dllinjector.cpp" />
@@ -148,17 +149,18 @@
     <ClCompile Include="dllreader.cpp" />
     <ClCompile Include="kernelreader.cpp" />
     <ClCompile Include="logreader.cpp" />
-    <ClCompile Include="output.cpp" />
     <ClCompile Include="pplmanager.cpp" />
     <ClCompile Include="pplreader.cpp" />
     <ClCompile Include="procinfo.cpp" />
     <ClCompile Include="RedEdr.cpp" />
     <ClCompile Include="serviceutils.cpp" />
     <ClCompile Include="utils.cpp" />
+    <ClCompile Include="webserver.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\RedEdrShared\logging.h" />
     <ClInclude Include="..\RedEdrShared\loguru.hpp" />
+    <ClInclude Include="analyzer.h" />
     <ClInclude Include="cache.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="cxxops.hpp" />
@@ -173,12 +175,12 @@
     <ClInclude Include="kernelreader.h" />
     <ClInclude Include="logreader.h" />
     <ClInclude Include="mypeb.h" />
-    <ClInclude Include="output.h" />
     <ClInclude Include="pplmanager.h" />
     <ClInclude Include="pplreader.h" />
     <ClInclude Include="procinfo.h" />
     <ClInclude Include="serviceutils.h" />
     <ClInclude Include="utils.h" />
+    <ClInclude Include="webserver.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

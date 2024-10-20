@@ -18,7 +18,6 @@
 
 #include "logging.h"
 #include "logreader.h"
-#include "output.h"
 #include "utils.h"
 #include "event_producer.h"
 

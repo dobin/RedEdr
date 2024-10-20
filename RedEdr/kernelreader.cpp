@@ -16,7 +16,6 @@
 #include "../Shared/common.h"
 #include "logging.h"
 #include "kernelreader.h"
-#include "output.h"
 #include "cache.h"
 #include "piping.h"
 #include "event_producer.h"

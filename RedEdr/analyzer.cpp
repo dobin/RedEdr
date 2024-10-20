@@ -1,4 +1,4 @@
-#include "httplib.h" // Needs to be on top?
+
 
 #include <iostream>
 #include <sstream>
@@ -7,20 +7,15 @@
 #include <locale>
 #include <codecvt>
 
-#include "output.h"
 #include "event_producer.h"
 #include "config.h"
 #include "logging.h"
 #include "utils.h"
 #include "json.hpp"
+#include "analyzer.h"
 
 
-// Analyzer
 HANDLE analyzer_thread;
-
-// Web
-HANDLE webserver_thread;
-httplib::Server svr;
 
 
 void AnalyzeEvent(std::string eventStr) {
@@ -45,7 +40,7 @@ void AnalyzeEvent(std::string eventStr) {
         LOG_A(LOG_WARNING, "Analyzer: RWX detected: ");
     }
 
-    for (const auto& callstack_entry: j["callstack"]) {
+    for (const auto& callstack_entry : j["callstack"]) {
         if (callstack_entry["protect"] == "0x40" || callstack_entry["protect"] == "0x40") {
             LOG_A(LOG_WARNING, "Analyzer: Suspicious callstack detected: RWX");
         }
@@ -63,7 +58,7 @@ DWORD WINAPI AnalyzerThread(LPVOID param) {
 
     while (true) {
         // Block for new events
-        g_EventProducer.cv.wait(lock, [] { return g_EventProducer.HasMoreEvents() || g_EventProducer.done; });  
+        g_EventProducer.cv.wait(lock, [] { return g_EventProducer.HasMoreEvents() || g_EventProducer.done; });
 
         // get em events
         std::vector<std::string> output_entries = g_EventProducer.GetEventsFrom();
@@ -93,38 +88,5 @@ int InitializeAnalyzer(std::vector<HANDLE>& threads) {
 
 void StopAnalyzer() {
     if (analyzer_thread != NULL) {
-    }
-}
-
-
-/*** Web ***/
-
-DWORD WINAPI WebserverThread(LPVOID param) {
-    LOG_A(LOG_INFO, "!WEB: Start Webserver thread");
-    svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content(g_EventProducer.GetAllAsJson(), "application/json; charset=UTF-8");
-        });
-    LOG_A(LOG_INFO, "WEB: Web Server listening on http://localhost:8080");
-    svr.listen("localhost", 8080);
-    LOG_A(LOG_INFO, "!WEB: Exit Webserver thread");
-    
-    return 0;
-}
-
-
-int InitializeWebServer(std::vector<HANDLE>& threads) {
-    webserver_thread = CreateThread(NULL, 0, WebserverThread, NULL, 0, NULL);
-    if (webserver_thread == NULL) {
-        LOG_A(LOG_ERROR, "WEB: Failed to create thread for webserver");
-        return 1;
-    }
-    threads.push_back(webserver_thread);
-    return 0;
-}
-
-
-void StopWebServer() {
-    if (webserver_thread != NULL) {
-        svr.stop();
     }
 }

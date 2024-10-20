@@ -15,7 +15,6 @@
 #include "../Shared/common.h"
 #include "logging.h"
 #include "dllreader.h"
-#include "output.h"
 #include "utils.h"
 #include "config.h"
 #include "piping.h"
@@ -90,8 +89,6 @@ void DllReaderClientThread(PipeServer* pipeServer) {
     char buffer[DATA_BUFFER_SIZE] = {0};
     char* buf_ptr = buffer; // buf_ptr and rest_len are synchronized
     int rest_len = 0;
-    DWORD bytesRead, bytesWritten;
-
     while (!DllReaderThreadStop) {
         std::vector<std::wstring> result = pipeServer->ReceiveBatch();
         if (result.empty()) {

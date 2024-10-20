@@ -9,7 +9,6 @@
 #include <sstream>
 
 #include "logging.h"
-#include "output.h"
 #include "etwhandler.h"
 #include "config.h"
 #include "cache.h"

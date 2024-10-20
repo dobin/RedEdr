@@ -48,9 +48,6 @@
     <ClCompile Include="kernelinterface.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="output.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="pplreader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -76,6 +73,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="event_producer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="analyzer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="webserver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -113,9 +116,6 @@
     <ClInclude Include="kernelinterface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="output.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="httplib.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -144,6 +144,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="event_producer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="analyzer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="webserver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
