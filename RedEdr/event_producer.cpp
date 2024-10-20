@@ -122,14 +122,21 @@ void EventProducer::do_output(std::wstring eventWstr) {
 }
 
 
-BOOL EventProducer::HasMoreEvents(int last) {
+BOOL EventProducer::HasMoreEvents() {
     // No lock?
     return (last < static_cast<int>(output_entries.size()) - 1);
 }
 
 
+void EventProducer::ResetData() {
+    last = -1;
+    output_entries.clear();
+    output_count = 0;
+}
+
+
 // Returns a vector of all new events starting from last (which starts at -1)
-std::vector<std::string> EventProducer::GetEventsFrom(int last) {
+std::vector<std::string> EventProducer::GetEventsFrom() {
     std::vector<std::string> newEvents;
 
     // If the last index is valid and there are more events, return the new ones
@@ -146,6 +153,8 @@ std::vector<std::string> EventProducer::GetEventsFrom(int last) {
         newEvents.assign(output_entries.begin() + last + 1, output_entries.end());
     }
     output_mutex.unlock();
+
+    last += newEvents.size();
 
     return newEvents;
 }

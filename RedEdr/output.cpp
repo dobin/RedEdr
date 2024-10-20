@@ -56,10 +56,6 @@ void AnalyzeEvent(std::string eventStr) {
     }
 }
 
-// cant be function variable?
-int last = -1; // needs to be -1 so element 0 will be returned
-
-
 DWORD WINAPI AnalyzerThread(LPVOID param) {
     LOG_A(LOG_INFO, "!Analyzer: Start thread");
     size_t arrlen = 0;
@@ -67,17 +63,16 @@ DWORD WINAPI AnalyzerThread(LPVOID param) {
 
     while (true) {
         // Block for new events
-        g_EventProducer.cv.wait(lock, [] { return g_EventProducer.HasMoreEvents(last) || g_EventProducer.done; });  
+        g_EventProducer.cv.wait(lock, [] { return g_EventProducer.HasMoreEvents() || g_EventProducer.done; });  
 
         // get em events
-        std::vector<std::string> output_entries = g_EventProducer.GetEventsFrom(last);
+        std::vector<std::string> output_entries = g_EventProducer.GetEventsFrom();
 
         // handle em
         arrlen = output_entries.size();
         for (std::string& entry : output_entries) {
             AnalyzeEvent(entry);
         }
-        last += arrlen;
     }
 
     LOG_A(LOG_INFO, "!Analyzer: Exit thread");
