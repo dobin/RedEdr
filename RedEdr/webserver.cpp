@@ -7,6 +7,7 @@
 #include "json.hpp"
 #include "webserver.h"
 #include "cache.h"
+#include "analyzer.h"
 
 HANDLE webserver_thread;
 httplib::Server svr;
@@ -24,7 +25,6 @@ std::string read_file(const std::string& path) {
 }
 
 
-
 DWORD WINAPI WebserverThread(LPVOID param) {
     LOG_A(LOG_INFO, "!WEB: Start Webserver thread");
     
@@ -37,6 +37,10 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         res.set_content(g_EventProducer.GetAllAsJson(), "application/json; charset=UTF-8");
     });
 
+    svr.Get("/api/detections", [](const httplib::Request&, httplib::Response& res) {
+        res.set_content(GetAllDetectionsAsJson(), "application/json; charset=UTF-8");
+    });
+
     svr.Get("/api/stats", [](const httplib::Request&, httplib::Response& res) {
         size_t event_count = g_EventProducer.GetEventCount();
         int last_print = g_EventProducer.GetLastPrintIndex();
@@ -44,7 +48,6 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         std::stringstream ss;
         ss << "Event Count:" << event_count << "<br>";
         ss << "Last Print :" << last_print + 1; // +1 so it looks nicer
-
         std::string stats = ss.str();
         res.set_content(stats, "application/json; charset=UTF-8");
     });

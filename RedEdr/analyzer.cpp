@@ -17,6 +17,18 @@
 
 HANDLE analyzer_thread;
 
+std::vector<std::string> detections;
+
+std::string GetAllDetectionsAsJson() {
+    nlohmann::json jsonArray = detections;
+    return jsonArray.dump();
+}
+
+void AnalyzerNewDetection(const char *s) {
+    LOG_A(LOG_WARNING, s);
+    detections.push_back(std::string(s));
+}
+
 
 void AnalyzeEvent(std::string eventStr) {
     //std::cout << L"Processing: " << eventStr << std::endl;
@@ -37,16 +49,16 @@ void AnalyzeEvent(std::string eventStr) {
     //std::string callstackStr = j["callstack"].dump();
 
     if (j["protect_str"] == "RWX") {
-        LOG_A(LOG_WARNING, "Analyzer: RWX detected: ");
+        AnalyzerNewDetection("Analyzer: RWX detected");
     }
 
     for (const auto& callstack_entry : j["callstack"]) {
         if (callstack_entry["protect"] == "0x40" || callstack_entry["protect"] == "0x40") {
-            LOG_A(LOG_WARNING, "Analyzer: Suspicious callstack detected: RWX");
+            AnalyzerNewDetection("Analyzer: Suspicious callstack detected: RWX");
         }
 
         if (callstack_entry["type"] != "0x1000000") {
-            LOG_A(LOG_WARNING, "Analyzer: Suspicious callstack detected: Non-image");
+            AnalyzerNewDetection("Analyzer: Suspicious callstack detected: Non-image");
         }
     }
 }

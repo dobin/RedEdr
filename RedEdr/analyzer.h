@@ -15,3 +15,4 @@ void AnalyzeEvent(std::string eventStr);
 DWORD WINAPI AnalyzerThread(LPVOID param);
 int InitializeAnalyzer(std::vector<HANDLE>& threads);
 void StopAnalyzer();
+std::string GetAllDetectionsAsJson();

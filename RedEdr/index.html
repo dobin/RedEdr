@@ -77,7 +77,7 @@
             </div>
 
             <div class="item">
-                <button onclick="fetchData()">Refresh</button>
+                <button onclick="fetchEvents()">Refresh</button>
                 <button hx-get="/api/reset" hx-trigger="click" hx-target="#response">
                     Reset
                 </button>
@@ -90,8 +90,8 @@
 
     <div class="tabs">
         <div class="tab active" onclick="showContent('tab1', this)">Events</div>
-        <div class="tab" onclick="showContent('tab2', this)">StdErr</div>
-        <div class="tab" onclick="showContent('tab3', this)">Analyzer</div>
+        <div class="tab" onclick="showContent('tab2', this)">Analyzer</div>
+        <div class="tab" onclick="showContent('tab3', this)">Stderr</div>
     </div>
 
     <div class="content" id="content">
@@ -99,7 +99,7 @@
             <div id="eventContainer"></div>
         </div>
         <div id="tab2" class="tab-content" style="display: none;">
-            loading...
+            <div id="detectionContainer"></div>
         </div>
         <div id="tab3" class="tab-content" style="display: none;">
             loading...
@@ -161,7 +161,21 @@
         });
         }
 
-        async function fetchData() {
+
+        // Function to display events in Tab 1
+        function displayDetections(detections) {
+        const container = document.getElementById('detectionContainer');
+        container.innerHTML = '';
+
+        detections.forEach((detection, index) => {
+        // Create a div for each detection
+        const detectionDiv = document.createElement('div');
+        detectionDiv.textContent = `${index}: ${detection}`;
+        container.appendChild(detectionDiv);
+        });
+        }
+
+        async function fetchEvents() {
         const response = await fetch('/api/events');
         if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -170,10 +184,22 @@
         displayEvents(data);
         }
 
+        async function fetchDetections() {
+        const response = await fetch('/api/detections');
+        if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+        displayDetections(data);
+        }
+
         // Initialize by showing the first tab and setting up periodic updates
         showContent('tab1', null);
-        fetchData(); // Initial fetch
-        setInterval(fetchData, 10 * 1000);
+        fetchEvents();
+        setInterval(fetchEvents, 1 * 1000);
+
+        fetchDetections();
+        setInterval(fetchDetections, 1 * 1000);
 
     </script>
 
