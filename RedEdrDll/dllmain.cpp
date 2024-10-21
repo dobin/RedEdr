@@ -39,15 +39,15 @@ wchar_t* GetMemoryPermissions(wchar_t* buf, DWORD protection) {
 /******************* AllocateVirtualMemory ************************/
 
 
-NTSTATUS(NTAPI* Real_NtAllocateVirtualMemory)(
+typedef NTSTATUS(NTAPI* t_NtAllocateVirtualMemory)(
     HANDLE ProcessHandle,
     PVOID* BaseAddress,
     ULONG_PTR ZeroBits,
     PSIZE_T RegionSize,
     ULONG AllocationType,
     ULONG Protect
-    ) = NULL;
-
+    );
+t_NtAllocateVirtualMemory Real_NtAllocateVirtualMemory = NULL;
 
 static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
     HANDLE ProcessHandle,
@@ -92,13 +92,14 @@ static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
 
 
 
-NTSTATUS(NTAPI* Real_NtProtectVirtualMemory)(
+typedef NTSTATUS(NTAPI* t_NtProtectVirtualMemory)(
     HANDLE ProcessHandle,
     PVOID* BaseAddress,
     PULONG NumberOfBytesToProtect,
     ULONG NewAccessProtection,
     PULONG OldAccessProtection
-    ) = NULL;
+    );
+t_NtProtectVirtualMemory Real_NtProtectVirtualMemory = NULL;
 
 static NTSTATUS NTAPI Catch_NtProtectVirtualMemory(
     HANDLE ProcessHandle,
@@ -142,7 +143,7 @@ typedef enum _SECTION_INHERIT {
 } SECTION_INHERIT;
 
 // Defines the prototype of the NtMapViewOfSectionFunction
-typedef DWORD(NTAPI* pNtMapViewOfSection)(
+typedef NTSTATUS(NTAPI* t_NtMapViewOfSection)(
     HANDLE          SectionHandle,
     HANDLE          ProcessHandle,
     PVOID*          BaseAddress,
@@ -154,8 +155,8 @@ typedef DWORD(NTAPI* pNtMapViewOfSection)(
     ULONG           AllocationType,
     ULONG           Protect
     );
-pNtMapViewOfSection pOriginalNtMapViewOfSection = NULL;
-DWORD NTAPI NtMapViewOfSection(
+t_NtMapViewOfSection Real_NtMapViewOfSection = NULL;
+NTSTATUS NTAPI NtMapViewOfSection(
     HANDLE          SectionHandle,
     HANDLE          ProcessHandle,
     PVOID*          BaseAddress,
@@ -205,22 +206,22 @@ DWORD NTAPI NtMapViewOfSection(
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect_str:%ls;", mem_perm);
     LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
     SendDllPipe(buf);
-    return pOriginalNtMapViewOfSection(SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Protect);
+    return Real_NtMapViewOfSection(SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Protect);
 }
 
 
 /******************* WriteVirtualMemory ************************/
 
 // Defines the prototype of the NtWriteVirtualMemoryFunction
-typedef DWORD(NTAPI* pNtWriteVirtualMemory)(
+typedef NTSTATUS(NTAPI* t_NtWriteVirtualMemory)(
     HANDLE              ProcessHandle,
     PVOID               BaseAddress,
     PVOID               Buffer,
     ULONG               NumberOfBytesToWrite,
     PULONG              NumberOfBytesWritten
 );
-pNtWriteVirtualMemory pOriginalNtWriteVirtualMemory = NULL;
-DWORD NTAPI NtWriteVirtualMemory(
+t_NtWriteVirtualMemory Real_NtWriteVirtualMemory = NULL;
+NTSTATUS NTAPI NtWriteVirtualMemory(
     HANDLE              ProcessHandle,
     PVOID               BaseAddress,
     PVOID               Buffer,
@@ -248,14 +249,14 @@ DWORD NTAPI NtWriteVirtualMemory(
 
     LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
     SendDllPipe(buf);
-    return pOriginalNtWriteVirtualMemory(ProcessHandle, BaseAddress, Buffer, NumberOfBytesToWrite, NumberOfBytesWritten);
+    return Real_NtWriteVirtualMemory(ProcessHandle, BaseAddress, Buffer, NumberOfBytesToWrite, NumberOfBytesWritten);
 }
 
 
 /******************* ReadVirtualMemory ************************/
 
 // Defines the prototype of the NtReadVirtualMemory function
-typedef DWORD(NTAPI* pNtReadVirtualMemory)(
+typedef NTSTATUS(NTAPI* pNtReadVirtualMemory)(
     HANDLE              ProcessHandle,
     PVOID               BaseAddress,
     PVOID               Buffer,
@@ -263,7 +264,7 @@ typedef DWORD(NTAPI* pNtReadVirtualMemory)(
     PULONG              NumberOfBytesRead
     );
 pNtReadVirtualMemory pOriginalNtReadVirtualMemory = NULL;
-DWORD NTAPI NtReadVirtualMemory(
+NTSTATUS NTAPI NtReadVirtualMemory(
     HANDLE              ProcessHandle,
     PVOID               BaseAddress,
     PVOID               Buffer,
@@ -303,12 +304,12 @@ DWORD NTAPI NtReadVirtualMemory(
 /******************* NtSetContextThread ************************/
 
 // Defines the prototype of the NtSetContextThreadFunction
-typedef DWORD(NTAPI* pNtSetContextThread)(
+typedef NTSTATUS(NTAPI* pNtSetContextThread)(
     IN HANDLE               ThreadHandle,
     IN PCONTEXT             Context
     );
 pNtSetContextThread pOriginalNtSetContextThread = NULL;
-DWORD NTAPI NtSetContextThread(
+NTSTATUS NTAPI NtSetContextThread(
     IN HANDLE               ThreadHandle,
     IN PCONTEXT             Context
 ) {
@@ -334,14 +335,14 @@ DWORD NTAPI NtSetContextThread(
 
 /******************* LdrLoadDll ************************/
 
-typedef DWORD(NTAPI* pLdrLoadDll)(
+typedef NTSTATUS(NTAPI* pLdrLoadDll)(
     IN PWSTR            SearchPath          OPTIONAL,
     IN PULONG           DllCharacteristics  OPTIONAL,
     IN PUNICODE_STRING  DllName,
     OUT PVOID*          BaseAddress
     );
 pLdrLoadDll pOriginalLdrLoadDll = NULL;
-DWORD NTAPI LdrLoadDll(
+NTSTATUS NTAPI LdrLoadDll(
     IN PWSTR            SearchPath          OPTIONAL,
     IN PULONG           DllCharacteristics  OPTIONAL,
     IN PUNICODE_STRING  DllName,
@@ -381,14 +382,14 @@ DWORD NTAPI LdrLoadDll(
 
 /******************* LdrGetProcedureAddress ************************/
 
-typedef DWORD(NTAPI* pLdrGetProcedureAddress)(
+typedef NTSTATUS(NTAPI* pLdrGetProcedureAddress)(
     IN HMODULE              ModuleHandle,
     IN PANSI_STRING         FunctionName,
     IN WORD                 Oridinal,
     OUT FARPROC* FunctionAddress
     );
 pLdrGetProcedureAddress pOriginalLdrGetProcedureAddress = NULL;
-DWORD NTAPI LdrGetProcedureAddress(
+NTSTATUS NTAPI LdrGetProcedureAddress(
     IN HMODULE              ModuleHandle,
     IN PANSI_STRING         FunctionName,
     IN WORD                 Oridinal,
@@ -424,7 +425,7 @@ DWORD NTAPI LdrGetProcedureAddress(
 
 /******************* NtQueueApcThread ************************/
 
-typedef DWORD(NTAPI* pNtQueueApcThread)(
+typedef NTSTATUS(NTAPI* pNtQueueApcThread)(
     IN HANDLE               ThreadHandle, 
     IN PIO_APC_ROUTINE      ApcRoutine,
     IN PVOID                ApcRoutineContext OPTIONAL,
@@ -432,7 +433,7 @@ typedef DWORD(NTAPI* pNtQueueApcThread)(
     IN ULONG                ApcReserved OPTIONAL
     );
 pNtQueueApcThread pOriginalNtQueueApcThread = NULL;
-DWORD NTAPI NtQueueApcThread(
+NTSTATUS NTAPI NtQueueApcThread(
     IN HANDLE               ThreadHandle,    
     IN PIO_APC_ROUTINE      ApcRoutine,
     IN PVOID                ApcRoutineContext OPTIONAL,
@@ -462,7 +463,7 @@ DWORD NTAPI NtQueueApcThread(
 
 /******************* NtQueueApcThreadEx ************************/
 
-typedef DWORD(NTAPI* pNtQueueApcThreadEx)(
+typedef NTSTATUS(NTAPI* pNtQueueApcThreadEx)(
     IN HANDLE               ThreadHandle,
     IN HANDLE               ApcThreadHandle,
     IN PVOID                ApcRoutine,
@@ -471,7 +472,7 @@ typedef DWORD(NTAPI* pNtQueueApcThreadEx)(
     IN PVOID                ApcArgument3
     );
 pNtQueueApcThreadEx pOriginalNtQueueApcThreadEx = NULL;
-DWORD NTAPI NtQueueApcThreadEx(
+NTSTATUS NTAPI NtQueueApcThreadEx(
     IN HANDLE               ThreadHandle,
     IN HANDLE               ApcThreadHandle,
     IN PVOID                ApcRoutine,
@@ -508,7 +509,7 @@ DWORD NTAPI NtQueueApcThreadEx(
 
 /******************* NtCreateProcess ************************/
 
-typedef DWORD(NTAPI* pNtCreateProcess)(
+typedef NTSTATUS(NTAPI* pNtCreateProcess)(
     OUT PHANDLE             ProcessHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
@@ -519,7 +520,7 @@ typedef DWORD(NTAPI* pNtCreateProcess)(
     IN HANDLE               ExceptionPort
     );
 pNtCreateProcess pOriginalNtCreateProcess = NULL;
-DWORD NTAPI NtCreateProcess(
+NTSTATUS NTAPI NtCreateProcess(
     OUT PHANDLE             ProcessHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
@@ -557,7 +558,7 @@ DWORD NTAPI NtCreateProcess(
 
 /******************* NtCreateThreadEx ************************/
 
-typedef DWORD(NTAPI* pNtCreateThreadEx)(
+typedef NTSTATUS(NTAPI* pNtCreateThreadEx)(
     OUT PHANDLE             ThreadHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
@@ -571,7 +572,7 @@ typedef DWORD(NTAPI* pNtCreateThreadEx)(
     IN PVOID                AttributeList
     );
 pNtCreateThreadEx pOriginalNtCreateThreadEx = NULL;
-DWORD NTAPI NtCreateThreadEx(
+NTSTATUS NTAPI NtCreateThreadEx(
     OUT PHANDLE             ThreadHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
@@ -610,14 +611,14 @@ DWORD NTAPI NtCreateThreadEx(
 
 /******************* NtOpenProcess ************************/
 
-typedef DWORD(NTAPI* pNtOpenProcess)(
+typedef NTSTATUS(NTAPI* pNtOpenProcess)(
     OUT PHANDLE             ProcessHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
     IN CLIENT_ID*           ClientId
     );
 pNtOpenProcess pOriginalNtOpenProcess = NULL;
-DWORD NTAPI NtOpenProcess(
+NTSTATUS NTAPI NtOpenProcess(
     OUT PHANDLE             ProcessHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
@@ -647,11 +648,11 @@ DWORD NTAPI NtOpenProcess(
 
 /******************* NtLoadDriver ************************/
 
-typedef DWORD(NTAPI* pNtLoadDriver)(
+typedef NTSTATUS(NTAPI* pNtLoadDriver)(
     IN PUNICODE_STRING      DriverServiceName
     );
 pNtLoadDriver pOriginalNtLoadDriver = NULL;
-DWORD NTAPI NtLoadDriver(
+NTSTATUS NTAPI NtLoadDriver(
     IN PUNICODE_STRING      DriverServiceName
 ) {
     LARGE_INTEGER time = get_time();
@@ -681,7 +682,7 @@ DWORD NTAPI NtLoadDriver(
 
 /******************* NtCreateNamedPipeFile ************************/
 
-typedef DWORD(NTAPI* pNtCreateNamedPipeFile)(
+typedef NTSTATUS(NTAPI* pNtCreateNamedPipeFile)(
     OUT PHANDLE             NamedPipeFileHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
@@ -698,7 +699,7 @@ typedef DWORD(NTAPI* pNtCreateNamedPipeFile)(
     IN PLARGE_INTEGER       DefaultTimeout
     );
 pNtCreateNamedPipeFile pOriginalNtCreateNamedPipeFile = NULL;
-DWORD NTAPI NtCreateNamedPipeFile(
+NTSTATUS NTAPI NtCreateNamedPipeFile(
     OUT PHANDLE             NamedPipeFileHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
@@ -742,14 +743,14 @@ DWORD NTAPI NtCreateNamedPipeFile(
 
 /******************* NtOpenThread ************************/
 
-typedef DWORD(NTAPI* pNtOpenThread)(
+typedef NTSTATUS(NTAPI* pNtOpenThread)(
     OUT PHANDLE             ThreadHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
     IN CLIENT_ID*           ClientId
     );
 pNtOpenThread pOriginalNtOpenThread = NULL;
-DWORD NTAPI NtOpenThread(
+NTSTATUS NTAPI NtOpenThread(
     OUT PHANDLE             ThreadHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
@@ -782,7 +783,7 @@ DWORD NTAPI NtOpenThread(
 
 /******************* NtCreateSection ************************/
 
-typedef DWORD(NTAPI* pNtCreateSection)(
+typedef NTSTATUS(NTAPI* pNtCreateSection)(
     OUT PHANDLE             SectionHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
@@ -792,7 +793,7 @@ typedef DWORD(NTAPI* pNtCreateSection)(
     IN HANDLE               FileHandle
     );
 pNtCreateSection pOriginalNtCreateSection = NULL;
-DWORD NTAPI NtCreateSection(
+NTSTATUS NTAPI NtCreateSection(
     OUT PHANDLE             SectionHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
@@ -827,7 +828,7 @@ DWORD NTAPI NtCreateSection(
 
 /******************* NtCreateProcessEx ************************/
 
-typedef DWORD(NTAPI* pNtCreateProcessEx)(
+typedef NTSTATUS(NTAPI* pNtCreateProcessEx)(
     OUT PHANDLE             ProcessHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
@@ -839,7 +840,7 @@ typedef DWORD(NTAPI* pNtCreateProcessEx)(
     IN BOOLEAN              InJob
     );
 pNtCreateProcessEx pOriginalNtCreateProcessEx = NULL;
-DWORD NTAPI NtCreateProcessEx(
+NTSTATUS NTAPI NtCreateProcessEx(
     OUT PHANDLE             ProcessHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
@@ -886,7 +887,7 @@ typedef enum _EVENT_TYPE {
     SynchronizationEvent = 1
 } EVENT_TYPE;
 
-typedef DWORD(NTAPI* pNtCreateEvent)(
+typedef NTSTATUS(NTAPI* pNtCreateEvent)(
     OUT PHANDLE             EventHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes OPTIONAL,
@@ -894,7 +895,7 @@ typedef DWORD(NTAPI* pNtCreateEvent)(
     IN BOOLEAN              InitialState
     );
 pNtCreateEvent pOriginalNtCreateEvent = NULL;
-DWORD NTAPI NtCreateEvent(
+NTSTATUS NTAPI NtCreateEvent(
     OUT PHANDLE             EventHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes OPTIONAL,
@@ -929,14 +930,14 @@ typedef enum _TIMER_TYPE {
     SynchronizationTimer
 } TIMER_TYPE;
 
-typedef DWORD(NTAPI* pNtCreateTimer)(
+typedef NTSTATUS(NTAPI* pNtCreateTimer)(
     OUT PHANDLE             TimerHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes OPTIONAL,
     IN TIMER_TYPE           TimerType
     );
 pNtCreateTimer pOriginalNtCreateTimer = NULL;
-DWORD NTAPI NtCreateTimer(
+NTSTATUS NTAPI NtCreateTimer(
     OUT PHANDLE             TimerHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes OPTIONAL,
@@ -964,7 +965,7 @@ DWORD NTAPI NtCreateTimer(
 
 /******************* NtCreateTimer2 ************************/
 
-typedef DWORD(NTAPI* pNtCreateTimer2)(
+typedef NTSTATUS(NTAPI* pNtCreateTimer2)(
     OUT PHANDLE             TimerHandle,
     IN PVOID                Reserved1 OPTIONAL,
     IN PVOID                Reserved2 OPTIONAL,
@@ -972,7 +973,7 @@ typedef DWORD(NTAPI* pNtCreateTimer2)(
     IN ACCESS_MASK          DesiredAccess
     );
 pNtCreateTimer2 pOriginalNtCreateTimer2 = NULL;
-DWORD NTAPI NtCreateTimer2(
+NTSTATUS NTAPI NtCreateTimer2(
     OUT PHANDLE             TimerHandle,
     IN PVOID                Reserved1 OPTIONAL,
     IN PVOID                Reserved2 OPTIONAL,
@@ -1023,18 +1024,52 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     InitDllPipe();
     SendDllPipe(start_str);
 
-
-    Real_NtAllocateVirtualMemory
-        = ((NTSTATUS(NTAPI*)(HANDLE, PVOID*, ULONG_PTR, PSIZE_T, ULONG, ULONG))
-            DetourFindFunction("ntdll.dll", "NtAllocateVirtualMemory"));
-    Real_NtProtectVirtualMemory
-        = ((NTSTATUS(NTAPI*)(HANDLE, PVOID*, PULONG, ULONG, PULONG))
-            DetourFindFunction("ntdll.dll", "NtProtectVirtualMemory"));
+    pOriginalNtSetContextThread = (pNtSetContextThread)DetourFindFunction("ntdll.dll", "NtSetContextThread");
+    pOriginalLdrLoadDll = (pLdrLoadDll)DetourFindFunction("ntdll.dll", "LdrLoadDll");
+    pOriginalLdrGetProcedureAddress = (pLdrGetProcedureAddress)DetourFindFunction("ntdll.dll", "LdrGetProcedureAddress");
+    pOriginalNtQueueApcThread = (pNtQueueApcThread)DetourFindFunction("ntdll.dll", "NtQueueApcThread");
+    pOriginalNtQueueApcThreadEx = (pNtQueueApcThreadEx)DetourFindFunction("ntdll.dll", "NtQueueApcThreadEx");
+    pOriginalNtCreateProcess = (pNtCreateProcess)DetourFindFunction("ntdll.dll", "NtCreateProcess");
+    pOriginalNtCreateThreadEx = (pNtCreateThreadEx)DetourFindFunction("ntdll.dll", "NtCreateThreadEx");
+    pOriginalNtOpenProcess = (pNtOpenProcess)DetourFindFunction("ntdll.dll", "NtOpenProcess");
+    pOriginalNtLoadDriver = (pNtLoadDriver)DetourFindFunction("ntdll.dll", "NtLoadDriver");
+    pOriginalNtCreateNamedPipeFile = (pNtCreateNamedPipeFile)DetourFindFunction("ntdll.dll", "NtCreateNamedPipeFile");
+    pOriginalNtCreateSection = (pNtCreateSection)DetourFindFunction("ntdll.dll", "NtCreateSection");
+    pOriginalNtCreateProcessEx = (pNtCreateProcessEx)DetourFindFunction("ntdll.dll", "NtCreateProcessEx");
+    pOriginalNtCreateEvent = (pNtCreateEvent)DetourFindFunction("ntdll.dll", "NtCreateEvent");
+    pOriginalNtCreateTimer = (pNtCreateTimer)DetourFindFunction("ntdll.dll", "NtCreateTimer");
+    pOriginalNtCreateTimer2 = (pNtCreateTimer2)DetourFindFunction("ntdll.dll", "NtCreateTimer2");
+    pOriginalNtReadVirtualMemory = (pNtReadVirtualMemory)DetourFindFunction("ntdll.dll", "NtReadVirtualMemory");
+    pOriginalNtOpenThread = (pNtOpenThread)DetourFindFunction("ntdll.dll", "NtOpenThread");
+    Real_NtWriteVirtualMemory = (t_NtWriteVirtualMemory)DetourFindFunction("ntdll.dll", "NtWriteVirtualMemory");
+    Real_NtMapViewOfSection = (t_NtMapViewOfSection)DetourFindFunction("ntdll.dll", "NtMapViewOfSection");
+    Real_NtAllocateVirtualMemory = (t_NtAllocateVirtualMemory)DetourFindFunction("ntdll.dll", "NtAllocateVirtualMemory");
+    Real_NtProtectVirtualMemory = (t_NtProtectVirtualMemory)DetourFindFunction("ntdll.dll", "NtProtectVirtualMemory");
 
     DetourRestoreAfterWith();
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
-    //DetourAttach(&(PVOID&)Real_NtAllocateVirtualMemory, Catch_NtAllocateVirtualMemory);
+    DetourAttach(&(PVOID&)pOriginalNtSetContextThread, NtSetContextThread);
+    DetourAttach(&(PVOID&)pOriginalLdrLoadDll, LdrLoadDll);
+    DetourAttach(&(PVOID&)pOriginalLdrGetProcedureAddress, LdrGetProcedureAddress);
+    DetourAttach(&(PVOID&)pOriginalNtQueueApcThread, NtQueueApcThread);
+    DetourAttach(&(PVOID&)pOriginalNtQueueApcThreadEx, NtQueueApcThreadEx);
+    DetourAttach(&(PVOID&)pOriginalNtCreateProcess, NtCreateProcess);
+    DetourAttach(&(PVOID&)pOriginalNtCreateThreadEx, NtCreateThreadEx);
+    DetourAttach(&(PVOID&)pOriginalNtOpenProcess, NtOpenProcess);
+    DetourAttach(&(PVOID&)pOriginalNtLoadDriver, NtLoadDriver);
+    DetourAttach(&(PVOID&)pOriginalNtCreateNamedPipeFile, NtCreateNamedPipeFile);
+    DetourAttach(&(PVOID&)pOriginalNtCreateSection, NtCreateSection);
+    DetourAttach(&(PVOID&)pOriginalNtCreateProcessEx, NtCreateProcessEx);
+    DetourAttach(&(PVOID&)pOriginalNtCreateEvent, NtCreateEvent);
+    DetourAttach(&(PVOID&)pOriginalNtCreateTimer, NtCreateTimer);
+    DetourAttach(&(PVOID&)pOriginalNtCreateTimer2, NtCreateTimer2);
+    DetourAttach(&(PVOID&)pOriginalNtReadVirtualMemory, NtReadVirtualMemory);
+    DetourAttach(&(PVOID&)pOriginalNtOpenThread, NtOpenThread);
+
+    DetourAttach(&(PVOID&)Real_NtWriteVirtualMemory, NtWriteVirtualMemory);
+    DetourAttach(&(PVOID&)Real_NtMapViewOfSection, NtMapViewOfSection);
+    DetourAttach(&(PVOID&)Real_NtAllocateVirtualMemory, Catch_NtAllocateVirtualMemory);
     DetourAttach(&(PVOID&)Real_NtProtectVirtualMemory, Catch_NtProtectVirtualMemory);
     error = DetourTransactionCommit();
     if (error == NO_ERROR) {
@@ -1061,7 +1096,8 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     MH_CreateHookApi(L"ntdll", "NtLoadDriver", NtLoadDriver, (LPVOID*)(&pOriginalNtLoadDriver));
     MH_CreateHookApi(L"ntdll", "NtCreateNamedPipeFile", NtCreateNamedPipeFile, (LPVOID*)(&pOriginalNtCreateNamedPipeFile));
     MH_CreateHookApi(L"ntdll", "NtCreateSection", NtCreateSection, (LPVOID*)(&pOriginalNtCreateSection));
-    MH_CreateHookApi(L"ntdll", "NtCreateThreadEx", NtCreateThreadEx, (LPVOID*)(&pOriginalNtCreateThreadEx));
+    //MH_CreateHookApi(L"ntdll", "NtCreateThreadEx", NtCreateThreadEx, (LPVOID*)(&pOriginalNtCreateThreadEx));
+
     MH_CreateHookApi(L"ntdll", "NtCreateProcessEx", NtCreateProcessEx, (LPVOID*)(&pOriginalNtCreateProcessEx));
     MH_CreateHookApi(L"ntdll", "NtCreateEvent", NtCreateEvent, (LPVOID*)(&pOriginalNtCreateEvent));
     MH_CreateHookApi(L"ntdll", "NtCreateTimer", NtCreateTimer, (LPVOID*)(&pOriginalNtCreateTimer));
