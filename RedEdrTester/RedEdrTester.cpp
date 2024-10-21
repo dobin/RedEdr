@@ -20,7 +20,8 @@
 #include "config.h"
 #include "procinfo.h"
 #include "dllinjector.h"
-#include "output.h"
+#include "analyzer.h"
+#include "webserver.h"
 #include "cache.h"
 
 #pragma comment(lib, "Dbghelp.lib")

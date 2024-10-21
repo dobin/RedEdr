@@ -23,6 +23,7 @@ public:
     Process* getObject(DWORD id);
     BOOL observe(DWORD id);
     void removeObject(DWORD id);
+    void removeAll();
 
 private:
     std::unordered_map<DWORD, Process> cache;

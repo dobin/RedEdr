@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+
+    <style>
+        body {
+            font-family: "Courier New", Courier, monospace;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-bottom: none;
+            background-color: #f1f1f1;
+        }
+
+            .tab.active {
+                background-color: #fff;
+                font-weight: bold;
+                border-bottom: 1px solid transparent;
+            }
+
+        .content {
+            padding: 20px;
+            border: 1px solid #ccc;
+        }
+
+        .container {
+            display: flex; /* Makes elements inside the container align horizontally */
+            gap: 10px; /* Adds space between the elements */
+        }
+
+        .item {
+            padding: 10px;
+            background-color: rgb(27, 77, 24);
+            border: 1px solid #ccc;
+        }
+
+        .event {
+            padding: 5px;
+            border: 1px solid #ccc;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <div class="item">
+                <div class="stats" hx-get="/api/stats" hx-trigger="every 1s">
+                </div>
+            </div>
+
+            <div class="item">
+                <button onclick="fetchEvents()">Refresh</button>
+                <button hx-get="/api/reset" hx-trigger="click" hx-target="#response">
+                    Reset
+                </button>
+            </div>
+
+            <div class="item" id="response">
+            </div>
+        </div>
+    </header>
+
+    <div class="tabs">
+        <div class="tab active" onclick="showContent('tab1', this)">Events</div>
+        <div class="tab" onclick="showContent('tab2', this)">Analyzer</div>
+        <div class="tab" onclick="showContent('tab3', this)">Stderr</div>
+    </div>
+
+    <div class="content" id="content">
+        <div id="tab1" class="tab-content">
+            <div id="eventContainer"></div>
+        </div>
+        <div id="tab2" class="tab-content" style="display: none;">
+            <div id="detectionContainer"></div>
+        </div>
+        <div id="tab3" class="tab-content" style="display: none;">
+            loading...
+        </div>
+    </div>
+
+    <script>
+        function showContent(tabId, tabElement) {
+        // Hide all tab contents
+        const contents = document.querySelectorAll('.tab-content');
+        contents.forEach(content => content.style.display = 'none');
+
+        // Remove active class from all tabs
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(tab => tab.classList.remove('active'));
+
+        // Show the selected tab content
+        document.getElementById(tabId).style.display = 'block';
+
+        // Add active class to the clicked tab if tabElement is provided
+        if (tabElement) {
+        tabElement.classList.add('active');
+        }
+        }
+
+        // Function to display events in Tab 1
+        function displayEvents(events) {
+        const eventContainer = document.getElementById('eventContainer');
+        eventContainer.innerHTML = ''; // Clear previous content
+
+        events.forEach(event => {
+        const eventDiv = document.createElement('div');
+        eventDiv.classList.add('event');
+
+        // Create a string to hold all properties of the event
+        let eventDetails = '';
+
+        // All events
+        for (const [key, value] of Object.entries(event)) {
+
+        if (typeof(value) === 'object') {
+        // Array
+        //for (let item of value) {
+
+        // Dict
+        eventDetails += `${key}:` + JSON.stringify(value, null, 0) + ";";
+        //eventDetails += `<strong>${key}</strong>: ${item};<br>`;
+        //}
+        //eventDetails += `<strong>${key}</strong>: <br>`;
+
+        } else {
+        // String
+        eventDetails += `${key}:${value};`;
+        }
+        }
+
+        eventDiv.innerHTML = eventDetails; // Set the inner HTML to the details
+        eventContainer.appendChild(eventDiv); // Add the event div to the container
+        });
+        }
+
+
+        // Function to display events in Tab 1
+        function displayDetections(detections) {
+        const container = document.getElementById('detectionContainer');
+        container.innerHTML = '';
+
+        detections.forEach((detection, index) => {
+        // Create a div for each detection
+        const detectionDiv = document.createElement('div');
+        detectionDiv.textContent = `${index}: ${detection}`;
+        container.appendChild(detectionDiv);
+        });
+        }
+
+        async function fetchEvents() {
+        const response = await fetch('/api/events');
+        if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+        displayEvents(data);
+        }
+
+        async function fetchDetections() {
+        const response = await fetch('/api/detections');
+        if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+        displayDetections(data);
+        }
+
+        // Initialize by showing the first tab and setting up periodic updates
+        showContent('tab1', null);
+        fetchEvents();
+        setInterval(fetchEvents, 1 * 1000);
+
+        fetchDetections();
+        setInterval(fetchDetections, 1 * 1000);
+
+    </script>
+
+</body>
+</html>

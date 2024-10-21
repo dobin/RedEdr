@@ -28,7 +28,7 @@ elseif ($arg -eq "kernel") {
         "timeout /t 3 &",
         "taskkill /im notepad.exe /f"
     )
-    Start-Process -Wait "C:\rededr\rededr.exe"  -ArgumentList "--kernel --trace otepad"
+    Start-Process -Wait "C:\rededr\rededr.exe"  -ArgumentList "--hide --kernel --inject --trace otepad"
 }
 elseif ($arg -eq "etw") {
     Start-Process cmd -ArgumentList @(

@@ -14,7 +14,7 @@
 #include "utils.h"
 #include "procinfo.h"
 #include "config.h"
-#include "output.h"
+#include "event_producer.h"
 
 Cache g_cache;
 std::mutex cache_mutex;
@@ -77,7 +77,7 @@ Process* Cache::getObject(DWORD id) {
             process->is_protected_process_light,
             process->image_base
         );
-        do_output(o);
+        g_EventProducer.do_output(o);
         PrintLoadedModules(id, process);
     }
 
@@ -99,5 +99,11 @@ BOOL Cache::observe(DWORD id) {
 void Cache::removeObject(DWORD id) {
     cache_mutex.lock();
     cache.erase(id);
+    cache_mutex.unlock();
+}
+
+void Cache::removeAll() {
+    cache_mutex.lock();
+    cache.clear();
     cache_mutex.unlock();
 }

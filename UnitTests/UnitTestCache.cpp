@@ -9,7 +9,7 @@
 #include "logging.h"
 #include "cache.h"
 #include "config.h"
-
+#include "utils.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -58,14 +58,14 @@ namespace UnitTests
 
             // Find PID of VcxprojReader.exe, which should exist
             // And set it to be observed
-            g_config.targetExeName = L"VcxprojReader.exe";
-            std::wstring processName = L"VcxprojReader.exe";
+            g_config.targetExeName = L"explorer.exe";
+            std::wstring processName = L"explorer.exe";
             DWORD pid = FindProcessId(processName);
             Assert::IsTrue(pid > 0);
             p = g_cache.getObject(pid);
             Assert::IsNotNull(p);
             Assert::IsTrue(p->observe);
-            Assert::IsTrue(p->image_path.find(processName) != std::wstring::npos);
+            Assert::IsTrue(contains_case_insensitive(p->image_path, processName));
         }
     };
 }

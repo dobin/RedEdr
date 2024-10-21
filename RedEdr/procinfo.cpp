@@ -17,12 +17,9 @@
 #include "config.h"
 #include "procinfo.h"
 #include "utils.h"
-#include "output.h"
-//#include "cache.h"
-//#include "dllinjector.h"
-//#include "output.h"
-//#include "utils.h"
+
 #include "mypeb.h"
+#include "event_producer.h"
 #include "../Shared/common.h"
 
 #pragma comment(lib, "ntdll.lib")
@@ -53,12 +50,12 @@ typedef NTSTATUS(NTAPI* pNtQueryVirtualMemory)(
 std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
     std::wstring s;
     //std::vector<wchar_t> commandLine(u->Length / sizeof(wchar_t));
-    std::vector<wchar_t> commandLine(u->Length);
-    if (!ReadProcessMemory(hProcess, u->Buffer, commandLine.data(), u->Length, NULL)) {
+    std::vector<wchar_t> uni(u->Length);
+    if (!ReadProcessMemory(hProcess, u->Buffer, uni.data(), u->Length, NULL)) {
         LOG_A(LOG_ERROR, "Procinfo: Could not ReadProcessMemory error: %d", GetLastError());
     }
     else {
-        s.assign(commandLine.begin(), commandLine.end());
+        s.assign(uni.begin(), uni.end());
     }
     return s;
 }
@@ -179,6 +176,7 @@ bool RetrieveProcessInfo(Process *process, HANDLE hProcess) {
         return FALSE;
     }
     process->commandline = GetRemoteUnicodeStr(hProcess, &procParams.CommandLine);
+    process->commandline = ReplaceAll(process->commandline, L"\"", L"\\\"");
     process->image_path = GetRemoteUnicodeStr(hProcess, &procParams.ImagePathName);
     process->working_dir = GetRemoteUnicodeStr(hProcess, &procParams.CurrentDirectory.DosPath);
     
@@ -274,7 +272,7 @@ BOOL PrintLoadedModules(DWORD pid, Process* process) {
         csv.c_str()
     );
     remove_all_occurrences_case_insensitive(o, std::wstring(L"C:\\Windows\\system32\\"));
-    do_output(o);
+    g_EventProducer.do_output(o);
 }
 
 

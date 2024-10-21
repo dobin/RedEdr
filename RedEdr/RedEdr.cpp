@@ -10,23 +10,27 @@
 #include <cwchar>
 #include <cstdlib>
 #include <string.h>
+#include <conio.h>   // For _kbhit() and _getch()
 
 #include "cxxops.hpp"
-
 #include "config.h"
 #include "dllinjector.h"
 #include "etwreader.h"
 #include "logreader.h"
 #include "kernelreader.h"
 #include "cache.h"
-#include "output.h"
+#include "analyzer.h"
+#include "webserver.h"
 #include "procinfo.h"
 #include "dllreader.h"
 #include "kernelinterface.h"
 #include "pplmanager.h"
 #include "../Shared/common.h"
 #include "logging.h"
+#include "utils.h"
 
+
+BOOL keyboard_reader_flag = TRUE;
 
 // Function to enable a privilege for the current process
 BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpszPrivilege, BOOL bEnablePrivilege) {
@@ -123,12 +127,17 @@ void shutdown_all() {
         DllReaderShutdown();
     }
 
-
     // Web server
     if (g_config.web_output) {
         LOG_A(LOG_INFO, "RedEdr: Stop web server");
         StopWebServer();
     }
+
+    // Keyboard reader
+    keyboard_reader_flag = FALSE;
+
+    // Analyzer
+    StopAnalyzer();
 }
 
 
@@ -148,11 +157,18 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
 }
 
 
-wchar_t* ConvertCharToWchar2(const char *arg) {
-    int len = MultiByteToWideChar(CP_ACP, 0, arg, -1, NULL, 0);
-    wchar_t* wargv = new wchar_t[len];
-    MultiByteToWideChar(CP_ACP, 0, arg, -1, wargv, len);
-    return wargv;
+DWORD WINAPI KeyboardReaderThread(LPVOID param) {
+    while (keyboard_reader_flag) {
+        if (_kbhit()) {  // Check if a key was pressed
+            char ch = _getch();  // Get the character
+            if (ch == 'r') {
+                LOG_A(LOG_WARNING, "Resetting data...");
+                g_cache.removeAll();
+            }
+        }
+        Sleep(200);
+    }
+    return 0;
 }
 
 
@@ -212,7 +228,7 @@ int main(int argc, char* argv[]) {
 
     if (result.count("trace")) {
         std::string s = result["trace"].as<std::string>();
-        wchar_t* ss = ConvertCharToWchar2(s.c_str());
+        wchar_t* ss = ConvertCharToWchar(s.c_str());
         g_config.targetExeName = ss;
     }
     else {
@@ -304,6 +320,17 @@ int main(int argc, char* argv[]) {
         wchar_t* target = (wchar_t* )g_config.targetExeName;
         EnablePplService(TRUE, target);
     }
+
+    // Keyboard reader
+    HANDLE thread = CreateThread(NULL, 0, KeyboardReaderThread, NULL, 0, NULL);
+    if (thread == NULL) {
+        LOG_A(LOG_ERROR, "Failed to create thread");
+        return 1;
+    }
+    threads.push_back(thread);
+
+    // Analyzer
+    InitializeAnalyzer(threads);
 
     // Wait for all threads to complete
     LOG_A(LOG_INFO, "RedEdr: waiting for %llu threads...", threads.size());
