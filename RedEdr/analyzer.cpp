@@ -49,16 +49,25 @@ void AnalyzeEvent(std::string eventStr) {
     //std::string callstackStr = j["callstack"].dump();
 
     if (j["protect_str"] == "RWX") {
-        AnalyzerNewDetection("Analyzer: RWX detected");
+        AnalyzerNewDetection("Analyzer: RWX'ing detected");
     }
 
     for (const auto& callstack_entry : j["callstack"]) {
         if (callstack_entry["protect"] == "0x40" || callstack_entry["protect"] == "0x40") {
-            AnalyzerNewDetection("Analyzer: Suspicious callstack detected: RWX");
+            AnalyzerNewDetection("Analyzer: Suspicious callstack entry: detected: RWX");
         }
 
-        if (callstack_entry["type"] != "0x1000000") {
-            AnalyzerNewDetection("Analyzer: Suspicious callstack detected: Non-image");
+        if (callstack_entry["type"] != "0x1000000") { // MEM_IMAGE
+            if (callstack_entry["type"] == "0x20000") { // MEM_MAPPED
+                AnalyzerNewDetection("Analyzer: Suspicious callstack entry detected: MEM_MAPPED (noisy)");
+            }
+            else if (callstack_entry["type"] == "0x40000") {
+                AnalyzerNewDetection("Analyzer: Very Suspicious callstack entry detected: MEM_PRIVATE");
+            }
+            else {
+                AnalyzerNewDetection("Analyzer: Suspicious callstack entry detected: Unknown");
+            }
+            
         }
     }
 }
