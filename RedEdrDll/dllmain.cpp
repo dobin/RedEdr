@@ -1025,8 +1025,12 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     SendDllPipe(start_str);
 
     // All the original methods
-    Real_NtSetContextThread = (pNtSetContextThread)DetourFindFunction("ntdll.dll", "Catch_NtSetContextThread");
-    Real_LdrLoadDll = (pLdrLoadDll)DetourFindFunction("ntdll.dll", "LdrLoadDll");
+    
+    // NOTE: Do be VERY CAREFUL enabling these
+    //       Just uncommenting the variable will break the callstack 
+    //       (e.g. with a nonexisting function as parameter)
+    //Real_NtSetContextThread = (pNtSetContextThread)DetourFindFunction("ntdll.dll", "NtSetContextThread");
+    //Real_LdrLoadDll = (pLdrLoadDll)DetourFindFunction("ntdll.dll", "LdrLoadDll");
     Real_LdrGetProcedureAddress = (pLdrGetProcedureAddress)DetourFindFunction("ntdll.dll", "LdrGetProcedureAddress");
     Real_NtQueueApcThread = (pNtQueueApcThread)DetourFindFunction("ntdll.dll", "NtQueueApcThread");
     Real_NtQueueApcThreadEx = (pNtQueueApcThreadEx)DetourFindFunction("ntdll.dll", "NtQueueApcThreadEx");
@@ -1053,17 +1057,17 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
 
     // All the hooks
     //DetourAttach(&(PVOID&)Real_NtSetContextThread, Catch_NtSetContextThread); // broken
-    DetourAttach(&(PVOID&)Real_LdrLoadDll, Catch_LdrLoadDll);
-    DetourAttach(&(PVOID&)Real_LdrGetProcedureAddress, Catch_LdrGetProcedureAddress);
+    //DetourAttach(&(PVOID&)Real_LdrLoadDll, Catch_LdrLoadDll); // broken
+    DetourAttach(&(PVOID&)Real_LdrGetProcedureAddress, Catch_LdrGetProcedureAddress); 
     DetourAttach(&(PVOID&)Real_NtQueueApcThread, Catch_NtQueueApcThread);
     DetourAttach(&(PVOID&)Real_NtQueueApcThreadEx, Catch_NtQueueApcThreadEx);
     DetourAttach(&(PVOID&)Real_NtCreateProcess, Catch_NtCreateProcess);
-    DetourAttach(&(PVOID&)Real_NtCreateThreadEx, Catch_NtCreateThreadEx);
+    DetourAttach(&(PVOID&)Real_NtCreateThreadEx, Catch_NtCreateThreadEx); 
     DetourAttach(&(PVOID&)Real_NtOpenProcess, Catch_NtOpenProcess);
     DetourAttach(&(PVOID&)Real_NtLoadDriver, Catch_NtLoadDriver);
     DetourAttach(&(PVOID&)Real_NtCreateNamedPipeFile, Catch_NtCreateNamedPipeFile);
     DetourAttach(&(PVOID&)Real_NtCreateSection, Catch_NtCreateSection);
-    DetourAttach(&(PVOID&)Real_NtCreateProcessEx, Catch_NtCreateProcessEx);
+    DetourAttach(&(PVOID&)Real_NtCreateProcessEx, Catch_NtCreateProcessEx); 
     DetourAttach(&(PVOID&)Real_NtCreateEvent, Catch_NtCreateEvent);
     DetourAttach(&(PVOID&)Real_NtCreateTimer, Catch_NtCreateTimer);
     DetourAttach(&(PVOID&)Real_NtCreateTimer2, Catch_NtCreateTimer2);
