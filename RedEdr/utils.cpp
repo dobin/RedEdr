@@ -5,6 +5,9 @@
 #include <algorithm>
 #include <locale>
 #include <codecvt>
+#include <sstream>
+#include <iostream>
+#include <fstream>
 
 #include "../Shared/common.h"
 
@@ -138,3 +141,15 @@ std::string wstring_to_utf8(std::wstring& wide_string)
     std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
     return conv.to_bytes(output.str());
 */
+
+
+std::string read_file(const std::string& path) {
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        std::cerr << "Could not open file: " << path << std::endl;
+        return "";
+    }
+    std::stringstream buffer;
+    buffer << file.rdbuf(); // Read the file into the stringstream
+    return buffer.str();
+}
