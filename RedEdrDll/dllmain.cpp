@@ -79,10 +79,9 @@ static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%#lx;", Protect);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect_str:%ls;", protect_str);
 
-        SendDllPipe(buf);
-
-        // Broken atm?
+        // BROKEN for some reason. Do not attempt to enable it again.
         //LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
+        SendDllPipe(buf);
     }
     return Real_NtAllocateVirtualMemory(ProcessHandle, BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
 }
@@ -327,8 +326,9 @@ NTSTATUS NTAPI Catch_NtSetContextThread(
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:SetContextThread;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:0x%p;", ThreadHandle);
 
-    SendDllPipe(buf);
     LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
+    SendDllPipe(buf);
+    
     return Real_NtSetContextThread(ThreadHandle, Context);
 }
 
@@ -375,6 +375,7 @@ NTSTATUS NTAPI Catch_LdrLoadDll(
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"dll_characteristics:0x%lx;", dllCharacteristics);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"dll_name:%ls;", wDllName);
 
+    LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
     SendDllPipe(buf);
     return Real_LdrLoadDll(SearchPath, DllCharacteristics, DllName, BaseAddress);
 }
@@ -453,7 +454,6 @@ NTSTATUS NTAPI Catch_NtQueueApcThread(
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtQueueApcThread;");
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:0x%p;", ThreadHandle);
-
 
     LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
     SendDllPipe(buf);
@@ -1052,7 +1052,7 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     DetourUpdateThread(GetCurrentThread());
 
     // All the hooks
-    DetourAttach(&(PVOID&)Real_NtSetContextThread, Catch_NtSetContextThread);
+    //DetourAttach(&(PVOID&)Real_NtSetContextThread, Catch_NtSetContextThread); // broken
     DetourAttach(&(PVOID&)Real_LdrLoadDll, Catch_LdrLoadDll);
     DetourAttach(&(PVOID&)Real_LdrGetProcedureAddress, Catch_LdrGetProcedureAddress);
     DetourAttach(&(PVOID&)Real_NtQueueApcThread, Catch_NtQueueApcThread);
