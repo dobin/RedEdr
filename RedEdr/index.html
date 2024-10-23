@@ -195,7 +195,7 @@
         // Initialize by showing the first tab and setting up periodic updates
         showContent('tab1', null);
         fetchEvents();
-        //setInterval(fetchEvents, 10 * 1000);
+        setInterval(fetchEvents, 10 * 1000);
 
         fetchDetections();
         setInterval(fetchDetections, 3 * 1000);

@@ -13,17 +13,6 @@ HANDLE webserver_thread;
 httplib::Server svr;
 
 
-std::string read_file(const std::string& path) {
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        std::cerr << "Could not open file: " << path << std::endl;
-        return "";
-    }
-    std::stringstream buffer;
-    buffer << file.rdbuf(); // Read the file into the stringstream
-    return buffer.str();
-}
-
 
 DWORD WINAPI WebserverThread(LPVOID param) {
     LOG_A(LOG_INFO, "!WEB: Start Webserver thread");
@@ -56,6 +45,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     svr.Get("/api/reset", [](const httplib::Request&, httplib::Response& res) {
         LOG_A(LOG_INFO, "Reset stats");
         g_EventProducer.ResetData();
+        AResetData();
         g_cache.removeAll();
     });
 
