@@ -79,7 +79,8 @@ void SendDllPipe(wchar_t* buffer) {
 
 /*************** Procinfo stuff ******************/
 
-BOOL is_init = FALSE;
+extern BOOL HooksInitialized;
+BOOL IsSymInitialized = FALSE;
 
 // Gives wrong answer (5)
 void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
@@ -89,9 +90,12 @@ void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
     HANDLE hProcess = GetCurrentProcess();
     HANDLE hThread = GetCurrentThread();
 
-    if (!is_init) {
+    if (!IsSymInitialized) {
+        // Dont record SymInitialize()
+        HooksInitialized = FALSE;
         SymInitialize(hProcess, NULL, TRUE);
-        is_init = TRUE;
+        HooksInitialized = TRUE;
+        IsSymInitialized = TRUE;
     }
 
     RtlCaptureContext(&context);
