@@ -23,6 +23,7 @@
 #include "analyzer.h"
 #include "webserver.h"
 #include "cache.h"
+#include "analyzer.h"
 
 #pragma comment(lib, "Dbghelp.lib")
 
@@ -864,9 +865,35 @@ void test_cache_procinfo() {
 
 }
 
+
+int DetectionTest() {
+    std::string json_file_content = read_file("Data\\notepad.json");
+    if (json_file_content.empty()) {
+        return 1; // Exit if the file could not be read
+    }
+
+    nlohmann::json json_data;
+    try {
+        json_data = nlohmann::json::parse(json_file_content);
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Failed to parse JSON: " << e.what() << std::endl;
+        return 1;
+    }
+
+    if (!json_data.is_array()) {
+        std::cerr << "JSON data is not an array." << std::endl;
+        return 1;
+    }
+    for (const auto& event : json_data) {
+        AnalyzeEventJson(event);
+    }
+
+}
+
+
 int wmain(int argc, wchar_t* argv[]) {
-    test_cache_procinfo();
-    return 1;
+
 
     if (argc != 3) {
         printf("Usage: rededrtester.exe <id> <pid>");
@@ -989,7 +1016,10 @@ int wmain(int argc, wchar_t* argv[]) {
         break;
     case 14:
         teststr();
+        test_cache_procinfo();
         break;
+    case 15:
+        DetectionTest();
     }
 
 

@@ -160,7 +160,6 @@
     <ClCompile Include="..\RedEdr\cache.cpp" />
     <ClCompile Include="..\RedEdr\config.cpp" />
     <ClCompile Include="..\RedEdr\event_producer.cpp" />
-    <ClCompile Include="..\RedEdr\output.cpp" />
     <ClCompile Include="..\RedEdr\procinfo.cpp" />
     <ClCompile Include="..\RedEdr\utils.cpp" />
     <ClCompile Include="UnitTestAnalyzer.cpp" />

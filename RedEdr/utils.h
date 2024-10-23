@@ -10,3 +10,4 @@ std::string ReplaceAllA(std::string str, const std::string& from, const std::str
 bool contains_case_insensitive(const std::wstring& haystack, const std::wstring& needle);
 wchar_t* ConvertCharToWchar(const char* arg);
 std::string wstring_to_utf8(std::wstring& wide_string);
+std::string read_file(const std::string& path);

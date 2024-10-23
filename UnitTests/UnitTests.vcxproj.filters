@@ -21,9 +21,6 @@
     <ClCompile Include="UnitTestOutput.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdr\output.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\RedEdr\config.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

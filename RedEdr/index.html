@@ -45,7 +45,7 @@
             }
 
         .content {
-            padding: 20px;
+            padding: 0px;
             border: 1px solid #ccc;
         }
 
@@ -55,15 +55,14 @@
         }
 
         .item {
-            padding: 10px;
+            padding: 0px;
             background-color: rgb(27, 77, 24);
             border: 1px solid #ccc;
         }
 
         .event {
-            padding: 5px;
-            border: 1px solid #ccc;
-            margin: 5px 0;
+            padding: 0.4em;
+            border-bottom: 1px solid #ccc;
         }
     </style>
 </head>
@@ -72,7 +71,7 @@
     <header>
         <div class="container">
             <div class="item">
-                <div class="stats" hx-get="/api/stats" hx-trigger="every 1s">
+                <div class="stats" hx-get="/api/stats" hx-trigger="every 3s">
                 </div>
             </div>
 
@@ -108,98 +107,98 @@
 
     <script>
         function showContent(tabId, tabElement) {
-        // Hide all tab contents
-        const contents = document.querySelectorAll('.tab-content');
-        contents.forEach(content => content.style.display = 'none');
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.style.display = 'none');
 
-        // Remove active class from all tabs
-        const tabs = document.querySelectorAll('.tab');
-        tabs.forEach(tab => tab.classList.remove('active'));
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
 
-        // Show the selected tab content
-        document.getElementById(tabId).style.display = 'block';
+            // Show the selected tab content
+            document.getElementById(tabId).style.display = 'block';
 
-        // Add active class to the clicked tab if tabElement is provided
-        if (tabElement) {
-        tabElement.classList.add('active');
-        }
+            // Add active class to the clicked tab if tabElement is provided
+            if (tabElement) {
+                tabElement.classList.add('active');
+            }
         }
 
         // Function to display events in Tab 1
         function displayEvents(events) {
-        const eventContainer = document.getElementById('eventContainer');
-        eventContainer.innerHTML = ''; // Clear previous content
+            const eventContainer = document.getElementById('eventContainer');
+            eventContainer.innerHTML = ''; // Clear previous content
 
-        events.forEach(event => {
-        const eventDiv = document.createElement('div');
-        eventDiv.classList.add('event');
+            events.forEach(event => {
+                const eventDiv = document.createElement('div');
+                eventDiv.classList.add('event');
 
-        // Create a string to hold all properties of the event
-        let eventDetails = '';
+                // Create a string to hold all properties of the event
+                let eventDetails = '';
 
-        // All events
-        for (const [key, value] of Object.entries(event)) {
+                // All events
+                for (const [key, value] of Object.entries(event)) {
 
-        if (typeof(value) === 'object') {
-        // Array
-        //for (let item of value) {
+                    if (typeof(value) === 'object') {
+                        // Array
+                        //for (let item of value) {
 
-        // Dict
-        eventDetails += `${key}:` + JSON.stringify(value, null, 0) + ";";
-        //eventDetails += `<strong>${key}</strong>: ${item};<br>`;
-        //}
-        //eventDetails += `<strong>${key}</strong>: <br>`;
+                        // Dict
+                        eventDetails += `${key}:` + JSON.stringify(value, null, 0) + ";";
+                        //eventDetails += `<strong>${key}</strong>: ${item};<br>`;
+                        //}
+                        //eventDetails += `<strong>${key}</strong>: <br>`;
 
-        } else {
-        // String
-        eventDetails += `${key}:${value};`;
-        }
-        }
+                    } else {
+                        // String
+                        eventDetails += `${key}:${value};`;
+                    }
+                }
 
-        eventDiv.innerHTML = eventDetails; // Set the inner HTML to the details
-        eventContainer.appendChild(eventDiv); // Add the event div to the container
-        });
+                eventDiv.innerHTML = eventDetails; // Set the inner HTML to the details
+                eventContainer.appendChild(eventDiv); // Add the event div to the container
+            });
         }
 
 
         // Function to display events in Tab 1
         function displayDetections(detections) {
-        const container = document.getElementById('detectionContainer');
-        container.innerHTML = '';
+            const container = document.getElementById('detectionContainer');
+            container.innerHTML = '';
 
-        detections.forEach((detection, index) => {
-        // Create a div for each detection
-        const detectionDiv = document.createElement('div');
-        detectionDiv.textContent = `${index}: ${detection}`;
-        container.appendChild(detectionDiv);
-        });
+            detections.forEach((detection, index) => {
+                // Create a div for each detection
+                const detectionDiv = document.createElement('div');
+                detectionDiv.textContent = `${index}: ${detection}`;
+                container.appendChild(detectionDiv);
+            });
         }
 
         async function fetchEvents() {
-        const response = await fetch('/api/events');
-        if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const data = await response.json();
-        displayEvents(data);
+            const response = await fetch('/api/events');
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const data = await response.json();
+            displayEvents(data);
         }
 
         async function fetchDetections() {
-        const response = await fetch('/api/detections');
-        if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const data = await response.json();
-        displayDetections(data);
+            const response = await fetch('/api/detections');
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const data = await response.json();
+            displayDetections(data);
         }
 
         // Initialize by showing the first tab and setting up periodic updates
         showContent('tab1', null);
         fetchEvents();
-        setInterval(fetchEvents, 1 * 1000);
+        //setInterval(fetchEvents, 10 * 1000);
 
         fetchDetections();
-        setInterval(fetchDetections, 1 * 1000);
+        setInterval(fetchDetections, 3 * 1000);
 
     </script>
 
