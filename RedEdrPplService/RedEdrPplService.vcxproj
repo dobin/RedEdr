@@ -139,6 +139,7 @@
     <ClCompile Include="..\RedEdrShared\etwconsumer.cpp" />
     <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\piping.cpp" />
+    <ClCompile Include="..\RedEdrShared\utils.cpp" />
     <ClCompile Include="etwtihandler.cpp" />
     <ClCompile Include="etwtireader.cpp" />
     <ClCompile Include="control.cpp" />

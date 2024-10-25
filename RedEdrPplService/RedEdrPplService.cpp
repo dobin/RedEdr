@@ -124,7 +124,7 @@ DWORD ServiceEntry()
 }
 
 
-DWORD main(INT argc, CHAR** argv)
+int main(INT argc, CHAR** argv)
 {
     LOG_W(LOG_INFO, L"Start RedEdr PPL Service 0.2");
     ServiceEntry();
