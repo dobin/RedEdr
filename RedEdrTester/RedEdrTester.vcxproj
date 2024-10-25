@@ -131,18 +131,21 @@
   <ItemGroup>
     <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\loguru.cpp" />
+    <ClCompile Include="..\RedEdrShared\piping.cpp" />
     <ClCompile Include="..\RedEdrShared\utils.cpp" />
     <ClCompile Include="..\RedEdr\analyzer.cpp" />
     <ClCompile Include="..\RedEdr\config.cpp" />
     <ClCompile Include="..\RedEdr\dllinjector.cpp" />
     <ClCompile Include="..\RedEdr\event_producer.cpp" />
+    <ClCompile Include="..\RedEdr\kernelinterface.cpp" />
     <ClCompile Include="..\RedEdr\logreader.cpp" />
     <ClCompile Include="..\RedEdr\processcache.cpp" />
     <ClCompile Include="..\RedEdr\processinfo.cpp" />
+    <ClCompile Include="helper.cpp" />
     <ClCompile Include="RedEdrTester.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="uthash.h" />
+    <ClInclude Include="helper.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
