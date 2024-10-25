@@ -861,7 +861,7 @@ void test_cache_procinfo() {
     g_config.targetExeName = L"notepad.exe";
 
     DWORD pid = FindProcessId(std::wstring(g_config.targetExeName));
-    g_cache.getObject(pid);
+    g_ProcessCache.getObject(pid);
 
 }
 

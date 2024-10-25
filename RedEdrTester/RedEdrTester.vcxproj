@@ -131,14 +131,14 @@
   <ItemGroup>
     <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\loguru.cpp" />
+    <ClCompile Include="..\RedEdrShared\utils.cpp" />
     <ClCompile Include="..\RedEdr\analyzer.cpp" />
-    <ClCompile Include="..\RedEdr\cache.cpp" />
     <ClCompile Include="..\RedEdr\config.cpp" />
     <ClCompile Include="..\RedEdr\dllinjector.cpp" />
     <ClCompile Include="..\RedEdr\event_producer.cpp" />
     <ClCompile Include="..\RedEdr\logreader.cpp" />
-    <ClCompile Include="..\RedEdr\procinfo.cpp" />
-    <ClCompile Include="..\RedEdr\utils.cpp" />
+    <ClCompile Include="..\RedEdr\processcache.cpp" />
+    <ClCompile Include="..\RedEdr\processinfo.cpp" />
     <ClCompile Include="RedEdrTester.cpp" />
   </ItemGroup>
   <ItemGroup>

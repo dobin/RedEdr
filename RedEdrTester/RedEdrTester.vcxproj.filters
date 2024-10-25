@@ -13,40 +13,43 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\existing">
+      <UniqueIdentifier>{a6377b27-05de-4441-ad98-36e1bf5ed873}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RedEdrTester.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdr\procinfo.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\RedEdr\analyzer.cpp">
+      <Filter>Source Files\existing</Filter>
     </ClCompile>
     <ClCompile Include="..\RedEdr\config.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdr\cache.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdr\logreader.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\existing</Filter>
     </ClCompile>
     <ClCompile Include="..\RedEdr\dllinjector.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdr\utils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdrShared\loguru.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdrShared\logging.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\existing</Filter>
     </ClCompile>
     <ClCompile Include="..\RedEdr\event_producer.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdr\analyzer.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\RedEdrShared\logging.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdr\logreader.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\loguru.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdr\processcache.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdr\processinfo.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\utils.cpp">
+      <Filter>Source Files\existing</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
