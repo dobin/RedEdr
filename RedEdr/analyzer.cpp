@@ -158,9 +158,10 @@ void AnalyzeEventJson(nlohmann::json j) {
             }
 
             std::stringstream s;
-            s << "Analyzer: Suspicious callstack " << idx << " by " << j["func"].get<std::string>();
+            s << "Analyzer: Suspicious callstack " << idx << " of " << j["callstack"].size() << " by " << j["func"].get<std::string>();
             if (j["func"] == "ProtectVirtualMemory") {
 				s << " destination " << j["base_addr"].get<std::string>();
+                s << " protect " << j["protect_str"].get<std::string>();
 			}
             s << " addr " << callstack_entry["addr"].get<std::string>();
             s << " protect " << callstack_entry["protect"].get<std::string>();

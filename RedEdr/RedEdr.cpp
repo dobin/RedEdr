@@ -25,9 +25,9 @@
 #include "dllreader.h"
 #include "kernelinterface.h"
 #include "pplmanager.h"
-#include "../Shared/common.h"
 #include "logging.h"
-#include "utils.h"
+
+#include "../Shared/common.h"
 
 
 BOOL keyboard_reader_flag = TRUE;

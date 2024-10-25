@@ -67,12 +67,11 @@ bool QueryMemoryRegions(HANDLE hProcess) {
     PVOID address = 0;
     SIZE_T returnLength = 0;
     char buf[2048];
-    PROCESS_BASIC_INFORMATION pbi;
-    NTSTATUS status;
 
     HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
     if (hNtDll == NULL) {
         LOG_A(LOG_ERROR, "Procinfo: could not find ntdll.dll");
+        return FALSE;
     }
 
     pNtQueryVirtualMemory NtQueryVirtualMemory = (pNtQueryVirtualMemory)GetProcAddress(hNtDll, "NtQueryVirtualMemory");
@@ -101,7 +100,7 @@ bool QueryMemoryRegions(HANDLE hProcess) {
 
         sprintf_s(buf, sizeof(buf), "addr:%p;size:%zu;protect:0x%lx;",
             mbi.BaseAddress, mbi.RegionSize, mbi.Protect);
-        c += strlen(buf);
+        c += (int) strlen(buf);
         cc += 1;
         printf("%s\n", buf);
 
@@ -273,6 +272,7 @@ BOOL PrintLoadedModules(DWORD pid, Process* process) {
     );
     remove_all_occurrences_case_insensitive(o, std::wstring(L"C:\\Windows\\system32\\"));
     g_EventProducer.do_output(o);
+    return TRUE;
 }
 
 
@@ -305,9 +305,9 @@ Process* MakeProcess(DWORD pid, LPCWSTR target_name) {
                 //LOG_W(LOG_INFO, L"Failed to get executable path: %lu\n", GetLastError());
             }
         }
+        CloseHandle(hProcess);
     }
     
-    CloseHandle(hProcess);
     return process;
 }
 

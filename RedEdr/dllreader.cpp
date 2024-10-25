@@ -21,12 +21,13 @@
 #include "event_producer.h"
 
 
-// Set to TRUE when shutting down client threads
-bool DllReaderThreadStop = FALSE;
+// DllReader: Consumes events from injected DLL hooks
 
-// Threads for each connected DLL process
-std::vector<std::thread> DllReaderClientThreads; // for each connected dll client
-std::vector<PipeServer*> DllReaderPipeServers; // for each connected dll client
+
+// Private Variables
+std::vector<std::thread> ConnectedDllReaderThreads; // for each connected dll
+bool DllReaderThreadStop = FALSE; // set to true to stop the server thread
+
 
 // Private Function Definitions
 void DllReaderInit(std::vector<HANDLE>& threads);
@@ -62,11 +63,11 @@ DWORD WINAPI DllReaderThread(LPVOID param) {
         }
 
         LOG_A(LOG_INFO, "DllReader: Client connected (handle in new thread)");
-        DllReaderClientThreads.push_back(std::thread(DllReaderClientThread, pipeServer));
+        ConnectedDllReaderThreads.push_back(std::thread(DllReaderClientThread, pipeServer));
     }
     
     // Wait for all client threads to exit
-    for (auto& t : DllReaderClientThreads) {
+    for (auto& t : ConnectedDllReaderThreads) {
         if (t.joinable()) {
             t.join();
         }
@@ -107,11 +108,6 @@ void DllReaderClientThread(PipeServer* pipeServer) {
 // Shutdown
 void DllReaderShutdown() {
     DllReaderThreadStop = TRUE;
-
-    // Disconnect all connected client pipes
-    for (auto& t : DllReaderPipeServers) {
-        t->Shutdown();
-    }
 
     // Disconnect server pipe
     // Send some stuff so the ReadFile() in the reader thread returns

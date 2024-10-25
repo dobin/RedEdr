@@ -139,6 +139,7 @@
     <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\loguru.cpp" />
     <ClCompile Include="..\RedEdrShared\piping.cpp" />
+    <ClCompile Include="..\RedEdrShared\utils.cpp" />
     <ClCompile Include="analyzer.cpp" />
     <ClCompile Include="cache.cpp" />
     <ClCompile Include="config.cpp" />
@@ -155,7 +156,6 @@
     <ClCompile Include="procinfo.cpp" />
     <ClCompile Include="RedEdr.cpp" />
     <ClCompile Include="serviceutils.cpp" />
-    <ClCompile Include="utils.cpp" />
     <ClCompile Include="webserver.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -180,7 +180,6 @@
     <ClInclude Include="pplreader.h" />
     <ClInclude Include="procinfo.h" />
     <ClInclude Include="serviceutils.h" />
-    <ClInclude Include="utils.h" />
     <ClInclude Include="webserver.h" />
   </ItemGroup>
   <ItemGroup>

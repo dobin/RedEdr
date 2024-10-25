@@ -164,7 +164,7 @@ std::vector<std::string> EventProducer::GetEventsFrom() {
     }
     output_mutex.unlock();
 
-    last += newEvents.size();
+    last += (int) newEvents.size();
 
     return newEvents;
 }

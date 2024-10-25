@@ -12,6 +12,9 @@
 #include "kernelinterface.h"
 
 
+// KernelInterface: Functions to interact with the kernel driver (load/unload, enable/disable)
+
+
 BOOL EnableKernelDriver(int enable, wchar_t* target) {
     HANDLE hDevice = CreateFile(L"\\\\.\\RedEdr",
         GENERIC_READ | GENERIC_WRITE,

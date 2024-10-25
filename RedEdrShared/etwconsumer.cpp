@@ -10,13 +10,14 @@
 
 #include "logging.h"
 #include "etwconsumer.h"
+#include "utils.h"
 
 
 #pragma comment(lib, "tdh.lib")
 #pragma comment(lib, "advapi32.lib")
 
 
-// Local data
+// EtwConsumer: Interact with ETW
 
 
 // Local functions
@@ -24,8 +25,12 @@ EVENT_TRACE_PROPERTIES* MakeSessionProperties(size_t session_name_len);
 
 
 EtwConsumer::EtwConsumer() {
-
+	id = -1;
+	SessionName = NULL;
+	SessionHandle = NULL;
+	TraceHandle = INVALID_PROCESSTRACE_HANDLE;
 }
+
 
 BOOL EtwConsumer::SetupEtw(int _id, const wchar_t* guid, 
 	EventRecordCallbackFuncPtr func, const wchar_t* info, 
@@ -40,6 +45,8 @@ BOOL EtwConsumer::SetupEtw(int _id, const wchar_t* guid,
     
     // For session name omg...
     std::wstring mySessionName = std::wstring(sessionName) + L"_" + std::to_wstring(id);
+    SessionName = wstring2wchar(mySessionName);
+
     size_t len = mySessionName.length() + 1; // +1 for null terminator
     wchar_t* _sessionName = new wchar_t[len];
     wcscpy_s(_sessionName, len, mySessionName.c_str());

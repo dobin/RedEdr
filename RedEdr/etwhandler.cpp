@@ -16,6 +16,9 @@
 #include "event_producer.h"
 
 
+// EtwHandler: ETW Event Handlers
+
+
 void WINAPI EventRecordCallbackSecurityAuditing(PEVENT_RECORD eventRecord)
 {
     // Do we want to track this process?

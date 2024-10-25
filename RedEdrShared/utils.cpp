@@ -28,10 +28,11 @@ void PrintWcharBufferAsHex(const wchar_t* buffer, size_t bufferSize) {
 }
 
 
-wchar_t* allocateAndCopyWString(const std::wstring& str) {
+wchar_t* wstring2wchar(const std::wstring& str) {
     size_t length = str.length();
-    wchar_t* copy = new wchar_t[length + 1]; // +1 for null terminator
-    std::copy(str.c_str(), str.c_str() + length + 1, copy);
+    wchar_t* copy = new wchar_t[length + 1];
+    std::copy(str.c_str(), str.c_str() + length, copy);
+    copy[length] = L'\0';
     return copy;
 }
 

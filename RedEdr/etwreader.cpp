@@ -18,7 +18,9 @@
 #pragma comment(lib, "advapi32.lib")
 
 
-// Local global
+// EtwReader: Setup ETW (EtwConsumer) so it calls the EtwHandlers
+
+// Local variables
 std::list<EtwConsumer*> EtwConsumers;
 
 
@@ -139,7 +141,6 @@ void EtwReaderStopAll() {
 
     LOG_A(LOG_INFO, "ETW: EtwTracing all stopped"); 
 }
-
 
 
 // Microsoft-Windows-Security-Auditing is different

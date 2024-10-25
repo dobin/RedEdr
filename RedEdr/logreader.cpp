@@ -21,6 +21,7 @@
 #include "utils.h"
 #include "event_producer.h"
 
+
 // Will be checked each second and exit thread if true
 bool LogReaderThreadStopFlag = FALSE;
 
@@ -149,7 +150,7 @@ BOOL InitializeLogReader(std::vector<HANDLE>& threads) {
         return 1;
     }
 
-    wchar_t* real_path = allocateAndCopyWString(path);
+    wchar_t* real_path = wstring2wchar(path);
     HANDLE thread = CreateThread(NULL, 0, LogReaderProcessingThread, (LPVOID)real_path, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "LOG: Failed to create thread for trace session logreader");

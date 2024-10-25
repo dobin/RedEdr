@@ -7,10 +7,8 @@
 #include <iomanip>
 #include <sstream>
 #include <wchar.h>
-
 #include <mutex>
 #include <condition_variable>
-
 #include <thread>
 
 #include "../Shared/common.h"
@@ -25,10 +23,14 @@
 #pragma comment(lib, "crypt32.lib")
 
 
+// KernelReader: Reads events from the kernel pipe (from Kernel Callbacks)
+
+
+// Private variables
 bool KernelReaderThreadStopFlag = FALSE;
 HANDLE kernel_pipe = NULL;
 PipeServer* kernelPipeServer = NULL;
-HANDLE threadReadyness;
+HANDLE threadReadyness; // ready to accept clients
 
 // Private functions
 DWORD WINAPI KernelReaderProcessingThread(LPVOID param);
@@ -38,6 +40,10 @@ void CheckEventForNewObservable(wchar_t* line);
 void KernelReaderInit(std::vector<HANDLE>& threads) {
     const wchar_t* data = L"";
     threadReadyness = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (threadReadyness == NULL) {
+		LOG_A(LOG_ERROR, "KernelReader: Failed to create event for thread readyness");
+		return;
+	}
 
     LOG_A(LOG_INFO, "!KernelReader: Start thread");
     HANDLE thread = CreateThread(NULL, 0, KernelReaderProcessingThread, (LPVOID)data, 0, NULL);

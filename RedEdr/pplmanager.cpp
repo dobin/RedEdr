@@ -9,6 +9,9 @@
 #include "piping.h"
 
 
+// PplManager: Interact with the PPL service (enable/disable)
+
+
 PipeClient pipeClient;
 
 BOOL EnablePplService(BOOL e, wchar_t* target_name) {
@@ -61,7 +64,6 @@ BOOL EnablePplService(BOOL e, wchar_t* target_name) {
 
 
 BOOL ShutdownPplService() {
-
     PipeClient pipeClient;
     if (!pipeClient.Connect(PPL_SERVICE_PIPE_NAME)) {
         LOG_A(LOG_ERROR, "ETW-TI: Error creating named pipe: %ld", GetLastError());
