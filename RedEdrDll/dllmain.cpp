@@ -1,7 +1,6 @@
+#include <Windows.h>
 #include <stdio.h>
 
-#include "pch.h"
-#include "minhook/include/MinHook.h"
 #include "../Shared/common.h"
 #include <winternl.h>  // needs to be on bottom?
 #include <dbghelp.h>
@@ -1053,7 +1052,6 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
 
 BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved)
 {
-    LONG error;
     (void)hinst;
     (void)reserved;
 

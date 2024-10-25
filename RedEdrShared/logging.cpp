@@ -90,7 +90,7 @@ void LOG_W(int verbosity, const wchar_t* format, ...)
 void LOG_A(int verbosity, const char* format, ...)
 {
     char message[DATA_BUFFER_SIZE] = "[RedEdr DLL] ";
-    DWORD offset = strlen(message);
+    size_t offset = strlen(message);
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
@@ -104,7 +104,7 @@ void LOG_A(int verbosity, const char* format, ...)
 void LOG_W(int verbosity, const wchar_t* format, ...)
 {
     WCHAR message[WCHAR_BUFFER_SIZE] = L"[RedEdr DLL] ";
-    DWORD offset = wcslen(message);
+    size_t offset = wcslen(message);
 
     va_list arg_ptr;
     va_start(arg_ptr, format);

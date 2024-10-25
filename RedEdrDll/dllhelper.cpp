@@ -1,5 +1,3 @@
-#include "pch.h"
-
 #include "dllhelper.h"
 #include "../Shared/common.h"
 #include <winternl.h>  // needs to be on bottom?
@@ -134,7 +132,7 @@ void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
         }
 
         if (NtQueryVirtualMemory(hProcess, (PVOID)address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
-            written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{idx:%i;addr:%p;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx},",
+            written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{idx:%i;addr:0x%I64x;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx},",
                 n, address, mbi.BaseAddress, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
         }
         buf_size -= written;

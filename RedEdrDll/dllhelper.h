@@ -1,4 +1,5 @@
 #pragma once
+#include <windows.h>
 #include <stdio.h>
 #include <winternl.h>  // needs to be on bottom?
 
