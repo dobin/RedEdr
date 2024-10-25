@@ -164,8 +164,8 @@
     <ClCompile Include="..\RedEdr\processcache.cpp" />
     <ClCompile Include="..\RedEdr\processinfo.cpp" />
     <ClCompile Include="UnitTestAnalyzer.cpp" />
-    <ClCompile Include="UnitTestCache.cpp" />
-    <ClCompile Include="UnitTestOutput.cpp" />
+    <ClCompile Include="UnitTestProcessInfo.cpp" />
+    <ClCompile Include="UnitTestEventProducer.cpp" />
     <ClCompile Include="UnitTests.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

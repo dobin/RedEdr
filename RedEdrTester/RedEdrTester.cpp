@@ -26,7 +26,6 @@
 #include "analyzer.h"
 #include "kernelinterface.h"
 #include "piping.h"
-#include "helper.h"
 
 
 void SendToKernel(int enable, wchar_t* target) {

@@ -21,10 +21,10 @@
     <ClCompile Include="UnitTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="UnitTestOutput.cpp">
+    <ClCompile Include="UnitTestEventProducer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="UnitTestCache.cpp">
+    <ClCompile Include="UnitTestProcessInfo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="UnitTestAnalyzer.cpp">

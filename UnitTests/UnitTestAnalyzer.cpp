@@ -12,7 +12,7 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace UnitTests
 {
-    TEST_CLASS(Analyzer)
+    TEST_CLASS(AnalyzerTest)
     {
     public:
         TEST_METHOD(Test1)

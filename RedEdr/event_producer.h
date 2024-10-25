@@ -11,7 +11,7 @@ class EventProducer {
 public:
 	void do_output(std::wstring str);
 
-	std::string ConvertLogLineToJsonEvent(const std::wstring& input);
+	std::string ConvertLogLineToJsonEvent(std::wstring input);
 	std::string GetAllAsJson();
 	void PrintAll();
 	void ResetData();

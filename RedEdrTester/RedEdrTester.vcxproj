@@ -141,11 +141,7 @@
     <ClCompile Include="..\RedEdr\logreader.cpp" />
     <ClCompile Include="..\RedEdr\processcache.cpp" />
     <ClCompile Include="..\RedEdr\processinfo.cpp" />
-    <ClCompile Include="helper.cpp" />
     <ClCompile Include="RedEdrTester.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="helper.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

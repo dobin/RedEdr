@@ -19,7 +19,7 @@ EventProducer g_EventProducer;
 
 
 // Function to parse the input and convert it into UTF8 JSON
-std::string EventProducer::ConvertLogLineToJsonEvent(const std::wstring& input) {
+std::string EventProducer::ConvertLogLineToJsonEvent(std::wstring input) {
     std::wstring result;
     result += L"{\"";
 
@@ -68,7 +68,8 @@ std::string EventProducer::ConvertLogLineToJsonEvent(const std::wstring& input) 
             // ignore trailing ,]
         }
         else if (ch == L'\\') { // escape backslash
-            result += ch + ch;
+            //result += ch + ch;  // Fail, would be interesting to know why
+            result += L"\\\\";
         }
         else {
             // Copy the character as-is
