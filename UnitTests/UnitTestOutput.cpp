@@ -29,7 +29,7 @@ namespace UnitTests
 
         TEST_METHOD(TestConvertLineToJson_Etw)
         {
-            std::wstring input = L"type:etw;time:133727141764849648;pid:6256;thread_id:7288;event:LoadImage;provider_name:Microsoft-Windows-Kernel-Process;ImageBase:0x0000029EF25623D0;ImageSize:0x0000029EF2561CA0;ProcessID:6256;ImageCheckSum:0;TimeDateStamp:1726304632;DefaultBase:0x0000029EF2561E80;ImageName:\Device\HarddiskVolume2\RedEdr\msf\loader.exe";
+            std::wstring input = L"type:etw;time:133727141764849648;pid:6256;thread_id:7288;event:LoadImage;provider_name:Microsoft-Windows-Kernel-Process;ImageBase:0x0000029EF25623D0;ImageSize:0x0000029EF2561CA0;ProcessID:6256;ImageCheckSum:0;TimeDateStamp:1726304632;DefaultBase:0x0000029EF2561E80;ImageName:\\Device\\HarddiskVolume2\\RedEdr\\msf\\loader.exe";
             std::wstring expect = L"{\"type\":\"etw\",\"time\":\"133727141764849648\",\"pid\":\"6256\",\"thread_id\":\"7288\",\"event\":\"LoadImage\",\"provider_name\":\"Microsoft-Windows-Kernel-Process\",\"ImageBase\":\"0x0000029EF25623D0\",\"ImageSize\":\"0x0000029EF2561CA0\",\"ProcessID\":\"6256\",\"ImageCheckSum\":\"0\",\"TimeDateStamp\":\"1726304632\",\"DefaultBase\":\"0x0000029EF2561E80\",\"ImageName\":\"DeviceHarddiskVolume2RedEdrmsfloader.exe\"}";
             //std::wstring result = ConvertLogLineToJsonEvent(input);
             //Assert::AreEqual(expect.c_str(), result.c_str());

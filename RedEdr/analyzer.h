@@ -1,3 +1,4 @@
+#include <windows.h>
 #include <vector>
 
 #include "json.hpp"

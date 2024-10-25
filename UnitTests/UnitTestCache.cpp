@@ -50,11 +50,11 @@ namespace UnitTests
 
             // PID 1 doesnt exist usually
             // But entry should still be created
-            p = g_cache.getObject(1);
+            p = g_ProcessCache.getObject(1);
             Assert::IsNotNull(p);
             Assert::IsFalse(p->observe);
             
-            Assert::IsTrue(g_cache.containsObject(1));
+            Assert::IsTrue(g_ProcessCache.containsObject(1));
 
             // Find PID of VcxprojReader.exe, which should exist
             // And set it to be observed
@@ -62,7 +62,7 @@ namespace UnitTests
             std::wstring processName = L"explorer.exe";
             DWORD pid = FindProcessId(processName);
             Assert::IsTrue(pid > 0);
-            p = g_cache.getObject(pid);
+            p = g_ProcessCache.getObject(pid);
             Assert::IsNotNull(p);
             Assert::IsTrue(p->observe);
             Assert::IsTrue(contains_case_insensitive(p->image_path, processName));
