@@ -9,7 +9,7 @@
 
 #include "logging.h"
 #include "etwreader.h"
-#include "cache.h"
+#include "processcache.h"
 #include "config.h"
 #include "etwhandler.h"
 #include "etwconsumer.h"

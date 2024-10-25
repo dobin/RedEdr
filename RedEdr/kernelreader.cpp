@@ -14,7 +14,7 @@
 #include "../Shared/common.h"
 #include "logging.h"
 #include "kernelreader.h"
-#include "cache.h"
+#include "processcache.h"
 #include "piping.h"
 #include "event_producer.h"
 
@@ -109,7 +109,7 @@ void CheckEventForNewObservable(wchar_t* line) {
             int pid = 0;
             swscanf_s(pid_str, L";pid:%d", &pid);
             LOG_A(LOG_WARNING, "KernelReader: observe pid: %d (%d)", pid, observe_value);
-            g_cache.getObject(pid); // FIXME this actually creates the process 
+            g_ProcessCache.getObject(pid); // FIXME this actually creates the process 
         }
     }
 }

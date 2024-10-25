@@ -15,10 +15,8 @@
 PipeClient pipeClient;
 
 BOOL EnablePplService(BOOL e, wchar_t* target_name) {
-    DWORD bytesWritten;
     wchar_t buffer[WCHAR_SMALL_PIPE] = { 0 };
     int n = 0;
-    DWORD len;
 
     if (!IsServiceRunning(SERVICE_NAME)) {
         LOG_A(LOG_WARNING, "Error: service %ls not found", SERVICE_NAME);

@@ -21,16 +21,13 @@
     <ClCompile Include="RedEdr.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="cache.cpp">
+    <ClCompile Include="processcache.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="procinfo.cpp">
+    <ClCompile Include="processinfo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="config.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="logreader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="dllinjector.cpp">
@@ -84,6 +81,9 @@
     <ClCompile Include="..\RedEdrShared\utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="logreader.cpp">
+      <Filter>Source Files\input</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="etwreader.h">
@@ -92,10 +92,10 @@
     <ClInclude Include="kernelreader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="cache.h">
+    <ClInclude Include="processcache.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="procinfo.h">
+    <ClInclude Include="processinfo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="config.h">
@@ -140,9 +140,6 @@
     <ClInclude Include="..\RedEdrShared\loguru.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="json.hpp">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="event_producer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -150,6 +147,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="webserver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

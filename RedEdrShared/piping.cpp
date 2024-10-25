@@ -25,6 +25,7 @@ BOOL PipeServer::StartAndWaitForClient(const wchar_t* pipeName, BOOL allow_all) 
     return WaitForClient();
 }
 
+
 BOOL PipeServer::Start(const wchar_t* pipeName, BOOL allow_all) {
     // Permissions
     // Allow processes of all privilege levels to access this pipe
@@ -64,6 +65,8 @@ BOOL PipeServer::Start(const wchar_t* pipeName, BOOL allow_all) {
         hPipe = NULL;
         return FALSE;
     }
+
+    return TRUE;
 }
 
 
@@ -97,8 +100,9 @@ BOOL PipeServer::Send(wchar_t* buffer) {
 
 
 BOOL PipeServer::Receive(wchar_t* buffer, size_t buffer_len) {
-    buffer_len *= 2; // Convert to bytes
-    if (!ReadFile(hPipe, buffer, buffer_len, NULL, NULL)) {
+    DWORD readLen = static_cast<DWORD>(buffer_len);
+    readLen *= 2; // Convert to bytes
+    if (!ReadFile(hPipe, buffer, readLen, NULL, NULL)) {
         //LOG_W(LOG_INFO, L"Piping Server: Error when reading from pipe: %d", GetLastError());
         return FALSE;
     }
@@ -108,7 +112,7 @@ BOOL PipeServer::Receive(wchar_t* buffer, size_t buffer_len) {
 
 // Empty result = error / finished
 std::vector<std::wstring> PipeServer::ReceiveBatch() {
-    DWORD bytesRead, bytesWritten;
+    DWORD bytesRead;
     std::vector<std::wstring> wstrings;
 
     if (ReadFile(hPipe, buf_ptr, sizeof(buffer) - rest_len, &bytesRead, NULL)) {
@@ -219,8 +223,9 @@ BOOL PipeClient::Send(wchar_t* buffer) {
 
 
 BOOL PipeClient::Receive(wchar_t* buffer, size_t buffer_len) {
-    buffer_len *= 2; // Convert to bytes
-    if (!ReadFile(hPipe, buffer, buffer_len, NULL, NULL)) {
+    DWORD readLen = static_cast<DWORD>(buffer_len);
+    readLen *= 2; // Convert to bytes
+    if (!ReadFile(hPipe, buffer, readLen, NULL, NULL)) {
         LOG_W(LOG_INFO, L"Piping Client: Error reading from pipe: %lu", GetLastError());
         return FALSE;
     }

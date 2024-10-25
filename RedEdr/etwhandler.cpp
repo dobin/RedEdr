@@ -11,7 +11,7 @@
 #include "logging.h"
 #include "etwhandler.h"
 #include "config.h"
-#include "cache.h"
+#include "processcache.h"
 #include "etwconsumer.h"
 #include "event_producer.h"
 
@@ -23,7 +23,7 @@ void WINAPI EventRecordCallbackSecurityAuditing(PEVENT_RECORD eventRecord)
 {
     // Do we want to track this process?
     DWORD processId = eventRecord->EventHeader.ProcessId;
-    if (!g_cache.observe(processId)) {
+    if (!g_ProcessCache.observe(processId)) {
         return;
     }
 
@@ -198,7 +198,7 @@ void WINAPI EventRecordCallbackKernelProcess(PEVENT_RECORD eventRecord) {
 
     // Do we want to track this process?
     DWORD processId = eventRecord->EventHeader.ProcessId;
-    if (!g_cache.observe(processId)) {
+    if (!g_ProcessCache.observe(processId)) {
         return;
     }
 
@@ -262,7 +262,7 @@ void WINAPI EventRecordCallbackApiCalls(PEVENT_RECORD eventRecord) {
 
     // Do we want to track this process?
     DWORD processId = eventRecord->EventHeader.ProcessId;
-    if (!g_cache.observe(processId)) {
+    if (!g_ProcessCache.observe(processId)) {
         return;
     }
 
@@ -360,7 +360,7 @@ void WINAPI EventRecordCallbackWin32(PEVENT_RECORD eventRecord) {
 
     // Do we want to track this process?
     DWORD processId = eventRecord->EventHeader.ProcessId;
-    if (!g_cache.observe(processId)) {
+    if (!g_ProcessCache.observe(processId)) {
         return;
     }
 

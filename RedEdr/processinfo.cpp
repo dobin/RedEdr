@@ -15,7 +15,7 @@
 
 #include "logging.h"
 #include "config.h"
-#include "procinfo.h"
+#include "processinfo.h"
 #include "utils.h"
 
 #include "mypeb.h"
@@ -136,7 +136,7 @@ bool RetrieveProcessInfo(Process *process, HANDLE hProcess) {
     }
 
     // PBI follows
-    DWORD parentPid = (DWORD)pbi.Reserved3; // InheritedFromUniqueProcessId lol
+    DWORD parentPid = reinterpret_cast<DWORD>(pbi.Reserved3); // InheritedFromUniqueProcessId lol
     process->parent_pid = parentPid;
 
     // PEB follows
@@ -224,7 +224,6 @@ BOOL PrintLoadedModules(DWORD pid, Process* process) {
         process->PebBaseAddress = pbi.PebBaseAddress;
         return FALSE;
     }
-
 
     // Read the PEB_LDR_DATA
     PEB_LDR_DATA ldr;

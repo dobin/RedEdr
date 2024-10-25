@@ -11,13 +11,13 @@
 #include <memory>
 #include <tchar.h>
 
-#include "procinfo.h"
-#include "cache.h"
+#include "processinfo.h"
+#include "processcache.h"
 
 
-class Cache {
+class ProcessCache {
 public:
-    Cache();
+    ProcessCache();
     void addObject(DWORD id, const Process& obj);
     BOOL containsObject(DWORD pid);
     Process* getObject(DWORD id);
@@ -30,4 +30,4 @@ private:
 };
 
 // Declare a global instance
-extern Cache g_cache; 
+extern ProcessCache g_ProcessCache; 

@@ -141,7 +141,7 @@
     <ClCompile Include="..\RedEdrShared\piping.cpp" />
     <ClCompile Include="..\RedEdrShared\utils.cpp" />
     <ClCompile Include="analyzer.cpp" />
-    <ClCompile Include="cache.cpp" />
+    <ClCompile Include="processcache.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="dllinjector.cpp" />
     <ClCompile Include="event_producer.cpp" />
@@ -153,7 +153,7 @@
     <ClCompile Include="logreader.cpp" />
     <ClCompile Include="pplmanager.cpp" />
     <ClCompile Include="pplreader.cpp" />
-    <ClCompile Include="procinfo.cpp" />
+    <ClCompile Include="processinfo.cpp" />
     <ClCompile Include="RedEdr.cpp" />
     <ClCompile Include="serviceutils.cpp" />
     <ClCompile Include="webserver.cpp" />
@@ -162,7 +162,7 @@
     <ClInclude Include="..\RedEdrShared\logging.h" />
     <ClInclude Include="..\RedEdrShared\loguru.hpp" />
     <ClInclude Include="analyzer.h" />
-    <ClInclude Include="cache.h" />
+    <ClInclude Include="processcache.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="cxxops.hpp" />
     <ClInclude Include="dllinjector.h" />
@@ -178,7 +178,7 @@
     <ClInclude Include="mypeb.h" />
     <ClInclude Include="pplmanager.h" />
     <ClInclude Include="pplreader.h" />
-    <ClInclude Include="procinfo.h" />
+    <ClInclude Include="processinfo.h" />
     <ClInclude Include="serviceutils.h" />
     <ClInclude Include="webserver.h" />
   </ItemGroup>

@@ -18,11 +18,11 @@
 #include "../Shared/common.h"
 #include "logging.h"
 #include "config.h"
-#include "procinfo.h"
+#include "processinfo.h"
 #include "dllinjector.h"
 #include "analyzer.h"
 #include "webserver.h"
-#include "cache.h"
+#include "processcache.h"
 #include "analyzer.h"
 
 #pragma comment(lib, "Dbghelp.lib")

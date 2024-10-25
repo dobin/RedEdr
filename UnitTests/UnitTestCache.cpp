@@ -7,7 +7,7 @@
 
 #include "CppUnitTest.h"
 #include "logging.h"
-#include "cache.h"
+#include "processcache.h"
 #include "config.h"
 #include "utils.h"
 

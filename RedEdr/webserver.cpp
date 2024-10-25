@@ -6,7 +6,7 @@
 #include "utils.h"
 #include "json.hpp"
 #include "webserver.h"
-#include "cache.h"
+#include "processcache.h"
 #include "analyzer.h"
 
 HANDLE webserver_thread;
@@ -46,7 +46,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         LOG_A(LOG_INFO, "Reset stats");
         g_EventProducer.ResetData();
         AResetData();
-        g_cache.removeAll();
+        g_ProcessCache.removeAll();
     });
 
     LOG_A(LOG_INFO, "WEB: Web Server listening on http://localhost:8080");

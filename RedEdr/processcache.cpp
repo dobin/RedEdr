@@ -10,28 +10,28 @@
 #include <tchar.h>
 #include <mutex>
 
-#include "cache.h"
+#include "processcache.h"
 #include "utils.h"
-#include "procinfo.h"
+#include "processinfo.h"
 #include "config.h"
 #include "event_producer.h"
 
-Cache g_cache;
+ProcessCache g_ProcessCache;
 std::mutex cache_mutex;
 
 
-Cache::Cache() {
+ProcessCache::ProcessCache() {
 
 }
 
 // Add an object to the cache
-void Cache::addObject(DWORD id, const Process& obj) {
+void ProcessCache::addObject(DWORD id, const Process& obj) {
     cache_mutex.lock();
     cache[id] = obj;
     cache_mutex.unlock();
 }
 
-BOOL Cache::containsObject(DWORD pid) {
+BOOL ProcessCache::containsObject(DWORD pid) {
     cache_mutex.lock();
     auto it = cache.find(pid);
     cache_mutex.unlock();
@@ -44,7 +44,7 @@ BOOL Cache::containsObject(DWORD pid) {
 }
 
 // Get an object from the cache
-Process* Cache::getObject(DWORD id) {
+Process* ProcessCache::getObject(DWORD id) {
     cache_mutex.lock();
     auto it = cache.find(id);
     cache_mutex.unlock();
@@ -87,7 +87,7 @@ Process* Cache::getObject(DWORD id) {
     return &cache[id];
 }
 
-BOOL Cache::observe(DWORD id) {
+BOOL ProcessCache::observe(DWORD id) {
     Process* p = getObject(id);
     if (p != NULL) {
         return p->doObserve();
@@ -96,13 +96,13 @@ BOOL Cache::observe(DWORD id) {
 }
 
 // Remove an object from the cache
-void Cache::removeObject(DWORD id) {
+void ProcessCache::removeObject(DWORD id) {
     cache_mutex.lock();
     cache.erase(id);
     cache_mutex.unlock();
 }
 
-void Cache::removeAll() {
+void ProcessCache::removeAll() {
     cache_mutex.lock();
     cache.clear();
     cache_mutex.unlock();

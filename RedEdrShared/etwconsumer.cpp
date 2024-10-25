@@ -58,7 +58,7 @@ BOOL EtwConsumer::SetupEtw(int _id, const wchar_t* guid,
 
     if (CLSIDFromString(guid, &providerGuid) != NOERROR) {
         LOG_A(LOG_ERROR, "ETW: Invalid provider GUID format");
-        return NULL;
+        return FALSE;
     }
     wchar_t* sessionNameBuffer = _sessionName;
 
@@ -76,13 +76,13 @@ BOOL EtwConsumer::SetupEtw(int _id, const wchar_t* guid,
         if (status != ERROR_SUCCESS) {
             LOG_A(LOG_WARNING, "ETW: Failed to open session %ls", mySessionName.c_str());
             free(sessionProperties);
-            return NULL;
+            return FALSE;
         }
     }
     else if (status != ERROR_SUCCESS) {
         LOG_A(LOG_ERROR, "ETW: Failed to start trace: %d", status);
         free(sessionProperties);
-        return NULL;
+        return FALSE;
     }
 
     LOG_A(LOG_WARNING, "ETW: StartTrace %ls success", mySessionName.c_str());
@@ -113,13 +113,15 @@ BOOL EtwConsumer::SetupEtw(int _id, const wchar_t* guid,
         LOG_A(LOG_ERROR, "ETW: Failed to open trace: %d", GetLastError());
         //delete[] sessionNameBuffer;
         free(sessionProperties);
-        return NULL;
+        return FALSE;
     }
 
     SessionHandle = sessionHandle;
     TraceHandle = traceHandle;
 
     free(sessionProperties);
+
+    return TRUE;
 }
 
 

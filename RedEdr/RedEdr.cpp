@@ -18,10 +18,10 @@
 #include "etwreader.h"
 #include "logreader.h"
 #include "kernelreader.h"
-#include "cache.h"
+#include "processcache.h"
 #include "analyzer.h"
 #include "webserver.h"
-#include "procinfo.h"
+#include "processinfo.h"
 #include "dllreader.h"
 #include "kernelinterface.h"
 #include "pplmanager.h"
@@ -163,7 +163,7 @@ DWORD WINAPI KeyboardReaderThread(LPVOID param) {
             char ch = _getch();  // Get the character
             if (ch == 'r') {
                 LOG_A(LOG_WARNING, "Resetting data...");
-                g_cache.removeAll();
+                g_ProcessCache.removeAll();
             }
         }
         Sleep(200);
