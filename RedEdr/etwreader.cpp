@@ -62,17 +62,28 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
     }
 
     // Security-Auditing, special case
-    /*
     if (g_config.etw_secaudit) {
-        reader = SetupTrace_SecurityAuditing(id++);
-        if (!reader) {
-            //LOG_A(LOG_ERROR, "TODO ERROR");
-            //return 1;
+        // Check: Are we system?
+        char user_name[128] = { 0 };
+        DWORD user_name_length = 128;
+        if (!GetUserNameA(user_name, &user_name_length) || strcmp(user_name, "SYSTEM") != 0)
+        {
+            LOG_A(LOG_ERROR, "ETW: Microsoft-Windows-Security-Auditing can only be traced by SYSTEM");
         }
         else {
-            readers.push_back(reader);
+            etwConsumer = new EtwConsumer();
+            if (!etwConsumer->SetupEtwSecurityAuditing(
+                id++,
+                &EventRecordCallbackSecurityAuditing,
+                g_config.sessionName.c_str()
+            )) {
+				LOG_W(LOG_ERROR, L"ETW: Problem with: Microsoft-Windows-Security-Auditing");
+			}
+            else {
+				EtwConsumers.push_back(etwConsumer);
+			}
         }
-    }*/
+    }
 
     // Antimalware
     /*
@@ -142,54 +153,4 @@ void EtwReaderStopAll() {
     LOG_A(LOG_INFO, "ETW: EtwTracing all stopped"); 
 }
 
-
-// Microsoft-Windows-Security-Auditing is different
-// https://github.com/microsoft/krabsetw/blob/e39e9b766a2b77a5266f0ab4b776e0ca367b3409/examples/NativeExamples/user_trace_005.cpp#L4
-// https://github.com/microsoft/krabsetw/issues/79
-// https://github.com/microsoft/krabsetw/issues/5
-Reader* SetupTrace_SecurityAuditing(int id) {
-    // Check: Are we system?
-    char user_name[128] = { 0 };
-    DWORD user_name_length = 128;
-    if (!GetUserNameA(user_name, &user_name_length) || strcmp(user_name, "SYSTEM") != 0)
-    {
-        LOG_A(LOG_ERROR, "ETW: Microsoft-Windows-Security-Auditing can only be traced by SYSTEM");
-        return NULL;
-    }
-
-    Reader* reader = new Reader();
-    reader->id = id;
-    // For session name omg...
-    std::wstring mySessionName = g_config.sessionName + L"_" + std::to_wstring(id);
-    size_t len = mySessionName.length() + 1; // +1 for null terminator
-    wchar_t* sessionName = new wchar_t[len];
-    wcscpy_s(sessionName, len, mySessionName.c_str());
-    reader->SessionName = sessionName;
-    // Initialize handles (assuming INVALID_PROCESSTRACE_HANDLE and NULL are valid initial values)
-    reader->SessionHandle = NULL;
-    reader->TraceHandle = INVALID_PROCESSTRACE_HANDLE;
-
-    LOG_A(LOG_INFO, "ETW: Do Trace %i: %ls: %ls", reader->id, L"{54849625-5478-4994-A5BA-3E3B0328C30D}", L"Microsoft-Windows-Security-Auditing");
-
-    // Only one trace session is allowed for this provider: "EventLog-Security"
-    // Open a handle to this trace session
-    EVENT_TRACE_LOGFILE trace;
-    ZeroMemory(&trace, sizeof(EVENT_TRACE_LOGFILE));
-    trace.LoggerName = const_cast<LPWSTR>(L"EventLog-Security");
-    trace.ProcessTraceMode = PROCESS_TRACE_MODE_REAL_TIME | PROCESS_TRACE_MODE_EVENT_RECORD;
-    trace.EventRecordCallback = (PEVENT_RECORD_CALLBACK)(EventRecordCallbackSecurityAuditing);
-
-    // Open trace
-    TRACEHANDLE traceHandle = OpenTrace(&trace);
-    if (traceHandle == INVALID_PROCESSTRACE_HANDLE) {
-        LOG_A(LOG_ERROR, "ETW: Failed to open trace. Error: %d", GetLastError());
-        return FALSE;
-    }
-
-    DWORD x = ERROR_CTX_CLOSE_PENDING;
-    reader->SessionHandle = NULL;  // Dont have no session
-    reader->TraceHandle = traceHandle;
-
-    return reader;
-}
 

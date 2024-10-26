@@ -47,11 +47,6 @@ BOOL EtwConsumer::SetupEtw(int _id, const wchar_t* guid,
     std::wstring mySessionName = std::wstring(sessionName) + L"_" + std::to_wstring(id);
     SessionName = wstring2wchar(mySessionName);
 
-    size_t len = mySessionName.length() + 1; // +1 for null terminator
-    wchar_t* _sessionName = new wchar_t[len];
-    wcscpy_s(_sessionName, len, mySessionName.c_str());
-    SessionName = _sessionName;
-    
     // Initialize handles (assuming INVALID_PROCESSTRACE_HANDLE and NULL are valid initial values)
     SessionHandle = NULL;
     TraceHandle = INVALID_PROCESSTRACE_HANDLE;
@@ -60,11 +55,10 @@ BOOL EtwConsumer::SetupEtw(int _id, const wchar_t* guid,
         LOG_A(LOG_ERROR, "ETW: Invalid provider GUID format");
         return FALSE;
     }
-    wchar_t* sessionNameBuffer = _sessionName;
 
     // StartTrace -> SessionHandle
-    EVENT_TRACE_PROPERTIES* sessionProperties = MakeSessionProperties(wcslen(sessionNameBuffer));
-    status = StartTrace(&sessionHandle, sessionNameBuffer, sessionProperties);
+    EVENT_TRACE_PROPERTIES* sessionProperties = MakeSessionProperties(wcslen(SessionName));
+    status = StartTrace(&sessionHandle, SessionName, sessionProperties);
     if (status == ERROR_ALREADY_EXISTS) {
         LOG_A(LOG_WARNING, "ETW: Session %ls already exists, attempt to stop it", mySessionName.c_str());
         StopEtw();
@@ -72,7 +66,7 @@ BOOL EtwConsumer::SetupEtw(int _id, const wchar_t* guid,
 
         // Try it again...
         LOG_A(LOG_WARNING, "ETW: Attempt to open trace %ls again..", mySessionName.c_str());
-        status = StartTrace(&sessionHandle, sessionNameBuffer, sessionProperties);
+        status = StartTrace(&sessionHandle, SessionName, sessionProperties);
         if (status != ERROR_SUCCESS) {
             LOG_A(LOG_WARNING, "ETW: Failed to open session %ls", mySessionName.c_str());
             free(sessionProperties);
@@ -105,13 +99,12 @@ BOOL EtwConsumer::SetupEtw(int _id, const wchar_t* guid,
     // OpenTrace
     EVENT_TRACE_LOGFILE traceLogfile;
     ZeroMemory(&traceLogfile, sizeof(EVENT_TRACE_LOGFILE));
-    traceLogfile.LoggerName = sessionNameBuffer;
+    traceLogfile.LoggerName = SessionName;
     traceLogfile.ProcessTraceMode = PROCESS_TRACE_MODE_REAL_TIME | PROCESS_TRACE_MODE_EVENT_RECORD;
     traceLogfile.EventRecordCallback = func;
     traceHandle = OpenTrace(&traceLogfile);
     if (traceHandle == INVALID_PROCESSTRACE_HANDLE) {
         LOG_A(LOG_ERROR, "ETW: Failed to open trace: %d", GetLastError());
-        //delete[] sessionNameBuffer;
         free(sessionProperties);
         return FALSE;
     }
@@ -120,6 +113,51 @@ BOOL EtwConsumer::SetupEtw(int _id, const wchar_t* guid,
     TraceHandle = traceHandle;
 
     free(sessionProperties);
+
+    return TRUE;
+}
+
+
+BOOL EtwConsumer::SetupEtwSecurityAuditing(int _id, EventRecordCallbackFuncPtr func, const wchar_t* sessionName)
+{
+    // Microsoft-Windows-Security-Auditing is different
+    // https://github.com/microsoft/krabsetw/blob/e39e9b766a2b77a5266f0ab4b776e0ca367b3409/examples/NativeExamples/user_trace_005.cpp#L4
+    // https://github.com/microsoft/krabsetw/issues/79
+    // https://github.com/microsoft/krabsetw/issues/5
+
+    const wchar_t *guid = L"{54849625-5478-4994-A5BA-3E3B0328C30D}";
+    const wchar_t *info = L"Microsoft-Windows-Security-Auditing";
+
+    id = _id;
+
+    // For session name omg...
+    std::wstring mySessionName = std::wstring(sessionName) + L"_" + std::to_wstring(id);
+    SessionName = wstring2wchar(mySessionName);
+
+    // Initialize handles (assuming INVALID_PROCESSTRACE_HANDLE and NULL are valid initial values)
+    SessionHandle = NULL;
+    TraceHandle = INVALID_PROCESSTRACE_HANDLE;
+
+    LOG_A(LOG_INFO, "ETW: Do Trace %i: %ls: %ls", id, guid, info);
+
+    // Only one trace session is allowed for this provider: "EventLog-Security"
+    // Open a handle to this trace session
+    EVENT_TRACE_LOGFILE trace;
+    ZeroMemory(&trace, sizeof(EVENT_TRACE_LOGFILE));
+    trace.LoggerName = const_cast<LPWSTR>(L"EventLog-Security");
+    trace.ProcessTraceMode = PROCESS_TRACE_MODE_REAL_TIME | PROCESS_TRACE_MODE_EVENT_RECORD;
+    trace.EventRecordCallback = (PEVENT_RECORD_CALLBACK)(func);
+
+    // Open trace
+    TRACEHANDLE traceHandle = OpenTrace(&trace);
+    if (traceHandle == INVALID_PROCESSTRACE_HANDLE) {
+        LOG_A(LOG_ERROR, "ETW: Failed to open trace. Error: %d", GetLastError());
+        return FALSE;
+    }
+
+    DWORD x = ERROR_CTX_CLOSE_PENDING;
+    SessionHandle = NULL;  // Dont have no session
+    TraceHandle = traceHandle;
 
     return TRUE;
 }
@@ -153,14 +191,16 @@ void EtwConsumer::StopEtw() {
     sessionProperties = MakeSessionProperties(wcslen(SessionName));
 
     LOG_A(LOG_INFO, "ETW:  Stop Session: %ls", SessionName);
-    status = ControlTrace(SessionHandle, SessionName, sessionProperties, EVENT_TRACE_CONTROL_STOP);
-    if (status != ERROR_SUCCESS) {
-        LOG_A(LOG_WARNING, "ETW:     Failed to stop trace, error: %d", status);
+    if (SessionHandle != NULL) {
+        status = ControlTrace(SessionHandle, SessionName, sessionProperties, EVENT_TRACE_CONTROL_STOP);
+        if (status != ERROR_SUCCESS) {
+            LOG_A(LOG_WARNING, "ETW:     Failed to stop trace, error: %d", status);
+        }
+        else {
+            LOG_A(LOG_INFO, "ETW:     ControlTrace stopped");
+        }
+        free(sessionProperties);
     }
-    else {
-        LOG_A(LOG_INFO, "ETW:     ControlTrace stopped");
-    }
-    free(sessionProperties);
 
     if (TraceHandle != INVALID_PROCESSTRACE_HANDLE) {
         LOG_A(LOG_INFO, "ETW:   CloseTrace(): %i", id);

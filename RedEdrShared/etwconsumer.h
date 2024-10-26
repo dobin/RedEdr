@@ -7,6 +7,7 @@ class EtwConsumer {
 public:
 	EtwConsumer();
 	BOOL SetupEtw(int id, const wchar_t* guid, EventRecordCallbackFuncPtr func, const wchar_t* info, const wchar_t* sessionName);
+	BOOL SetupEtwSecurityAuditing(int id, EventRecordCallbackFuncPtr func, const wchar_t* sessionName);
 	BOOL StartEtw();
 	void StopEtw();
 	int getId();
