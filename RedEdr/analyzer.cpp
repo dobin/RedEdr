@@ -65,7 +65,6 @@ std::string GetAllDetectionsAsJson() {
 
 void AnalyzerNewDetection(Criticality c, std::string s) {
     std::string o = CriticalityToString(c) + ": " + s;
-    LOG_A(LOG_WARNING, o.c_str());
     detections.push_back(o);
 }
 
