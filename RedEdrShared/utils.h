@@ -1,4 +1,5 @@
 #pragma once
+#include <windows.h>
 
 void PrintWcharBufferAsHex(const wchar_t* buffer, size_t bufferSize);
 wchar_t* wstring2wchar(const std::wstring& str);
@@ -11,3 +12,5 @@ bool contains_case_insensitive(const std::wstring& haystack, const std::wstring&
 wchar_t* ConvertCharToWchar(const char* arg);
 std::string wstring_to_utf8(std::wstring& wide_string);
 std::string read_file(const std::string& path);
+wchar_t* getMemoryRegionProtect(DWORD protect);
+wchar_t* getMemoryRegionType(DWORD type);

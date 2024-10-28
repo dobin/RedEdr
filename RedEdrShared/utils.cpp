@@ -154,3 +154,94 @@ std::string read_file(const std::string& path) {
     buffer << file.rdbuf(); // Read the file into the stringstream
     return buffer.str();
 }
+
+wchar_t* getMemoryRegionProtect(DWORD protect) {
+    wchar_t* memoryProtect;
+    switch (protect) {
+	case PAGE_EXECUTE:
+		memoryProtect = L"--X";
+		break;
+	case PAGE_EXECUTE_READ:
+		memoryProtect = L"R-X";
+		break;
+	case PAGE_EXECUTE_READWRITE:
+		memoryProtect = L"RWX";
+		break;
+	case PAGE_EXECUTE_WRITECOPY:
+		memoryProtect = L"EXECUTE_WRITECOPY";
+		break;
+	case PAGE_NOACCESS:
+		memoryProtect = L"NOACCESS";
+		break;
+	case PAGE_READONLY:
+		memoryProtect = L"R--";
+		break;
+	case PAGE_READWRITE:
+		memoryProtect = L"RW-";
+		break;
+	case PAGE_WRITECOPY:
+		memoryProtect = L"WRITECOPY";
+		break;
+    case PAGE_GUARD:
+        memoryProtect = L"GUARD";
+		break;
+    case PAGE_NOCACHE:
+		memoryProtect = L"NOCACHE";
+        break;
+	case PAGE_WRITECOMBINE:
+        memoryProtect = L"WRITECOMBINE";
+        break;
+	default:
+		memoryProtect = L"Unknown";
+		break;
+	}
+	return memoryProtect;
+}
+
+
+wchar_t* getMemoryRegionType(DWORD type) {
+    wchar_t* memoryType;
+    switch (type) {
+    case MEM_IMAGE:
+        memoryType = L"IMAGE";
+        break;
+    case MEM_MAPPED:
+        memoryType = L"MAPPED";
+        break;
+    case MEM_PRIVATE:
+        memoryType = L"PRIVATE";
+        break;
+    case MEM_FREE:
+        memoryType = L"FREE";
+        break;
+    case MEM_RESERVE:
+        memoryType = L"RESERVE";
+        break;
+    case MEM_COMMIT:
+        memoryType = L"COMMIT";
+        break;
+    default:
+        memoryType = L"Unknown";
+        break;
+    }
+    return memoryType;
+}
+
+
+wchar_t* GetMemoryPermissions_Unused(wchar_t* buf, DWORD protection) {
+    //char permissions[4] = "---"; // Initialize as "---"
+    wcscpy_s(buf, 16, L"---");
+
+    if (protection & (PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
+        buf[0] = L'R'; // Readable
+    }
+    if (protection & (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
+        buf[1] = L'W'; // Writable
+    }
+    if (protection & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
+        buf[2] = L'X'; // Executable
+    }
+    buf[3] = L'\x00';
+
+    return buf;
+}
