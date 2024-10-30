@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="dllhelper.cpp" />
+    <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="..\RedEdrShared\logging.cpp">
+      <Filter>existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\piping.cpp">
+      <Filter>existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\utils.cpp">
+      <Filter>existing</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="detours.h" />
+    <ClInclude Include="dllhelper.h" />
+    <ClInclude Include="framework.h" />
+    <ClInclude Include="..\RedEdrShared\logging.h">
+      <Filter>existing</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="existing">
+      <UniqueIdentifier>{5f77433c-213e-4ddc-8ee7-930eaa6a3e28}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

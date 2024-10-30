@@ -11,6 +11,5 @@ void SendDllPipe(wchar_t* buffer);
 void LogMyStackTrace(wchar_t* buf, size_t buf_size);
 
 // Utils
-LARGE_INTEGER get_time();
 void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize);
 

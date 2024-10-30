@@ -8,6 +8,7 @@
 #include <sstream>
 #include <iostream>
 #include <fstream>
+#include <winternl.h>
 
 #include "../Shared/common.h"
 
@@ -156,7 +157,7 @@ std::string read_file(const std::string& path) {
 }
 
 wchar_t* getMemoryRegionProtect(DWORD protect) {
-    wchar_t* memoryProtect;
+    const wchar_t* memoryProtect;
     switch (protect) {
 	case PAGE_EXECUTE:
 		memoryProtect = L"--X";
@@ -195,12 +196,12 @@ wchar_t* getMemoryRegionProtect(DWORD protect) {
 		memoryProtect = L"Unknown";
 		break;
 	}
-	return memoryProtect;
+	return (wchar_t*) memoryProtect;
 }
 
 
 wchar_t* getMemoryRegionType(DWORD type) {
-    wchar_t* memoryType;
+    const wchar_t* memoryType;
     switch (type) {
     case MEM_IMAGE:
         memoryType = L"IMAGE";
@@ -224,7 +225,7 @@ wchar_t* getMemoryRegionType(DWORD type) {
         memoryType = L"Unknown";
         break;
     }
-    return memoryType;
+    return (wchar_t*) memoryType;
 }
 
 
@@ -245,3 +246,30 @@ wchar_t* GetMemoryPermissions_Unused(wchar_t* buf, DWORD protection) {
 
     return buf;
 }
+
+
+void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
+{
+    if (!ustr || !dest || destSize == 0) {
+        return;  // Invalid arguments or destination size is zero
+    }
+
+    // Ensure that the source UNICODE_STRING is valid
+    if (ustr->Length == 0 || ustr->Buffer == NULL) {
+        dest[0] = L'\0';  // Set dest to an empty string
+        return;
+    }
+
+    // Get the number of characters to copy (Length is in bytes, so divide by sizeof(WCHAR))
+    size_t numChars = ustr->Length / sizeof(WCHAR);
+
+    // Copy length should be the smaller of the available characters or the destination size minus 1 (for null terminator)
+    size_t copyLength = (numChars < destSize - 1) ? numChars : destSize - 1;
+
+    // Use wcsncpy_s to safely copy the string
+    wcsncpy_s(dest, destSize, ustr->Buffer, copyLength);
+
+    // Ensure the destination string is null-terminated
+    dest[copyLength] = L'\0';
+}
+
