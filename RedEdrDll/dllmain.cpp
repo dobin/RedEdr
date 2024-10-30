@@ -8,6 +8,7 @@
 #include "dllhelper.h"
 #include "logging.h"
 #include "detours.h"
+#include "utils.h"
 
 BOOL skip_self_readprocess = TRUE;
 BOOL skip_rw_r_virtualprotect = FALSE; // TODO
@@ -16,23 +17,6 @@ BOOL skip_nonzero_baseaddr_mapviewofsection = TRUE;
 BOOL HooksInitialized = FALSE;
 
 
-wchar_t* GetMemoryPermissions(wchar_t* buf, DWORD protection) {
-    //char permissions[4] = "---"; // Initialize as "---"
-    wcscpy_s(buf, 16, L"---");
-
-    if (protection & (PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
-        buf[0] = L'R'; // Readable
-    }
-    if (protection & (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
-        buf[1] = L'W'; // Writable
-    }
-    if (protection & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) {
-        buf[2] = L'X'; // Executable
-    }
-    buf[3] = L'\x00';
-
-    return buf;
-}
 
 /******************* AllocateVirtualMemory ************************/
 
@@ -59,10 +43,6 @@ static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
     if (HooksInitialized) { // dont log our own hooking
-        wchar_t protect_str[16] = L"";
-        memset(protect_str, 0, sizeof(protect_str));
-        GetMemoryPermissions(protect_str, Protect);
-
         int offset = 0;
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
@@ -74,8 +54,7 @@ static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"zero:%#llx;", ZeroBits);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%llu;", *RegionSize);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:%#lx;", AllocationType);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%#lx;", Protect);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect_str:%ls;", protect_str);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%s;", getMemoryRegionProtect(Protect));
 
         // BROKEN for some reason. Do not attempt to enable it again.
         //LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
@@ -110,10 +89,6 @@ static NTSTATUS NTAPI Catch_NtProtectVirtualMemory(
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
     
     if (HooksInitialized) { // dont log our own hooking
-        wchar_t mem_perm[16] = L"";
-        memset(mem_perm, 0, sizeof(mem_perm));
-        GetMemoryPermissions(mem_perm, NewAccessProtection);
-
         int offset = 0;
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
@@ -123,8 +98,7 @@ static NTSTATUS NTAPI Catch_NtProtectVirtualMemory(
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%p;", ProcessHandle);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"base_addr:%p;", BaseAddress);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%lu;", *NumberOfBytesToProtect);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%#lx;", NewAccessProtection);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect_str:%s;", mem_perm);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%s;", getMemoryRegionProtect(NewAccessProtection));
 
         LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
         SendDllPipe(buf);
@@ -168,12 +142,8 @@ NTSTATUS NTAPI Catch_NtMapViewOfSection(
 ) {
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
-    wchar_t mem_perm[16] = L"";
-    memset(mem_perm, 0, sizeof(mem_perm));
 
     if (HooksInitialized) { // dont log our own hooking
-        GetMemoryPermissions(mem_perm, Protect);
-
         // Check if pointers are not NULL before dereferencing
         LONGLONG sectionOffsetValue = (SectionOffset != NULL) ? SectionOffset->QuadPart : 0;
         SIZE_T viewSizeValue = (ViewSize != NULL) ? *ViewSize : 0;
@@ -194,8 +164,7 @@ NTSTATUS NTAPI Catch_NtMapViewOfSection(
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"view_size:%llu;", viewSizeValue);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"inherit_disposition:%x;", InheritDisposition);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"alloc_type:%x;", AllocationType);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%x;", Protect);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect_str:%s;", mem_perm);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%s;", getMemoryRegionProtect(Protect));
 
         LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
         SendDllPipe(buf);

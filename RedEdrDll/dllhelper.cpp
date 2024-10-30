@@ -7,6 +7,7 @@
 #include <mutex>
 #include "piping.h"
 #include "logging.h"
+#include "utils.h"
 
 #pragma comment(lib, "dbghelp.lib")
 
@@ -149,8 +150,8 @@ void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
         }
 
         if (NtQueryVirtualMemory(hProcess, (PVOID)address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
-            written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{idx:%i;addr:0x%I64x;page_addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx},",
-                n, address, mbi.BaseAddress, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
+            written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{idx:%i;addr:0x%I64x;page_addr:%p;size:%zu;state:0x%lx;protect:%s;type:%s},",
+                n, address, mbi.BaseAddress, mbi.RegionSize, mbi.State, getMemoryRegionProtect(mbi.Protect), getMemoryRegionType(mbi.Type));
         }
         buf_size -= written;
         buf += written;
