@@ -3,6 +3,8 @@
 #include <winternl.h>  // needs to be on bottom?
 #include <dbghelp.h>
 #include <stdio.h>
+#include <thread>
+#include <mutex>
 #include "piping.h"
 #include "logging.h"
 #include "utils.h"
@@ -81,6 +83,24 @@ void SendDllPipe(wchar_t* buffer) {
 extern BOOL HooksInitialized;
 BOOL IsSymInitialized = FALSE;
 
+std::mutex InitSymMtx;
+
+void doInitSym(HANDLE hProcess) {
+    // First thread gonna do the shit. 
+    // All others gonna wait.
+    std::lock_guard<std::mutex> lock(InitSymMtx);
+    
+    // Dont record all the stuff SymInitialize()
+    // is doing (disable hooking output)
+    HooksInitialized = FALSE;
+
+    SymInitialize(hProcess, NULL, TRUE);
+
+    // Re-enable hooking output
+    HooksInitialized = TRUE;
+}
+
+
 // Gives wrong answer (5)
 void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
     CONTEXT context;
@@ -90,10 +110,7 @@ void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
     HANDLE hThread = GetCurrentThread();
 
     if (!IsSymInitialized) {
-        // Dont record SymInitialize()
-        HooksInitialized = FALSE;
-        SymInitialize(hProcess, NULL, TRUE);
-        HooksInitialized = TRUE;
+        doInitSym(hProcess);
         IsSymInitialized = TRUE;
     }
 
