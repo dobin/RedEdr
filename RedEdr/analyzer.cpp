@@ -78,11 +78,11 @@ void AnalyzeEventJson(nlohmann::json j) {
     // Parse event
     BOOL printed = FALSE;
 
-    //std::string protectStr = j["protect_str"].get<std::string>();
+    //std::string protectStr = j["protect"].get<std::string>();
     //std::string callstackStr = j["callstack"].dump();
 
     // Allocate or map memory with RWX protection
-    if (j["protect_str"] == "RWX") {
+    if (j["protect"] == "RWX") {
         j["detection"] += "RWX";
         Criticality c = Criticality::HIGH;
 
@@ -110,40 +110,30 @@ void AnalyzeEventJson(nlohmann::json j) {
         BOOL print2 = FALSE;
 
         // Callstack entry from RWX region
-        if (callstack_entry["protect"] == "0x40") {
+        if (callstack_entry["protect"] == "RWX") {
             ss << "High: RWX section, ";
             j["detection"] += "RWX";
             cm.set(Criticality::HIGH);
             print2 = TRUE;
-        } else if (callstack_entry["protect"] == "0x80") {
-            ss << "Medium: RWX/C section, ";
-            cm.set(Criticality::MEDIUM);
-            print2 = TRUE;
         }
 
         // Callstack entry from non-image region
-        if (callstack_entry["type"] != "0x1000000") { // MEM_IMAGE
-            if (callstack_entry["type"] == "0x20000") { // MEM_MAPPED
+        if (callstack_entry["type"] != "IMAGE") { // MEM_IMAGE
+            if (callstack_entry["type"] == "MAPPED") { // MEM_MAPPED
                 ss << "Low: MEM_MAPPED section, ";
                 j["detection"] += "MEM_MAPPED";
                 cm.set(Criticality::LOW);
                 print2 = TRUE;
             }
-            else if (callstack_entry["type"] == "0x40000") { // MEM_PRIVATE, unbacked!
+            else if (callstack_entry["type"] == "PRIVATE") { // MEM_PRIVATE, unbacked!
                 ss << "High: MEM_PRIVATE section, ";
                 j["detection"] += "MEM_PRIVATE";
                 cm.set(Criticality::HIGH);
                 print2 = TRUE;
             }
-            else if (callstack_entry["type"] == "0x0") { // MEM_INVALID
-                ss << "Medium: MEM_INVALID (0x0) section, ";
-                j["detection"] += "MEM_INVALID";
-                cm.set(Criticality::MEDIUM);
-                print2 = TRUE;
-            }
             else {
-                ss << "Unknown: MEM_UNKNOWN section, ";
-                j["detection"] += "MEM_UNKNOWN";
+                ss << "Unknown: other section, ";
+                j["detection"] += "MEM_OTHER";  // TODO: add hex
                 cm.set(Criticality::MEDIUM);
                 print2 = TRUE;
             }
@@ -160,7 +150,7 @@ void AnalyzeEventJson(nlohmann::json j) {
             s << "Analyzer: Suspicious callstack " << idx << " of " << j["callstack"].size() << " by " << j["func"].get<std::string>();
             if (j["func"] == "ProtectVirtualMemory") {
 				s << " destination " << j["base_addr"].get<std::string>();
-                s << " protect " << j["protect_str"].get<std::string>();
+                s << " protect " << j["protect"].get<std::string>();
 			}
             s << " addr " << callstack_entry["addr"].get<std::string>();
             s << " protect " << callstack_entry["protect"].get<std::string>();
