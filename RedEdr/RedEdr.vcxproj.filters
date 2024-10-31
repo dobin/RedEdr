@@ -45,7 +45,7 @@
     <ClCompile Include="..\RedEdrShared\piping.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="event_producer.cpp">
+    <ClCompile Include="eventproducer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="analyzer.cpp">
@@ -140,7 +140,7 @@
     <ClInclude Include="..\RedEdrShared\loguru.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="event_producer.h">
+    <ClInclude Include="eventproducer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="analyzer.h">

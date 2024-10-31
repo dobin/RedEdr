@@ -14,7 +14,7 @@
 #include "utils.h"
 #include "processinfo.h"
 #include "config.h"
-#include "event_producer.h"
+#include "eventproducer.h"
 
 ProcessCache g_ProcessCache;
 std::mutex cache_mutex;

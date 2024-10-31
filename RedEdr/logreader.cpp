@@ -19,7 +19,7 @@
 #include "logging.h"
 #include "logreader.h"
 #include "utils.h"
-#include "event_producer.h"
+#include "eventproducer.h"
 
 
 // Will be checked each second and exit thread if true

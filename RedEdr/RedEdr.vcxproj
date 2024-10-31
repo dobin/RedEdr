@@ -144,7 +144,7 @@
     <ClCompile Include="processcache.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="dllinjector.cpp" />
-    <ClCompile Include="event_producer.cpp" />
+    <ClCompile Include="eventproducer.cpp" />
     <ClCompile Include="kernelinterface.cpp" />
     <ClCompile Include="etwhandler.cpp" />
     <ClCompile Include="etwreader.cpp" />

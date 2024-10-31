@@ -33,7 +33,7 @@
     <ClCompile Include="..\RedEdr\config.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdr\event_producer.cpp">
+    <ClCompile Include="..\RedEdr\eventproducer.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
     <ClCompile Include="..\RedEdrShared\logging.cpp">

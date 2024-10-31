@@ -18,7 +18,7 @@
 #include "utils.h"
 #include "config.h"
 #include "piping.h"
-#include "event_producer.h"
+#include "eventproducer.h"
 
 
 // DllReader: Consumes events from injected DLL hooks

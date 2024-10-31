@@ -13,7 +13,7 @@
 #include "config.h"
 #include "processcache.h"
 #include "etwconsumer.h"
-#include "event_producer.h"
+#include "eventproducer.h"
 
 
 // EtwHandler: ETW Event Handlers

@@ -136,7 +136,7 @@
     <ClCompile Include="..\RedEdr\analyzer.cpp" />
     <ClCompile Include="..\RedEdr\config.cpp" />
     <ClCompile Include="..\RedEdr\dllinjector.cpp" />
-    <ClCompile Include="..\RedEdr\event_producer.cpp" />
+    <ClCompile Include="..\RedEdr\eventproducer.cpp" />
     <ClCompile Include="..\RedEdr\kernelinterface.cpp" />
     <ClCompile Include="..\RedEdr\logreader.cpp" />
     <ClCompile Include="..\RedEdr\processcache.cpp" />

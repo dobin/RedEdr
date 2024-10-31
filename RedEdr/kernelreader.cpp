@@ -16,7 +16,7 @@
 #include "kernelreader.h"
 #include "processcache.h"
 #include "piping.h"
-#include "event_producer.h"
+#include "eventproducer.h"
 
 #pragma comment (lib, "wintrust.lib")
 #pragma comment(lib, "dbghelp.lib")
