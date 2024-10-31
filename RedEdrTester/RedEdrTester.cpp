@@ -53,6 +53,33 @@ void GetProcessInfo(DWORD pid, wchar_t* target) {
 }
 
 
+void AnalyzeFile(wchar_t *filename) {
+	LOG_A(LOG_INFO, "Analyzer");
+	std::string json_file_content = read_file("Data\\notepad.json");
+	if (json_file_content.empty()) {
+		LOG_A(LOG_ERROR, "Could not read file");
+		return; // Exit if the file could not be read
+	}
+
+	nlohmann::json json_data;
+	try {
+		json_data = nlohmann::json::parse(json_file_content);
+	}
+	catch (const std::exception& e) {
+		std::cerr << "Failed to parse JSON: " << e.what() << std::endl;
+		return;
+	}
+
+	if (!json_data.is_array()) {
+		std::cerr << "JSON data is not an array." << std::endl;
+		return;
+	}
+	for (const auto& event : json_data) {
+		AnalyzeEventJson(event);
+	}
+}
+
+
 int wmain(int argc, wchar_t* argv[]) {
 	if (argc < 1) {
 		LOG_A(LOG_ERROR, "Usage: %s <what> <data>", argv[0]);
@@ -78,6 +105,9 @@ int wmain(int argc, wchar_t* argv[]) {
 		wchar_t* end;
 		long pid = wcstoul(argv[1], &end, 10);
 		GetProcessInfo(pid, argv[3]);
+	}
+	else if (wcscmp(argv[1], L"analyzer") == 0) {
+		AnalyzeFile(argv[2]);
 	}
 	else {
 		LOG_A(LOG_ERROR, "Unknown command: %s", argv[1]);
