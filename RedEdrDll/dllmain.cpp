@@ -53,7 +53,7 @@ static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"base_addr:%p;", BaseAddress);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"zero:%#llx;", ZeroBits);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%llu;", *RegionSize);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:%#lx;", AllocationType);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"alloc_type:%#lx;", AllocationType);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%s;", getMemoryRegionProtect(Protect));
 
         // BROKEN for some reason. Do not attempt to enable it again.
