@@ -73,6 +73,18 @@ void PrintEvent(nlohmann::json j) {
 	LOG_A(LOG_INFO, "Event: %s", output.c_str());
 }
 
+class MemoryRegion {
+public:
+    MemoryRegion(const std::string& name, uint64_t addr, uint64_t size)
+        : name(name), addr(addr), size(size) {}
+private:
+    std::string name;
+    uint64_t addr;
+    uint64_t size;
+};
+
+std::unordered_map<uint64_t, MemoryRegion*> memoryRegions;
+
 
 void AnalyzeEventJson(nlohmann::json j) {
     // Parse event
@@ -80,6 +92,22 @@ void AnalyzeEventJson(nlohmann::json j) {
 
     //std::string protectStr = j["protect"].get<std::string>();
     //std::string callstackStr = j["callstack"].dump();
+
+    if (j["type"] == "loaded_dll") {
+        std::cout << j["dlls"];
+        for (const auto& it: j["dlls"]) {
+            uint64_t addr = std::stoull(it["addr"].get<std::string>(), nullptr, 16);
+            uint64_t size = std::stoull(it["size"].get<std::string>(), nullptr, 16);
+            std::string name = it["name"];
+            MemoryRegion* region = new MemoryRegion(name, addr, size);
+            printf("%s 0x%llx 0x%llx",
+                name.c_str(),
+                addr,
+                size);
+            memoryRegions[addr] = region;
+        }
+    }
+    return;
 
     // Allocate or map memory with RWX protection
     if (j["protect"] == "RWX") {
