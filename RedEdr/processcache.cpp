@@ -64,7 +64,6 @@ Process* ProcessCache::getObject(DWORD id) {
 
     if (process->observe) {
         AugmentProcess(id, process);
-
         std::wstring o = format_wstring(L"type:peb;time:%lld;id:%lld;parent_pid:%lld;image_path:%ls;commandline:%ls;working_dir:%ls;is_debugged:%d;is_protected_process:%d;is_protected_process_light:%d;image_base:0x%p",
             get_time(),
             process->id,
@@ -78,6 +77,8 @@ Process* ProcessCache::getObject(DWORD id) {
             process->image_base
         );
         g_EventProducer.do_output(o);
+
+
         PrintLoadedModules(id, process);
     }
 

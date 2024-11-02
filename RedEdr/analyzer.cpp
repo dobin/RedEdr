@@ -3,7 +3,6 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
-
 #include <locale>
 #include <codecvt>
 
@@ -17,29 +16,8 @@
 
 HANDLE analyzer_thread;
 
-enum class Criticality {
-	LOW,
-	MEDIUM,
-	HIGH
-};
+MyAnalyzer g_Analyzer;
 
-class CriticalityManager {
-private:
-    Criticality currentCriticality;
-
-public:
-    CriticalityManager() : currentCriticality(Criticality::LOW) {}
-
-    void set(Criticality newCriticality) {
-        if (newCriticality > currentCriticality) {
-            currentCriticality = newCriticality;
-        }
-    }
-
-    Criticality get() const {
-        return currentCriticality;
-    }
-};
 
 std::string CriticalityToString(Criticality c) {
     switch (c) {
@@ -50,64 +28,91 @@ std::string CriticalityToString(Criticality c) {
     }
 }
 
-std::vector<std::string> detections;
+void PrintEvent(nlohmann::json j) {
+    std::string output = j.dump();
+    LOG_A(LOG_INFO, "Event: %s", output.c_str());
+}
+
+//
 
 
-void AResetData() {
+void MyAnalyzer::ResetData() {
 	detections.clear();
 }
 
 
-std::string GetAllDetectionsAsJson() {
+std::string MyAnalyzer::GetAllDetectionsAsJson() {
     nlohmann::json jsonArray = detections;
     return jsonArray.dump();
 }
 
-void AnalyzerNewDetection(Criticality c, std::string s) {
+
+void MyAnalyzer::AnalyzerNewDetection(Criticality c, std::string s) {
     std::string o = CriticalityToString(c) + ": " + s;
     detections.push_back(o);
 }
 
-void PrintEvent(nlohmann::json j) {
-	std::string output = j.dump();
-	LOG_A(LOG_INFO, "Event: %s", output.c_str());
+
+
+uint64_t AlignToPage(uint64_t addr) {
+    constexpr uint64_t pageSize = 4096;       // Typically 4 KB
+    return addr & ~(pageSize - 1);            // Aligns down to nearest page boundary
 }
 
-class MemoryRegion {
-public:
-    MemoryRegion(const std::string& name, uint64_t addr, uint64_t size)
-        : name(name), addr(addr), size(size) {}
-private:
-    std::string name;
-    uint64_t addr;
-    uint64_t size;
-};
 
-std::unordered_map<uint64_t, MemoryRegion*> memoryRegions;
-
-
-void AnalyzeEventJson(nlohmann::json j) {
+void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
     // Parse event
     BOOL printed = FALSE;
 
     //std::string protectStr = j["protect"].get<std::string>();
     //std::string callstackStr = j["callstack"].dump();
-
     if (j["type"] == "loaded_dll") {
-        std::cout << j["dlls"];
+        //std::cout << j["dlls"];
         for (const auto& it: j["dlls"]) {
             uint64_t addr = std::stoull(it["addr"].get<std::string>(), nullptr, 16);
             uint64_t size = std::stoull(it["size"].get<std::string>(), nullptr, 16);
+            std::string protection = "???";
             std::string name = it["name"];
-            MemoryRegion* region = new MemoryRegion(name, addr, size);
-            printf("%s 0x%llx 0x%llx",
-                name.c_str(),
-                addr,
-                size);
-            memoryRegions[addr] = region;
+
+			addr = AlignToPage(addr);
+            MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
+            targetInfo.AddMemoryRegion(addr, region);
         }
     }
-    return;
+
+    if (j["type"] == "dll" && j["func"] == "AllocateVirtualMemory") {
+        uint64_t addr = std::stoull(j["base_addr"].get<std::string>(), nullptr, 16);
+        uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 16);
+		std::string protection = j["protect"];
+		std::string name = "Allocate";
+
+        addr = AlignToPage(addr);
+		MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
+		targetInfo.AddMemoryRegion(addr, region);
+    }
+
+    if (j["type"] == "dll" && j["func"] == "ProtectVirtualMemory") {
+        uint64_t addr = std::stoull(j["base_addr"].get<std::string>(), nullptr, 16);
+        uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 16);
+        std::string protection = j["protect"];
+        std::string name = "Protect";
+
+        addr = AlignToPage(addr);
+        // Check if exists
+		if (targetInfo.ExistMemoryRegion(addr) == NULL) {
+			LOG_A(LOG_WARNING, "Analyzer: ProtectVirtualMemory region not found");
+            //MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
+            //targetInfo.AddMemoryRegion(addr, region);
+        }
+		else {
+			// Update protection
+			MemoryRegion* region = targetInfo.GetMemoryRegion(addr);
+			region->protection += ";" + protection;
+			//LOG_A(LOG_INFO, "Analyzer: ProtectVirtualMemory: %s 0x%llx 0x%llx %s",
+			//	name.c_str(), addr, size, protection.c_str());
+
+        }
+    }
 
     // Allocate or map memory with RWX protection
     if (j["protect"] == "RWX") {
@@ -191,7 +196,7 @@ void AnalyzeEventJson(nlohmann::json j) {
 }
 
 
-void AnalyzeEventStr(std::string eventStr) {
+void MyAnalyzer::AnalyzeEventStr(std::string eventStr) {
     //std::cout << L"Processing: " << eventStr << std::endl;
     nlohmann::json j;
     try
@@ -224,7 +229,7 @@ DWORD WINAPI AnalyzerThread(LPVOID param) {
         // handle em
         arrlen = output_entries.size();
         for (std::string& entry : output_entries) {
-            AnalyzeEventStr(entry);
+            g_Analyzer.AnalyzeEventStr(entry);
         }
     }
 

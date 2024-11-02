@@ -69,14 +69,15 @@ void AnalyzeFile(wchar_t *filename) {
 		std::cerr << "Failed to parse JSON: " << e.what() << std::endl;
 		return;
 	}
-
 	if (!json_data.is_array()) {
 		std::cerr << "JSON data is not an array." << std::endl;
 		return;
 	}
 	for (const auto& event : json_data) {
-		AnalyzeEventJson(event);
+		g_Analyzer.AnalyzeEventJson(event);
 	}
+
+	g_Analyzer.targetInfo.PrintMemoryRegions();
 }
 
 
