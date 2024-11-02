@@ -166,6 +166,7 @@
     <ClCompile Include="UnitTestAnalyzer.cpp" />
     <ClCompile Include="UnitTestProcessInfo.cpp" />
     <ClCompile Include="UnitTestEventProducer.cpp" />
+    <ClCompile Include="UnitTestRanges.cpp" />
     <ClCompile Include="UnitTests.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

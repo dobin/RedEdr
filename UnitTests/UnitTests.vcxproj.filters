@@ -51,5 +51,8 @@
     <ClCompile Include="..\RedEdr\analyzer.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
+    <ClCompile Include="UnitTestRanges.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
