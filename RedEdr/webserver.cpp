@@ -27,7 +27,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
 
     svr.Get("/api/detections", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content(GetAllDetectionsAsJson(), "application/json; charset=UTF-8");
+        res.set_content(g_Analyzer.GetAllDetectionsAsJson(), "application/json; charset=UTF-8");
     });
 
     svr.Get("/api/stats", [](const httplib::Request&, httplib::Response& res) {
@@ -45,7 +45,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     svr.Get("/api/reset", [](const httplib::Request&, httplib::Response& res) {
         LOG_A(LOG_INFO, "Reset stats");
         g_EventProducer.ResetData();
-        AResetData();
+        g_Analyzer.ResetData();
         g_ProcessCache.removeAll();
     });
 
