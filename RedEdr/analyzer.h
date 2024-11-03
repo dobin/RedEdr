@@ -7,6 +7,7 @@
 #include <sstream>
 
 #include "json.hpp"
+#include "ranges.h"
 
 
 // Criticality 
@@ -57,50 +58,50 @@ uint64_t AlignToPage(uint64_t addr);
 class TargetInfo {
 public:
 	TargetInfo() {}
-	~TargetInfo() {
-		for (auto& it : memoryRegions) {
-			delete it.second;
-		}
-	}
-
+	
 	void AddMemoryRegion(uint64_t addr, MemoryRegion* region) {
-		memoryRegions[addr] = region;
+		//memoryRegions[addr] = region;
+		memoryRegions.add(Range(addr, addr + region->size, region));
 	}
 
 	BOOL ExistMemoryRegion(uint64_t addr) {
-		auto it = memoryRegions.find(addr);
-		return it != memoryRegions.end() ? TRUE : FALSE;
+		return memoryRegions.contains(addr);
+		//auto it = memoryRegions.find(addr);
+		//return it != memoryRegions.end() ? TRUE : FALSE;
 	}
 
 	MemoryRegion* GetMemoryRegion(uint64_t addr) {
-		return memoryRegions[addr];
+		//return memoryRegions[addr];
+		return (MemoryRegion*) memoryRegions.get(addr).data_;
 	}
 
 	void RemoveMemoryRegion(uint64_t addr) {
-		delete memoryRegions[addr];
-		memoryRegions.erase(addr);
+		//delete memoryRegions[addr];
+		//memoryRegions.erase(addr);
 	}
 
 	void ClearMemoryRegions() {
-		for (auto& it : memoryRegions) {
-			delete it.second;
-		}
-		memoryRegions.clear();
+		//for (auto& it : memoryRegions) {
+		//	delete it.second;
+		//}
+		//memoryRegions.clear();
 	}
 
 	void PrintMemoryRegions() {
-		for (const auto& it : memoryRegions) {
+		for (const auto& it : memoryRegions.ranges_) {
+			MemoryRegion* r = (MemoryRegion*) it.data_;
 			printf("Entry: %s 0x%llx 0x%llx  %s\n",
-				it.second->name.c_str(),
-				it.second->addr,
-				it.second->size,
-				it.second->protection.c_str()
-				);
+				r->name.c_str(),
+				r->addr,
+				r->size,
+				r->protection.c_str()
+			);
 		}
 	}
 
 private:
-	std::unordered_map<uint64_t, MemoryRegion*> memoryRegions;
+	RangeSet memoryRegions;
+	//std::unordered_map<uint64_t, MemoryRegion*> memoryRegions;
 };
 
 

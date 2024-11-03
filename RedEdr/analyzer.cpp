@@ -61,18 +61,14 @@ uint64_t AlignToPage(uint64_t addr) {
 
 
 void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
-    // Parse event
     BOOL printed = FALSE;
 
-    //std::string protectStr = j["protect"].get<std::string>();
-    //std::string callstackStr = j["callstack"].dump();
     if (j["type"] == "loaded_dll") {
-        //std::cout << j["dlls"];
         for (const auto& it: j["dlls"]) {
             uint64_t addr = std::stoull(it["addr"].get<std::string>(), nullptr, 16);
             uint64_t size = std::stoull(it["size"].get<std::string>(), nullptr, 16);
             std::string protection = "???";
-            std::string name = it["name"];
+            std::string name = "loaded_dll:"; //it["name"];
 
 			addr = AlignToPage(addr);
             MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
@@ -84,33 +80,42 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
         uint64_t addr = std::stoull(j["base_addr"].get<std::string>(), nullptr, 16);
         uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 16);
 		std::string protection = j["protect"];
-		std::string name = "Allocate";
+		std::string name = "Allocated";
 
         addr = AlignToPage(addr);
-		MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
-		targetInfo.AddMemoryRegion(addr, region);
+        if (targetInfo.ExistMemoryRegion(addr)) {
+            LOG_A(LOG_WARNING, "Analyzer: Allocate Memory ALREADY FOUND??! 0x%llx 0x%llx",
+                std::stoull(j["base_addr"].get<std::string>(), nullptr, 16), addr);
+        }
+        else {
+            LOG_A(LOG_WARNING, "Analyzer: Allocate Memory new: 0x%llx",
+                addr);
+            MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
+            targetInfo.AddMemoryRegion(addr, region);
+        }
+
     }
 
     if (j["type"] == "dll" && j["func"] == "ProtectVirtualMemory") {
         uint64_t addr = std::stoull(j["base_addr"].get<std::string>(), nullptr, 16);
         uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 16);
         std::string protection = j["protect"];
-        std::string name = "Protect";
+        std::string name = "Protected";
 
         addr = AlignToPage(addr);
         // Check if exists
-		if (targetInfo.ExistMemoryRegion(addr) == NULL) {
-			LOG_A(LOG_WARNING, "Analyzer: ProtectVirtualMemory region not found");
-            //MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
-            //targetInfo.AddMemoryRegion(addr, region);
+		if (! targetInfo.ExistMemoryRegion(addr)) {
+			LOG_A(LOG_WARNING, "Analyzer: ProtectVirtualMemory region 0x%llx not found. Adding.",
+                addr);
+            MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
+            targetInfo.AddMemoryRegion(addr, region);
         }
 		else {
 			// Update protection
 			MemoryRegion* region = targetInfo.GetMemoryRegion(addr);
 			region->protection += ";" + protection;
-			//LOG_A(LOG_INFO, "Analyzer: ProtectVirtualMemory: %s 0x%llx 0x%llx %s",
-			//	name.c_str(), addr, size, protection.c_str());
-
+			LOG_A(LOG_INFO, "Analyzer: ProtectVirtualMemory: %s 0x%llx 0x%llx %s",
+				name.c_str(), addr, size, protection.c_str());
         }
     }
 
