@@ -72,7 +72,13 @@ public:
 
 	MemoryRegion* GetMemoryRegion(uint64_t addr) {
 		//return memoryRegions[addr];
-		return (MemoryRegion*) memoryRegions.get(addr).data_;
+		const Range* range = memoryRegions.get(addr);
+		if (range != NULL) {
+			return (MemoryRegion*) range->data_;
+		}
+		else {
+			return NULL;
+		}
 	}
 
 	void RemoveMemoryRegion(uint64_t addr, size_t size) {

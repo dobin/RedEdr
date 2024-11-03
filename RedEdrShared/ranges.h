@@ -66,13 +66,13 @@ public:
         return FALSE;
     }
 
-    Range get(int value) const {
+    const Range* get(int value) const {
         for (const auto& range : ranges_) {
             if (range.contains(value)) {
-                return range;
+                return &range;
             }
         }
-        return {0, 0, NULL};
+        return NULL;
     }
 
     RangeSet intersect(const RangeSet& other) const {

@@ -67,9 +67,10 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
             uint64_t addr = std::stoull(it["addr"].get<std::string>(), nullptr, 16);
             uint64_t size = std::stoull(it["size"].get<std::string>(), nullptr, 10);
             std::string protection = "???";
-            std::string name = "loaded_dll:"; //it["name"];
+            std::string name = "loaded_dll:" + it["name"];
 
 			addr = AlignToPage(addr);
+            // always add, as its early in the process without collisions hopefully
             MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
             targetInfo.AddMemoryRegion(addr, region);
         }
@@ -79,23 +80,22 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
         uint64_t addr = std::stoull(j["addr"].get<std::string>(), nullptr, 16);
         uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 10);
 		std::string protection = j["protect"];
-		std::string name = "Allocated";
 
         addr = AlignToPage(addr);
-        if (targetInfo.ExistMemoryRegion(addr)) {
-            LOG_A(LOG_WARNING, "Analyzer: Allocate Memory ALREADY FOUND??! 0x%llx %llu end:0x%llx",
-               addr, size, addr+size);
-
-            MemoryRegion* region = targetInfo.GetMemoryRegion(addr);
-            LOG_A(LOG_INFO, "              : %s 0x%llx %llu end:0x%llx %s",
-              	region->name.c_str(), region->addr, region->size, 
-                region->addr + region->size,
-                region->protection.c_str());
+        MemoryRegion* memoryRegion = targetInfo.GetMemoryRegion(addr);
+        if (memoryRegion != NULL) {
+            //LOG_A(LOG_WARNING, "Analyzer: Allocate Memory ALREADY FOUND??! 0x%llx %llu end:0x%llx",
+            //   addr, size, addr+size);
+            //LOG_A(LOG_INFO, "              : %s 0x%llx %llu end:0x%llx %s",
+            //    region->name.c_str(), region->addr, region->size,
+            //    region->addr + region->size,
+            //    region->protection.c_str());*/
+            memoryRegion->protection += ";Alloc:" + protection;
         }
         else {
-            LOG_A(LOG_WARNING, "Analyzer: Allocate Memory new: 0x%llx %llu",
-                addr, size);
-            MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
+            //LOG_A(LOG_WARNING, "Analyzer: Allocate Memory new: 0x%llx %llu",
+            //    addr, size);
+            MemoryRegion* region = new MemoryRegion("Allocated", addr, size, protection);
             targetInfo.AddMemoryRegion(addr, region);
         }
     }
@@ -103,7 +103,17 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
     if (j["type"] == "dll" && j["func"] == "FreeVirtualMemory") {
         uint64_t addr = std::stoull(j["addr"].get<std::string>(), nullptr, 16);
         uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 10);
-        targetInfo.RemoveMemoryRegion(addr, size);
+
+        MemoryRegion* memoryRegion = targetInfo.GetMemoryRegion(addr);
+        if (memoryRegion != NULL) {
+            // do not remove, but indicate it has been freed
+            //targetInfo.RemoveMemoryRegion(addr, size);
+            memoryRegion->protection += ";freed";
+        }
+        else {
+            LOG_A(LOG_WARNING, "Free a non-allocated");
+            // No add as its free anyway?
+        }
     }
 
     if (j["type"] == "dll" && j["func"] == "ProtectVirtualMemory") {
@@ -114,7 +124,8 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
 
         addr = AlignToPage(addr);
         // Check if exists
-		if (! targetInfo.ExistMemoryRegion(addr)) {
+        MemoryRegion* memoryRegion = targetInfo.GetMemoryRegion(addr);
+        if (memoryRegion == NULL) {
 			//LOG_A(LOG_WARNING, "Analyzer: ProtectVirtualMemory region 0x%llx not found. Adding.",
             //    addr);
             MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
