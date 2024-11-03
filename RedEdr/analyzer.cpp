@@ -53,10 +53,9 @@ void MyAnalyzer::AnalyzerNewDetection(Criticality c, std::string s) {
 }
 
 
-
 uint64_t AlignToPage(uint64_t addr) {
-    constexpr uint64_t pageSize = 4096;       // Typically 4 KB
-    return addr & ~(pageSize - 1);            // Aligns down to nearest page boundary
+    constexpr uint64_t pageSize = 4096;
+    return addr & ~(pageSize - 1);
 }
 
 
@@ -66,7 +65,7 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
     if (j["type"] == "loaded_dll") {
         for (const auto& it: j["dlls"]) {
             uint64_t addr = std::stoull(it["addr"].get<std::string>(), nullptr, 16);
-            uint64_t size = std::stoull(it["size"].get<std::string>(), nullptr, 16);
+            uint64_t size = std::stoull(it["size"].get<std::string>(), nullptr, 10);
             std::string protection = "???";
             std::string name = "loaded_dll:"; //it["name"];
 
@@ -77,36 +76,47 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
     }
 
     if (j["type"] == "dll" && j["func"] == "AllocateVirtualMemory") {
-        uint64_t addr = std::stoull(j["base_addr"].get<std::string>(), nullptr, 16);
-        uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 16);
+        uint64_t addr = std::stoull(j["addr"].get<std::string>(), nullptr, 16);
+        uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 10);
 		std::string protection = j["protect"];
 		std::string name = "Allocated";
 
         addr = AlignToPage(addr);
         if (targetInfo.ExistMemoryRegion(addr)) {
-            LOG_A(LOG_WARNING, "Analyzer: Allocate Memory ALREADY FOUND??! 0x%llx 0x%llx",
-                std::stoull(j["base_addr"].get<std::string>(), nullptr, 16), addr);
+            LOG_A(LOG_WARNING, "Analyzer: Allocate Memory ALREADY FOUND??! 0x%llx %llu end:0x%llx",
+               addr, size, addr+size);
+
+            MemoryRegion* region = targetInfo.GetMemoryRegion(addr);
+            LOG_A(LOG_INFO, "              : %s 0x%llx %llu end:0x%llx %s",
+              	region->name.c_str(), region->addr, region->size, 
+                region->addr + region->size,
+                region->protection.c_str());
         }
         else {
-            LOG_A(LOG_WARNING, "Analyzer: Allocate Memory new: 0x%llx",
-                addr);
+            LOG_A(LOG_WARNING, "Analyzer: Allocate Memory new: 0x%llx %llu",
+                addr, size);
             MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
             targetInfo.AddMemoryRegion(addr, region);
         }
+    }
 
+    if (j["type"] == "dll" && j["func"] == "FreeVirtualMemory") {
+        uint64_t addr = std::stoull(j["addr"].get<std::string>(), nullptr, 16);
+        uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 10);
+        targetInfo.RemoveMemoryRegion(addr, size);
     }
 
     if (j["type"] == "dll" && j["func"] == "ProtectVirtualMemory") {
-        uint64_t addr = std::stoull(j["base_addr"].get<std::string>(), nullptr, 16);
-        uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 16);
+        uint64_t addr = std::stoull(j["addr"].get<std::string>(), nullptr, 16);
+        uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 10);
         std::string protection = j["protect"];
         std::string name = "Protected";
 
         addr = AlignToPage(addr);
         // Check if exists
 		if (! targetInfo.ExistMemoryRegion(addr)) {
-			LOG_A(LOG_WARNING, "Analyzer: ProtectVirtualMemory region 0x%llx not found. Adding.",
-                addr);
+			//LOG_A(LOG_WARNING, "Analyzer: ProtectVirtualMemory region 0x%llx not found. Adding.",
+            //    addr);
             MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
             targetInfo.AddMemoryRegion(addr, region);
         }
@@ -114,8 +124,8 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
 			// Update protection
 			MemoryRegion* region = targetInfo.GetMemoryRegion(addr);
 			region->protection += ";" + protection;
-			LOG_A(LOG_INFO, "Analyzer: ProtectVirtualMemory: %s 0x%llx 0x%llx %s",
-				name.c_str(), addr, size, protection.c_str());
+			//LOG_A(LOG_INFO, "Analyzer: ProtectVirtualMemory: %s 0x%llx 0x%llx %s",
+			//	name.c_str(), addr, size, protection.c_str());
         }
     }
 
@@ -187,7 +197,7 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
             std::stringstream s;
             s << "Analyzer: Suspicious callstack " << idx << " of " << j["callstack"].size() << " by " << j["func"].get<std::string>();
             if (j["func"] == "ProtectVirtualMemory") {
-				s << " destination " << j["base_addr"].get<std::string>();
+				s << " destination " << j["addr"].get<std::string>();
                 s << " protect " << j["protect"].get<std::string>();
 			}
             s << " addr " << callstack_entry["addr"].get<std::string>();

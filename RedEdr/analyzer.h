@@ -75,7 +75,16 @@ public:
 		return (MemoryRegion*) memoryRegions.get(addr).data_;
 	}
 
-	void RemoveMemoryRegion(uint64_t addr) {
+	void RemoveMemoryRegion(uint64_t addr, size_t size) {
+		for (auto it = memoryRegions.ranges_.begin(); it != memoryRegions.ranges_.end(); ) {
+			if (it->contains(addr)) {
+				it = memoryRegions.ranges_.erase(it);
+			}
+			else {
+				++it;
+			}
+		}
+
 		//delete memoryRegions[addr];
 		//memoryRegions.erase(addr);
 	}
