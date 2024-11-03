@@ -1,5 +1,6 @@
 #include "CppUnitTest.h"
 
+#include "logging.h"
 #include "ranges.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -9,6 +10,13 @@ namespace RangeSetTests
     TEST_CLASS(RangeSetTests)
     {
     public:
+        TEST_METHOD(SimpleTest)
+        {
+            RangeSet rangeSet;
+            rangeSet.add(Range(1, 5, NULL));
+            rangeSet.add(Range(10, 15, NULL));
+            Assert::IsTrue(rangeSet.exists(2));
+        }
 
         TEST_METHOD(TestAddAndMergeOverlappingRanges)
         {
