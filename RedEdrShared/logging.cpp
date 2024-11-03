@@ -175,6 +175,8 @@ void LOG_A(int verbosity, const char* format, ...)
     va_end(arg_ptr);
 
     Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage(message);
+    Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage("\n");
+
 }
 
 
