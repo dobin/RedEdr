@@ -63,9 +63,9 @@ static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:AllocateVirtualMemory;");
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%p;", ProcessHandle);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"handle:%p;", ProcessHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"addr:%p;", addr);
-    if (addr_req != NULL) {
+    if (addr_req != NULL && addr_req != addr) {
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"addr_req:%p;", addr_req);
     }
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"zero:%#llx;", ZeroBits);
@@ -73,9 +73,65 @@ static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size_req:%llu;", size_req);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"alloc_type:%#lx;", AllocationType);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%s;", getMemoryRegionProtect(Protect));
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"return:%ld;", ret);
 
     // BROKEN for some reason. Do not attempt to enable it again.
     //LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
+
+    SendDllPipe(buf);
+
+    return ret;
+}
+
+/******************* FreeVirtualMemory ************************/
+
+typedef NTSTATUS(NTAPI* t_NtFreeVirtualMemory)(
+    IN HANDLE       ProcessHandle,
+    IN PVOID*       BaseAddress,
+    IN OUT PULONG   RegionSize,
+    IN ULONG        FreeType
+    );
+t_NtFreeVirtualMemory Real_NtFreeVirtualMemory = NULL;
+
+static NTSTATUS NTAPI Catch_NtFreeVirtualMemory(
+    IN HANDLE       ProcessHandle,
+    IN PVOID*       BaseAddress,
+    IN OUT PULONG   RegionSize,
+    IN ULONG        FreeType)
+{
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    if (!HooksInitialized) { // dont log our own hooking
+        return Real_NtFreeVirtualMemory(ProcessHandle, BaseAddress, RegionSize, FreeType);
+    }
+
+    // Request address
+    PVOID addr_req = (BaseAddress != NULL) ? *BaseAddress : NULL;
+    ULONG size_req = (RegionSize != NULL) ? *RegionSize : NULL;
+
+    // Execute real function
+    NTSTATUS ret = Real_NtFreeVirtualMemory(ProcessHandle, BaseAddress, RegionSize, FreeType);
+
+    // Real address
+    PVOID addr = (BaseAddress != NULL) ? *BaseAddress : NULL;
+    ULONG size = (RegionSize != NULL) ? *RegionSize : NULL;
+
+    int offset = 0;
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:FreeVirtualMemory;");
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"handle:%p;", ProcessHandle);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"addr:%p;", addr);
+    if (addr_req != NULL && addr_req != addr) {
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"addr_req:%p;", addr_req);
+    }
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%llu;", size);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size_req:%lu;", size_req);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"free_type:%lx;", FreeType);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"return:%ld;", ret);
 
     SendDllPipe(buf);
 
@@ -123,13 +179,14 @@ static NTSTATUS NTAPI Catch_NtProtectVirtualMemory(
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:ProtectVirtualMemory;");
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%p;", ProcessHandle);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"handle:%p;", ProcessHandle);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"addr:%p;", addr);
-    if (addr_req != NULL) {
+    if (addr_req != NULL && addr_req != addr) {
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"addr_req:%p;", addr);
     }
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%lu;", *NumberOfBytesToProtect);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%s;", getMemoryRegionProtect(NewAccessProtection));
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"return:%ld;", ret);
 
     LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
     SendDllPipe(buf);
@@ -1016,6 +1073,7 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     Real_NtMapViewOfSection = (t_NtMapViewOfSection)DetourFindFunction("ntdll.dll", "NtMapViewOfSection");
     Real_NtAllocateVirtualMemory = (t_NtAllocateVirtualMemory)DetourFindFunction("ntdll.dll", "NtAllocateVirtualMemory");
     Real_NtProtectVirtualMemory = (t_NtProtectVirtualMemory)DetourFindFunction("ntdll.dll", "NtProtectVirtualMemory");
+    Real_NtFreeVirtualMemory = (t_NtFreeVirtualMemory)DetourFindFunction("ntdll.dll", "NtFreeVirtualMemory");
 
     DetourRestoreAfterWith();
     DetourTransactionBegin();
@@ -1043,7 +1101,8 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     DetourAttach(&(PVOID&)Real_NtMapViewOfSection, Catch_NtMapViewOfSection);
     DetourAttach(&(PVOID&)Real_NtAllocateVirtualMemory, Catch_NtAllocateVirtualMemory);
     DetourAttach(&(PVOID&)Real_NtProtectVirtualMemory, Catch_NtProtectVirtualMemory);
-    
+    DetourAttach(&(PVOID&)Real_NtFreeVirtualMemory, Catch_NtFreeVirtualMemory);
+
     error = DetourTransactionCommit();
     if (error == NO_ERROR) {
         LOG_A(LOG_INFO, "simple" DETOURS_STRINGIFY(DETOURS_BITS) ".dll: Detoured SleepEx().\n");
