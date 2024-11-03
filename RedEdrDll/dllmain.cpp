@@ -10,16 +10,16 @@
 #include "detours.h"
 #include "utils.h"
 
+// Config
 BOOL skip_self_readprocess = TRUE;
 BOOL skip_rw_r_virtualprotect = FALSE; // TODO
 BOOL skip_nonzero_baseaddr_mapviewofsection = TRUE;
 
+// Data
 BOOL HooksInitialized = FALSE;
 
 
-
 /******************* AllocateVirtualMemory ************************/
-
 
 typedef NTSTATUS(NTAPI* t_NtAllocateVirtualMemory)(
     HANDLE ProcessHandle,
@@ -42,32 +42,48 @@ static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
-    if (HooksInitialized) { // dont log our own hooking
-        int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:AllocateVirtualMemory;");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%p;", ProcessHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"base_addr:%p;", BaseAddress);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"zero:%#llx;", ZeroBits);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%llu;", *RegionSize);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"alloc_type:%#lx;", AllocationType);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%s;", getMemoryRegionProtect(Protect));
-
-        // BROKEN for some reason. Do not attempt to enable it again.
-        //LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-
-        SendDllPipe(buf);
+    if (!HooksInitialized) { // dont log our own hooking
+        return Real_NtAllocateVirtualMemory(ProcessHandle, BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
     }
-    return Real_NtAllocateVirtualMemory(ProcessHandle, BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
+
+    // Request address
+    PVOID addr_req = (BaseAddress != NULL) ? *BaseAddress : NULL;
+    SIZE_T size_req = (RegionSize != NULL) ? *RegionSize : NULL;
+
+    // Execute real function
+    NTSTATUS ret = Real_NtAllocateVirtualMemory(ProcessHandle, BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
+
+    // Real address
+    PVOID addr = (BaseAddress != NULL) ? *BaseAddress : NULL;
+    SIZE_T size = (RegionSize != NULL) ? *RegionSize : NULL;
+
+    int offset = 0;
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:AllocateVirtualMemory;");
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%p;", ProcessHandle);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"addr:%p;", addr);
+    if (addr_req != NULL) {
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"addr_req:%p;", addr_req);
+    }
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"zero:%#llx;", ZeroBits);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%llu;", size);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size_req:%llu;", size_req);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"alloc_type:%#lx;", AllocationType);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%s;", getMemoryRegionProtect(Protect));
+
+    // BROKEN for some reason. Do not attempt to enable it again.
+    //LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
+
+    SendDllPipe(buf);
+
+    return ret;
 }
 
 
 /******************* ProtectVirtualMemory ************************/
-
-
 
 typedef NTSTATUS(NTAPI* t_NtProtectVirtualMemory)(
     HANDLE ProcessHandle,
@@ -88,22 +104,36 @@ static NTSTATUS NTAPI Catch_NtProtectVirtualMemory(
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
     
-    if (HooksInitialized) { // dont log our own hooking
-        int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:ProtectVirtualMemory;");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%p;", ProcessHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"base_addr:%p;", BaseAddress);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%lu;", *NumberOfBytesToProtect);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%s;", getMemoryRegionProtect(NewAccessProtection));
-
-        LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-        SendDllPipe(buf);
+    if (!HooksInitialized) { // dont log our own hooking
+        return Real_NtProtectVirtualMemory(ProcessHandle, BaseAddress, NumberOfBytesToProtect, NewAccessProtection, OldAccessProtection);
     }
-    return Real_NtProtectVirtualMemory(ProcessHandle, BaseAddress, NumberOfBytesToProtect, NewAccessProtection, OldAccessProtection);
+
+    // Request address
+    PVOID addr_req = (BaseAddress != NULL) ? *BaseAddress : NULL;
+
+    // Exec
+    NTSTATUS ret = Real_NtProtectVirtualMemory(ProcessHandle, BaseAddress, NumberOfBytesToProtect, NewAccessProtection, OldAccessProtection);
+
+    // Real address
+    PVOID addr = (BaseAddress != NULL) ? *BaseAddress : NULL;
+
+    int offset = 0;
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:ProtectVirtualMemory;");
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%p;", ProcessHandle);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"addr:%p;", addr);
+    if (addr_req != NULL) {
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"addr_req:%p;", addr);
+    }
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%lu;", *NumberOfBytesToProtect);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%s;", getMemoryRegionProtect(NewAccessProtection));
+
+    LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
+    SendDllPipe(buf);
+    return ret;
 }
 
 
@@ -143,34 +173,37 @@ NTSTATUS NTAPI Catch_NtMapViewOfSection(
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
-    NTSTATUS ret = Real_NtMapViewOfSection(SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Protect);
     
     if (HooksInitialized) { // dont log our own hooking
-        // Check if pointers are not NULL before dereferencing
-        LONGLONG sectionOffsetValue = (SectionOffset != NULL) ? SectionOffset->QuadPart : 0;
-        SIZE_T viewSizeValue = (ViewSize != NULL) ? *ViewSize : 0;
-        PVOID baseAddressValue = (BaseAddress != NULL) ? *BaseAddress : NULL;
-
-        int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:MapViewOfSection;");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"section_handle:0x%p;", SectionHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"process_handle:0x%p;", ProcessHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"base_address:0x%p;", baseAddressValue);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"zero_bits:%llu;", ZeroBits);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%llu;", CommitSize);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"section_offset:%lld;", sectionOffsetValue);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"view_size:%llu;", viewSizeValue);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"inherit_disposition:%x;", InheritDisposition);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"alloc_type:%x;", AllocationType);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%s;", getMemoryRegionProtect(Protect));
-
-        LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-        SendDllPipe(buf);
+        return Real_NtMapViewOfSection(SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Protect);
     }
+
+    // Check if pointers are not NULL before dereferencing
+    LONGLONG sectionOffsetValue = (SectionOffset != NULL) ? SectionOffset->QuadPart : 0;
+    SIZE_T viewSizeValue = (ViewSize != NULL) ? *ViewSize : 0;
+    PVOID baseAddressValue = (BaseAddress != NULL) ? *BaseAddress : NULL;
+
+    NTSTATUS ret = Real_NtMapViewOfSection(SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Protect);
+
+    int offset = 0;
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:MapViewOfSection;");
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"section_handle:0x%p;", SectionHandle);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"process_handle:0x%p;", ProcessHandle);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"base_address:0x%p;", baseAddressValue);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"zero_bits:%llu;", ZeroBits);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"size:%llu;", CommitSize);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"section_offset:%lld;", sectionOffsetValue);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"view_size:%llu;", viewSizeValue);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"inherit_disposition:%x;", InheritDisposition);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"alloc_type:%x;", AllocationType);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"protect:%s;", getMemoryRegionProtect(Protect));
+
+    LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
+    SendDllPipe(buf);
     return ret;
 }
 
