@@ -1,5 +1,3 @@
-
-
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -50,12 +48,54 @@ std::string MyAnalyzer::GetAllDetectionsAsJson() {
 void MyAnalyzer::AnalyzerNewDetection(Criticality c, std::string s) {
     std::string o = CriticalityToString(c) + ": " + s;
     detections.push_back(o);
+    //LOG_A(LOG_INFO, "Analyzer: %s", o.c_str());
 }
 
 
 uint64_t AlignToPage(uint64_t addr) {
     constexpr uint64_t pageSize = 4096;
     return addr & ~(pageSize - 1);
+}
+
+
+std::string getLastTwoFields(const std::string& input) {
+    // Find the last semicolon
+    size_t lastSemicolon = input.rfind(';');
+    if (lastSemicolon == std::string::npos) {
+        return "";  // No semicolons found, return empty
+    }
+
+    // Find the second-to-last semicolon by searching before the last semicolon
+    size_t secondLastSemicolon = input.rfind(';', lastSemicolon - 1);
+    if (secondLastSemicolon == std::string::npos) {
+        return "";  // Less than two fields, return empty
+    }
+
+    // Extract substring from the second-to-last semicolon to the end of the string
+    return input.substr(secondLastSemicolon + 1);
+}
+
+
+std::string sus_protect(std::string protect) {
+    std::string lastprotect = getLastTwoFields(protect);
+
+    // RW->RX for shellcode loader
+    if (lastprotect.find("RW-;R-X") != std::string::npos) {
+        return std::string("Sus VirtualProtect history RW->RX: ") + protect;
+    } else if (lastprotect.find("RWX;R-X") != std::string::npos) {
+        return std::string("Sus VirtualProtect history RWX->RX: ") + protect;
+    
+    // RX->RW for memory encryption
+    } else if (lastprotect.find("R-X;RWX") != std::string::npos) {
+        return std::string("Sus VirtualProtect history RX->RWX: ") + protect;
+    } else if (lastprotect.find("R-X;RW-") != std::string::npos) {
+        return std::string("Sus VirtualProtect history RX->RW: ") + protect;
+    
+    // NOACCESS shenanigans for memory encryption
+    } else if (lastprotect.find("R-X;NOACCESS") != std::string::npos) {
+        return std::string("Sus VirtualProtect history RX->NOACCESS: ") + protect;
+    }
+    return "";
 }
 
 
@@ -137,6 +177,11 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
 			region->protection += ";" + protection;
 			//LOG_A(LOG_INFO, "Analyzer: ProtectVirtualMemory: %s 0x%llx 0x%llx %s",
 			//	name.c_str(), addr, size, protection.c_str());
+
+            std::string sus = sus_protect(region->protection);
+            if (sus != "") {
+                AnalyzerNewDetection(Criticality::HIGH, sus);
+            }
         }
     }
 
