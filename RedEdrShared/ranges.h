@@ -5,6 +5,8 @@
 #include <vector>
 #include <utility>
 
+#include "logging.h"
+
 
 class Range {
 public:
@@ -21,17 +23,20 @@ public:
     }
 
     Range intersect(const Range& other) const {
-        if (!overlaps(other)) return { 0, 0 , 0 };  // No intersection
-        return { std::max(start_, other.start_), std::min(end_, other.end_), NULL };
+        if (!overlaps(other)) return { 0, 0, nullptr };
+        return { (std::max)(start_, other.start_),
+                 (std::min)(end_, other.end_), nullptr };
     }
 
     Range merge(const Range& other) const {
         if (!overlaps(other) && !is_adjacent(other)) return *this;  // Non-overlapping
-        return { std::min(start_, other.start_), std::max(end_, other.end_), NULL };
+        //return { std::min(start_, other.start_), std::max(end_, other.end_), NULL };
     }
 
     void print() const {
-        std::cout << "[" << start_ << ", " << end_ << ")";
+        //std::cout << "[" << start_ << ", " << end_ << ")";
+        LOG_A(LOG_INFO, "  Start: %d  End: %d",
+            start_, end_);
     }
 
     int start_;
@@ -48,16 +53,16 @@ class RangeSet {
 public:
     void add(const Range& range) {
         ranges_.push_back(range);
-        merge_overlapping();
+        //merge_overlapping();
     }
 
-    bool contains(int value) const {
+    BOOL contains(int value) const {
         for (const auto& range : ranges_) {
             if (range.contains(value)) {
-                return true;
+                return TRUE;
             }
         }
-        return false;
+        return FALSE;
     }
 
     Range get(int value) const {
@@ -84,9 +89,7 @@ public:
     void print() const {
         for (const auto& range : ranges_) {
             range.print();
-            std::cout << " ";
         }
-        std::cout << std::endl;
     }
 
     std::vector<Range> ranges_;
