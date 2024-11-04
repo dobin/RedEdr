@@ -102,6 +102,11 @@ std::string sus_protect(std::string protect) {
 void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
     BOOL printed = FALSE;
 
+    if (!j.contains("type")) {
+        LOG_A(LOG_WARNING, "No type? %s", j.dump().c_str());
+        return;
+    }
+
     if (j["type"] == "loaded_dll") {
         for (const auto& it: j["dlls"]) {
             uint64_t addr = std::stoull(it["addr"].get<std::string>(), nullptr, 16);
@@ -120,6 +125,9 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
         uint64_t addr = std::stoull(j["addr"].get<std::string>(), nullptr, 16);
         uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 10);
 		std::string protection = j["protect"];
+
+        //std::string jsonString = j.dump();
+        //std::cout << "Compact JSON: " << jsonString << std::endl;
 
         addr = AlignToPage(addr);
         MemoryRegion* memoryRegion = targetInfo.GetMemoryRegion(addr);
@@ -208,62 +216,63 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
 
     int idx = 0;
     // Check callstack
-    for (const auto& callstack_entry : j["callstack"]) {
-        CriticalityManager cm;
-        std::stringstream ss;
-        BOOL print2 = FALSE;
+    if (j.contains("callstack") && j["callstack"].is_array()) {
+        for (const auto& callstack_entry : j["callstack"]) {
+            CriticalityManager cm;
+            std::stringstream ss;
+            BOOL print2 = FALSE;
 
-        // Callstack entry from RWX region
-        if (callstack_entry["protect"] == "RWX") {
-            ss << "High: RWX section, ";
-            j["detection"] += "RWX";
-            cm.set(Criticality::HIGH);
-            print2 = TRUE;
-        }
-
-        // Callstack entry from non-image region
-        if (callstack_entry["type"] != "IMAGE") { // MEM_IMAGE
-            if (callstack_entry["type"] == "MAPPED") { // MEM_MAPPED
-                ss << "Low: MEM_MAPPED section, ";
-                j["detection"] += "MEM_MAPPED";
-                cm.set(Criticality::LOW);
-                print2 = TRUE;
-            }
-            else if (callstack_entry["type"] == "PRIVATE") { // MEM_PRIVATE, unbacked!
-                ss << "High: MEM_PRIVATE section, ";
-                j["detection"] += "MEM_PRIVATE";
+            // Callstack entry from RWX region
+            if (callstack_entry["protect"] == "RWX") {
+                ss << "High: RWX section, ";
+                j["detection"] += "RWX";
                 cm.set(Criticality::HIGH);
                 print2 = TRUE;
             }
-            else {
-                ss << "Unknown: other section, ";
-                j["detection"] += "MEM_OTHER";  // TODO: add hex
-                cm.set(Criticality::MEDIUM);
-                print2 = TRUE;
-            }
-        }
 
-        if (print2) {
-            if (!printed) {
-                std::stringstream x;
-                x << "Function " << j["func"].get<std::string>();
-				printed = TRUE;
+            // Callstack entry from non-image region
+            if (callstack_entry["type"] != "IMAGE") { // MEM_IMAGE
+                if (callstack_entry["type"] == "MAPPED") { // MEM_MAPPED
+                    ss << "Low: MEM_MAPPED section, ";
+                    j["detection"] += "MEM_MAPPED";
+                    cm.set(Criticality::LOW);
+                    print2 = TRUE;
+                }
+                else if (callstack_entry["type"] == "PRIVATE") { // MEM_PRIVATE, unbacked!
+                    ss << "High: MEM_PRIVATE section, ";
+                    j["detection"] += "MEM_PRIVATE";
+                    cm.set(Criticality::HIGH);
+                    print2 = TRUE;
+                }
+                else {
+                    ss << "Unknown: other section, ";
+                    j["detection"] += "MEM_OTHER";  // TODO: add hex
+                    cm.set(Criticality::MEDIUM);
+                    print2 = TRUE;
+                }
             }
 
-            std::stringstream s;
-            s << "Analyzer: Suspicious callstack " << idx << " of " << j["callstack"].size() << " by " << j["func"].get<std::string>();
-            if (j["func"] == "ProtectVirtualMemory") {
-				s << " destination " << j["addr"].get<std::string>();
-                s << " protect " << j["protect"].get<std::string>();
-			}
-            s << " addr " << callstack_entry["addr"].get<std::string>();
-            s << " protect " << callstack_entry["protect"].get<std::string>();
-            s << " type " << callstack_entry["type"].get<std::string>();
-            AnalyzerNewDetection(cm.get(), s.str());
+            if (print2) {
+                if (!printed) {
+                    std::stringstream x;
+                    x << "Function " << j["func"].get<std::string>();
+                    printed = TRUE;
+                }
+
+                std::stringstream s;
+                s << "Analyzer: Suspicious callstack " << idx << " of " << j["callstack"].size() << " by " << j["func"].get<std::string>();
+                if (j["func"] == "ProtectVirtualMemory") {
+                    s << " destination " << j["addr"].get<std::string>();
+                    s << " protect " << j["protect"].get<std::string>();
+                }
+                s << " addr " << callstack_entry["addr"].get<std::string>();
+                s << " protect " << callstack_entry["protect"].get<std::string>();
+                s << " type " << callstack_entry["type"].get<std::string>();
+                AnalyzerNewDetection(cm.get(), s.str());
+            }
+            idx += 1;
         }
-        idx += 1;
     }
-
 }
 
 
