@@ -53,9 +53,10 @@ void GetProcessInfo(DWORD pid, wchar_t* target) {
 }
 
 
-void AnalyzeFile(wchar_t *filename) {
-	LOG_A(LOG_INFO, "Analyzer");
-	std::string json_file_content = read_file("Data\\notepad.json");
+void AnalyzeFile(wchar_t *fname) {
+	std::string filename = wcharToString(fname);
+	LOG_A(LOG_INFO, "Analyzer: Reading %s", filename.c_str());
+	std::string json_file_content = read_file(filename);
 	if (json_file_content.empty()) {
 		LOG_A(LOG_ERROR, "Could not read file");
 		return; // Exit if the file could not be read
@@ -77,7 +78,7 @@ void AnalyzeFile(wchar_t *filename) {
 		g_Analyzer.AnalyzeEventJson(event);
 	}
 
-	g_Analyzer.targetInfo.PrintMemoryRegions();
+	//g_Analyzer.targetInfo.PrintMemoryRegions();
 }
 
 

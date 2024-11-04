@@ -37,6 +37,15 @@ wchar_t* wstring2wchar(const std::wstring& str) {
     return copy;
 }
 
+std::string wcharToString(const wchar_t* wstr) {
+    if (!wstr) return {};
+
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
+    std::string str(size_needed, 0);
+    WideCharToMultiByte(CP_UTF8, 0, wstr, -1, &str[0], size_needed, nullptr, nullptr);
+
+    return str;
+}
 
 // FIXME copy from dll
 LARGE_INTEGER get_time() {
