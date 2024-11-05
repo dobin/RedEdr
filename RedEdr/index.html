@@ -64,6 +64,26 @@
             padding: 0.4em;
             border-bottom: 1px solid #ccc;
         }
+
+        .highlight_a {
+            color: white;
+            background-color: #544C2B;
+            ;
+        }
+
+        .highlight_b {
+            padding: 2px;
+            color: white;
+            background-color: rgb(117, 73, 82); /* Color for func */
+        }
+
+        .highlight_c {
+            color: blue;
+        }
+
+        .highlight_d {
+            color: red;
+        }
     </style>
 </head>
 <body>
@@ -133,33 +153,36 @@
                 const eventDiv = document.createElement('div');
                 eventDiv.classList.add('event');
 
-                // Create a string to hold all properties of the event
                 let eventDetails = '';
-
-                // All events
                 for (const [key, value] of Object.entries(event)) {
+                    let formattedKeyValue;
 
-                    if (typeof(value) === 'object') {
-                        // Array
-                        //for (let item of value) {
-
-                        // Dict
-                        eventDetails += `${key}:` + JSON.stringify(value, null, 0) + ";";
-                        //eventDetails += `<strong>${key}</strong>: ${item};<br>`;
-                        //}
-                        //eventDetails += `<strong>${key}</strong>: <br>`;
-
+                    if (key === 'type' || key === 'time' || key === 'pid' || key === 'tid' || key === 'krn_pid') {
+                        formattedKeyValue = `<span class="highlight_a">${key}:`;
+                    } else if (key === 'func' || key === 'callback') {
+                        formattedKeyValue = `<span class="highlight_b">${key}:`;
+                    } else if (key === 'addr') {
+                        formattedKeyValue = `<span class="highlight_c">${key}:`;
+                    } else if (key === 'protect') {
+                        formattedKeyValue = `<span class="highlight_d">${key}:`;
                     } else {
-                        // String
-                        eventDetails += `${key}:${value};`;
+                        formattedKeyValue = `<span>${key}:`;
                     }
+
+                    if (key == 'callstack') {
+                        formattedKeyValue = "<br>" + formattedKeyValue + "<br>";
+                        formattedKeyValue += JSON.stringify(value, null, 0) + "</span>";
+                    } else {
+                        formattedKeyValue += `${value}</span>`;
+                    }
+
+                    eventDetails += `${formattedKeyValue}; `;
                 }
 
                 eventDiv.innerHTML = eventDetails; // Set the inner HTML to the details
                 eventContainer.appendChild(eventDiv); // Add the event div to the container
             });
         }
-
 
         // Function to display events in Tab 1
         function displayDetections(detections) {
