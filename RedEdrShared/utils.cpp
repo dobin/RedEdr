@@ -221,6 +221,17 @@ wchar_t* getMemoryRegionType(DWORD type) {
     case MEM_PRIVATE:
         memoryType = L"PRIVATE";
         break;
+    default:
+        memoryType = L"Unknown";
+        break;
+    }
+    return (wchar_t*)memoryType;
+}
+
+
+wchar_t* getMemoryRegionState(DWORD type) {
+    const wchar_t* memoryType;
+    switch (type) {
     case MEM_FREE:
         memoryType = L"FREE";
         break;
