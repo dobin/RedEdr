@@ -5,7 +5,8 @@
 
 BOOL InstallElamCertPpl();
 BOOL InstallPplService();
-BOOL EnablePplService(BOOL e, wchar_t* target_name);
+BOOL EnablePplProducer(BOOL e, wchar_t* target_name);
+BOOL InitPplService();
 BOOL ShutdownPplService();
 
 BOOL remove_ppl_service();

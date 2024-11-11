@@ -93,7 +93,7 @@ void shutdown_all() {
     // ETW-TI
     if (g_config.do_etwti) {
         LOG_A(LOG_INFO, "RedEdr: Stop ETWTI reader");
-        EnablePplService(FALSE, NULL);
+        EnablePplProducer(FALSE, NULL);
     }
     // ETW
     if (g_config.do_etw) {
@@ -318,7 +318,8 @@ int main(int argc, char* argv[]) {
         LOG_A(LOG_INFO, "RedEdr: Start ETW-TI reader");
         //Sleep(1000);
         wchar_t* target = (wchar_t* )g_config.targetExeName;
-        EnablePplService(TRUE, target);
+        InitPplService();
+        EnablePplProducer(TRUE, target);
     }
 
     // Keyboard reader

@@ -18,27 +18,12 @@ PipeClient pipeClient;
 BOOL StartPplService();
 BOOL InstallPplService();
 BOOL InstallElamCertPpl();
-BOOL EnablePplService(BOOL e, wchar_t* target_name);
+BOOL EnablePplProducer(BOOL e, wchar_t* target_name);
 
 
-BOOL EnablePplService(BOOL e, wchar_t* target_name) {
+BOOL EnablePplProducer(BOOL e, wchar_t* target_name) {
     wchar_t buffer[WCHAR_SMALL_PIPE] = { 0 };
-    int n = 0;
 
-    if (!DoesServiceExist(SERVICE_NAME)) {
-        LOG_A(LOG_WARNING, "ETW-TI: service %ls not found", SERVICE_NAME);
-        LOG_A(LOG_WARNING, "ETW-TI: Attempting to load elam driver");
-        InstallElamCertPpl();
-        LOG_A(LOG_WARNING, "ETW-TI: Attempting to install ppl service");
-        InstallPplService();
-        LOG_A(LOG_WARNING, "ETW-TI: Attempting to start ppl service");
-        StartPplService();
-        Sleep(500);
-    }
-    if (!IsServiceRunning(SERVICE_NAME)) {
-        LOG_A(LOG_WARNING, "ETW-TI: Attempting to start ppl service");
-        StartPplService();
-    }
     if (!pipeClient.Connect(PPL_SERVICE_PIPE_NAME)) {
         LOG_A(LOG_ERROR, "ETW-TI: Error connecting to RedEdrPplService pipe: error code %ld", GetLastError());
         LOG_A(LOG_ERROR, "ETW-TI: Is RedEdrPplService running?");
@@ -69,6 +54,25 @@ BOOL EnablePplService(BOOL e, wchar_t* target_name) {
     }
 
     pipeClient.Disconnect();
+    return TRUE;
+}
+
+
+BOOL InitPplService() {
+    if (!DoesServiceExist(SERVICE_NAME)) {
+        LOG_A(LOG_WARNING, "ETW-TI: service %ls not found", SERVICE_NAME);
+        LOG_A(LOG_WARNING, "ETW-TI: Attempting to load elam driver");
+        InstallElamCertPpl();
+        LOG_A(LOG_WARNING, "ETW-TI: Attempting to install ppl service");
+        InstallPplService();
+        LOG_A(LOG_WARNING, "ETW-TI: Attempting to start ppl service");
+        StartPplService();
+        Sleep(500);
+    }
+    if (!IsServiceRunning(SERVICE_NAME)) {
+        LOG_A(LOG_WARNING, "ETW-TI: Attempting to start ppl service");
+        StartPplService();
+    }
     return TRUE;
 }
 

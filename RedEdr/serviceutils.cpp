@@ -27,7 +27,7 @@ BOOL DoesServiceExist(LPCWSTR serviceName) {
         // The service exists, close handles and return true
         CloseServiceHandle(serviceHandle);
         CloseServiceHandle(scmHandle);
-        return FALSE;
+        return TRUE;
     }
 
     // Check if the error is due to the service not existing
