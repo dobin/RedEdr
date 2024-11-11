@@ -1,7 +1,5 @@
 ﻿# RedEdr
 
-**Note: Work in progress**
-
 Display events from Windows to see the detection surface of your malware.
 
 Same data as an EDR sees. 
@@ -54,25 +52,25 @@ collecting all telemetry of some C2.
 
 ## Requirements
 
-Use a VM. Tested on Win10. 
+Use a dedicated VM for RedEdr. Tested on Win10 Pro. 
 
-Change Windows boot options to enable self-signed kernel drivers and reboot:
+Change Windows boot options to enable self-signed kernel drivers and reboot.
+As admin cmd:
 ```
 bcdedit /set testsigning on
 bcdedit -debug on
 ```
 
-To compile the kernel driver: 
-* Install WDK (+SDK): https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk
+If you use Hyper-V, uncheck "Security -> Enable Secure Boot". 
 
-After compiling solution (all "Debug"), you should have: 
-* C:\RedEdr\RedEdr.exe: The userspace component
-* C:\RedEdr\RedEdrDriver\*: The kernel module
-* C:\RedEdr\RedEdrDll.dll: The injectable DLL (amsi.dll)
+Extract release into `C:\RedEdr`. **No other directories are supported.**
+There should be a `C:\RedEdr\RedEdr.exe`. 
 
-Everything should be in `C:\RedEdr`. No other directories are supported.
+Start an local admin shell to execute `RedEdr.exe`.
+Try `RedEdr.exe --kernel --inject --trace otepad` and start notepad 
+(`notepad.exe` on Windows 10, `Notepad` on Windows 11).
 
-Start an local admin shell to execute `RedEdr.exe`. If you want ETW Microsoft-Windows-Security-Auditing, use SYSTEM (?). 
+If you want ETW Microsoft-Windows-Security-Auditing, start as SYSTEM (`psexec -i -s cmd.exe`). 
 
 
 ## Usage
@@ -194,6 +192,19 @@ See `Data/` directory:
 * https://github.com/dobin/RedEdr/blob/master/RedEdr/etwreader.cpp
 * https://github.com/dobin/RedEdr/blob/master/RedEdr/dllreader.cpp
 * https://github.com/dobin/RedEdr/blob/master/RedEdr/kernelreader.cpp
+
+
+## Compiling 
+
+Use VS2022. 
+
+To compile the kernel driver: 
+* Install WDK (+SDK): https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk
+
+After compiling solution (all "Debug"), you should have: 
+* C:\RedEdr\RedEdr.exe: The userspace component
+* C:\RedEdr\RedEdrDriver\*: The kernel module
+* C:\RedEdr\RedEdrDll.dll: The injectable DLL (amsi.dll)
 
 
 ## Todo
