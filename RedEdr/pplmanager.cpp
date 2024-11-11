@@ -9,23 +9,35 @@
 #include "piping.h"
 
 
-// PplManager: Interact with the PPL service (enable/disable)
+// PplManager: Interact with the PPL service 
+//   load elam driver, install/enable/disable service
 
 
 PipeClient pipeClient;
+
+BOOL StartPplService();
+BOOL InstallPplService();
+BOOL InstallElamCertPpl();
+BOOL EnablePplService(BOOL e, wchar_t* target_name);
+
 
 BOOL EnablePplService(BOOL e, wchar_t* target_name) {
     wchar_t buffer[WCHAR_SMALL_PIPE] = { 0 };
     int n = 0;
 
-    if (!IsServiceRunning(SERVICE_NAME)) {
-        LOG_A(LOG_WARNING, "Error: service %ls not found", SERVICE_NAME);
-        LOG_A(LOG_WARNING, "ETW-TI: Is RedEdrPplService loaded?");
-        LOG_A(LOG_WARNING, "ETW-TI:   (requires self-signed kernel and elam driver for ppl)");
-        LOG_A(LOG_WARNING, "ETW-TI: Attempting to load");
+    if (!DoesServiceExist(SERVICE_NAME)) {
+        LOG_A(LOG_WARNING, "ETW-TI: service %ls not found", SERVICE_NAME);
+        LOG_A(LOG_WARNING, "ETW-TI: Attempting to load elam driver");
         InstallElamCertPpl();
+        LOG_A(LOG_WARNING, "ETW-TI: Attempting to install ppl service");
         InstallPplService();
-        return FALSE;
+        LOG_A(LOG_WARNING, "ETW-TI: Attempting to start ppl service");
+        StartPplService();
+        Sleep(500);
+    }
+    if (!IsServiceRunning(SERVICE_NAME)) {
+        LOG_A(LOG_WARNING, "ETW-TI: Attempting to start ppl service");
+        StartPplService();
     }
     if (!pipeClient.Connect(PPL_SERVICE_PIPE_NAME)) {
         LOG_A(LOG_ERROR, "ETW-TI: Error connecting to RedEdrPplService pipe: error code %ld", GetLastError());
@@ -160,6 +172,22 @@ BOOL InstallPplService()
     }
 
     LOG_A(LOG_INFO, "ETW-TI: install_service: Created Service: %ls", serviceCMD);
+    return TRUE;
+}
+
+
+BOOL StartPplService()
+{
+    SC_HANDLE hService;
+    SC_HANDLE hSCManager;
+    BOOL bSuccess = FALSE;
+	DWORD retval = 0;
+    DWORD SCManagerAccess = SC_MANAGER_ALL_ACCESS;
+    hSCManager = OpenSCManager(NULL, NULL, SCManagerAccess);
+    if (hSCManager == NULL) {
+        LOG_A(LOG_ERROR, "ETW-TI: install_service: OpenSCManager Error: %d", GetLastError());
+        return FALSE;
+    }
 
     // Start service
     hService = OpenService(hSCManager, SERVICE_NAME, SERVICE_START | SERVICE_QUERY_STATUS);
@@ -173,6 +201,7 @@ BOOL InstallPplService()
         retval = GetLastError();
         if (retval == ERROR_SERVICE_ALREADY_RUNNING) {
             LOG_A(LOG_WARNING, "ETW-TI: Service is already running");
+            return TRUE;
         }
         else {
             LOG_A(LOG_ERROR, "ETW-TI: StartService failed, error: %d", retval);

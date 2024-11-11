@@ -13,6 +13,31 @@
 #include "serviceutils.h"
 
 
+BOOL DoesServiceExist(LPCWSTR serviceName) {
+    // Open the Service Control Manager
+    SC_HANDLE scmHandle = OpenSCManager(nullptr, nullptr, SC_MANAGER_CONNECT);
+    if (!scmHandle) {
+        std::wcerr << L"Failed to open Service Control Manager. Error: " << GetLastError() << std::endl;
+        return FALSE;
+    }
+
+    // Try to open the service
+    SC_HANDLE serviceHandle = OpenService(scmHandle, serviceName, SERVICE_QUERY_STATUS);
+    if (serviceHandle) {
+        // The service exists, close handles and return true
+        CloseServiceHandle(serviceHandle);
+        CloseServiceHandle(scmHandle);
+        return FALSE;
+    }
+
+    // Check if the error is due to the service not existing
+    //DWORD error = GetLastError();
+    //CloseServiceHandle(scmHandle);
+    //return error != ERROR_SERVICE_DOES_NOT_EXIST ? true : false;
+    return FALSE;
+}
+
+
 BOOL IsServiceRunning(LPCWSTR driverName) {
     SC_HANDLE hSCManager = NULL;
     SC_HANDLE hService = NULL;
