@@ -29,7 +29,7 @@ collecting all telemetry of some C2.
     * Microsoft-Antimalware-AMFilter
     * Microsoft-Antimalware-Scan-Interface
     * Microsoft-Antimalware-Protection
-* ETW-TI (Threat Intelligence)
+* ETW-TI (Threat Intelligence) with a PPL service via ELAM driver
 
 * Kernel Callbacks
   * PsSetCreateProcessNotifyRoutine
@@ -37,7 +37,7 @@ collecting all telemetry of some C2.
   * PsSetLoadImageNotifyRoutine
   * (ObRegisterCallbacks, not used atm)
 
-* AMSI ntdll.dll hooking 
+* AMSI-style ntdll.dll hooking 
   * from kernelspace (KAPC from LoadImage callback)
   * from userspace (ETW based, unreliable)
 
@@ -45,14 +45,15 @@ collecting all telemetry of some C2.
   * On ntdll.dll hook invocation
  
 * Loaded DLL's
-  * In Userspace, on process create (ETW or Kernel)
+  * On process create
 
 * process information:
-  * PEB
+  * PEB (on process create)
 
-## Requirements
 
-Use a dedicated VM for RedEdr. Tested on Win10 Pro. 
+## Installation
+
+Use a dedicated VM for RedEdr. Tested on unlicensed (no Defender) Win10 Pro. 
 
 Change Windows boot options to enable self-signed kernel drivers and reboot.
 As admin cmd:
@@ -63,14 +64,14 @@ bcdedit -debug on
 
 If you use Hyper-V, uncheck "Security -> Enable Secure Boot". 
 
-Extract release into `C:\RedEdr`. **No other directories are supported.**
+Extract release.zip into `C:\RedEdr`. **No other directories are supported.**
+
 There should be a `C:\RedEdr\RedEdr.exe`. 
 
 Start an local admin shell to execute `RedEdr.exe`.
-Try `RedEdr.exe --kernel --inject --trace otepad` and start notepad 
-(`notepad.exe` on Windows 10, `Notepad` on Windows 11).
 
-If you want ETW Microsoft-Windows-Security-Auditing, start as SYSTEM (`psexec -i -s cmd.exe`). 
+Try `.\RedEdr.exe --kernel --inject --trace otepad`, and then and start notepad 
+(`notepad.exe` on Windows 10, `Notepad` on Windows 11).
 
 
 ## Usage
@@ -83,7 +84,7 @@ There are two main modes:
 
 I recommend to use it with kernel module. For a quick test, you can use RedEdr without. 
 RedEdr only traces newly created processes, with the `--trace` argument in the image
-name. After starting RedEdr, just start `notepad.exe`.
+name.
 
 
 ### Kernel module
@@ -104,7 +105,7 @@ Only ETW, no kernel module:
 PS > .\RedEdr.exe --etw --trace notepad.exe
 ```
 
-Start as SYSTEM to gain access to `Microsoft-Windows-Security-Auditing`. 
+If you want ETW Microsoft-Windows-Security-Auditing, start as SYSTEM (`psexec -i -s cmd.exe`). 
 See `gpedit.msc -> Computer Configuration -> Windows Settings -> Security Settings -> Advanced Audit Policy Configuration -> System Audit Policies - Local Group Policy object`
 for settings to log.
 
@@ -124,16 +125,8 @@ PS > .\RedEdr.exe --etwti --trace notepad.exe
 
 ### Real world usage
 
-* Use `--callstacks` to print the callstack (currently only injected DLL hooks)
-
-
-All input:
-```
-PS > .\RedEdr.exe --kernel --inject --etw --etwti --callstacks --trace notepad.exe
-```
-
-Provide as web on `http://localhost:8080`, and disable output logging for performance
-(and improved stability):
+Enable all consumers, and provide as web on `http://localhost:8080`, 
+and disable output logging for performance:
 ```
 PS > .\RedEdr.exe --kernel --inject --etw --etwti --callstacks --web --hide --trace notepad.exe
 ```
