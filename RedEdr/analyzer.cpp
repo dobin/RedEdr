@@ -143,10 +143,33 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
         else {
             //LOG_A(LOG_WARNING, "Analyzer: Allocate Memory new: 0x%llx %llu",
             //    addr, size);
-            MemoryRegion* region = new MemoryRegion("Allocated", addr, size, protection);
-            targetInfo.AddMemoryRegion(addr, region);
+            memoryRegion = new MemoryRegion("Allocated", addr, size, protection);
+            targetInfo.AddMemoryRegion(addr, memoryRegion);
+        }
+
+        if (j["handle"] != "FFFFFFFFFFFFFFFF") {
+            std::stringstream ss;
+            ss << "Analyzer: AllocateVirtualMemory in foreign process " << j["handle"].get<std::string>();
+            AnalyzerNewDetection(Criticality::HIGH, ss.str());
         }
     }
+
+    if (j["type"] == "dll" && j["func"] == "WriteVirtualMemory") {
+        if (j["handle"] != "FFFFFFFFFFFFFFFF") {
+            std::stringstream ss;
+            ss << "Analyzer: WriteVirtualMemory in foreign process " << j["handle"].get<std::string>();
+            AnalyzerNewDetection(Criticality::HIGH, ss.str());
+        }
+    }
+
+    if (j["type"] == "dll" && j["func"] == "CreateRemoteThread") {
+        if (j["handle"] != "FFFFFFFFFFFFFFFF") {
+            std::stringstream ss;
+            ss << "Analyzer: CreateRemoteThread in foreign process " << j["handle"].get<std::string>();
+            AnalyzerNewDetection(Criticality::HIGH, ss.str());
+        }
+    }
+
 
     if (j["type"] == "dll" && j["func"] == "FreeVirtualMemory") {
         uint64_t addr = std::stoull(j["addr"].get<std::string>(), nullptr, 16);
