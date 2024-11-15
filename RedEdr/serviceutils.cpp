@@ -38,41 +38,30 @@ BOOL DoesServiceExist(LPCWSTR serviceName) {
 }
 
 
+// https://gist.github.com/the-nose-knows/607dba810fa7fc1db761e4f0ad1fe464
 BOOL IsServiceRunning(LPCWSTR driverName) {
-    SC_HANDLE hSCManager = NULL;
-    SC_HANDLE hService = NULL;
-    SERVICE_STATUS_PROCESS status;
-    DWORD bytesNeeded;
-    //LPCWSTR driverName = g_config.driverName;
-    BOOL ret = FALSE;
+	SC_HANDLE scm = OpenSCManager(NULL, SERVICES_ACTIVE_DATABASE, SC_MANAGER_CONNECT);
+	if (scm == NULL)
+		return false;
+	LPCWSTR   lpServiceName = driverName;
 
-    hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-    if (!hSCManager) {
-        LOG_A(LOG_ERROR, "Kernel: OpenSCManager failed. Error: %lu", GetLastError());
-        return FALSE;
-    }
+	SC_HANDLE hService = OpenService(scm, lpServiceName, GENERIC_READ);
+	if (hService == NULL)
+	{
+		CloseServiceHandle(scm);
+		return false;
+	}
 
-    hService = OpenService(hSCManager, driverName, SERVICE_QUERY_STATUS);
-    if (!hService) {
-        //LOG_A(LOG_ERROR, "OpenService failed. Error: %lu", GetLastError());
-        ret = FALSE;
-        goto cleanup;
-    }
+	SERVICE_STATUS status;
+	LPSERVICE_STATUS pstatus = &status;
+	if (QueryServiceStatus(hService, pstatus) == 0)
+	{
+		CloseServiceHandle(hService);
+		CloseServiceHandle(scm);
+		return false;
+	}
 
-    if (QueryServiceStatusEx(hService, SC_STATUS_PROCESS_INFO, (LPBYTE)&status, sizeof(SERVICE_STATUS_PROCESS), &bytesNeeded)) {
-        //LOG_A(LOG_ERROR, "KernelDriver: Servicestatus:");
-        //LOG_A(LOG_ERROR, "  PID: %lu", status.dwProcessId);
-        //LOG_A(LOG_ERROR, "  State: %lu", status.dwCurrentState);
-        ret = TRUE;
-    }
-    else {
-        LOG_A(LOG_ERROR, "Kernel: QueryServiceStatusEx failed. Error: %lu", GetLastError());
-        ret = FALSE;
-    }
-
-cleanup:
-    if (hService) CloseServiceHandle(hService);
-    if (hSCManager) CloseServiceHandle(hSCManager);
-
-    return ret;
+	CloseServiceHandle(hService);
+	CloseServiceHandle(scm);
+	return (status.dwCurrentState == SERVICE_RUNNING) ? (true) : (false);
 }

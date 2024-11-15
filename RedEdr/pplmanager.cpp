@@ -67,11 +67,12 @@ BOOL InitPplService() {
         InstallPplService();
         LOG_A(LOG_WARNING, "ETW-TI: Attempting to start ppl service");
         StartPplService();
-        Sleep(500);
+        Sleep(500);  // wait for it to start
     }
     if (!IsServiceRunning(SERVICE_NAME)) {
         LOG_A(LOG_WARNING, "ETW-TI: Attempting to start ppl service");
         StartPplService();
+        Sleep(500);  // wait for it to start
     }
     return TRUE;
 }
