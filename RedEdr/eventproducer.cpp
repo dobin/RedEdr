@@ -146,6 +146,11 @@ int EventProducer::GetLastPrintIndex() {
 }
 
 
+void EventProducer::Stop() {
+    done = TRUE;
+    g_EventProducer.cv.notify_all();
+}
+
 // Returns a vector of all new events starting from last (which starts at -1)
 std::vector<std::string> EventProducer::GetEventsFrom() {
     std::vector<std::string> newEvents;

@@ -17,6 +17,7 @@ public:
 	void ResetData();
 	size_t GetEventCount();
 	int GetLastPrintIndex();
+	void Stop();
 
 	// Only support one consumer, as it tracks its last used element
 	BOOL HasMoreEvents();

@@ -325,7 +325,9 @@ DWORD WINAPI AnalyzerThread(LPVOID param) {
     while (true) {
         // Block for new events
         g_EventProducer.cv.wait(lock, [] { return g_EventProducer.HasMoreEvents() || g_EventProducer.done; });
-
+        if (g_EventProducer.done) {
+            break;
+        }
         // get em events
         std::vector<std::string> output_entries = g_EventProducer.GetEventsFrom();
 
@@ -354,5 +356,6 @@ int InitializeAnalyzer(std::vector<HANDLE>& threads) {
 
 void StopAnalyzer() {
     if (analyzer_thread != NULL) {
+        g_EventProducer.Stop();
     }
 }
