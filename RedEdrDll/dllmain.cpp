@@ -159,7 +159,7 @@ static NTSTATUS NTAPI Catch_NtProtectVirtualMemory(
 ) {
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
-    
+
     if (!HooksInitialized) { // dont log our own hooking
         return Real_NtProtectVirtualMemory(ProcessHandle, BaseAddress, NumberOfBytesToProtect, NewAccessProtection, OldAccessProtection);
     }
@@ -230,8 +230,7 @@ NTSTATUS NTAPI Catch_NtMapViewOfSection(
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
-    
-    if (HooksInitialized) { // dont log our own hooking
+    if (!HooksInitialized) { // dont log our own hooking
         return Real_NtMapViewOfSection(SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Protect);
     }
 
@@ -274,7 +273,7 @@ typedef NTSTATUS(NTAPI* t_NtWriteVirtualMemory)(
     PVOID               Buffer,
     ULONG               NumberOfBytesToWrite,
     PULONG              NumberOfBytesWritten
-);
+    );
 t_NtWriteVirtualMemory Real_NtWriteVirtualMemory = NULL;
 NTSTATUS NTAPI Catch_NtWriteVirtualMemory(
     HANDLE              ProcessHandle,
@@ -351,7 +350,7 @@ NTSTATUS NTAPI Catch_NtReadVirtualMemory(
 
 
 /******************* NtSetContextThread ************************/
-
+/*
 // Defines the prototype of the NtSetContextThreadFunction
 typedef NTSTATUS(NTAPI* pNtSetContextThread)(
     IN HANDLE               ThreadHandle,
@@ -377,10 +376,10 @@ NTSTATUS NTAPI Catch_NtSetContextThread(
         LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
         SendDllPipe(buf);
     }
-    
+
     return Real_NtSetContextThread(ThreadHandle, Context);
 }
-
+*/
 
 /******************* LdrLoadDll ************************/
 
@@ -401,7 +400,7 @@ NTSTATUS NTAPI Catch_LdrLoadDll(
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
     wchar_t wDllName[1024] = L"";  // Buffer for the decoded DllName
     wchar_t empty[32] = L"<broken>";        // Empty string in case SearchPath is NULL
-    
+
     if (HooksInitialized) { // dont log our own hooking
         wchar_t* searchPath = empty;   // SearchPath seems to be 8 (the number 8, not a string) BROKEN
         UnicodeStringToWChar(DllName, wDllName, 1024);
@@ -471,7 +470,7 @@ NTSTATUS NTAPI Catch_LdrGetProcedureAddress(
 /******************* NtQueueApcThread ************************/
 
 typedef NTSTATUS(NTAPI* pNtQueueApcThread)(
-    IN HANDLE               ThreadHandle, 
+    IN HANDLE               ThreadHandle,
     IN PIO_APC_ROUTINE      ApcRoutine,
     IN PVOID                ApcRoutineContext OPTIONAL,
     IN PIO_STATUS_BLOCK     ApcStatusBlock OPTIONAL,
@@ -479,7 +478,7 @@ typedef NTSTATUS(NTAPI* pNtQueueApcThread)(
     );
 pNtQueueApcThread Real_NtQueueApcThread = NULL;
 NTSTATUS NTAPI Catch_NtQueueApcThread(
-    IN HANDLE               ThreadHandle,    
+    IN HANDLE               ThreadHandle,
     IN PIO_APC_ROUTINE      ApcRoutine,
     IN PVOID                ApcRoutineContext OPTIONAL,
     IN PIO_STATUS_BLOCK     ApcStatusBlock OPTIONAL,
@@ -594,6 +593,57 @@ NTSTATUS NTAPI Catch_NtCreateProcess(
 }
 
 
+/******************* NtCreateThread ************************/
+
+typedef NTSTATUS(NTAPI* pNtCreateThread)(
+    OUT PHANDLE             ThreadHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes OPTIONAL,
+    IN HANDLE               ProcessHandle,
+    OUT CLIENT_ID* ClientId,
+    IN PCONTEXT             ThreadContext,
+    IN PVOID         InitialTeb,
+    IN BOOLEAN              CreateSuspended
+    );
+pNtCreateThread Real_NtCreateThread = NULL;
+NTSTATUS NTAPI Catch_NtCreateThread(
+    OUT PHANDLE             ThreadHandle,
+    IN ACCESS_MASK          DesiredAccess,
+    IN POBJECT_ATTRIBUTES   ObjectAttributes OPTIONAL,
+    IN HANDLE               ProcessHandle,
+    OUT CLIENT_ID* ClientId,
+    IN PCONTEXT             ThreadContext,
+    IN PVOID         InitialTeb,
+    IN BOOLEAN              CreateSuspended
+) {
+    LARGE_INTEGER time = get_time();
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    NTSTATUS ret = Real_NtCreateThread(ThreadHandle, DesiredAccess, ObjectAttributes, ProcessHandle, ClientId, ThreadContext, InitialTeb, CreateSuspended);
+    if (HooksInitialized) { // dont log our own hooking
+        HANDLE rUniqueProcess = (ClientId != NULL) ? ClientId->UniqueProcess : NULL;
+        HANDLE rUniqueThread = (ClientId != NULL) ? ClientId->UniqueThread : NULL;
+        HANDLE rThreadHandle = (ThreadHandle != NULL) ? *ThreadHandle : NULL;
+
+        int offset = 0;
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtCreateThread;");
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:0x%p;", rThreadHandle);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"handle:0x%p;", ProcessHandle);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"suspended:0x%p;", CreateSuspended);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"unique_process:0x%p;", rUniqueProcess);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"unique_thread:0x%p;", rUniqueThread);
+
+        LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
+        SendDllPipe(buf);
+    }
+    return ret;
+}
+
+
 /******************* NtCreateThreadEx ************************/
 
 typedef NTSTATUS(NTAPI* pNtCreateThreadEx)(
@@ -625,14 +675,18 @@ NTSTATUS NTAPI Catch_NtCreateThreadEx(
 ) {
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
+
+    NTSTATUS ret = Real_NtCreateThreadEx(ThreadHandle, DesiredAccess, ObjectAttributes, ProcessHandle, StartRoutine, Argument, CreateFlags, ZeroBits, StackSize, MaximumStackSize, AttributeList);
     if (HooksInitialized) { // dont log our own hooking
+        HANDLE rThreadHandle = (ThreadHandle != NULL) ? *ThreadHandle : NULL;
+
         int offset = 0;
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", (DWORD)GetCurrentProcessId());
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", (DWORD)GetCurrentThreadId());
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:NtCreateThreadEx;");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:0x%p;", ThreadHandle);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:0x%p;", rThreadHandle);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"handle:0x%p;", ProcessHandle);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"start_routine:0x%p;", StartRoutine);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"argument:0x%p;", Argument);
@@ -640,7 +694,7 @@ NTSTATUS NTAPI Catch_NtCreateThreadEx(
         LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
         SendDllPipe(buf);
     }
-    return Real_NtCreateThreadEx(ThreadHandle, DesiredAccess, ObjectAttributes, ProcessHandle, StartRoutine, Argument, CreateFlags, ZeroBits, StackSize, MaximumStackSize, AttributeList);
+    return ret;
 }
 
 
@@ -650,14 +704,14 @@ typedef NTSTATUS(NTAPI* pNtOpenProcess)(
     OUT PHANDLE             ProcessHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
-    IN CLIENT_ID*           ClientId
+    IN CLIENT_ID* ClientId
     );
 pNtOpenProcess Real_NtOpenProcess = NULL;
 NTSTATUS NTAPI Catch_NtOpenProcess(
     OUT PHANDLE             ProcessHandle,
     IN ACCESS_MASK          DesiredAccess,
     IN POBJECT_ATTRIBUTES   ObjectAttributes,
-    IN CLIENT_ID*           ClientId
+    IN CLIENT_ID* ClientId
 ) {
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
@@ -1026,7 +1080,7 @@ NTSTATUS NTAPI Catch_NtCreateTimer2(
 
 
 /******************* CreateRemoteThread ************************/
-
+/*
 typedef NTSTATUS(NTAPI* pNtCreateRemoteThread)(
     HANDLE hProcess,
     LPSECURITY_ATTRIBUTES lpThreadAttributes,
@@ -1037,7 +1091,7 @@ typedef NTSTATUS(NTAPI* pNtCreateRemoteThread)(
     LPDWORD lpThreadId
     );
 pNtCreateRemoteThread Real_NtCreateRemoteThread = nullptr;
-NTSTATUS NTAPI Hooked_NtCreateRemoteThread(
+NTSTATUS NTAPI Catch_NtCreateRemoteThread(
     HANDLE hProcess,
     LPSECURITY_ATTRIBUTES lpThreadAttributes,
     SIZE_T dwStackSize,
@@ -1066,7 +1120,114 @@ NTSTATUS NTAPI Hooked_NtCreateRemoteThread(
         hProcess, lpThreadAttributes, dwStackSize, lpStartAddress, lpParameter, dwCreationFlags, lpThreadId
     );
 }
+*/
 
+/******************* QueryInformationThread ************************/
+/*
+typedef NTSTATUS(NTAPI* pNtQueryInformationThread)(
+    HANDLE          ThreadHandle,
+    THREADINFOCLASS ThreadInformationClass,
+    PVOID           ThreadInformation,
+    ULONG           ThreadInformationLength,
+    PULONG          ReturnLength
+);
+pNtQueryInformationThread Real_NtQueryInformationThread = nullptr;
+NTSTATUS NTAPI Hooked_NtQueryInformationThread (
+    HANDLE          ThreadHandle,
+    THREADINFOCLASS ThreadInformationClass,
+    PVOID           ThreadInformation,
+    ULONG           ThreadInformationLength,
+    PULONG          ReturnLength
+) {
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    LARGE_INTEGER time = get_time();
+
+    if (HooksInitialized) { // Avoid logging internal operations
+        int offset = 0;
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", GetCurrentProcessId());
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", GetCurrentThreadId());
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:QueryInformationThread;");
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:%p;", ThreadHandle);
+
+        SendDllPipe(buf);
+    }
+
+    return Real_NtQueryInformationThread(
+        ThreadHandle, ThreadInformationClass, ThreadInformation, ThreadInformationLength, ReturnLength
+    );
+}
+*/
+
+/******************* SetInformationThread ************************/
+
+/*
+typedef NTSTATUS(NTAPI* pNtSetInformationThread)(
+    HANDLE          ThreadHandle,
+    THREADINFOCLASS ThreadInformationClass,
+    PVOID           ThreadInformation,
+    ULONG           ThreadInformationLength
+);
+pNtSetInformationThread Real_NtSetInformationThread = nullptr;
+NTSTATUS NTAPI Hooked_NtSetInformationThread(
+    HANDLE          ThreadHandle,
+    THREADINFOCLASS ThreadInformationClass,
+    PVOID           ThreadInformation,
+    ULONG           ThreadInformationLength
+) {
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    LARGE_INTEGER time = get_time();
+
+    if (HooksInitialized) { // Avoid logging internal operations
+        int offset = 0;
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", GetCurrentProcessId());
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", GetCurrentThreadId());
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:SetInformationThread;");
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:%p;", ThreadHandle);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"ThreadInformationClass:0x%x;", ThreadInformationClass);
+
+        SendDllPipe(buf);
+    }
+
+    return Real_NtSetInformationThread(
+        ThreadHandle, ThreadInformationClass, ThreadInformation, ThreadInformationLength
+    );
+}
+*/
+
+
+/******************* NtResumeThread ************************/
+
+typedef NTSTATUS(NTAPI* pNtResumeThread)(
+    HANDLE ThreadHandle,
+    PULONG SuspendCount OPTIONAL
+    );
+pNtResumeThread Real_NtResumeThread = nullptr;
+NTSTATUS NTAPI Catch_NtResumeThread(
+    HANDLE ThreadHandle,
+    PULONG SuspendCount OPTIONAL
+) {
+    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    LARGE_INTEGER time = get_time();
+
+    if (HooksInitialized) { // Avoid logging internal operations
+        int offset = 0;
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll;");
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu;", time.QuadPart);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu;", GetCurrentProcessId());
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu;", GetCurrentThreadId());
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:ResumeThread;");
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:%p;", ThreadHandle);
+        SendDllPipe(buf);
+    }
+
+    return Real_NtResumeThread(
+        ThreadHandle, SuspendCount
+    );
+}
 
 //----------------------------------------------------
 
@@ -1085,22 +1246,22 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     swprintf(stop_str, 1024, L"type:dll;func:hooking_finished;pid:%lu;tid:%lu;",
         (DWORD)GetCurrentProcessId(), (DWORD)GetCurrentThreadId());
 
-    LOG_A(LOG_INFO, "Injected DLL Detours Main thread started on pid %lu  threadid %lu", 
+    LOG_A(LOG_INFO, "Injected DLL Detours Main thread started on pid %lu  threadid %lu",
         GetCurrentProcessId(), GetCurrentThreadId());
     InitDllPipe();
     SendDllPipe(start_str);
 
     // All the original methods
-    
+
     // NOTE: Do be VERY CAREFUL enabling these
     //       Just uncommenting the variable will break the callstack 
     //       (e.g. with a nonexisting function as parameter)
-    //Real_NtSetContextThread = (pNtSetContextThread)DetourFindFunction("ntdll.dll", "NtSetContextThread");
     //Real_LdrLoadDll = (pLdrLoadDll)DetourFindFunction("ntdll.dll", "LdrLoadDll");
     Real_LdrGetProcedureAddress = (pLdrGetProcedureAddress)DetourFindFunction("ntdll.dll", "LdrGetProcedureAddress");
     Real_NtQueueApcThread = (pNtQueueApcThread)DetourFindFunction("ntdll.dll", "NtQueueApcThread");
     Real_NtQueueApcThreadEx = (pNtQueueApcThreadEx)DetourFindFunction("ntdll.dll", "NtQueueApcThreadEx");
     Real_NtCreateProcess = (pNtCreateProcess)DetourFindFunction("ntdll.dll", "NtCreateProcess");
+    Real_NtCreateThread = (pNtCreateThread)DetourFindFunction("ntdll.dll", "NtCreateThread");
     Real_NtCreateThreadEx = (pNtCreateThreadEx)DetourFindFunction("ntdll.dll", "NtCreateThreadEx");
     Real_NtOpenProcess = (pNtOpenProcess)DetourFindFunction("ntdll.dll", "NtOpenProcess");
     Real_NtLoadDriver = (pNtLoadDriver)DetourFindFunction("ntdll.dll", "NtLoadDriver");
@@ -1117,7 +1278,7 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     Real_NtAllocateVirtualMemory = (t_NtAllocateVirtualMemory)DetourFindFunction("ntdll.dll", "NtAllocateVirtualMemory");
     Real_NtProtectVirtualMemory = (t_NtProtectVirtualMemory)DetourFindFunction("ntdll.dll", "NtProtectVirtualMemory");
     Real_NtFreeVirtualMemory = (t_NtFreeVirtualMemory)DetourFindFunction("ntdll.dll", "NtFreeVirtualMemory");
-    Real_NtCreateRemoteThread = (pNtCreateRemoteThread)DetourFindFunction("ntdll.dll", "NtCreateRemoteThread ");
+    Real_NtResumeThread = (pNtResumeThread)DetourFindFunction("ntdll.dll", "NtResumeThread");
 
     DetourRestoreAfterWith();
     DetourTransactionBegin();
@@ -1126,16 +1287,18 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     // All the hooks
     //DetourAttach(&(PVOID&)Real_NtSetContextThread, Catch_NtSetContextThread); // broken
     //DetourAttach(&(PVOID&)Real_LdrLoadDll, Catch_LdrLoadDll); // broken
-    DetourAttach(&(PVOID&)Real_LdrGetProcedureAddress, Catch_LdrGetProcedureAddress); 
+    DetourAttach(&(PVOID&)Real_LdrGetProcedureAddress, Catch_LdrGetProcedureAddress);
     DetourAttach(&(PVOID&)Real_NtQueueApcThread, Catch_NtQueueApcThread);
     DetourAttach(&(PVOID&)Real_NtQueueApcThreadEx, Catch_NtQueueApcThreadEx);
     DetourAttach(&(PVOID&)Real_NtCreateProcess, Catch_NtCreateProcess);
-    DetourAttach(&(PVOID&)Real_NtCreateThreadEx, Catch_NtCreateThreadEx); 
+    DetourAttach(&(PVOID&)Real_NtCreateThread, Catch_NtCreateThread);
+    DetourAttach(&(PVOID&)Real_NtCreateThreadEx, Catch_NtCreateThreadEx);
+    DetourAttach(&(PVOID&)Real_NtResumeThread, Catch_NtResumeThread);
     DetourAttach(&(PVOID&)Real_NtOpenProcess, Catch_NtOpenProcess);
     DetourAttach(&(PVOID&)Real_NtLoadDriver, Catch_NtLoadDriver);
     DetourAttach(&(PVOID&)Real_NtCreateNamedPipeFile, Catch_NtCreateNamedPipeFile);
     DetourAttach(&(PVOID&)Real_NtCreateSection, Catch_NtCreateSection);
-    DetourAttach(&(PVOID&)Real_NtCreateProcessEx, Catch_NtCreateProcessEx); 
+    DetourAttach(&(PVOID&)Real_NtCreateProcessEx, Catch_NtCreateProcessEx);
     DetourAttach(&(PVOID&)Real_NtCreateEvent, Catch_NtCreateEvent);
     DetourAttach(&(PVOID&)Real_NtCreateTimer, Catch_NtCreateTimer);
     DetourAttach(&(PVOID&)Real_NtCreateTimer2, Catch_NtCreateTimer2);
@@ -1173,15 +1336,15 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved)
         InitHooksThread(NULL);
     }
     else if (dwReason == DLL_PROCESS_DETACH) {
-       /* DetourTransactionBegin();
-        DetourUpdateThread(GetCurrentThread());
-        DetourDetach(&(PVOID&)TrueSleepEx, TimedSleepEx);
-        error = DetourTransactionCommit();
+        /* DetourTransactionBegin();
+         DetourUpdateThread(GetCurrentThread());
+         DetourDetach(&(PVOID&)TrueSleepEx, TimedSleepEx);
+         error = DetourTransactionCommit();
 
-        printf("simple" DETOURS_STRINGIFY(DETOURS_BITS) ".dll:"
-            " Removed SleepEx() (result=%ld), slept %ld ticks.\n", error, dwSlept);
-        fflush(stdout);
-        */
+         printf("simple" DETOURS_STRINGIFY(DETOURS_BITS) ".dll:"
+             " Removed SleepEx() (result=%ld), slept %ld ticks.\n", error, dwSlept);
+         fflush(stdout);
+         */
     }
     return TRUE;
 }
