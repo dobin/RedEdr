@@ -285,7 +285,7 @@ Process* MakeProcess(DWORD pid, LPCWSTR target_name) {
     hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
     if (hProcess == NULL) {
         // We dont care
-        //LOG_W(LOG_INFO, L"Could not open process %lu error %lu\n", pid, GetLastError());
+        LOG_W(LOG_INFO, L"Could not open process %lu error %lu\n", pid, GetLastError());
     }
     else {
         if (target_name != NULL) {
@@ -297,7 +297,7 @@ Process* MakeProcess(DWORD pid, LPCWSTR target_name) {
                     process->observe = 1;
                 }
                 else {
-                    //LOG_W(LOG_INFO, L"Substring not found %lu: %s\n", pid, exePath);
+                    LOG_W(LOG_INFO, L"Substring not found %lu: %s\n", pid, exePath);
                     process->observe = 0;
                 }
             }
