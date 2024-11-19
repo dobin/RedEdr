@@ -68,7 +68,14 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         if (wcslen(g_config.target) > 0) {
             if (IsSubstringInUnicodeString(processName, g_config.target)) {
                 processInfo->observe = 1;
+                g_config.trace_pid = pid;
             }
+        }
+        // Check for children
+        // TODO support grandchildren?
+        // TODO use the other pid/ppid to make it more robust against PPID spoofing?
+        if (g_config.trace_children && processInfo->ppid == g_config.trace_pid) {
+            processInfo->observe = 1;
         }
         LOG_A(LOG_INFO, "CreateProcessNotify: Process %d created, observe: %i\n", 
             pid, processInfo->observe);

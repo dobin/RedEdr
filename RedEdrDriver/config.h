@@ -11,6 +11,9 @@ typedef struct _config {
 
 	int enable_kapc_injection;
 	int enable_logging;
+
+	int trace_pid;
+	int trace_children;
 	WCHAR target[256];  // zero length means disabled
 } Config;
 

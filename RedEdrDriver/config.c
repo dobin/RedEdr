@@ -16,6 +16,9 @@ void init_config() {
 	g_config.enable_kapc_injection = 0;
 	g_config.enable_logging = 0;
 
+	g_config.trace_pid = 0;
+	g_config.trace_children = 0;
+
 	wcscpy_s(g_config.target, sizeof(g_config.target), L""); // disable
 }
 
