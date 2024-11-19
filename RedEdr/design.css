@@ -1,0 +1,67 @@
+
+body {
+    font-family: "Courier New", Courier, monospace;
+    margin: 0;
+    padding: 0;
+}
+header {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+}
+.stats {
+    display: flex;
+    justify-content: space-around;
+}
+.tabs {
+    display: flex;
+    border-bottom: 1px solid #ccc;
+}
+.tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    border-bottom: none;
+    background-color: #f1f1f1;
+}
+.tab.active {
+    background-color: #fff;
+    font-weight: bold;
+    border-bottom: 1px solid transparent;
+}
+.content {
+    padding: 0px;
+    border: 1px solid #ccc;
+}
+
+.container {
+    display: flex; /* Makes elements inside the container align horizontally */
+    gap: 10px; /* Adds space between the elements */
+}
+.item {
+    padding: 0px;
+    background-color: rgb(27, 77, 24);
+    border: 1px solid #ccc;
+}
+
+.event {
+    padding: 0.3em;
+    border-bottom: 1px solid #ccc;
+    line-height: 1.35em;
+}
+
+.highlight_a {
+    color: black;
+    background-color: #cfcfcf;;
+}
+.highlight_b {
+    color: rgb(0, 0, 0);
+    background-color: rgb(187, 201, 224); /* Color for func */
+}
+.highlight_c {
+    color: black;
+}
+.highlight_d {
+    color: darkgrey;
+}

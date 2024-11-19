@@ -3,227 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-
-    <style>
-        body {
-            font-family: "Courier New", Courier, monospace;
-            margin: 0;
-            padding: 0;
-        }
-
-        header {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            text-align: center;
-        }
-
-        .stats {
-            display: flex;
-            justify-content: space-around;
-        }
-
-        .tabs {
-            display: flex;
-            border-bottom: 1px solid #ccc;
-        }
-
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            border: 1px solid #ccc;
-            border-bottom: none;
-            background-color: #f1f1f1;
-        }
-
-            .tab.active {
-                background-color: #fff;
-                font-weight: bold;
-                border-bottom: 1px solid transparent;
-            }
-
-        .content {
-            padding: 0px;
-            border: 1px solid #ccc;
-        }
-
-        .container {
-            display: flex; /* Makes elements inside the container align horizontally */
-            gap: 10px; /* Adds space between the elements */
-        }
-
-        .item {
-            padding: 0px;
-            background-color: rgb(27, 77, 24);
-            border: 1px solid #ccc;
-        }
-
-        .event {
-            padding: 0.4em;
-            border-bottom: 1px solid #ccc;
-        }
-
-        .highlight_a {
-            color: white;
-            background-color: #544C2B;
-            ;
-        }
-
-        .highlight_b {
-            padding: 2px;
-            color: white;
-            background-color: rgb(117, 73, 82); /* Color for func */
-        }
-
-        .highlight_c {
-            color: blue;
-        }
-
-        .highlight_d {
-            color: red;
-        }
-    </style>
+    <title>RedEdr</title>
+    <script src="/static/shared.js"></script>
+    <link rel="stylesheet" href="/static/design.css">
 </head>
 <body>
 
-    <header>
-        <div class="container">
-            <div class="item">
-                <div class="stats" hx-get="/api/stats" hx-trigger="every 3s">
+<header>
+    <div class="container">
+        <div class="item">
+            <div id="stats-counter"></div>
+            <div id="detections-counter"></div>
+        </div>
+        
+        <div class="item">
+            <button onclick="BtnRefresh()">Refresh</button>
+            <button onclick="BtnSave()">Save</button>
+            <button onclick="BtnReset()">Reset</button>
+            <button onclick="BtnOpenEvents()">Open Events</button>
+            <button onclick="BtnOpenDetections()">Open Detections</button>
+        </div>
+
+        <div class="item" id="response">
+        </div>
+    </div>
+</header>
+
+<div class="tabs">
+    <div class="tab active" onclick="showContent('tab1', this)">Events</div>
+    <div class="tab" onclick="showContent('tab2', this)">Analyzer</div>
+    <div class="tab" onclick="showContent('tab3', this)">Recordings</div>
+</div>
+
+<div class="content" id="content">
+    <div id="tab1" class="tab-content">
+        <div id="eventContainer"></div>
+    </div>
+    <div id="tab2" class="tab-content"  style="display: none;">
+        <div id="detectionContainer"></div>
+    </div>
+    <div id="tab3" class="tab-content"  style="display: none;">
+        <div id="recordingsContainer"></div>
+    </div>
+</div>
+
+<script>
+    MyData = {
+        "stats": {
+            "events_count": 0,
+            "detections_count": 0,
+        },
+        "events": [],
+        "detections": []
+    }
+
+    function showContent(tabId, tabElement) {
+        // Hide all tab contents
+        const contents = document.querySelectorAll('.tab-content');
+        contents.forEach(content => content.style.display = 'none');
+
+        // Remove active class from all tabs
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(tab => tab.classList.remove('active'));
+
+        // Show the selected tab content
+        document.getElementById(tabId).style.display = 'block';
+
+        // Add active class to the clicked tab if tabElement is provided
+        if (tabElement) {
+            tabElement.classList.add('active');
+        }
+    }
+
+    function showRecordings(data) {
+        const container = document.getElementById('recordingsContainer');
+        container.innerHTML = '';
+
+        data.forEach(recording => {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <div class="recording">
+                    <a href="/recordings?name=${recording}" target="_blank">${recording}</a> <br>
                 </div>
-            </div>
+            `;
+            container.appendChild(div);
+        });
+    }
 
-            <div class="item">
-                <button onclick="fetchEvents()">Refresh</button>
-                <button hx-get="/api/reset" hx-trigger="click" hx-target="#response">
-                    Reset
-                </button>
-            </div>
-
-            <div class="item" id="response">
-            </div>
-        </div>
-    </header>
-
-    <div class="tabs">
-        <div class="tab active" onclick="showContent('tab1', this)">Events</div>
-        <div class="tab" onclick="showContent('tab2', this)">Analyzer</div>
-        <div class="tab" onclick="showContent('tab3', this)">Stderr</div>
-    </div>
-
-    <div class="content" id="content">
-        <div id="tab1" class="tab-content">
-            <div id="eventContainer"></div>
-        </div>
-        <div id="tab2" class="tab-content" style="display: none;">
-            <div id="detectionContainer"></div>
-        </div>
-        <div id="tab3" class="tab-content" style="display: none;">
-            loading...
-        </div>
-    </div>
-
-    <script>
-        function showContent(tabId, tabElement) {
-            // Hide all tab contents
-            const contents = document.querySelectorAll('.tab-content');
-            contents.forEach(content => content.style.display = 'none');
-
-            // Remove active class from all tabs
-            const tabs = document.querySelectorAll('.tab');
-            tabs.forEach(tab => tab.classList.remove('active'));
-
-            // Show the selected tab content
-            document.getElementById(tabId).style.display = 'block';
-
-            // Add active class to the clicked tab if tabElement is provided
-            if (tabElement) {
-                tabElement.classList.add('active');
-            }
+    async function fetchEvents() {
+        const response = await fetch('/api/events');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
         }
+        const data = await response.json();
+        displayEvents(data);
+    }
 
-        // Function to display events in Tab 1
-        function displayEvents(events) {
-            const eventContainer = document.getElementById('eventContainer');
-            eventContainer.innerHTML = ''; // Clear previous content
-
-            events.forEach(event => {
-                const eventDiv = document.createElement('div');
-                eventDiv.classList.add('event');
-
-                let eventDetails = '';
-                for (const [key, value] of Object.entries(event)) {
-                    let formattedKeyValue;
-
-                    if (key === 'type' || key === 'time' || key === 'pid' || key === 'tid' || key === 'krn_pid') {
-                        formattedKeyValue = `<span class="highlight_a">${key}:`;
-                    } else if (key === 'func' || key === 'callback') {
-                        formattedKeyValue = `<span class="highlight_b">${key}:`;
-                    } else if (key === 'addr') {
-                        formattedKeyValue = `<span class="highlight_c">${key}:`;
-                    } else if (key === 'protect') {
-                        formattedKeyValue = `<span class="highlight_d">${key}:`;
-                    } else {
-                        formattedKeyValue = `<span>${key}:`;
-                    }
-
-                    if (key == 'callstack') {
-                        formattedKeyValue = "<br>" + formattedKeyValue + "<br>";
-                        formattedKeyValue += JSON.stringify(value, null, 0) + "</span>";
-                    } else {
-                        formattedKeyValue += `${value}</span>`;
-                    }
-
-                    eventDetails += `${formattedKeyValue}; `;
-                }
-
-                eventDiv.innerHTML = eventDetails; // Set the inner HTML to the details
-                eventContainer.appendChild(eventDiv); // Add the event div to the container
-            });
+    async function fetchDetections() {
+        const response = await fetch('/api/detections');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
         }
+        const data = await response.json();
+        displayDetections(data);
+    }
 
-        // Function to display events in Tab 1
-        function displayDetections(detections) {
-            const container = document.getElementById('detectionContainer');
-            container.innerHTML = '';
-
-            detections.forEach((detection, index) => {
-                // Create a div for each detection
-                const detectionDiv = document.createElement('div');
-                detectionDiv.textContent = `${index}: ${detection}`;
-                container.appendChild(detectionDiv);
-            });
+    async function fetchStats() {
+        const response = await fetch('/api/stats');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
         }
+        const data = await response.json();
 
-        async function fetchEvents() {
-            const response = await fetch('/api/events');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const data = await response.json();
-            displayEvents(data);
+        // Check if we need to update something
+        if(data.events_count > MyData.stats.events_count) {
+            fetchEvents();
+            fetchDetections();
+        
+            // Store new stats
+            MyData.stats = data;
+
+            // Update UI
+            document.getElementById('stats-counter').textContent = `Events: ${data.events_count}`;
+            document.getElementById('detections-counter').textContent = `Detections: ${data.detections_count}`;
         }
+    }
 
-        async function fetchDetections() {
-            const response = await fetch('/api/detections');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const data = await response.json();
-            displayDetections(data);
+    async function fetchRecordings() {
+        const response = await fetch('/api/recordings');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
         }
+        const data = await response.json();
+        showRecordings(data);
+    }
 
-        // Initialize by showing the first tab and setting up periodic updates
-        showContent('tab1', null);
+    async function sendSave() {
+        const response = await fetch('/api/save');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+    }
+
+    async function sendReset() {
+        const response = await fetch('/api/reset');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+    }
+
+    function BtnRefresh() {
         fetchEvents();
-        setInterval(fetchEvents, 10 * 1000);
-
         fetchDetections();
-        setInterval(fetchDetections, 3 * 1000);
+    }
+    function BtnSave() {
+        sendSave();
+    }
+    function BtnReset() {
+        sendReset();
+    }
+    function BtnOpenEvents() {
+        window.open('/api/events', '_blank');
+    }    
+    function BtnOpenDetections() {
+        window.open('/api/detections', '_blank');
+    }
 
-    </script>
+    showContent('tab1', null);  // show first tab
+    fetchStats(); // initial fetch
+    setInterval(fetchStats, 1 * 1000); // periodic check
+
+    fetchRecordings();
+</script>
 
 </body>
 </html>

@@ -16,6 +16,9 @@
     <Filter Include="Source Files\input">
       <UniqueIdentifier>{729c11c2-6cba-4b6a-b0bc-56d18a3f3dfd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\web">
+      <UniqueIdentifier>{81c69665-cc45-4ca7-b535-9be661578dff}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RedEdr.cpp">
@@ -140,9 +143,6 @@
     <ClInclude Include="..\RedEdrShared\loguru.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="eventproducer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="analyzer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -152,10 +152,24 @@
     <ClInclude Include="json.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="event_producer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="index.html">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\web</Filter>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="design.css">
+      <Filter>Source Files\web</Filter>
+    </None>
+    <None Include="recording.html">
+      <Filter>Source Files\web</Filter>
+    </None>
+    <None Include="shared.js">
+      <Filter>Source Files\web</Filter>
+    </None>
   </ItemGroup>
 </Project>
