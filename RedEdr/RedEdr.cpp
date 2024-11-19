@@ -172,6 +172,18 @@ DWORD WINAPI KeyboardReaderThread(LPVOID param) {
 }
 
 
+void CreateRequiredFiles() {
+    LPCWSTR dir = L"c:\\rededr\\data";
+    DWORD fileAttributes = GetFileAttributes(dir);
+    if (fileAttributes == INVALID_FILE_ATTRIBUTES || !(fileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+        std::cout << "Directory does not exist. Creating it...\n";
+        if (! CreateDirectory(dir, NULL)) {
+            std::cerr << "Failed to create directory. Error: " << GetLastError() << "\n";
+        }
+    }
+}
+
+
 // https://github.com/s4dbrd/ETWReader
 int main(int argc, char* argv[]) {
     cxxopts::Options options("RedEdr", "Maldev event recorder");
@@ -251,6 +263,8 @@ int main(int argc, char* argv[]) {
         printf("Choose at least one of --etw --mplog --kernel --inject --dllreader --etwti");
         return 1;
     }
+
+    CreateRequiredFiles();
 
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
