@@ -8,6 +8,12 @@ namespace UnitTests
 	TEST_CLASS(UnitTests)
 	{
 	public:
+		TEST_METHOD(TestStrA) {
+			std::string str = "Hello";
+			wchar_t* wstr = stringToWChar(str);
+			Assert::AreEqual(L"Hello", wstr);
+		}
+
 		
 		TEST_METHOD(TestTranslate)
 		{

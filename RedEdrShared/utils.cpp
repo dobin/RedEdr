@@ -41,11 +41,9 @@ wchar_t* wstring2wchar(const std::wstring& str) {
 
 std::string wcharToString(const wchar_t* wstr) {
     if (!wstr) return {};
-
     int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
-    std::string str(size_needed, 0);
+    std::string str(size_needed - 1, '\0');
     WideCharToMultiByte(CP_UTF8, 0, wstr, -1, &str[0], size_needed, nullptr, nullptr);
-
     return str;
 }
 
@@ -140,6 +138,23 @@ wchar_t* ConvertCharToWchar(const char* arg) {
     wchar_t* wargv = new wchar_t[len];
     MultiByteToWideChar(CP_ACP, 0, arg, -1, wargv, len);
     return wargv;
+}
+
+
+// Dear mother of god whats up with all these goddamn string types
+wchar_t* stringToWChar(const std::string& str) {
+    if (str.empty()) {
+        wchar_t* empty = new wchar_t[1];
+        empty[0] = L'\0';
+        return empty;
+    }
+    int sizeNeeded = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, nullptr, 0);
+    if (sizeNeeded <= 0) {
+        throw std::runtime_error("Error converting string to wchar_t*");
+    }
+    wchar_t* wideString = new wchar_t[sizeNeeded];
+    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, wideString, sizeNeeded);
+    return wideString;
 }
 
 

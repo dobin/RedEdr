@@ -13,6 +13,9 @@
 #include "processcache.h"
 #include "analyzer.h"
 
+using json = nlohmann::json;
+
+
 HANDLE webserver_thread;
 httplib::Server svr;
 
@@ -65,19 +68,19 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     LOG_A(LOG_INFO, "!WEB: Start Webserver thread");
     
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
-        std::string indexhtml = read_file("index.html");
+        std::string indexhtml = read_file("C:\\RedEdr\\index.html");
         res.set_content(indexhtml, "text/html");
     });
     svr.Get("/recordings", [](const httplib::Request&, httplib::Response& res) {
-        std::string indexhtml = read_file("recording.html");
+        std::string indexhtml = read_file("C:\\RedEdr\\recording.html");
         res.set_content(indexhtml, "text/html");
     });
     svr.Get("/static/design.css", [](const httplib::Request&, httplib::Response& res) {
-        std::string indexhtml = read_file("design.css");
+        std::string indexhtml = read_file("C:\\RedEdr\\design.css");
         res.set_content(indexhtml, "text/css");
     });
     svr.Get("/static/shared.js", [](const httplib::Request&, httplib::Response& res) {
-        std::string indexhtml = read_file("shared.js");
+        std::string indexhtml = read_file("C:\\RedEdr\\shared.js");
         res.set_content(indexhtml, "text/javascript");
     });
 
@@ -109,6 +112,33 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         ss << "\"detections_count\":" << (last_print + 1) << "}"; // +1 so it looks nicer
         std::string stats = ss.str();
         res.set_content(stats, "application/json; charset=UTF-8");
+    });
+
+    svr.Get("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
+        json response = { {"trace", wcharToString(g_config.targetExeName) }};
+        res.set_content(response.dump(), "application/json");
+    });
+    svr.Post("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
+        try {
+            auto data = json::parse(req.body);
+            if (data.contains("trace")) {
+                std::string traceName = data["trace"].get<std::string>();
+				LOG_A(LOG_INFO, "Trace target: %s", traceName.c_str());
+				g_config.targetExeName = stringToWChar(traceName.c_str());
+                json response = { {"result", "ok"} };
+                res.set_content(response.dump(), "application/json");
+            }
+            else {
+                json error = { {"error", "No 'trace' key provided"} };
+                res.status = 400;
+                res.set_content(error.dump(), "application/json");
+            }
+        }
+        catch (const json::parse_error& e) {
+            json error = { {"error", "Invalid JSON data"} };
+            res.status = 400;
+            res.set_content(error.dump(), "application/json");
+        }
     });
 
     svr.Get("/api/save", [](const httplib::Request&, httplib::Response& res) {
