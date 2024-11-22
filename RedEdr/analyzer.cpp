@@ -147,7 +147,7 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
             targetInfo.AddMemoryRegion(addr, memoryRegion);
         }
 
-        if (j["handle"] != "FFFFFFFFFFFFFFFF") {
+        if (j["handle"] != "0xffffffffffffffff") {
             std::stringstream ss;
             ss << "Analyzer: AllocateVirtualMemory in foreign process " << j["handle"].get<std::string>();
             AnalyzerNewDetection(Criticality::HIGH, ss.str());
@@ -155,7 +155,7 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
     }
 
     if (j["type"] == "dll" && j["func"] == "WriteVirtualMemory") {
-        if (j["handle"] != "FFFFFFFFFFFFFFFF") {
+        if (j["handle"] != "0xffffffffffffffff") {
             std::stringstream ss;
             ss << "Analyzer: WriteVirtualMemory in foreign process " << j["handle"].get<std::string>();
             AnalyzerNewDetection(Criticality::HIGH, ss.str());
@@ -163,7 +163,7 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
     }
 
     if (j["type"] == "dll" && j["func"] == "CreateRemoteThread") {
-        if (j["handle"] != "FFFFFFFFFFFFFFFF") {
+        if (j["handle"] != "0xffffffffffffffff") {
             std::stringstream ss;
             ss << "Analyzer: CreateRemoteThread in foreign process " << j["handle"].get<std::string>();
             AnalyzerNewDetection(Criticality::HIGH, ss.str());
