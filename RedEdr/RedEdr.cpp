@@ -188,22 +188,30 @@ void CreateRequiredFiles() {
 int main(int argc, char* argv[]) {
     cxxopts::Options options("RedEdr", "Maldev event recorder");
     options.add_options()
+        // Input
         ("t,trace", "Process name to trace", cxxopts::value<std::string>())
+        ("a,all", "Input: All", cxxopts::value<std::string>())
+
         ("e,etw", "Input: Consume ETW Events", cxxopts::value<bool>()->default_value("false"))
         ("g,etwti", "Input: Consume ETW-TI Events", cxxopts::value<bool>()->default_value("false"))
         ("m,mplog", "Input: Consume Defender mplog file", cxxopts::value<bool>()->default_value("false"))
         ("k,kernel", "Input: Consume kernel callback events", cxxopts::value<bool>()->default_value("false"))
         ("i,inject", "Input: Consume DLL injection", cxxopts::value<bool>()->default_value("false"))
         ("c,dllcallstack", "Input: Enable DLL injection hook callstacks", cxxopts::value<bool>()->default_value("false"))
+
+        // Output
         ("w,web", "Output: Web server", cxxopts::value<bool>()->default_value("false"))
         ("u,hide", "Output: Hide messages (performance. use with --web)", cxxopts::value<bool>()->default_value("false"))
 
+        // Kernel
         ("1,krnload", "Kernel Module: Load", cxxopts::value<bool>()->default_value("false"))
         ("2,krnunload", "Kernel Module: Unload", cxxopts::value<bool>()->default_value("false"))
         
+        // PPL
         ("4,pplstart", "PPL service: load", cxxopts::value<bool>()->default_value("false"))
         ("5,pplstop", "PPL service: stop", cxxopts::value<bool>()->default_value("false"))
 
+        // Debug
         ("l,dllreader", "Debug: DLL reader but no injection (for manual injection tests)", cxxopts::value<bool>()->default_value("false"))
         ("d,debug", "Enable debugging", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print usage")
@@ -258,9 +266,15 @@ int main(int argc, char* argv[]) {
     g_config.web_output = result["web"].as<bool>();
     g_config.do_dllinjection_ucallstack = result["dllcallstack"].as<bool>();
 
-    if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback 
-        && !g_config.do_dllinjection && !g_config.debug_dllreader && !g_config.do_etwti) {
-        printf("Choose at least one of --etw --mplog --kernel --inject --dllreader --etwti");
+	if (result["all"].as<std::string>() == "true") {
+		g_config.do_etw = true;
+		g_config.do_etwti = true;
+		g_config.do_kernelcallback = true;
+		g_config.do_dllinjection = true;
+        g_config.do_dllinjection_ucallstack = true;
+	} else if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback 
+        && !g_config.do_dllinjection && !g_config.do_etwti && !g_config.debug_dllreader) {
+        printf("Choose at least one of --etw --etwti --kernel --inject --etwti (--dllreader for testing)");
         return 1;
     }
 
