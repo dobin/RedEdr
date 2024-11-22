@@ -53,7 +53,7 @@ std::string getRecordingsAsJson() {
     std::stringstream output;
     output << "[";
     //std::vector<std::wstring> names = GetFilesInDirectory(L"C:\\RedEdr\\Data\\*.events.json");
-    std::vector<std::wstring> names = GetFilesInDirectory(L"Data\\*.events.json");
+    std::vector<std::wstring> names = GetFilesInDirectory(L"C:\\RedEdr\\Data\\*.events.json");
     for (auto it = names.begin(); it != names.end(); ++it) {
         output << "\"" << wstring_to_utf8(*it) << "\"";
         if (std::next(it) != names.end()) {
@@ -97,7 +97,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
     svr.Get("/api/recordings/:id", [](const httplib::Request& req, httplib::Response& res) {
         auto user_id = req.path_params.at("id");
-        std::string path = "Data\\" + user_id + ".events.json";
+        std::string path = "C:\\RedEdr\\Data\\" + user_id + ".events.json";
         std::cout << path;
         std::string data = read_file(path);
         res.set_content(data.c_str(), "application/json");
