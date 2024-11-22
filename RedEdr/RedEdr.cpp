@@ -190,7 +190,7 @@ int main(int argc, char* argv[]) {
     options.add_options()
         // Input
         ("t,trace", "Process name to trace", cxxopts::value<std::string>())
-        ("a,all", "Input: All", cxxopts::value<std::string>())
+        ("a,all", "Input: All", cxxopts::value<bool>())
 
         ("e,etw", "Input: Consume ETW Events", cxxopts::value<bool>()->default_value("false"))
         ("g,etwti", "Input: Consume ETW-TI Events", cxxopts::value<bool>()->default_value("false"))
@@ -266,7 +266,7 @@ int main(int argc, char* argv[]) {
     g_config.web_output = result["web"].as<bool>();
     g_config.do_dllinjection_ucallstack = result["dllcallstack"].as<bool>();
 
-	if (result["all"].as<std::string>() == "true") {
+	if (result["all"].as<bool>()) {
 		g_config.do_etw = true;
 		g_config.do_etwti = true;
 		g_config.do_kernelcallback = true;
