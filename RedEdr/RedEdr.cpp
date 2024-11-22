@@ -344,7 +344,7 @@ int main(int argc, char* argv[]) {
     }
     if (g_config.do_etwti) {
         LOG_A(LOG_INFO, "RedEdr: Start ETW-TI reader");
-        //Sleep(1000);
+        Sleep(500);
         wchar_t* target = (wchar_t* )g_config.targetExeName;
         InitPplService();
         EnablePplProducer(TRUE, target);

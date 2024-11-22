@@ -71,6 +71,7 @@ BOOL InitPplService() {
     }
     if (!IsServiceRunning(SERVICE_NAME)) {
         LOG_A(LOG_WARNING, "ETW-TI: Attempting to start ppl service");
+        InstallElamCertPpl(); // have to do this upon reboot
         StartPplService();
         Sleep(500);  // wait for it to start
     }
