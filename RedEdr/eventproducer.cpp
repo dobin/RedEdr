@@ -203,3 +203,10 @@ std::string EventProducer::GetAllAsJson() {
     output << "]";
     return output.str();
 }
+
+
+void EventProducer::SaveToFile() {
+	std::string data = GetAllAsJson();
+    std::string filename = "C:\\RedEdr\\Data\\" + get_time_for_file() + ".events.json";
+	write_file(filename, data);
+}

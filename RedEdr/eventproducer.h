@@ -18,6 +18,7 @@ public:
 	size_t GetEventCount();
 	int GetLastPrintIndex();
 	void Stop();
+	void SaveToFile();
 
 	// Only support one consumer, as it tracks its last used element
 	BOOL HasMoreEvents();

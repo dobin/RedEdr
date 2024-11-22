@@ -9,6 +9,8 @@
 #include <iostream>
 #include <fstream>
 #include <winternl.h>
+#include <ctime>
+#include <iomanip>
 
 #include "../Shared/common.h"
 
@@ -164,6 +166,30 @@ std::string read_file(const std::string& path) {
     buffer << file.rdbuf(); // Read the file into the stringstream
     return buffer.str();
 }
+
+
+void write_file(std::string path, std::string data) {
+	std::ofstream file(path);
+    if (!file.is_open()) {
+        std::cerr << "Could not open file: " << path << std::endl;
+        return;
+    }
+	file << data;
+	file.close();
+}
+
+
+std::string get_time_for_file() {
+    std::time_t now = std::time(nullptr);
+    std::tm tm = {};
+    if (localtime_s(&tm, &now) != 0) {
+        throw std::runtime_error("Failed to get local time");
+    }
+    std::ostringstream oss;
+    oss << std::put_time(&tm, "%Y-%m-%d-%H-%M-%S");
+    return oss.str();
+}
+
 
 wchar_t* getMemoryRegionProtect(DWORD protect) {
     const wchar_t* memoryProtect;

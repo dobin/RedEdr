@@ -111,6 +111,10 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         res.set_content(stats, "application/json; charset=UTF-8");
     });
 
+    svr.Get("/api/save", [](const httplib::Request&, httplib::Response& res) {
+        LOG_A(LOG_INFO, "Save stats");
+        g_EventProducer.SaveToFile();
+    });
 
     svr.Get("/api/reset", [](const httplib::Request&, httplib::Response& res) {
         LOG_A(LOG_INFO, "Reset stats");

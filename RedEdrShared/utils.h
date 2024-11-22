@@ -20,3 +20,6 @@ wchar_t* getMemoryRegionProtect(DWORD protect);
 wchar_t* getMemoryRegionType(DWORD type);
 wchar_t* getMemoryRegionState(DWORD type);
 void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize);
+void write_file(std::string path, std::string data);
+std::string get_time_for_file();
+
