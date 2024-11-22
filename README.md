@@ -66,28 +66,51 @@ If you use Hyper-V, uncheck "Security -> Enable Secure Boot".
 
 Extract release.zip into `C:\RedEdr`. **No other directories are supported.**
 
-There should be a `C:\RedEdr\RedEdr.exe`. 
+Start terminal as local admin.
 
-Start an local admin shell to execute `RedEdr.exe`.
+Change into `C:\RedEdr` and run `.\RedEdr.exe`:
+```
+PS C:\rededr> .\RedEdr.exe
+Maldev event recorder
+Usage:
+  RedEdr [OPTION...]
 
-Try `.\RedEdr.exe --kernel --inject --trace otepad`, and then and start notepad 
-(`notepad.exe` on Windows 10, `Notepad` on Windows 11).
+  -t, --trace arg     Process name to trace
+  -e, --etw           Input: Consume ETW Events
+  -g, --etwti         Input: Consume ETW-TI Events
+  -m, --mplog         Input: Consume Defender mplog file
+  -k, --kernel        Input: Consume kernel callback events
+  -i, --inject        Input: Consume DLL injection
+  -c, --dllcallstack  Input: Enable DLL injection hook callstacks
+  -w, --web           Output: Web server
+  -u, --hide          Output: Hide messages (performance. use with --web)
+  -1, --krnload       Kernel Module: Load
+  -2, --krnunload     Kernel Module: Unload
+  -4, --pplstart      PPL service: load
+  -5, --pplstop       PPL service: stop
+  -l, --dllreader     Debug: DLL reader but no injection (for manual
+                      injection tests)
+  -d, --debug         Enable debugging
+  -h, --help          Print usage
+
+```
+
+Try: `.\RedEdr.exe --all --trace otepad`, and then start notepad 
+(will be `notepad.exe` on Windows 10, `Notepad.exe` on Windows 11).
 
 
-## Usage
+## Standard Usage
 
 RedEdr will trace all processes containing by process image name (exe path). And its children, recursively. 
 
-There are two main modes: 
-* With kernel module
-* Without kernel module
-
-I recommend to use it with kernel module. For a quick test, you can use RedEdr without. 
-RedEdr only traces newly created processes, with the `--trace` argument in the image
-name.
+Enable all consumers, and provide as web on `http://localhost:8080`, 
+and disable output logging for performance:
+```
+PS > .\RedEdr.exe --all --web --hide --trace notepad.exe
+```
 
 
-### Kernel module
+### Kernel Callbacks
 
 Kernel module callbacks. And KAPC DLL injection: 
 ```
@@ -98,7 +121,6 @@ This requires self-signed kernel modules to load.
 
 
 ### ETW 
-
 
 Only ETW, no kernel module:
 ```
@@ -120,15 +142,6 @@ not possible to remove the PPL service again.
 
 ```
 PS > .\RedEdr.exe --etwti --trace notepad.exe
-```
-
-
-### Real world usage
-
-Enable all consumers, and provide as web on `http://localhost:8080`, 
-and disable output logging for performance:
-```
-PS > .\RedEdr.exe --kernel --inject --etw --etwti --callstacks --web --hide --trace notepad.exe
 ```
 
 
