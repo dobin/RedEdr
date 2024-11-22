@@ -65,6 +65,7 @@ void InitDllPipe() {
             LOG_W(LOG_INFO, L"Config: Callstack Enabled");
         }
         else {
+            Config.do_stacktrace = false;
             LOG_W(LOG_INFO, L"Config: Callstack Disabled");
         }
     }
