@@ -298,7 +298,7 @@ std::wstring EtwEventToStr(std::wstring eventName, PEVENT_RECORD eventRecord) {
             FileTimeToSystemTime(&fileTime, &stUTC);
             SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
             output << stLocal.wYear << L"/" << stLocal.wMonth << L"/" << stLocal.wDay << L" "
-                << stLocal.wHour << L":" << stLocal.wMinute << L":" << stLocal.wSecond << L";";
+                << stLocal.wHour << L"." << stLocal.wMinute << L"." << stLocal.wSecond << L";";
             break;
         }
         default:
