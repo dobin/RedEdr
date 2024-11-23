@@ -4,3 +4,4 @@ BOOL PermissionSetPrivilege(HANDLE hToken, LPCTSTR lpszPrivilege, BOOL bEnablePr
 BOOL PermissionMakeMeDebug();
 void ManagerShutdown();
 BOOL ManagerStart(std::vector<HANDLE> threads);
+BOOL ManagerReload();

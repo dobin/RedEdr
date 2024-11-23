@@ -1,28 +1,15 @@
 
 #include <stdio.h>
 #include <windows.h>
-#include <dbghelp.h>
-#include <wintrust.h>
-#include <Softpub.h>
-#include <wincrypt.h>
 #include <iostream>
-#include <tchar.h>
-#include <cwchar>
-#include <cstdlib>
 #include <string.h>
 #include <conio.h>   // For _kbhit() and _getch()
 
 #include "cxxops.hpp"
 #include "config.h"
-#include "dllinjector.h"
-#include "etwreader.h"
-#include "logreader.h"
-#include "kernelreader.h"
 #include "processcache.h"
 #include "analyzer.h"
 #include "webserver.h"
-#include "processinfo.h"
-#include "dllreader.h"
 #include "kernelinterface.h"
 #include "pplmanager.h"
 #include "logging.h"

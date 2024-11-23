@@ -15,6 +15,7 @@ public:
 	LPCWSTR targetExeName = L"powershell.exe";
 	BOOL log_unload = FALSE;
 	std::wstring sessionName = L"RedEdrEtw";
+	BOOL enabled = TRUE;
 
 	LPCWSTR driverName = L"RedEdr";
 	LPCWSTR driverPath = L"C:\\RedEdr\\RedEdrDriver\\RedEdrDriver.sys";

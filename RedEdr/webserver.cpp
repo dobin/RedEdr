@@ -12,6 +12,7 @@
 #include "webserver.h"
 #include "processcache.h"
 #include "analyzer.h"
+#include "manager.h"
 
 using json = nlohmann::json;
 
@@ -154,11 +155,14 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
 
     svr.Get("/api/start", [](const httplib::Request& req, httplib::Response& res) {
+        g_config.enabled = TRUE;
+        ManagerReload();
         json response = { {"status", "ok"}};
         res.set_content(response.dump(), "application/json");
     });
     svr.Get("/api/stop", [](const httplib::Request& req, httplib::Response& res) {
-
+        g_config.enabled = FALSE;
+        ManagerReload();
         json response = { {"status", "ok"} };
         res.set_content(response.dump(), "application/json");
     });

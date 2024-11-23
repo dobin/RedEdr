@@ -1,25 +1,16 @@
 #include <stdio.h>
 #include <windows.h>
 #include <dbghelp.h>
-#include <wintrust.h>
-#include <Softpub.h>
-#include <wincrypt.h>
 #include <iostream>
-#include <tchar.h>
-#include <cwchar>
-#include <cstdlib>
 #include <string.h>
 
-#include "cxxops.hpp"
 #include "config.h"
 #include "dllinjector.h"
 #include "etwreader.h"
 #include "logreader.h"
 #include "kernelreader.h"
-#include "processcache.h"
 #include "analyzer.h"
 #include "webserver.h"
-#include "processinfo.h"
 #include "dllreader.h"
 #include "kernelinterface.h"
 #include "pplmanager.h"
@@ -73,6 +64,34 @@ BOOL PermissionMakeMeDebug() {
     CloseHandle(hToken);
 
     LOG_A(LOG_INFO, "--[ Enable SE_DEBUG: OK");
+    return TRUE;
+}
+
+
+BOOL ManagerReload() {
+    // DLL
+    // -> Automatic upon connect of DLL (initiated by Kernel)
+
+    // ETW
+    // -> Automatic in ProcessCache
+    
+    // Kernel
+    if (g_config.do_kernelcallback || g_config.do_dllinjection) {
+        LOG_A(LOG_INFO, "RedEdr: Tell Kernel about new target: %ls", g_config.targetExeName);
+        const wchar_t* target = g_config.targetExeName;
+        if (!EnableKernelDriver(1, (wchar_t*)target)) {
+            LOG_A(LOG_ERROR, "RedEdr: Could not communicate with kernel driver, aborting.");
+            return FALSE;
+        }
+    }
+
+    // PPL
+    if (g_config.do_etwti) {
+        LOG_A(LOG_INFO, "RedEdr: Tell ETW-TI about new target: %ls", g_config.targetExeName);
+        wchar_t* target = (wchar_t*)g_config.targetExeName;
+        EnablePplProducer(TRUE, target);
+    }
+
     return TRUE;
 }
 
