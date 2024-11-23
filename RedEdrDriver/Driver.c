@@ -56,14 +56,19 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
             g_config.enable_logging = 1;
             wcscpy_s(g_config.target, sizeof(g_config.target), data->filename);
 
-            int ret = ConnectUserspacePipe();
-            if (ret) {
-                LOG_A(LOG_INFO, "[IOCTL] Start OK\n");
-                answer = "OK";
+            if (!IsUserspacePipeConnected()) {
+                int ret = ConnectUserspacePipe();
+                if (ret) {
+                    LOG_A(LOG_INFO, "[IOCTL] Start OK\n");
+                    answer = "OK";
+                }
+                else {
+                    LOG_A(LOG_INFO, "[IOCTL] Start ERROR\n");
+                    answer = "FAIL";
+                }
             }
             else {
-                LOG_A(LOG_INFO, "[IOCTL] Start ERROR\n");
-                answer = "FAIL";
+                answer = "OK";
             }
         }
         else {

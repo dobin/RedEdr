@@ -13,6 +13,16 @@
 HANDLE hPipe = NULL;
 
 
+int IsUserspacePipeConnected() {
+    if (hPipe == NULL) {
+        return FALSE;
+    }
+    else {
+        return TRUE;
+    }
+}
+
+
 // log the event message (write to pipe)
 int LogEvent(wchar_t* message) {
     if (hPipe == NULL) {
