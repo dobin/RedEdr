@@ -141,6 +141,7 @@
     <ClCompile Include="..\RedEdrShared\piping.cpp" />
     <ClCompile Include="..\RedEdrShared\utils.cpp" />
     <ClCompile Include="analyzer.cpp" />
+    <ClCompile Include="manager.cpp" />
     <ClCompile Include="processcache.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="dllinjector.cpp" />
@@ -162,6 +163,7 @@
     <ClInclude Include="..\RedEdrShared\logging.h" />
     <ClInclude Include="..\RedEdrShared\loguru.hpp" />
     <ClInclude Include="analyzer.h" />
+    <ClInclude Include="manager.h" />
     <ClInclude Include="processcache.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="cxxops.hpp" />

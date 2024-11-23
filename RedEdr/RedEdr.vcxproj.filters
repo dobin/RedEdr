@@ -87,6 +87,9 @@
     <ClCompile Include="logreader.cpp">
       <Filter>Source Files\input</Filter>
     </ClCompile>
+    <ClCompile Include="manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="etwreader.h">
@@ -153,6 +156,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="event_producer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="manager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

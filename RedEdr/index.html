@@ -23,6 +23,8 @@
                 <button onclick="BtnOpenEvents()">Open Events</button>
                 <button onclick="BtnOpenDetections()">Open Detections</button>
                 <input type="text" id="trace" placeholder="otepad" oninput="setNewTrace(this.value)">
+                <button onclick="BtnStart()">Start</button>
+                <button onclick="BtnStop()">Stop</button>
             </div>
 
             <div class="item" id="response">
@@ -184,6 +186,13 @@
         function BtnOpenDetections() {
             window.open('/api/detections', '_blank');
         }
+        function BtnStart() {
+            fetch('/api/start');
+        }
+        function BtnStop() {
+            fetch('/api/stop');
+        }
+
         function setNewTrace(value) {
             sendTrace(value);
         }

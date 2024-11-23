@@ -153,6 +153,16 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         g_ProcessCache.removeAll();
     });
 
+    svr.Get("/api/start", [](const httplib::Request& req, httplib::Response& res) {
+        json response = { {"status", "ok"}};
+        res.set_content(response.dump(), "application/json");
+    });
+    svr.Get("/api/stop", [](const httplib::Request& req, httplib::Response& res) {
+
+        json response = { {"status", "ok"} };
+        res.set_content(response.dump(), "application/json");
+    });
+
     LOG_A(LOG_INFO, "WEB: Web Server listening on http://localhost:8080");
     svr.listen("localhost", 8080);
     LOG_A(LOG_INFO, "!WEB: Exit Webserver thread");
