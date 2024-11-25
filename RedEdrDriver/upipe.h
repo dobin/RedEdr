@@ -8,5 +8,6 @@
 #include <fltkernel.h>
 
 int LogEvent(wchar_t*);
+int IsUserspacePipeConnected();
 void DisconnectUserspacePipe();
 int ConnectUserspacePipe();
