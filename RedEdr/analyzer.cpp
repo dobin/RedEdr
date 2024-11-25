@@ -182,7 +182,7 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
             memoryRegion->protection += ";freed";
         }
         else {
-            LOG_A(LOG_WARNING, "Free a non-allocated");
+            //LOG_A(LOG_WARNING, "Free a non-allocated");
             // No add as its free anyway?
         }
     }

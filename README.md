@@ -11,8 +11,8 @@ Same data as an EDR sees.
 RedEdr will observe one process, and identify malicious patterns. 
 A normal EDR will observe all processes, and identify malicious processes. 
 
-It generates JSON files like [this](https://github.com/dobin/RedEdr/tree/master/Data)
-collecting all telemetry of some C2. 
+It generates [JSON files](https://github.com/dobin/RedEdr/tree/master/Data)
+collecting all [telemetry](https://github.com/dobin/RedEdr/blob/master/Doc/captured_events.md) of your RedTeaming tools. 
 
 
 ## Implemented Telemetry Consumers
