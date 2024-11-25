@@ -79,7 +79,7 @@ BOOL ManagerReload() {
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
         LOG_A(LOG_INFO, "RedEdr: Tell Kernel about new target: %ls", g_config.targetExeName);
         const wchar_t* target = g_config.targetExeName;
-        if (!EnableKernelDriver(1, (wchar_t*)target)) {
+        if (!EnableKernelDriver(g_config.enabled, (wchar_t*)target)) {
             LOG_A(LOG_ERROR, "RedEdr: Could not communicate with kernel driver, aborting.");
             return FALSE;
         }
@@ -89,7 +89,7 @@ BOOL ManagerReload() {
     if (g_config.do_etwti) {
         LOG_A(LOG_INFO, "RedEdr: Tell ETW-TI about new target: %ls", g_config.targetExeName);
         wchar_t* target = (wchar_t*)g_config.targetExeName;
-        EnablePplProducer(TRUE, target);
+        EnablePplProducer(g_config.enabled, target);
     }
 
     return TRUE;
