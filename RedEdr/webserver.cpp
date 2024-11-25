@@ -99,7 +99,6 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     svr.Get("/api/recordings/:id", [](const httplib::Request& req, httplib::Response& res) {
         auto user_id = req.path_params.at("id");
         std::string path = "C:\\RedEdr\\Data\\" + user_id + ".events.json";
-        std::cout << path;
         std::string data = read_file(path);
         res.set_content(data.c_str(), "application/json");
     });
