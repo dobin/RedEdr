@@ -66,8 +66,8 @@ namespace UnitTests
 
         TEST_METHOD(TestConvertLineToJson_Kernel)
         {
-            std::wstring input = L"type:kernel;time:133727882463689912;callback:create_process;krn_pid:996;pid:1544;name:\\Device\\HarddiskVolume2\\Windows\\System32\\notepad.exe;ppid:996;parent_name:\\Device\\HarddiskVolume2\\Windows\\explorer.exe;observe:1";
-            std::string expect = "{\"type\":\"kernel\",\"time\":\"133727882463689912\",\"callback\":\"create_process\",\"krn_pid\":\"996\",\"pid\":\"1544\",\"name\":\"\\\\Device\\\\HarddiskVolume2\\\\Windows\\\\System32\\\\notepad.exe\",\"ppid\":\"996\",\"parent_name\":\"\\\\Device\\\\HarddiskVolume2\\\\Windows\\\\explorer.exe\",\"observe\":\"1\"}";
+            std::wstring input = L"type:kernel;time:133727882463689912;callback:process_create;krn_pid:996;pid:1544;name:\\Device\\HarddiskVolume2\\Windows\\System32\\notepad.exe;ppid:996;parent_name:\\Device\\HarddiskVolume2\\Windows\\explorer.exe;observe:1";
+            std::string expect = "{\"type\":\"kernel\",\"time\":\"133727882463689912\",\"callback\":\"process_create\",\"krn_pid\":\"996\",\"pid\":\"1544\",\"name\":\"\\\\Device\\\\HarddiskVolume2\\\\Windows\\\\System32\\\\notepad.exe\",\"ppid\":\"996\",\"parent_name\":\"\\\\Device\\\\HarddiskVolume2\\\\Windows\\\\explorer.exe\",\"observe\":\"1\"}";
 
             EventProducer eventProducer;
             std::string result = eventProducer.ConvertLogLineToJsonEvent(input);

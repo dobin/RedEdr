@@ -85,7 +85,7 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
 
     if (g_config.enable_logging && processInfo->observe) {
         wchar_t line[DATA_BUFFER_SIZE] = { 0 };
-        swprintf(line, L"type:kernel;time:%llu;callback:create_process;krn_pid:%llu;pid:%llu;name:%s;ppid:%llu;parent_name:%s;observe:%d",
+        swprintf(line, L"type:kernel;time:%llu;callback:process_create;krn_pid:%llu;pid:%llu;name:%s;ppid:%llu;parent_name:%s;observe:%d",
             systemTime,
             (unsigned __int64)PsGetCurrentProcessId(),
             (unsigned __int64)pid, processInfo->name,
@@ -110,7 +110,7 @@ void CreateThreadNotifyRoutine(HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Create
     KeQuerySystemTime(&systemTime);
 
     wchar_t line[DATA_BUFFER_SIZE] = { 0 };
-    swprintf(line, L"type:kernel;time:%llu;callback:thread;krn_pid:%llu;pid:%llu;threadid:%llu;create:%d",
+    swprintf(line, L"type:kernel;time:%llu;callback:thread_create;krn_pid:%llu;pid:%llu;threadid:%llu;create:%d",
         systemTime,
         (unsigned __int64)PsGetCurrentProcessId(),
         (unsigned __int64)ProcessId,
@@ -142,7 +142,7 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
         PROCESS_INFO* procInfo = LookupProcessInfo(ProcessId);
         if (procInfo != NULL && procInfo->observe) {
             UnicodeStringToWChar(FullImageName, ImageName, 128);
-            swprintf(line, L"type:kernel;time:%llu;callback:image;krn_pid:%llu;pid:%llu;image:%s", 
+            swprintf(line, L"type:kernel;time:%llu;callback:image_load;krn_pid:%llu;pid:%llu;image:%s", 
                 systemTime,
                 (unsigned __int64)PsGetCurrentProcessId(),
                 (unsigned __int64)ProcessId,
