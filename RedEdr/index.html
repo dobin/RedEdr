@@ -9,208 +9,208 @@
 </head>
 <body>
 
-    <header>
-        <div class="container">
-            <div class="item">
-                <div id="stats-counter"></div>
-                <div id="detections-counter"></div>
-            </div>
-
-            <div class="item">
-                <button onclick="BtnRefresh()">Refresh</button>
-                <button onclick="BtnSave()">Save</button>
-                <button onclick="BtnReset()">Reset</button>
-                <button onclick="BtnOpenEvents()">Open Events</button>
-                <button onclick="BtnOpenDetections()">Open Detections</button>
-                <input type="text" id="trace" placeholder="otepad" oninput="setNewTrace(this.value)">
-                <button onclick="BtnStart()">Start</button>
-                <button onclick="BtnStop()">Stop</button>
-            </div>
-
-            <div class="item" id="response">
-            </div>
+<header>
+    <div class="container">
+        <div class="item">
+            <div id="stats-counter"></div>
+            <div id="detections-counter"></div>
         </div>
-    </header>
-
-    <div class="tabs">
-        <div class="tab active" onclick="showContent('tab1', this)">Events</div>
-        <div class="tab" onclick="showContent('tab2', this)">Analyzer</div>
-        <div class="tab" onclick="showContent('tab3', this)">Recordings</div>
-    </div>
-
-    <div class="content" id="content">
-        <div id="tab1" class="tab-content">
-            <div id="eventContainer"></div>
+        
+        <div class="item">
+            <button onclick="BtnRefresh()">Refresh</button>
+            <button onclick="BtnSave()">Save</button>
+            <button onclick="BtnReset()">Reset</button>
+            <button onclick="BtnOpenEvents()">Open Events</button>
+            <button onclick="BtnOpenDetections()">Open Detections</button>
+            <input type="text" id="trace" placeholder="otepad" oninput="setNewTrace(this.value)">
+            <button onclick="BtnStart()">Start</button>
+            <button onclick="BtnStop()">Stop</button>
         </div>
-        <div id="tab2" class="tab-content" style="display: none;">
-            <div id="detectionContainer"></div>
-        </div>
-        <div id="tab3" class="tab-content" style="display: none;">
-            <div id="recordingsContainer"></div>
+
+        <div class="item" id="response">
         </div>
     </div>
+</header>
 
-    <script>
-        MyData = {
-            "stats": {
-                "events_count": 0,
-                "detections_count": 0,
-            },
-            "events": [],
-            "detections": []
+<div class="tabs">
+    <div class="tab active" onclick="showContent('tab1', this)">Events</div>
+    <div class="tab" onclick="showContent('tab2', this)">Analyzer</div>
+    <div class="tab" onclick="showContent('tab3', this)">Recordings</div>
+</div>
+
+<div class="content" id="content">
+    <div id="tab1" class="tab-content">
+        <div id="eventContainer"></div>
+    </div>
+    <div id="tab2" class="tab-content"  style="display: none;">
+        <div id="detectionContainer"></div>
+    </div>
+    <div id="tab3" class="tab-content"  style="display: none;">
+        <div id="recordingsContainer"></div>
+    </div>
+</div>
+
+<script>
+    MyData = {
+        "stats": {
+            "events_count": 0,
+            "detections_count": 0,
+        },
+        "events": [],
+        "detections": []
+    }
+
+    function showContent(tabId, tabElement) {
+        // Hide all tab contents
+        const contents = document.querySelectorAll('.tab-content');
+        contents.forEach(content => content.style.display = 'none');
+
+        // Remove active class from all tabs
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(tab => tab.classList.remove('active'));
+
+        // Show the selected tab content
+        document.getElementById(tabId).style.display = 'block';
+
+        // Add active class to the clicked tab if tabElement is provided
+        if (tabElement) {
+            tabElement.classList.add('active');
         }
+    }
 
-        function showContent(tabId, tabElement) {
-            // Hide all tab contents
-            const contents = document.querySelectorAll('.tab-content');
-            contents.forEach(content => content.style.display = 'none');
+    function showRecordings(data) {
+        const container = document.getElementById('recordingsContainer');
+        container.innerHTML = '';
 
-            // Remove active class from all tabs
-            const tabs = document.querySelectorAll('.tab');
-            tabs.forEach(tab => tab.classList.remove('active'));
+        data.forEach(recording => {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <div class="recording">
+                    <a href="/recordings?name=${recording}" target="_blank">${recording}</a> <br>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
 
-            // Show the selected tab content
-            document.getElementById(tabId).style.display = 'block';
-
-            // Add active class to the clicked tab if tabElement is provided
-            if (tabElement) {
-                tabElement.classList.add('active');
-            }
+    async function fetchEvents() {
+        const response = await fetch('/api/events');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
         }
+        const data = await response.json();
+        displayEvents(data);
+    }
 
-        function showRecordings(data) {
-            const container = document.getElementById('recordingsContainer');
-            container.innerHTML = '';
-
-            data.forEach(recording => {
-                const div = document.createElement('div');
-                div.innerHTML = `
-                    <div class="recording">
-                        <a href="/recordings?name=${recording}" target="_blank">${recording}</a> <br>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
+    async function fetchDetections() {
+        const response = await fetch('/api/detections');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
         }
+        const data = await response.json();
+        displayDetections(data);
+    }
 
-        async function fetchEvents() {
-            const response = await fetch('/api/events');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const data = await response.json();
-            displayEvents(data);
+    async function fetchStats() {
+        const response = await fetch('/api/stats');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
         }
+        const data = await response.json();
 
-        async function fetchDetections() {
-            const response = await fetch('/api/detections');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const data = await response.json();
-            displayDetections(data);
-        }
-
-        async function fetchStats() {
-            const response = await fetch('/api/stats');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const data = await response.json();
-
-            // Check if we need to update something
-            if (data.events_count > MyData.stats.events_count) {
-                fetchEvents();
-                fetchDetections();
-
-                // Store new stats
-                MyData.stats = data;
-
-                // Update UI
-                document.getElementById('stats-counter').textContent = `Events: ${data.events_count}`;
-                document.getElementById('detections-counter').textContent = `Detections: ${data.detections_count}`;
-            }
-        }
-
-        async function fetchRecordings() {
-            const response = await fetch('/api/recordings');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const data = await response.json();
-            showRecordings(data);
-        }
-
-        async function sendSave() {
-            const response = await fetch('/api/save');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const data = await response.json();
-        }
-
-        async function sendReset() {
-            const response = await fetch('/api/reset');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const data = await response.json();
-        }
-
-        async function sendTrace(name) {
-            const response = await fetch('/api/trace', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ "trace": name }),
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-        }
-
-        function BtnRefresh() {
+        // Check if we need to update something
+        if(data.events_count > MyData.stats.events_count) {
             fetchEvents();
             fetchDetections();
-        }
-        function BtnSave() {
-            sendSave();
-        }
-        function BtnReset() {
-            sendReset();
-        }
-        function BtnOpenEvents() {
-            window.open('/api/events', '_blank');
-        }
-        function BtnOpenDetections() {
-            window.open('/api/detections', '_blank');
-        }
-        function BtnStart() {
-            fetch('/api/start');
-        }
-        function BtnStop() {
-            fetch('/api/stop');
-        }
+        
+            // Store new stats
+            MyData.stats = data;
 
-        function setNewTrace(value) {
-            sendTrace(value);
+            // Update UI
+            document.getElementById('stats-counter').textContent = `Events: ${data.events_count}`;
+            document.getElementById('detections-counter').textContent = `Detections: ${data.detections_count}`;
         }
-        function setTrace() {
-            fetch('/api/trace')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('trace').value = data.trace;
-                });
+    }
+
+    async function fetchRecordings() {
+        const response = await fetch('/api/recordings');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
         }
+        const data = await response.json();
+        showRecordings(data);
+    }
 
-        showContent('tab1', null);  // show first tab
-        fetchStats(); // initial fetch
-        setInterval(fetchStats, 1 * 1000); // periodic check
+    async function sendSave() {
+        const response = await fetch('/api/save');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+    }
 
-        fetchRecordings();
-        setTrace();
-    </script>
+    async function sendReset() {
+        const response = await fetch('/api/reset');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+    }
+
+    async function sendTrace(name) {
+        const response = await fetch('/api/trace', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ "trace": name }),
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+    }
+
+    function BtnRefresh() {
+        fetchEvents();
+        fetchDetections();
+    }
+    function BtnSave() {
+        sendSave();
+    }
+    function BtnReset() {
+        sendReset();
+    }
+    function BtnOpenEvents() {
+        window.open('/api/events', '_blank');
+    }    
+    function BtnOpenDetections() {
+        window.open('/api/detections', '_blank');
+    }
+    function BtnStart() {
+        fetch('/api/start');
+    }
+    function BtnStop() {
+        fetch('/api/stop');
+    }
+
+    function setNewTrace(value) {
+        sendTrace(value);
+    }
+    function setTrace() {
+        fetch('/api/trace')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('trace').value = data.trace;
+            });
+    }
+
+    showContent('tab1', null);  // show first tab
+    fetchStats(); // initial fetch
+    setInterval(fetchStats, 1 * 1000); // periodic check
+
+    fetchRecordings();
+    setTrace();
+</script>
 
 </body>
 </html>
