@@ -95,7 +95,7 @@ Usage:
 
 ```
 
-Try: `.\RedEdr.exe --all --trace otepad`, and then start notepad 
+Try: `.\RedEdr.exe --all --trace notepad`, and then start notepad 
 (will be `notepad.exe` on Windows 10, `Notepad.exe` on Windows 11).
 
 
