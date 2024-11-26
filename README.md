@@ -12,7 +12,8 @@ RedEdr will observe one process, and identify malicious patterns.
 A normal EDR will observe all processes, and identify malicious processes. 
 
 It generates [JSON files](https://github.com/dobin/RedEdr/tree/master/Data)
-collecting [the telemetry](https://github.com/dobin/RedEdr/blob/master/Doc/captured_events.md) of your RedTeaming tools. 
+collecting [the telemetry](https://github.com/dobin/RedEdr/blob/master/Doc/captured_events.md) 
+of your RedTeaming tools. 
 
 
 **Note Nov. 2024 v0.2**: It works but its buggy.
@@ -21,8 +22,10 @@ not be able to be accessed anymore, and are broken until reboot.
 Use the web UI to start/stop tracing instead without killing RedEdr.exe.
 Also, RedEdr crashes sometimes. Also, sometimes meterpreter stops
 working (no full connection) without reason when under DLL injection, 
-which can be solved by just trying again. The last piece of the 
-puzzle, kernel based callstacks, is not implemented yet.
+which can be solved by just trying again. Using ETW-TI and DLL 
+injection at the same time will emit the DLL hooking events in ETW-TI, 
+so its recommended to not use them both at the same time. 
+The last piece of the puzzle, kernel based callstacks, is not implemented yet.
 
 
 ## Implemented Telemetry Consumers
