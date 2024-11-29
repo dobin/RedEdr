@@ -107,9 +107,20 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         size_t event_count = g_EventProducer.GetEventCount();
         int last_print = g_EventProducer.GetLastPrintIndex();
 
+        int num_kernel = g_Analyzer.num_kernel;
+        int num_etw = g_Analyzer.num_etw;
+        int num_etwti = g_Analyzer.num_etwti;
+        int num_dll = g_Analyzer.num_dll;
+
         std::stringstream ss;
         ss << "{ \"events_count\":" << event_count << ",";
         ss << "\"detections_count\":" << (last_print + 1) << "}"; // +1 so it looks nicer
+
+        ss << "\"num_kernel\":" << num_kernel << "}"; 
+        ss << "\"num_etw\":" << num_etw << "}";
+        ss << "\"num_etwti\":" << num_etwti << "}";
+        ss << "\"num_dll\":" << num_dll << "}";
+
         std::string stats = ss.str();
         res.set_content(stats, "application/json; charset=UTF-8");
     });

@@ -134,6 +134,11 @@ public:
 	// 
     std::vector<std::string> detections;
 	TargetInfo targetInfo;
+
+	int num_kernel = 0;
+	int num_etw = 0;
+	int num_etwti = 0;
+	int num_dll = 0;
 };
 
 

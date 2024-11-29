@@ -43,6 +43,7 @@ header {
     padding: 0px;
     background-color: rgb(27, 77, 24);
     border: 1px solid #ccc;
+    padding: 0.5em;
 }
 
 .event {

@@ -102,6 +102,21 @@ std::string sus_protect(std::string protect) {
 void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
     BOOL printed = FALSE;
 
+    if (j["type"] == "kernel") {
+		num_kernel += 1;
+    } 
+    else if (j["type"] == "dll") {
+		num_dll += 1;
+    }
+    else if (j["type"] == "etw") {
+        if (j["provider_name"] == "Microsoft-Windows-Threat-Intelligence") {
+            num_etwti += 1;
+        }
+        else {
+            num_etw += 1;
+        }
+    }
+
     if (!j.contains("type")) {
         LOG_A(LOG_WARNING, "No type? %s", j.dump().c_str());
         return;
