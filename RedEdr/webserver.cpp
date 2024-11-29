@@ -113,13 +113,14 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         int num_dll = g_Analyzer.num_dll;
 
         std::stringstream ss;
-        ss << "{ \"events_count\":" << event_count << ",";
-        ss << "\"detections_count\":" << (last_print + 1) << "}"; // +1 so it looks nicer
-
-        ss << "\"num_kernel\":" << num_kernel << "}"; 
-        ss << "\"num_etw\":" << num_etw << "}";
-        ss << "\"num_etwti\":" << num_etwti << "}";
-        ss << "\"num_dll\":" << num_dll << "}";
+        ss << "{ ";
+        ss << "\"events_count\":" << event_count << ",";
+        ss << "\"detections_count\":" << (last_print + 1) << ","; // +1 so it looks nicer
+        ss << "\"num_kernel\":" << num_kernel << ","; 
+        ss << "\"num_etw\":" << num_etw << ",";
+        ss << "\"num_etwti\":" << num_etwti << ",";
+        ss << "\"num_dll\":" << num_dll;
+        ss << "}";
 
         std::string stats = ss.str();
         res.set_content(stats, "application/json; charset=UTF-8");
