@@ -86,7 +86,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
 
     svr.Get("/api/events", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content(g_EventProducer.GetAllAsJson(), "application/json; charset=UTF-8");
+        res.set_content(g_Analyzer.GetAllAsJson(), "application/json; charset=UTF-8");
     });
 
     svr.Get("/api/detections", [](const httplib::Request&, httplib::Response& res) {
@@ -104,9 +104,8 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
 
     svr.Get("/api/stats", [](const httplib::Request&, httplib::Response& res) {
-        size_t event_count = g_EventProducer.GetEventCount();
-        int last_print = g_EventProducer.GetLastPrintIndex();
-
+        size_t event_count = g_EventProducer.GetCount();
+        size_t detections_count = g_Analyzer.GetDetectionsCount();
         int num_kernel = g_Analyzer.num_kernel;
         int num_etw = g_Analyzer.num_etw;
         int num_etwti = g_Analyzer.num_etwti;
@@ -115,8 +114,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         std::stringstream ss;
         ss << "{ ";
         ss << "\"events_count\":" << event_count << ",";
-        ss << "\"detections_count\":" << (last_print + 1) << ","; // +1 so it looks nicer
-        ss << "\"num_kernel\":" << num_kernel << ","; 
+        ss << "\"detections_count\":" << detections_count << ",";        ss << "\"num_kernel\":" << num_kernel << ","; 
         ss << "\"num_etw\":" << num_etw << ",";
         ss << "\"num_etwti\":" << num_etwti << ",";
         ss << "\"num_dll\":" << num_dll;
@@ -155,7 +153,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
 
     svr.Get("/api/save", [](const httplib::Request&, httplib::Response& res) {
         LOG_A(LOG_INFO, "Save stats");
-        g_EventProducer.SaveToFile();
+        g_Analyzer.SaveToFile();
     });
 
     svr.Get("/api/reset", [](const httplib::Request&, httplib::Response& res) {

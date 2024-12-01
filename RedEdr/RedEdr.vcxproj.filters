@@ -155,10 +155,10 @@
     <ClInclude Include="json.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="event_producer.h">
+    <ClInclude Include="manager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="manager.h">
+    <ClInclude Include="eventproducer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -329,8 +329,57 @@ void MyAnalyzer::AnalyzeEventStr(std::string eventStr) {
     }
 
     AnalyzeEventJson(j);
-
 }
+
+
+void MyAnalyzer::PrintAll() {
+    std::cout << "[" << std::endl;
+    output_mutex.lock();
+    for (const auto& str : output_entries) {
+        std::cout << str << ", " << std::endl;
+    }
+    output_mutex.unlock();
+    std::cout << "]" << std::endl;
+}
+
+
+void MyAnalyzer::SaveToFile() {
+    std::string data = GetAllAsJson();
+    std::string filename = "C:\\RedEdr\\Data\\" + get_time_for_file() + ".events.json";
+    write_file(filename, data);
+}
+
+
+std::string MyAnalyzer::GetAllAsJson() {
+    std::stringstream output;
+    output << "[";
+
+    output_mutex.lock();
+    for (auto it = output_entries.begin(); it != output_entries.end(); ++it) {
+        output << ReplaceAllA(*it, "\\", "\\\\");
+        if (std::next(it) != output_entries.end()) {
+            output << ",";  // Add comma only if it's not the last element
+        }
+    }
+    output_mutex.unlock();
+
+    output << "]";
+    return output.str();
+}
+
+
+void MyAnalyzer::AnalyzeNewEvents(std::vector<std::string> events) {
+
+    for (std::string& entry : events) {
+        g_Analyzer.AnalyzeEventStr(entry);
+    }
+}
+
+
+size_t MyAnalyzer::GetDetectionsCount() {
+    return detections.size();
+}
+
 
 DWORD WINAPI AnalyzerThread(LPVOID param) {
     LOG_A(LOG_INFO, "!Analyzer: Start thread");
@@ -344,13 +393,8 @@ DWORD WINAPI AnalyzerThread(LPVOID param) {
             break;
         }
         // get em events
-        std::vector<std::string> output_entries = g_EventProducer.GetEventsFrom();
-
-        // handle em
-        arrlen = output_entries.size();
-        for (std::string& entry : output_entries) {
-            g_Analyzer.AnalyzeEventStr(entry);
-        }
+        std::vector<std::string> new_entries = g_EventProducer.GetEvents();
+        g_Analyzer.AnalyzeNewEvents(new_entries);
     }
 
     LOG_A(LOG_INFO, "!Analyzer: Exit thread");

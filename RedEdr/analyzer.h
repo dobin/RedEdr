@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <mutex>
 
 #include "json.hpp"
 #include "ranges.h"
@@ -124,12 +125,14 @@ private:
 
 class MyAnalyzer {
 public:
-	void AnalyzeEventJson(nlohmann::json j);
-	void AnalyzeEventStr(std::string eventStr);
-    void AnalyzerNewDetection(Criticality c, std::string s);
+	void AnalyzeNewEvents(std::vector<std::string> events);
+	void PrintAll();
+	void SaveToFile();
+	std::string GetAllAsJson();
 
 	std::string GetAllDetectionsAsJson();
 	void ResetData();
+	size_t GetDetectionsCount();
 
 	// 
     std::vector<std::string> detections;
@@ -139,6 +142,14 @@ public:
 	int num_etw = 0;
 	int num_etwti = 0;
 	int num_dll = 0;
+
+private:
+	void AnalyzeEventJson(nlohmann::json j);
+	void AnalyzeEventStr(std::string eventStr);
+	void AnalyzerNewDetection(Criticality c, std::string s);
+
+	std::vector<std::string> output_entries;
+	std::mutex output_mutex;
 };
 
 

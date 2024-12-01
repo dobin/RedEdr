@@ -163,12 +163,12 @@
     <ClInclude Include="..\RedEdrShared\logging.h" />
     <ClInclude Include="..\RedEdrShared\loguru.hpp" />
     <ClInclude Include="analyzer.h" />
+    <ClInclude Include="eventproducer.h" />
     <ClInclude Include="manager.h" />
     <ClInclude Include="processcache.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="cxxops.hpp" />
     <ClInclude Include="dllinjector.h" />
-    <ClInclude Include="event_producer.h" />
     <ClInclude Include="json.hpp" />
     <ClInclude Include="kernelinterface.h" />
     <ClInclude Include="etwhandler.h" />

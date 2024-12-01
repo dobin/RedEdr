@@ -14,8 +14,66 @@
 #include "json.hpp"
 
 
-// Create us
+/* Retrieves events from all subsystems:
+     - ETW
+     - ETWTI
+     - Kernel
+     - DLL
+    as "text", convert to json-text, and buffer em. 
+
+    It mostly makes sure all events are collected as fast
+    as possible, with as little processing as possible.
+
+    Analyzer will collect the events regularly.
+*/
+
+// Global
 EventProducer g_EventProducer;
+
+
+void EventProducer::do_output(std::wstring eventWstr) {
+    // Convert to json and add it to the list
+    std::string json = ConvertLogLineToJsonEvent(eventWstr);
+    output_mutex.lock();
+    output_entries.push_back(json);
+    output_mutex.unlock();
+    output_count++;
+
+    // print it
+    if (g_config.hide_full_output) {
+        if (output_count >= 100) {
+            if (output_count % 100 == 0) {
+                std::wcout << L"O";
+            }
+        }
+        else if (output_count >= 10) {
+            if (output_count % 10 == 0) {
+                std::wcout << L"o";
+            }
+        }
+        else {
+            std::wcout << L".";
+        }
+    }
+    else {
+        std::wcout << eventWstr << L"\n";
+    }
+
+    // Notify the analyzer thread
+    cv.notify_one();
+}
+
+
+std::vector<std::string> EventProducer::GetEvents() {
+    std::vector<std::string> newEvents;
+
+    output_mutex.lock();
+    newEvents = output_entries;
+    output_entries.clear();
+    output_mutex.unlock();
+
+    return newEvents;
+}
 
 
 // Function to parse the input and convert it into UTF8 JSON
@@ -90,59 +148,16 @@ std::string EventProducer::ConvertLogLineToJsonEvent(std::wstring input) {
 }
 
 
-void EventProducer::do_output(std::wstring eventWstr) {
-    // Convert to json and add it to the global list
-    std::string json = ConvertLogLineToJsonEvent(eventWstr);
-    output_mutex.lock();
-    output_entries.push_back(json);
-    output_mutex.unlock();
-    output_count++;
+BOOL EventProducer::HasMoreEvents() {
+    // Lock for now
+    std::lock_guard<std::mutex> lock(output_mutex);
 
-    // print it
-    if (g_config.hide_full_output) {
-        if (output_count >= 100) {
-            if (output_count % 100 == 0) {
-                std::wcout << L"O";
-            }
-        }
-        else if (output_count >= 10) {
-            if (output_count % 10 == 0) {
-                std::wcout << L"o";
-            }
-        }
-        else {
-            std::wcout << L".";
-        }
+    if (output_entries.size() > 0) {
+        return TRUE;
     }
     else {
-        std::wcout << eventWstr << L"\n";
+        return false;
     }
-
-    // Notify the analyzer thread
-    cv.notify_one();
-}
-
-
-BOOL EventProducer::HasMoreEvents() {
-    // No lock?
-    return (last < static_cast<int>(output_entries.size()) - 1);
-}
-
-
-void EventProducer::ResetData() {
-    last = -1;
-    output_entries.clear();
-    output_count = 0;
-}
-
-
-size_t EventProducer::GetEventCount() {
-    return output_entries.size();
-}
-
-
-int EventProducer::GetLastPrintIndex() {
-    return last;
 }
 
 
@@ -151,62 +166,14 @@ void EventProducer::Stop() {
     g_EventProducer.cv.notify_all();
 }
 
-// Returns a vector of all new events starting from last (which starts at -1)
-std::vector<std::string> EventProducer::GetEventsFrom() {
-    std::vector<std::string> newEvents;
 
-    // If the last index is valid and there are more events, return the new ones
+void EventProducer::ResetData() {
     output_mutex.lock();
-    if (last >= static_cast<int>(output_entries.size())) {
-        return newEvents;
-    }
-    if (last == -1) {
-        // Get all entries
-        newEvents.assign(output_entries.begin(), output_entries.end());
-    }
-    else {
-        // Get new entries
-        newEvents.assign(output_entries.begin() + last + 1, output_entries.end());
-    }
+    output_entries.clear();
     output_mutex.unlock();
-
-    last += (int) newEvents.size();
-
-    return newEvents;
 }
 
 
-void EventProducer::PrintAll() {
-    std::cout << "[" << std::endl;
-    output_mutex.lock();
-    for (const auto& str : output_entries) {
-        std::cout << str << ", " << std::endl;
-    }
-    output_mutex.unlock();
-    std::cout << "]" << std::endl;
-}
-
-
-std::string EventProducer::GetAllAsJson() {
-    std::stringstream output;
-    output << "[";
-
-    output_mutex.lock();
-    for (auto it = output_entries.begin(); it != output_entries.end(); ++it) {
-        output << ReplaceAllA(*it, "\\", "\\\\");
-        if (std::next(it) != output_entries.end()) {
-            output << ",";  // Add comma only if it's not the last element
-        }
-    }
-    output_mutex.unlock();
-
-    output << "]";
-    return output.str();
-}
-
-
-void EventProducer::SaveToFile() {
-	std::string data = GetAllAsJson();
-    std::string filename = "C:\\RedEdr\\Data\\" + get_time_for_file() + ".events.json";
-	write_file(filename, data);
+unsigned int EventProducer::GetCount() {
+    return output_count;
 }
