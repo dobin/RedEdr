@@ -149,7 +149,7 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
     if (j["type"] == "dll" && j["func"] == "AllocateVirtualMemory") {
         uint64_t addr = std::stoull(j["addr"].get<std::string>(), nullptr, 16);
         uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 10);
-		std::string protection = j["protect"];
+        std::string protection = j["protect"];
 
         //std::string jsonString = j.dump();
         //std::cout << "Compact JSON: " << jsonString << std::endl;
@@ -242,7 +242,7 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
     }
 
     // Allocate or map memory with RWX protection
-    if (j["protect"] == "RWX") {
+    if (j.value("protect", "") == "RWX") {
         j["detection"] += "RWX";
         Criticality c = Criticality::HIGH;
 
