@@ -13,21 +13,25 @@ function displayEvents(events) {
         let eventDetails = '';
         let eventLong = '';
         let eventCallstack = '';
-        for ([key, value] of Object.entries(event)) {
+        let detection = '';
+        for (const [key, value] of Object.entries(event)) {
             // header
-            if (key === 'type' || key === 'time' || key === 'pid' || key === 'tid' || 
-                key === 'krn_pid' || key === 'ppid' || key === 'observe' ||
-                key === 'thread_id' || key === 'provider_name'
-            ) {
+            if (key === 'type' || key === 'time' || key === 'pid' || key === 'tid' ||
+                key === 'krn_pid' || key === 'ppid' || key === 'observe') {
                 eventHeader += `<span class="highlight_a">${key}:${value}</span> `;
-            } else if (key === 'func' || key === 'callback' || key === 'event') {
+            } else if (key === 'func' || key === 'callback') {
                 eventTitle += `<span class="highlight_b"><b>${value}</b></span> `;
 
-            // callstack
-            } else if (key == 'callstack') { 
+                // detection
+            } else if (key === 'detection') {
+                detection = `<span class="highlight_d">detection:<br>${JSON.stringify(value, null, 0)}</span>`;
+                eventDetails += `<span class="highlight_d">${key}:${value}</span> `;
+
+                // callstack
+            } else if (key == 'callstack') {
                 eventCallstack = '<span class="highlight_d">callstack:<br>' + JSON.stringify(value, null, 0) + "</span>";
 
-            // important
+                // important
             } else if (key === 'addr') {
                 eventDetails += `<b>${key}:${value}</b> `;
             } else if (key === 'protect') {
@@ -35,33 +39,24 @@ function displayEvents(events) {
             } else if (key === 'handle' && value != "FFFFFFFFFFFFFFFF") {
                 eventDetails += `<b>${key}:${value}</b> `;
 
-            // long
-            } else if (key == 'name' || key == 'parent_name' || 
-                        key == 'image_path' || key == 'commandline' ||
-                        key == "working_dir") 
-            { 
+                // long
+            } else if (key == 'name' || key == 'parent_name' ||
+                key == 'image_path' || key == 'commandline' ||
+                key == "working_dir") {
                 eventLong += `<span class="highlight_c">${key}:${value}</span> <br>`;
 
-            // rest
+                // rest
             } else {
-                // ignore some ETWTI fields for now
-                if (! key.startsWith("Calling") && 
-                    ! key.startsWith("Target") && 
-                    ! key.startsWith("Original"))
-                {
-                    // translate some ETWTI for now
-                    if (key == 'ProtectionMask' || key == 'LastProtectionMask') {
-                        value = translateProtectionFlags(value);
-                    }
-                    eventDetails += `<span class="highlight_c">${key}:${value}</span> `;
-                }
-                
+                eventDetails += `<span class="highlight_c">${key}:${value}</span> `;
             }
         }
 
-        eventDiv.innerHTML = eventTitle + eventHeader + "<br>" 
-        + eventDetails + (eventDetails.length != 0 ? "<br>" : "") 
-        + eventLong + eventCallstack;
+        eventDiv.innerHTML = eventTitle + eventHeader + "<br>"
+            + eventDetails + (eventDetails.length != 0 ? "<br>" : "")
+            + eventLong + eventCallstack
+        if (detection.length != 0) {
+            eventDiv.innerHTML += "<br>" + detection;
+        }
 
         eventContainer.appendChild(eventDiv);
     });
@@ -78,24 +73,4 @@ function displayDetections(detections) {
         detectionDiv.textContent = `${index}: ${detection}`;
         container.appendChild(detectionDiv);
     });
-}
-
-function translateProtectionFlags(flags) {
-    // Define the mapping of protection flags to "rwx" permissions
-    const protectionMapping = {
-        0x01: "---", // PAGE_NOACCESS (no access, for completeness)
-        0x02: "r--", // PAGE_READONLY
-        0x04: "rw-", // PAGE_READWRITE
-        0x08: "rw-c", // PAGE_WRITECOPY
-        0x10: "--x", // PAGE_EXECUTE
-        0x20: "r-x", // PAGE_EXECUTE_READ
-        0x40: "rwx", // PAGE_EXECUTE_READWRITE
-        0x80: "rwxc", // PAGE_EXECUTE_WRITECOPY
-    };
-
-    // Mask out modifiers that don't affect basic permissions
-    const basicFlags = flags & 0xFF;
-
-    // Get the permissions string from the mapping
-    return protectionMapping[basicFlags] || "unknown";
 }
