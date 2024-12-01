@@ -14,75 +14,22 @@
 
 HANDLE analyzer_thread;
 
-MyAnalyzer g_Analyzer;
+Analyzer g_Analyzer;
 
 
-std::string CriticalityToString(Criticality c) {
-    switch (c) {
-    case Criticality::LOW:   return "LOW";
-    case Criticality::MEDIUM: return "MEDIUM";
-    case Criticality::HIGH:  return "HIGH";
-    default:          return "UNKNOWN";
-    }
-}
-
-void PrintEvent(nlohmann::json j) {
-    std::string output = j.dump();
-    LOG_A(LOG_INFO, "Event: %s", output.c_str());
-}
-
-//
+// Private
+std::string CriticalityToString(Criticality c);
+void PrintEvent(nlohmann::json j);
+uint64_t AlignToPage(uint64_t addr);
+std::string getLastTwoFields(const std::string& input);
 
 
-void MyAnalyzer::ResetData() {
-	detections.clear();
-}
-
-
-std::string MyAnalyzer::GetAllDetectionsAsJson() {
-    nlohmann::json jsonArray = detections;
-    return jsonArray.dump();
-}
-
-
-void add_to_array(nlohmann::json& json_obj, const std::string& key, const std::string& value) {
-    // Check if the key exists and is an array
-    if (!json_obj.contains(key) || !json_obj[key].is_array()) {
-        json_obj[key] = nlohmann::json::array(); // Initialize as an array if not already
-    }
-        json_obj[key].push_back(value); // Add the value to the array
-    };
-
-void MyAnalyzer::AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::string s) {
+void Analyzer::AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::string s) {
     std::string o = CriticalityToString(c) + ": " + s;
     detections.push_back(o);
-    //LOG_A(LOG_INFO, "Analyzer: %s", o.c_str());
     j["detections"] += o;
+    //LOG_A(LOG_INFO, "Analyzer: %s", o.c_str());
     //LOG_A(LOG_INFO, "Analyzer: %s", j.dump().c_str());
-}
-
-
-uint64_t AlignToPage(uint64_t addr) {
-    constexpr uint64_t pageSize = 4096;
-    return addr & ~(pageSize - 1);
-}
-
-
-std::string getLastTwoFields(const std::string& input) {
-    // Find the last semicolon
-    size_t lastSemicolon = input.rfind(';');
-    if (lastSemicolon == std::string::npos) {
-        return "";  // No semicolons found, return empty
-    }
-
-    // Find the second-to-last semicolon by searching before the last semicolon
-    size_t secondLastSemicolon = input.rfind(';', lastSemicolon - 1);
-    if (secondLastSemicolon == std::string::npos) {
-        return "";  // Less than two fields, return empty
-    }
-
-    // Extract substring from the second-to-last semicolon to the end of the string
-    return input.substr(secondLastSemicolon + 1);
 }
 
 
@@ -109,7 +56,7 @@ std::string sus_protect(std::string protect) {
 }
 
 
-void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
+void Analyzer::AnalyzeEventJson(nlohmann::json j) {
     BOOL printed = FALSE;
 
     if (j["type"] == "kernel") {
@@ -326,7 +273,7 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
 }
 
 
-void MyAnalyzer::AnalyzeEventStr(std::string eventStr) {
+void Analyzer::AnalyzeEventStr(std::string eventStr) {
     //std::cout << L"Processing: " << eventStr << std::endl;
     nlohmann::json j;
     try
@@ -344,30 +291,43 @@ void MyAnalyzer::AnalyzeEventStr(std::string eventStr) {
 }
 
 
-void MyAnalyzer::SaveToFile() {
-    std::string data = GetAllAsJson();
-    std::string filename = "C:\\RedEdr\\Data\\" + get_time_for_file() + ".events.json";
-    write_file(filename, data);
-}
-
-
-std::string MyAnalyzer::GetAllAsJson() {
-    return nlohmann::json(json_entries).dump();
-    //output << ReplaceAllA(*it, "\\", "\\\\");
-}
-
-
-void MyAnalyzer::AnalyzeNewEvents(std::vector<std::string> events) {
+void Analyzer::AnalyzeNewEvents(std::vector<std::string> events) {
     for (std::string& entry : events) {
         g_Analyzer.AnalyzeEventStr(entry);
     }
 }
 
 
-size_t MyAnalyzer::GetDetectionsCount() {
+void Analyzer::ResetData() {
+    detections.clear();
+}
+
+
+std::string Analyzer::GetAllDetectionsAsJson() {
+    nlohmann::json jsonArray = detections;
+    return jsonArray.dump();
+}
+
+
+size_t Analyzer::GetDetectionsCount() {
     return detections.size();
 }
 
+
+std::string Analyzer::GetAllAsJson() {
+    return nlohmann::json(json_entries).dump();
+    //output << ReplaceAllA(*it, "\\", "\\\\");
+}
+
+
+void Analyzer::SaveToFile() {
+    std::string data = GetAllAsJson();
+    std::string filename = "C:\\RedEdr\\Data\\" + get_time_for_file() + ".events.json";
+    write_file(filename, data);
+}
+
+
+// Module functions
 
 DWORD WINAPI AnalyzerThread(LPVOID param) {
     LOG_A(LOG_INFO, "!Analyzer: Start thread");
@@ -405,4 +365,50 @@ void StopAnalyzer() {
     if (analyzer_thread != NULL) {
         g_EventProducer.Stop();
     }
+}
+
+
+
+
+/** Utils **/
+
+
+std::string CriticalityToString(Criticality c) {
+    switch (c) {
+    case Criticality::LOW:   return "LOW";
+    case Criticality::MEDIUM: return "MEDIUM";
+    case Criticality::HIGH:  return "HIGH";
+    default:          return "UNKNOWN";
+    }
+}
+
+
+
+void PrintEvent(nlohmann::json j) {
+    std::string output = j.dump();
+    LOG_A(LOG_INFO, "Event: %s", output.c_str());
+}
+
+
+uint64_t AlignToPage(uint64_t addr) {
+    constexpr uint64_t pageSize = 4096;
+    return addr & ~(pageSize - 1);
+}
+
+
+std::string getLastTwoFields(const std::string& input) {
+    // Find the last semicolon
+    size_t lastSemicolon = input.rfind(';');
+    if (lastSemicolon == std::string::npos) {
+        return "";  // No semicolons found, return empty
+    }
+
+    // Find the second-to-last semicolon by searching before the last semicolon
+    size_t secondLastSemicolon = input.rfind(';', lastSemicolon - 1);
+    if (secondLastSemicolon == std::string::npos) {
+        return "";  // Less than two fields, return empty
+    }
+
+    // Extract substring from the second-to-last semicolon to the end of the string
+    return input.substr(secondLastSemicolon + 1);
 }

@@ -123,7 +123,7 @@ private:
 
 // Analyzer
 
-class MyAnalyzer {
+class Analyzer {
 public:
 	void AnalyzeNewEvents(std::vector<std::string> events);
 	void SaveToFile();
@@ -147,7 +147,6 @@ public:
 	void AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::string s);
 
 private:
-	//std::vector<std::string> output_entries;
 	std::vector<nlohmann::json> json_entries;
 	std::mutex output_mutex;
 };
@@ -157,4 +156,4 @@ DWORD WINAPI AnalyzerThread(LPVOID param);
 int InitializeAnalyzer(std::vector<HANDLE>& threads);
 void StopAnalyzer();
 
-extern MyAnalyzer g_Analyzer;
+extern Analyzer g_Analyzer;
