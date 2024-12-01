@@ -53,11 +53,11 @@ void add_to_array(nlohmann::json& json_obj, const std::string& key, const std::s
         json_obj[key].push_back(value); // Add the value to the array
     };
 
-void MyAnalyzer::AnalyzerNewDetection(nlohmann::json j, Criticality c, std::string s) {
+void MyAnalyzer::AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::string s) {
     std::string o = CriticalityToString(c) + ": " + s;
     detections.push_back(o);
     //LOG_A(LOG_INFO, "Analyzer: %s", o.c_str());
-    add_to_array(j, "detections", o);
+    j["detections"] += o;
     //LOG_A(LOG_INFO, "Analyzer: %s", j.dump().c_str());
 }
 

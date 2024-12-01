@@ -144,7 +144,7 @@ public:
 
 	void AnalyzeEventJson(nlohmann::json j);
 	void AnalyzeEventStr(std::string eventStr);
-	void AnalyzerNewDetection(nlohmann::json j, Criticality c, std::string s);
+	void AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::string s);
 
 private:
 	//std::vector<std::string> output_entries;
