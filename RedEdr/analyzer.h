@@ -142,11 +142,11 @@ public:
 	int num_etwti = 0;
 	int num_dll = 0;
 
-private:
 	void AnalyzeEventJson(nlohmann::json j);
 	void AnalyzeEventStr(std::string eventStr);
-	void AnalyzerNewDetection(Criticality c, std::string s);
+	void AnalyzerNewDetection(nlohmann::json j, Criticality c, std::string s);
 
+private:
 	//std::vector<std::string> output_entries;
 	std::vector<nlohmann::json> json_entries;
 	std::mutex output_mutex;

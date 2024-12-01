@@ -45,10 +45,20 @@ std::string MyAnalyzer::GetAllDetectionsAsJson() {
 }
 
 
-void MyAnalyzer::AnalyzerNewDetection(Criticality c, std::string s) {
+void add_to_array(nlohmann::json& json_obj, const std::string& key, const std::string& value) {
+    // Check if the key exists and is an array
+    if (!json_obj.contains(key) || !json_obj[key].is_array()) {
+        json_obj[key] = nlohmann::json::array(); // Initialize as an array if not already
+    }
+        json_obj[key].push_back(value); // Add the value to the array
+    };
+
+void MyAnalyzer::AnalyzerNewDetection(nlohmann::json j, Criticality c, std::string s) {
     std::string o = CriticalityToString(c) + ": " + s;
     detections.push_back(o);
     //LOG_A(LOG_INFO, "Analyzer: %s", o.c_str());
+    add_to_array(j, "detections", o);
+    //LOG_A(LOG_INFO, "Analyzer: %s", j.dump().c_str());
 }
 
 
@@ -165,7 +175,7 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
         if (j["handle"] != "0xffffffffffffffff") {
             std::stringstream ss;
             ss << "Analyzer: AllocateVirtualMemory in foreign process " << j["handle"].get<std::string>();
-            AnalyzerNewDetection(Criticality::HIGH, ss.str());
+            AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
         }
     }
 
@@ -173,7 +183,7 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
         if (j["handle"] != "0xffffffffffffffff") {
             std::stringstream ss;
             ss << "Analyzer: WriteVirtualMemory in foreign process " << j["handle"].get<std::string>();
-            AnalyzerNewDetection(Criticality::HIGH, ss.str());
+            AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
         }
     }
 
@@ -181,7 +191,7 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
         if (j["handle"] != "0xffffffffffffffff") {
             std::stringstream ss;
             ss << "Analyzer: CreateRemoteThread in foreign process " << j["handle"].get<std::string>();
-            AnalyzerNewDetection(Criticality::HIGH, ss.str());
+            AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
         }
     }
 
@@ -226,7 +236,7 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
 
             std::string sus = sus_protect(region->protection);
             if (sus != "") {
-                AnalyzerNewDetection(Criticality::HIGH, sus);
+                AnalyzerNewDetection(j, Criticality::HIGH, sus);
             }
         }
     }
@@ -248,7 +258,7 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
             //ss << " SectionHandle: " << j["section_handle"].get<std::string>();
             c = Criticality::HIGH;
         }
-        AnalyzerNewDetection(c, ss.str());
+        AnalyzerNewDetection(j, c, ss.str());
         printed = TRUE;
     }
 
@@ -306,7 +316,7 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
                 s << " addr " << callstack_entry["addr"].get<std::string>();
                 s << " protect " << callstack_entry["protect"].get<std::string>();
                 s << " type " << callstack_entry["type"].get<std::string>();
-                AnalyzerNewDetection(cm.get(), s.str());
+                AnalyzerNewDetection(j, cm.get(), s.str());
             }
             idx += 1;
         }
