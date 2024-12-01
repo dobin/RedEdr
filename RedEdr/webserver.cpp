@@ -110,14 +110,17 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         int num_etw = g_Analyzer.num_etw;
         int num_etwti = g_Analyzer.num_etwti;
         int num_dll = g_Analyzer.num_dll;
+		int num_processcache = g_ProcessCache.GetCacheCount();
 
         std::stringstream ss;
         ss << "{ ";
         ss << "\"events_count\":" << event_count << ",";
-        ss << "\"detections_count\":" << detections_count << ",";        ss << "\"num_kernel\":" << num_kernel << ","; 
+        ss << "\"detections_count\":" << detections_count << ",";        
+        ss << "\"num_kernel\":" << num_kernel << ","; 
         ss << "\"num_etw\":" << num_etw << ",";
         ss << "\"num_etwti\":" << num_etwti << ",";
         ss << "\"num_dll\":" << num_dll;
+        ss << "\"num_process_cache\":" << num_processcache;
         ss << "}";
 
         std::string stats = ss.str();

@@ -18,6 +18,7 @@
 class ProcessCache {
 public:
     ProcessCache();
+    size_t GetCacheCount();
     void addObject(DWORD id, const Process& obj);
     BOOL containsObject(DWORD pid);
     Process* getObject(DWORD id);

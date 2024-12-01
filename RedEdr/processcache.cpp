@@ -21,8 +21,8 @@ std::mutex cache_mutex;
 
 
 ProcessCache::ProcessCache() {
-
 }
+
 
 // Add an object to the cache
 void ProcessCache::addObject(DWORD id, const Process& obj) {
@@ -100,4 +100,10 @@ void ProcessCache::removeAll() {
     cache_mutex.lock();
     cache.clear();
     cache_mutex.unlock();
+}
+
+
+size_t ProcessCache::GetCacheCount() {
+    size_t s = cache.size();
+    return s;
 }
