@@ -126,7 +126,6 @@ private:
 class MyAnalyzer {
 public:
 	void AnalyzeNewEvents(std::vector<std::string> events);
-	void PrintAll();
 	void SaveToFile();
 	std::string GetAllAsJson();
 
@@ -148,7 +147,8 @@ private:
 	void AnalyzeEventStr(std::string eventStr);
 	void AnalyzerNewDetection(Criticality c, std::string s);
 
-	std::vector<std::string> output_entries;
+	//std::vector<std::string> output_entries;
+	std::vector<nlohmann::json> json_entries;
 	std::mutex output_mutex;
 };
 

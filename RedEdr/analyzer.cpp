@@ -311,6 +311,8 @@ void MyAnalyzer::AnalyzeEventJson(nlohmann::json j) {
             idx += 1;
         }
     }
+
+    json_entries.push_back(j);
 }
 
 
@@ -332,17 +334,6 @@ void MyAnalyzer::AnalyzeEventStr(std::string eventStr) {
 }
 
 
-void MyAnalyzer::PrintAll() {
-    std::cout << "[" << std::endl;
-    output_mutex.lock();
-    for (const auto& str : output_entries) {
-        std::cout << str << ", " << std::endl;
-    }
-    output_mutex.unlock();
-    std::cout << "]" << std::endl;
-}
-
-
 void MyAnalyzer::SaveToFile() {
     std::string data = GetAllAsJson();
     std::string filename = "C:\\RedEdr\\Data\\" + get_time_for_file() + ".events.json";
@@ -351,25 +342,12 @@ void MyAnalyzer::SaveToFile() {
 
 
 std::string MyAnalyzer::GetAllAsJson() {
-    std::stringstream output;
-    output << "[";
-
-    output_mutex.lock();
-    for (auto it = output_entries.begin(); it != output_entries.end(); ++it) {
-        output << ReplaceAllA(*it, "\\", "\\\\");
-        if (std::next(it) != output_entries.end()) {
-            output << ",";  // Add comma only if it's not the last element
-        }
-    }
-    output_mutex.unlock();
-
-    output << "]";
-    return output.str();
+    return nlohmann::json(json_entries).dump();
+    //output << ReplaceAllA(*it, "\\", "\\\\");
 }
 
 
 void MyAnalyzer::AnalyzeNewEvents(std::vector<std::string> events) {
-
     for (std::string& entry : events) {
         g_Analyzer.AnalyzeEventStr(entry);
     }
