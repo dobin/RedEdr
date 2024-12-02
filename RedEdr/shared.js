@@ -13,7 +13,7 @@ function displayEvents(events) {
         let eventDetails = '';
         let eventLong = '';
         let eventCallstack = '';
-        let detection = '';
+        let detections = '';
         for (const [key, value] of Object.entries(event)) {
             // header
             if (key === 'type' || key === 'time' || key === 'pid' || key === 'tid' ||
@@ -23,9 +23,8 @@ function displayEvents(events) {
                 eventTitle += `<span class="highlight_b"><b>${value}</b></span> `;
 
                 // detection
-            } else if (key === 'detection') {
-                detection = `<span class="highlight_d">detection:<br>${JSON.stringify(value, null, 0)}</span>`;
-                eventDetails += `<span class="highlight_d">${key}:${value}</span> `;
+            } else if (key === 'detections') {
+                detections = `<span class="highlight_e">detections:<br>${JSON.stringify(value, null, 0)}</span>`;
 
                 // callstack
             } else if (key == 'callstack') {
@@ -54,8 +53,8 @@ function displayEvents(events) {
         eventDiv.innerHTML = eventTitle + eventHeader + "<br>"
             + eventDetails + (eventDetails.length != 0 ? "<br>" : "")
             + eventLong + eventCallstack
-        if (detection.length != 0) {
-            eventDiv.innerHTML += "<br>" + detection;
+        if (detections.length != 0) {
+            eventDiv.innerHTML += "<br>" + detections;
         }
 
         eventContainer.appendChild(eventDiv);

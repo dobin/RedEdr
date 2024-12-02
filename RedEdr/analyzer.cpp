@@ -28,8 +28,8 @@ void Analyzer::AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::strin
     std::string o = CriticalityToString(c) + ": " + s;
     detections.push_back(o);
     j["detections"] += o;
-    //LOG_A(LOG_INFO, "Analyzer: %s", o.c_str());
-    //LOG_A(LOG_INFO, "Analyzer: %s", j.dump().c_str());
+    //LOG_A(LOG_INFO, "%s", o.c_str());
+    //LOG_A(LOG_INFO, "%s", j.dump().c_str());
 }
 
 
@@ -104,7 +104,7 @@ void Analyzer::AnalyzeEventJson(nlohmann::json j) {
         addr = AlignToPage(addr);
         MemoryRegion* memoryRegion = targetInfo.GetMemoryRegion(addr);
         if (memoryRegion != NULL) {
-            //LOG_A(LOG_WARNING, "Analyzer: Allocate Memory ALREADY FOUND??! 0x%llx %llu end:0x%llx",
+            //LOG_A(LOG_WARNING, "Allocate Memory ALREADY FOUND??! 0x%llx %llu end:0x%llx",
             //   addr, size, addr+size);
             //LOG_A(LOG_INFO, "              : %s 0x%llx %llu end:0x%llx %s",
             //    region->name.c_str(), region->addr, region->size,
@@ -113,7 +113,7 @@ void Analyzer::AnalyzeEventJson(nlohmann::json j) {
             memoryRegion->protection += ";Alloc:" + protection;
         }
         else {
-            //LOG_A(LOG_WARNING, "Analyzer: Allocate Memory new: 0x%llx %llu",
+            //LOG_A(LOG_WARNING, "Allocate Memory new: 0x%llx %llu",
             //    addr, size);
             memoryRegion = new MemoryRegion("Allocated", addr, size, protection);
             targetInfo.AddMemoryRegion(addr, memoryRegion);
@@ -121,7 +121,7 @@ void Analyzer::AnalyzeEventJson(nlohmann::json j) {
 
         if (j["handle"] != "0xffffffffffffffff") {
             std::stringstream ss;
-            ss << "Analyzer: AllocateVirtualMemory in foreign process " << j["handle"].get<std::string>();
+            ss << "AllocateVirtualMemory in foreign process " << j["handle"].get<std::string>();
             AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
         }
     }
@@ -129,7 +129,7 @@ void Analyzer::AnalyzeEventJson(nlohmann::json j) {
     if (j["type"] == "dll" && j["func"] == "WriteVirtualMemory") {
         if (j["handle"] != "0xffffffffffffffff") {
             std::stringstream ss;
-            ss << "Analyzer: WriteVirtualMemory in foreign process " << j["handle"].get<std::string>();
+            ss << "WriteVirtualMemory in foreign process " << j["handle"].get<std::string>();
             AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
         }
     }
@@ -137,7 +137,7 @@ void Analyzer::AnalyzeEventJson(nlohmann::json j) {
     if (j["type"] == "dll" && j["func"] == "CreateRemoteThread") {
         if (j["handle"] != "0xffffffffffffffff") {
             std::stringstream ss;
-            ss << "Analyzer: CreateRemoteThread in foreign process " << j["handle"].get<std::string>();
+            ss << "CreateRemoteThread in foreign process " << j["handle"].get<std::string>();
             AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
         }
     }
@@ -169,7 +169,7 @@ void Analyzer::AnalyzeEventJson(nlohmann::json j) {
         // Check if exists
         MemoryRegion* memoryRegion = targetInfo.GetMemoryRegion(addr);
         if (memoryRegion == NULL) {
-			//LOG_A(LOG_WARNING, "Analyzer: ProtectVirtualMemory region 0x%llx not found. Adding.",
+			//LOG_A(LOG_WARNING, "ProtectVirtualMemory region 0x%llx not found. Adding.",
             //    addr);
             MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
             targetInfo.AddMemoryRegion(addr, region);
@@ -178,7 +178,7 @@ void Analyzer::AnalyzeEventJson(nlohmann::json j) {
 			// Update protection
 			MemoryRegion* region = targetInfo.GetMemoryRegion(addr);
 			region->protection += ";" + protection;
-			//LOG_A(LOG_INFO, "Analyzer: ProtectVirtualMemory: %s 0x%llx 0x%llx %s",
+			//LOG_A(LOG_INFO, "ProtectVirtualMemory: %s 0x%llx 0x%llx %s",
 			//	name.c_str(), addr, size, protection.c_str());
 
             std::string sus = sus_protect(region->protection);
@@ -194,7 +194,7 @@ void Analyzer::AnalyzeEventJson(nlohmann::json j) {
         Criticality c = Criticality::HIGH;
 
         std::stringstream ss;
-        ss << "Analyzer: Function " << j["func"].get<std::string>() << " doing RWX";
+        ss << "Function " << j["func"].get<std::string>() << " doing RWX";
         ss << " with size " << j["size"].get<std::string>();
 
         if (j["func"] == "MapViewOfSection") {
@@ -255,11 +255,11 @@ void Analyzer::AnalyzeEventJson(nlohmann::json j) {
                 }
 
                 std::stringstream s;
-                s << "Analyzer: Suspicious callstack " << idx << " of " << j["callstack"].size() << " by " << j["func"].get<std::string>();
-                if (j["func"] == "ProtectVirtualMemory") {
-                    s << " destination " << j["addr"].get<std::string>();
+                s << "Suspicious callstack " << idx << " of " << j["callstack"].size() << " by " << j["func"].get<std::string>();
+                /*if (j["func"] == "ProtectVirtualMemory") {
+                    s << " addr " << j["addr"].get<std::string>();
                     s << " protect " << j["protect"].get<std::string>();
-                }
+                }*/
                 s << " addr " << callstack_entry["addr"].get<std::string>();
                 s << " protect " << callstack_entry["protect"].get<std::string>();
                 s << " type " << callstack_entry["type"].get<std::string>();
