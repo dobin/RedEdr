@@ -64,11 +64,12 @@ LARGE_INTEGER get_time() {
 
 
 std::wstring format_wstring(const wchar_t* format, ...) {
-    wchar_t buffer[DATA_BUFFER_SIZE];
+    // +1024 needed for some reason, maybe the format string itself
+    wchar_t buffer[DATA_BUFFER_SIZE+1024];
 
     va_list args;
     va_start(args, format);
-    vswprintf(buffer, DATA_BUFFER_SIZE, format, args);
+    vswprintf(buffer, DATA_BUFFER_SIZE+1024, format, args);
     va_end(args);
 
     return std::wstring(buffer);

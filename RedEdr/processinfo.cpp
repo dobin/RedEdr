@@ -67,7 +67,7 @@ bool QueryMemoryRegions(HANDLE hProcess) {
     MEMORY_BASIC_INFORMATION mbi;
     PVOID address = 0;
     SIZE_T returnLength = 0;
-    char buf[2048];
+    char buf[DATA_BUFFER_SIZE];
 
     HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
     if (hNtDll == NULL) {

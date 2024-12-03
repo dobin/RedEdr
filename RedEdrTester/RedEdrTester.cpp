@@ -48,12 +48,11 @@ void SendToDllReader(wchar_t* data) {
 
 
 void GetProcessInfo(DWORD pid, wchar_t* target) {
-	//Process* process = MakeProcess(pid, target);
-	//process->display();
 	printf("Get info about process: %lu\n", pid);
 	g_config.hide_full_output = 0;
-	g_config.targetExeName = L"notepad";
+	g_config.targetExeName = L"Notepad";
 	Process *p = g_ProcessCache.getObject(pid);
+	p->display();
 }
 
 
