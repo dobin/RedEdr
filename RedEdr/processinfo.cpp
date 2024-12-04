@@ -62,6 +62,23 @@ std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
 }
 
 
+HMODULE hNtDll;
+pNtQueryVirtualMemory NtQueryVirtualMemory;
+
+BOOL InitProcessInfo() {
+    hNtDll = GetModuleHandle(L"ntdll.dll");
+    if (hNtDll == NULL) {
+        LOG_A(LOG_ERROR, "Procinfo: could not find ntdll.dll");
+        return FALSE;
+    }
+    NtQueryVirtualMemory = (pNtQueryVirtualMemory)GetProcAddress(hNtDll, "NtQueryVirtualMemory");
+    if (NtQueryVirtualMemory == NULL) {
+        LOG_A(LOG_ERROR, "Procinfo: Could not get NtQueryVirtualMemory error: %d", GetLastError());
+        return FALSE;
+    }
+}
+
+
 // Unused, produces a lot of data
 bool QueryMemoryRegions(HANDLE hProcess) {
     MEMORY_BASIC_INFORMATION mbi;
@@ -69,17 +86,6 @@ bool QueryMemoryRegions(HANDLE hProcess) {
     SIZE_T returnLength = 0;
     char buf[DATA_BUFFER_SIZE];
 
-    HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
-    if (hNtDll == NULL) {
-        LOG_A(LOG_ERROR, "Procinfo: could not find ntdll.dll");
-        return FALSE;
-    }
-
-    pNtQueryVirtualMemory NtQueryVirtualMemory = (pNtQueryVirtualMemory)GetProcAddress(hNtDll, "NtQueryVirtualMemory");
-    if (NtQueryInformationProcess == NULL) {
-        LOG_A(LOG_ERROR, "Procinfo: Could not get NtQueryVirtualMemory error: %d", GetLastError());
-        return FALSE;
-    }
     int c = 0, cc = 0;
     while (NtQueryVirtualMemory(hProcess, address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
         if (mbi.Type == 0 || mbi.Protect == 0 || mbi.State != MEM_COMMIT) {
@@ -117,19 +123,9 @@ bool QueryMemoryRegions(HANDLE hProcess) {
 
 
 bool RetrieveProcessInfo(Process *process, HANDLE hProcess) {
-    HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
-    if (hNtDll == NULL) {
-        LOG_A(LOG_ERROR, "Procinfo: could not find ntdll.dll");
-        return FALSE;
-    }
-    pNtQueryInformationProcess NtQueryInformationProcess = (pNtQueryInformationProcess)GetProcAddress(hNtDll, "NtQueryInformationProcess");
-    if (!NtQueryInformationProcess) {
-        LOG_A(LOG_ERROR, "Procinfo: Error: Could not get NtQueryInformationProcess error: %d", GetLastError());
-        return FALSE;
-    }
-
     PROCESS_BASIC_INFORMATION pbi;
     ULONG returnLength;
+
     NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
     if (status != 0) {
         LOG_A(LOG_ERROR, "Procinfo: Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
@@ -195,18 +191,6 @@ BOOL PrintLoadedModules(DWORD pid, Process* process) {
         LOG_W(LOG_INFO, L"Could not open process %lu error %lu\n", pid, GetLastError());
         return FALSE;
     }
-
-    HMODULE hNtDll = GetModuleHandle(L"ntdll.dll");
-    if (hNtDll == NULL) {
-        LOG_A(LOG_ERROR, "Procinfo: could not find ntdll.dll");
-        return FALSE;
-    }
-    pNtQueryInformationProcess NtQueryInformationProcess = (pNtQueryInformationProcess)GetProcAddress(hNtDll, "NtQueryInformationProcess");
-    if (!NtQueryInformationProcess) {
-        LOG_A(LOG_ERROR, "Procinfo: Error: Could not get NtQueryInformationProcess error: %d", GetLastError());
-        return FALSE;
-    }
-
     PROCESS_BASIC_INFORMATION pbi;
     ULONG returnLength;
     NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);

@@ -14,6 +14,7 @@
 #include "pplmanager.h"
 #include "logging.h"
 #include "manager.h"
+#include "processinfo.h"
 
 #include "../Shared/common.h"
 
@@ -160,6 +161,7 @@ int main(int argc, char* argv[]) {
     }
 
     CreateRequiredFiles();
+    InitProcessInfo();
 
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;

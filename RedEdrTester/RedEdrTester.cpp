@@ -106,6 +106,7 @@ int wmain(int argc, wchar_t* argv[]) {
 		SendToDllReader(argv[2]);
 	}
 	else if (wcscmp(argv[1], L"processinfo") == 0) {
+		InitProcessInfo();
 		// Example: 1234 notepad.exe
 		wchar_t* end;
 		long pid = wcstoul(argv[2], &end, 10);
