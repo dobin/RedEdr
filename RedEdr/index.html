@@ -41,11 +41,11 @@
                 <div><button onclick="BtnOpenDetections()">Open Detections</button></div>
             </div>
             <div class="item" id="response">
-                <div>Kernel: <span id="num-kernel">0</span></div>
-                <div>ETW: <span id="num-etw">0</span></div>
-                <div>ETWTI: <span id="num-etwti">0</span></div>
-                <div>DLL: <span id="num-dll">0</span></div>
-                <div>Process Cache: <span id="num-process_cache">0</span></div>
+                <div>Kernel: <span id="num_kernel">0</span></div>
+                <div>ETW: <span id="num_etw">0</span></div>
+                <div>ETWTI: <span id="num_etwti">0</span></div>
+                <div>DLL: <span id="num_dll">0</span></div>
+                <div>Process Cache: <span id="num_process_cache">0</span></div>
             </div>
         </div>
     </header>
@@ -148,10 +148,10 @@
                 document.getElementById('stats-counter').textContent = `Events: ${data.events_count}`;
                 document.getElementById('detections-counter').textContent = `Detections: ${data.detections_count}`;
 
-                document.getElementById('num-kernel').textContent = `${data.num_kernel}`;
-                document.getElementById('num-etw').textContent = `${data.num_etw}`;
-                document.getElementById('num-etwti').textContent = `${data.num_etwti}`;
-                document.getElementById('num-dll').textContent = `${data.num_dll}`;
+                document.getElementById('num_kernel').textContent = `${data.num_kernel}`;
+                document.getElementById('num_etw').textContent = `${data.num_etw}`;
+                document.getElementById('num_etwti').textContent = `${data.num_etwti}`;
+                document.getElementById('num_dll').textContent = `${data.num_dll}`;
                 document.getElementById('num_process_cache').textContent = `${data.num_process_cache}`;
             }
         }
