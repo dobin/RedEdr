@@ -27,8 +27,6 @@ public:
 	std::mutex analyzer_shutdown_mtx;
 	bool done = false;  // Flag to signal when to stop the consumer thread
 
-	std::string ConvertLogLineToJsonEvent(std::wstring input);
-
 private:
 	// JSON should be UTF-8 which is std::string...
 	std::vector<std::string> output_entries;

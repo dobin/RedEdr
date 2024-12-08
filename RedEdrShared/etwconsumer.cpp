@@ -248,13 +248,14 @@ std::wstring EtwEventToStr(std::wstring eventName, PEVENT_RECORD eventRecord) {
 
     // String stream to accumulate output
     std::wstringstream output;
-    output << L"type:etw;time:" << static_cast<__int64>(eventRecord->EventHeader.TimeStamp.QuadPart) << L";";
-    output << L"pid:" << eventRecord->EventHeader.ProcessId << L";";
-    output << L"thread_id:" << eventRecord->EventHeader.ThreadId << L";";
-    output << L"event:" << eventName << L";";
+    output << L"{";
+    output << L"\"type\":\"etw\";\"time\":" << static_cast<__int64>(eventRecord->EventHeader.TimeStamp.QuadPart) << L";";
+    output << L"\"pid\":" << eventRecord->EventHeader.ProcessId << L";";
+    output << L"\"thread_id\":" << eventRecord->EventHeader.ThreadId << L";";
+    output << L"\"event\":\"" << eventName << L"\";";
 
     //output << L"EventID:" << eventRecord->EventHeader.EventDescriptor.Id << L";";
-    output << L"provider_name:" << (eventInfo->ProviderNameOffset ? (PCWSTR)((PBYTE)eventInfo + eventInfo->ProviderNameOffset) : L"Unknown") << L";";
+    output << L"\"provider_name\":\"" << (eventInfo->ProviderNameOffset ? (PCWSTR)((PBYTE)eventInfo + eventInfo->ProviderNameOffset) : L"Unknown") << L"\";";
 
     for (DWORD i = 0; i < eventInfo->TopLevelPropertyCount; i++) {
         PROPERTY_DATA_DESCRIPTOR dataDescriptor;
@@ -273,23 +274,23 @@ std::wstring EtwEventToStr(std::wstring eventName, PEVENT_RECORD eventRecord) {
             continue;
         }
 
-        output << reinterpret_cast<PCWSTR>((PBYTE)eventInfo + eventInfo->EventPropertyInfoArray[i].NameOffset) << L":";
+        output << "\"" << reinterpret_cast<PCWSTR>((PBYTE)eventInfo + eventInfo->EventPropertyInfoArray[i].NameOffset) << L"\":";
 
         switch (eventInfo->EventPropertyInfoArray[i].nonStructType.InType) {
         case TDH_INTYPE_UINT32:
-            output << *reinterpret_cast<PULONG>(propertyBuffer.data()) << L";";
+            output << "\"" << *reinterpret_cast<PULONG>(propertyBuffer.data()) << L"\";";
             break;
         case TDH_INTYPE_UINT64:
-            output << *reinterpret_cast<PULONG64>(propertyBuffer.data()) << L";";
+            output << "\"" << *reinterpret_cast<PULONG64>(propertyBuffer.data()) << L"\";";
             break;
         case TDH_INTYPE_UNICODESTRING:
-            output << reinterpret_cast<PCWSTR>(propertyBuffer.data()) << L";";
+            output << "\"" << reinterpret_cast<PCWSTR>(propertyBuffer.data()) << L"\";";
             break;
         case TDH_INTYPE_ANSISTRING:
-            output << reinterpret_cast<PCSTR>(propertyBuffer.data()) << L";";
+            output << "\"" << reinterpret_cast<PCSTR>(propertyBuffer.data()) << L"\";";
             break;
         case TDH_INTYPE_POINTER:  // hex
-            output << L"0x" << reinterpret_cast<PVOID>(propertyBuffer.data()) << L";";
+            output << "\"" << L"0x" << reinterpret_cast<PVOID>(propertyBuffer.data()) << L"\";";
             break;
         case TDH_INTYPE_FILETIME:
         {
@@ -297,15 +298,17 @@ std::wstring EtwEventToStr(std::wstring eventName, PEVENT_RECORD eventRecord) {
             SYSTEMTIME stUTC, stLocal;
             FileTimeToSystemTime(&fileTime, &stUTC);
             SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
-            output << stLocal.wYear << L"/" << stLocal.wMonth << L"/" << stLocal.wDay << L" "
-                << stLocal.wHour << L"." << stLocal.wMinute << L"." << stLocal.wSecond << L";";
+            output << "\"" << stLocal.wYear << L"/" << stLocal.wMonth << L"/" << stLocal.wDay << L" "
+                << stLocal.wHour << L"." << stLocal.wMinute << L"." << stLocal.wSecond << L"\";";
             break;
         }
         default:
-            output << L"(Unknown type);";
+            output << L"\"(Unknown type);\"";
             break;
         }
     }
+
+	output << L"}";
 
     // Free the event information structure
     if (eventInfo) {
