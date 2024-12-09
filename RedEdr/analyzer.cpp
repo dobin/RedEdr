@@ -10,6 +10,7 @@
 #include "utils.h"
 #include "json.hpp"
 #include "analyzer.h"
+#include "processinfo.h"
 
 
 HANDLE analyzer_thread;
@@ -57,7 +58,25 @@ std::string sus_protect(std::string protect) {
 
 
 void Analyzer::AnalyzeEventJson(nlohmann::json j) {
+    json_entries.push_back(j);
+    return;
+
+
     BOOL printed = FALSE;
+    if (json_entries.size() == 32) {
+        if (j.contains("pid")) {
+            DWORD pid = std::stoull(j["pid"].get<std::string>(), nullptr, 10);
+            PrintLoadedModules(pid, NULL);
+        }
+        else {
+            LOG_A(LOG_ERROR, "BBBBBBBBBBBBBB\n");
+        }
+        
+        //std::string str_value = j["key"];
+        //int pid = std::stoi(str_value);
+        //LOG_A(LOG_WARNING, "PID: %i", pid);
+        //PrintLoadedModules(pid, NULL);
+    }
 
     if (j["type"] == "kernel") {
 		num_kernel += 1;

@@ -143,7 +143,7 @@ bool RetrieveProcessInfo(Process *process, HANDLE hProcess) {
         // dont spam log messages
         //LOG_A(LOG_WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
         //    process->id, GetLastError());
-        process->PebBaseAddress = pbi.PebBaseAddress;
+        //process->PebBaseAddress = pbi.PebBaseAddress;
         return FALSE;
     }
 
@@ -196,6 +196,7 @@ BOOL PrintLoadedModules(DWORD pid, Process* process) {
     NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
     if (status != 0) {
         LOG_A(LOG_ERROR, "Procinfo: Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
+        CloseHandle(hProcess);
         return FALSE;
     }
 
@@ -206,7 +207,8 @@ BOOL PrintLoadedModules(DWORD pid, Process* process) {
         // dont spam log messages
         //LOG_A(LOG_WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
         //    process->id, GetLastError());
-        process->PebBaseAddress = pbi.PebBaseAddress;
+        //process->PebBaseAddress = pbi.PebBaseAddress;
+        CloseHandle(hProcess);
         return FALSE;
     }
 
@@ -214,10 +216,12 @@ BOOL PrintLoadedModules(DWORD pid, Process* process) {
     PEB_LDR_DATA ldr;
     if (!ReadProcessMemory(hProcess, peb.Ldr, &ldr, sizeof(PEB_LDR_DATA), NULL)) {
         printf("Procinfo: ReadProcessMemory failed for PEB_LDR_DATA\n");
+        CloseHandle(hProcess);
         return FALSE;
     }
-    
+
     // Iterate over the InMemoryOrderModuleList
+    
     LIST_ENTRY* head = &ldr.InMemoryOrderModuleList;
     LIST_ENTRY* current = ldr.InMemoryOrderModuleList.Flink;
     std::wstring csv;
@@ -227,6 +231,7 @@ BOOL PrintLoadedModules(DWORD pid, Process* process) {
             &entry, sizeof(_LDR_DATA_TABLE_ENTRY), NULL))
         {
             printf("Procinfo: ReadProcessMemory failed for LDR_DATA_TABLE_ENTRY\n");
+            CloseHandle(hProcess);
             return FALSE;
         }
         if (entry.DllBase == 0) { // all zero is last one for some reason
@@ -236,26 +241,30 @@ BOOL PrintLoadedModules(DWORD pid, Process* process) {
         WCHAR fullDllName[MAX_PATH];
         if (!ReadProcessMemory(hProcess, entry.FullDllName.Buffer, fullDllName, entry.FullDllName.Length, NULL)) {
             printf("Procinfo: ReadProcessMemory failed for FullDllName\n");
+            CloseHandle(hProcess);
             return FALSE;
         }
         fullDllName[entry.FullDllName.Length / sizeof(WCHAR)] = L'\0';  // Null-terminate the string
 
-        csv += format_wstring(L"{addr:0x%x;size:0x%x;name:%ls},",
+        csv += format_wstring(L"{\"addr\":%llu,\"size\":%llu,\"name\":\"%ls\"},",
             entry.DllBase,
             (ULONG)entry.Reserved3[1],
-            fullDllName);
+            JsonEscape(fullDllName, 260));
 
         // Move to the next module in the list
         current = entry.InMemoryOrderLinks.Flink;
     }
-
-    std::wstring o = format_wstring(L"type:loaded_dll;time:%lld;pid:%lld;dlls:[%s]",
+    
+    std::wstring ffff = csv;
+    ffff.pop_back(); // remove fucking last comma
+    std::wstring o = format_wstring(L"{\"type\":\"loaded_dll\",\"time\":%lld,\"pid\":%lld,\"dlls\":[%s]}",
         get_time(),
-        process->id,
-        csv.c_str()
+        pid,
+        ffff.c_str()
     );
     remove_all_occurrences_case_insensitive(o, std::wstring(L"C:\\Windows\\system32\\"));
     g_EventProducer.do_output(o);
+    CloseHandle(hProcess);
     return TRUE;
 }
 

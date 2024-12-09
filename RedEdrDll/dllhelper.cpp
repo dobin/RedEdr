@@ -103,12 +103,13 @@ void doInitSym(HANDLE hProcess) {
 
 
 // Gives wrong answer (5)
-void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
+size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
     CONTEXT context;
     STACKFRAME64 stackFrame;
     DWORD machineType;
     HANDLE hProcess = GetCurrentProcess();
     HANDLE hThread = GetCurrentThread();
+    size_t written = 0;
 
     if (!IsSymInitialized) {
         doInitSym(hProcess);
@@ -126,13 +127,13 @@ void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
     stackFrame.AddrStack.Mode = AddrModeFlat;
 
     // FUUUUU
-    wchar_t* begin_str = (wchar_t *) L"callstack:[";
+    wchar_t* begin_str = (wchar_t *) L"\"callstack\":[";
     int l = wcscat_s(buf, buf_size, begin_str);
     buf_size -= wcslen(begin_str);
     buf += wcslen(begin_str);
+    written += wcslen(begin_str);
 
     MEMORY_BASIC_INFORMATION mbi;
-    size_t written = 0;
     int n = 0;
     SIZE_T returnLength = 0;
     while (StackWalk64(machineType, hProcess, hThread, &stackFrame, &context,
@@ -151,7 +152,7 @@ void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
         }
 
         if (NtQueryVirtualMemory(hProcess, (PVOID)address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
-            written = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{idx:%i;addr:0x%I64x;page_addr:0x%I64x;size:%zu;state:0x%lx;protect:%s;type:%s},",
+            written += swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{\"idx\":%i,\"addr\":%llu,\"page_addr\":%llu,\"size\":%zu,\"state\":%lu,\"protect\":\"%s\",\"type\":\"%s\"},",
                 n, address, mbi.BaseAddress, mbi.RegionSize, 
                 getMemoryRegionState(mbi.State), 
                 getMemoryRegionProtect(mbi.Protect), 
@@ -178,12 +179,15 @@ void LogMyStackTrace(wchar_t* buf, size_t buf_size) {
         n += 1;
     }
 
+    // remove last comma fuck
+    buf[wcslen(buf) - 1] = L'\0';
+
     // We should have space...
     l = wcscat_s(buf, buf_size, L"]");
 
     // Cleanup after stack walk
     //SymCleanup(hProcess);
 
-    return;
+    return written;
 }
 

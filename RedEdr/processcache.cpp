@@ -58,13 +58,13 @@ Process* ProcessCache::getObject(DWORD id) {
     // every new pid comes through here
     if (process->observe) {
         AugmentProcess(id, process);
-        std::wstring o = format_wstring(L"type:peb;time:%lld;id:%lld;parent_pid:%lld;image_path:%ls;commandline:%ls;working_dir:%ls;is_debugged:%d;is_protected_process:%d;is_protected_process_light:%d;image_base:0x%p",
+        std::wstring o = format_wstring(L"{\"type\":\"peb\",\"time\":%lld,\"id\":%lld,\"parent_pid\":%lld,\"image_path\":\"%s\",\"commandline\":\"%s\",\"working_dir\":\"%s\",\"is_debugged\":%d,\"is_protected_process\":%d,\"is_protected_process_light\":%d,\"image_base\":%llu}",
             get_time(),
             process->id,
             process->parent_pid,
-            process->image_path.c_str(),
-            process->commandline.c_str(),
-            process->working_dir.c_str(),
+            JsonEscape2(process->image_path.c_str()).c_str(),
+            JsonEscape2(process->commandline.c_str()).c_str(),
+            JsonEscape2(process->working_dir.c_str()).c_str(),
             process->is_debugged,
             process->is_protected_process,
             process->is_protected_process_light,

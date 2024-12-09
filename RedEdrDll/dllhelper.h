@@ -8,7 +8,7 @@ void InitDllPipe();
 void SendDllPipe(wchar_t* buffer);
 
 // Proc
-void LogMyStackTrace(wchar_t* buf, size_t buf_size);
+size_t LogMyStackTrace(wchar_t* buf, size_t buf_size);
 
 // Utils
 void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize);

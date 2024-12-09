@@ -88,8 +88,10 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         swprintf(line, L"{\"type\":\"kernel\",\"time\":%llu,\"callback\":\"process_create\",\"krn_pid\":%llu,\"pid\":%llu,\"name\":\"%s\",\"ppid\":%llu,\"parent_name\":\"%s\",\"observe\":%d}",
             systemTime,
             (unsigned __int64)PsGetCurrentProcessId(),
-            (unsigned __int64)pid, processInfo->name,
-            (unsigned __int64)createInfo->ParentProcessId, processInfo->parent_name,
+            (unsigned __int64)pid, 
+            JsonEscape(processInfo->name, 128),
+            (unsigned __int64)createInfo->ParentProcessId, 
+            JsonEscape(processInfo->parent_name, 128),
             processInfo->observe);
         LogEvent(line);
     }
@@ -146,7 +148,7 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
                 systemTime,
                 (unsigned __int64)PsGetCurrentProcessId(),
                 (unsigned __int64)ProcessId,
-                ImageName);
+                JsonEscape(ImageName, 128));
             LogEvent(line);
         }
     }

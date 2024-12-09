@@ -51,3 +51,33 @@ void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t dest
     wcsncpy(dest, ustr->Buffer, copyLength);
     dest[copyLength] = L'\0';
 }
+
+
+wchar_t* JsonEscape(wchar_t* str, size_t buffer_size) {
+    if (str == NULL || buffer_size == 0) {
+        return str;
+    }
+
+    size_t length = 0;
+    for (length = 0; str[length] != L'\0'; ++length);
+
+    for (size_t i = 0; i < length; ++i) {
+        if (str[i] == L'\\' || str[i] == L'"') {
+            // Check if there's enough space to shift and insert escape character
+            if (length + 1 >= buffer_size) {
+                return str; // Stop processing to prevent overflow
+            }
+
+            // Shift the remainder of the string one position to the right
+            for (size_t j = length + 1; j > i; --j) {
+                str[j] = str[j - 1];
+            }
+
+            // Insert escape character
+            str[i] = L'\\';
+            ++i; // Skip over the character we just escaped
+            ++length;
+        }
+    }
+    return str;
+}

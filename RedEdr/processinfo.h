@@ -72,7 +72,7 @@ public:
     DWORD is_protected_process = 0;
     DWORD is_protected_process_light = 0;
     PVOID image_base = 0;
-    LPCVOID PebBaseAddress = 0;
+    //LPCVOID PebBaseAddress = 0;
 };
 
 
