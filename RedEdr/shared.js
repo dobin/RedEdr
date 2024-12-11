@@ -16,6 +16,10 @@ function displayEvents(events) {
         let detections = '';
         let etwti_startaddr = 0;
         for ([key, value] of Object.entries(event)) {
+            if (typeof value === "number") {
+                value = "0x" + value.toString(16).toUpperCase(); // .padStart(16, '0');
+            }
+
             // header
             if (key === 'type' || key === 'time' || key === 'pid' || key === 'tid' ||
                 key === 'krn_pid' || key === 'ppid' || key === 'observe' ||
@@ -25,15 +29,27 @@ function displayEvents(events) {
             } else if (key === 'func' || key === 'callback' || key === 'event') {
                 eventTitle += `<span class="highlight_b"><b>${value}</b></span> `;
 
-                // detection
+            // detection
             } else if (key === 'detections') {
                 detections = `<span class="highlight_e">detections:<br>${JSON.stringify(value, null, 0)}</span>`;
 
-                // callstack
+            // callstack
             } else if (key == 'callstack') {
-                eventCallstack = '<span class="highlight_d">callstack:<br>' + JSON.stringify(value, null, 0) + "</span>";
+                let x = '';
+                for ([key_c, value_c] of Object.entries(value)) {
+                    for ([key_d, value_d] of Object.entries(value_c)) {
+                        if (typeof value_d === "number") {
+                            value_d = "0x" + value_d.toString(16).toUpperCase(); // .padStart(16, '0');
+                        }
+                        x += `${key_d}:${value_d} `;
+                    }
+                    x += "<br>";
+                }
 
-                // important
+                //eventCallstack = '<span class="highlight_d">callstack:<br>' + JSON.stringify(value, null, 0) + "</span>";
+                eventCallstack = '<span class="highlight_d">callstack:<br>' + x + "</span>";
+
+            // important
             } else if (key === 'addr') {
                 eventDetails += `<b>${key}:${value}</b> `;
             } else if (key === 'protect') {
@@ -41,13 +57,13 @@ function displayEvents(events) {
             } else if (key === 'handle' && value != "FFFFFFFFFFFFFFFF") {
                 eventDetails += `<b>${key}:${value}</b> `;
 
-                // long
+            // long
             } else if (key == 'name' || key == 'parent_name' ||
                 key == 'image_path' || key == 'commandline' ||
                 key == "working_dir") {
                 eventLong += `<span class="highlight_c">${key}:${value}</span> <br>`;
 
-                // rest
+            // rest
             } else {
                // ignore some ETWTI fields for now
                if (! key.startsWith("Calling") && 
