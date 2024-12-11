@@ -102,7 +102,6 @@ void doInitSym(HANDLE hProcess) {
 }
 
 
-// Gives wrong answer (5)
 size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
     CONTEXT context;
     STACKFRAME64 stackFrame;
@@ -140,6 +139,7 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
         NULL, NULL, NULL, NULL))
     {
         DWORD64 address = stackFrame.AddrPC.Offset;
+        size_t w = 0;
 
         if (n > MAX_CALLSTACK_ENTRIES) {
             // dont go too deep
@@ -152,14 +152,21 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
         }
 
         if (NtQueryVirtualMemory(hProcess, (PVOID)address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
-            written += swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{\"idx\":%i,\"addr\":%llu,\"page_addr\":%llu,\"size\":%zu,\"state\":%lu,\"protect\":\"%s\",\"type\":\"%s\"},",
+            w = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{\"idx\":%i,\"addr\":%llu,\"page_addr\":%llu,\"size\":%zu,\"state\":%lu,\"protect\":\"%s\",\"type\":\"%s\"},",
                 n, address, mbi.BaseAddress, mbi.RegionSize, 
                 getMemoryRegionState(mbi.State), 
                 getMemoryRegionProtect(mbi.Protect), 
                 getMemoryRegionType(mbi.Type));
+            if (w == 0) {
+                LOG_A(LOG_ERROR, "Error");
+            }
+            else {
+                wprintf(L"BUF: %s", buf);
+            }
         }
-        buf_size -= written;
-        buf += written;
+        buf_size -= w;
+        buf += w;
+        written += w;
 
         // Resolve the symbol at this address
         /*char symbolBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
@@ -180,10 +187,12 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
     }
 
     // remove last comma fuck
-    buf[wcslen(buf) - 1] = L'\0';
+    buf[wcslen(buf) - 1] = L']';
+    buf[wcslen(buf) - 0] = L'\x00';
 
     // We should have space...
-    l = wcscat_s(buf, buf_size, L"]");
+    //l = wcscat_s(buf, buf_size, L"]");
+    //written += 1;
 
     // Cleanup after stack walk
     //SymCleanup(hProcess);

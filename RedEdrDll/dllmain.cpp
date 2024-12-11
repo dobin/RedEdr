@@ -871,7 +871,7 @@ NTSTATUS NTAPI Catch_NtOpenThread(
         int offset = 0;
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time:%llu,", time.QuadPart);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time.QuadPart);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtOpenThread\",");
