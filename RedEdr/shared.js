@@ -17,7 +17,7 @@ function displayEvents(events) {
         let etwti_startaddr = 0;
         for ([key, value] of Object.entries(event)) {
             if (typeof value === "number") {
-                value = "0x" + value.toString(16).toUpperCase(); // .padStart(16, '0');
+                value = myHex(value);
             }
 
             // header
@@ -39,7 +39,7 @@ function displayEvents(events) {
                 for ([key_c, value_c] of Object.entries(value)) {
                     for ([key_d, value_d] of Object.entries(value_c)) {
                         if (typeof value_d === "number") {
-                            value_d = "0x" + value_d.toString(16).toUpperCase(); // .padStart(16, '0');
+                            value_d = myHex(value_d);
                         }
                         x += `${key_d}:${value_d} `;
                     }
@@ -56,6 +56,7 @@ function displayEvents(events) {
                 eventDetails += `<b>${key}:${value}</b> `;
             } else if (key === 'handle' && value != "FFFFFFFFFFFFFFFF") {
                 eventDetails += `<b>${key}:${value}</b> `;
+console.log(value);
 
             // long
             } else if (key == 'name' || key == 'parent_name' ||
@@ -126,4 +127,11 @@ function translateProtectionFlags(flags) {
     const basicFlags = flags & 0xFF;
     // Get the permissions string from the mapping
     return protectionMapping[basicFlags] || "unknown";
+}
+
+function myHex(num) {
+	if (num == 0x10000000000000000) {
+		return "-1";
+	}
+	return "0x" + num.toString(16).toUpperCase();
 }
