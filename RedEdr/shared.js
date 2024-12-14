@@ -33,6 +33,10 @@ function displayEvents(events) {
             } else if (key === 'detections') {
                 detections = `<span class="highlight_e">detections:<br>${JSON.stringify(value, null, 0)}</span>`;
 
+            // special for func == loaded_dll
+            } else if (key == 'dlls') {
+                eventDetails += JSON.stringify(value, null, 0);
+                
             // callstack
             } else if (key == 'callstack') {
                 let x = '';
@@ -56,7 +60,6 @@ function displayEvents(events) {
                 eventDetails += `<b>${key}:${value}</b> `;
             } else if (key === 'handle' && value != "FFFFFFFFFFFFFFFF") {
                 eventDetails += `<b>${key}:${value}</b> `;
-console.log(value);
 
             // long
             } else if (key == 'name' || key == 'parent_name' ||
