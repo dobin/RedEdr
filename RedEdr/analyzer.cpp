@@ -63,7 +63,7 @@ std::string sus_protect(std::string protect) {
 }
 
 
-void Analyzer::AnalyzeEventJson(nlohmann::json j) {
+void Analyzer::AnalyzeEventJson(nlohmann::json& j) {
     j["id"] = json_entries.size();
     j["trace_id"] = trace_id;
     json_entries.push_back(j);
@@ -106,7 +106,7 @@ void Analyzer::AnalyzeEventJson(nlohmann::json j) {
 }
 
 
-void Analyzer::ExtractMemoryInfo(nlohmann::json j) {
+void Analyzer::ExtractMemoryInfo(nlohmann::json& j) {
     // Loaded dll's
     if (j["type"] == "loaded_dll") {
         for (const auto& it : j["dlls"]) {
@@ -194,7 +194,7 @@ void Analyzer::ExtractMemoryInfo(nlohmann::json j) {
 }
 
 
-void Analyzer::Analyze(nlohmann::json j) {
+void Analyzer::Analyze(nlohmann::json& j) {
     BOOL printed = FALSE;
 
     if (j["type"] == "dll") {
