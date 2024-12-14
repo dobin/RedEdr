@@ -23,7 +23,7 @@ function displayEvents(events) {
             // header
             if (key === 'type' || key === 'time' || key === 'pid' || key === 'tid' ||
                 key === 'krn_pid' || key === 'ppid' || key === 'observe' ||
-                key === 'thread_id' || key === 'provider_name' 
+                key === 'thread_id' || key === 'provider_name'  || key === 'id' || key == 'trace_id'
             ) {
                 eventHeader += `<span class="highlight_a">${key}:${value}</span> `;
             } else if (key === 'func' || key === 'callback' || key === 'event') {
