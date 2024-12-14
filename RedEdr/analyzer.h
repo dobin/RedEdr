@@ -143,6 +143,8 @@ public:
 	int num_etwti = 0;
 	int num_dll = 0;
 
+	void ExtractMemoryInfo(nlohmann::json j);
+	void Analyze(nlohmann::json j);
 	void AnalyzeEventJson(nlohmann::json j);
 	void AnalyzeEventStr(std::string eventStr);
 	void AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::string s);

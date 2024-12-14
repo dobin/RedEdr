@@ -35,7 +35,7 @@ void Analyzer::AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::strin
     std::string o = CriticalityToString(c) + ": " + s;
     detections.push_back(o);
     j["detections"] += o;
-    //LOG_A(LOG_INFO, "%s", o.c_str());
+    LOG_A(LOG_INFO, "%s", o.c_str());
     //LOG_A(LOG_INFO, "%s", j.dump().c_str());
 }
 
@@ -64,33 +64,22 @@ std::string sus_protect(std::string protect) {
 
 
 void Analyzer::AnalyzeEventJson(nlohmann::json j) {
-	j["id"] = json_entries.size();
+    j["id"] = json_entries.size();
     j["trace_id"] = trace_id;
     json_entries.push_back(j);
-    return;
 
-
-    BOOL printed = FALSE;
-    if (json_entries.size() == 32) {
-        if (j.contains("pid")) {
-            DWORD pid = std::stoull(j["pid"].get<std::string>(), nullptr, 10);
-            PrintLoadedModules(pid, NULL);
-        }
-        else {
-            LOG_A(LOG_ERROR, "BBBBBBBBBBBBBB\n");
-        }
-        
-        //std::string str_value = j["key"];
-        //int pid = std::stoi(str_value);
-        //LOG_A(LOG_WARNING, "PID: %i", pid);
-        //PrintLoadedModules(pid, NULL);
+    // Sanity check
+    if (!j.contains("type")) {
+        LOG_A(LOG_WARNING, "No type? %s", j.dump().c_str());
+        return;
     }
 
+    // Stats
     if (j["type"] == "kernel") {
-		num_kernel += 1;
-    } 
+        num_kernel += 1;
+    }
     else if (j["type"] == "dll") {
-		num_dll += 1;
+        num_dll += 1;
     }
     else if (j["type"] == "etw") {
         if (j["provider_name"] == "Microsoft-Windows-Threat-Intelligence") {
@@ -101,202 +90,185 @@ void Analyzer::AnalyzeEventJson(nlohmann::json j) {
         }
     }
 
-    if (!j.contains("type")) {
-        LOG_A(LOG_WARNING, "No type? %s", j.dump().c_str());
-        return;
+    // additional checks based on counted events
+    if (json_entries.size() == 32) {
+        if (j.contains("pid")) {
+            DWORD pid = j["pid"].get<DWORD>(); //std::stoull(j["pid"].get<std::string>(), nullptr, 10);
+            PrintLoadedModules(pid, NULL);
+        }
     }
 
+    ExtractMemoryInfo(j);
+    //targetInfo.PrintMemoryRegions();
+    Analyze(j);
+    
+    return;
+}
+
+
+void Analyzer::ExtractMemoryInfo(nlohmann::json j) {
+    // Loaded dll's
     if (j["type"] == "loaded_dll") {
-        for (const auto& it: j["dlls"]) {
-            uint64_t addr = std::stoull(it["addr"].get<std::string>(), nullptr, 16);
-            uint64_t size = std::stoull(it["size"].get<std::string>(), nullptr, 10);
+        for (const auto& it : j["dlls"]) {
+            uint64_t addr = it["addr"].get<uint64_t>();
+            uint64_t size = it["size"].get<uint64_t>();
             std::string protection = "???";
             std::string name = "loaded_dll:" + it["name"];
 
-			addr = AlignToPage(addr);
+            addr = AlignToPage(addr);
             // always add, as its early in the process without collisions hopefully
             MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
             targetInfo.AddMemoryRegion(addr, region);
         }
     }
 
-    if (j["type"] == "dll" && j["func"] == "AllocateVirtualMemory") {
-        uint64_t addr = std::stoull(j["addr"].get<std::string>(), nullptr, 16);
-        uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 10);
-        std::string protection = j["protect"];
+    // From injected dll
+    if (j["type"] == "dll") {
+        if (j["func"] == "AllocateVirtualMemory") {
+            uint64_t addr = j["addr"].get<uint64_t>();
+            uint64_t size = j["size"].get<uint64_t>();
+            std::string protection = j["protect"];
 
-        //std::string jsonString = j.dump();
-        //std::cout << "Compact JSON: " << jsonString << std::endl;
+            //std::string jsonString = j.dump();
+            //std::cout << "Compact JSON: " << jsonString << std::endl;
 
-        addr = AlignToPage(addr);
-        MemoryRegion* memoryRegion = targetInfo.GetMemoryRegion(addr);
-        if (memoryRegion != NULL) {
-            //LOG_A(LOG_WARNING, "Allocate Memory ALREADY FOUND??! 0x%llx %llu end:0x%llx",
-            //   addr, size, addr+size);
-            //LOG_A(LOG_INFO, "              : %s 0x%llx %llu end:0x%llx %s",
-            //    region->name.c_str(), region->addr, region->size,
-            //    region->addr + region->size,
-            //    region->protection.c_str());*/
-            memoryRegion->protection += ";Alloc:" + protection;
-        }
-        else {
-            //LOG_A(LOG_WARNING, "Allocate Memory new: 0x%llx %llu",
-            //    addr, size);
-            memoryRegion = new MemoryRegion("Allocated", addr, size, protection);
-            targetInfo.AddMemoryRegion(addr, memoryRegion);
-        }
-
-        if (j["handle"] != "0xffffffffffffffff") {
-            std::stringstream ss;
-            ss << "AllocateVirtualMemory in foreign process " << j["handle"].get<std::string>();
-            AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
-        }
-    }
-
-    if (j["type"] == "dll" && j["func"] == "WriteVirtualMemory") {
-        if (j["handle"] != "0xffffffffffffffff") {
-            std::stringstream ss;
-            ss << "WriteVirtualMemory in foreign process " << j["handle"].get<std::string>();
-            AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
-        }
-    }
-
-    if (j["type"] == "dll" && j["func"] == "CreateRemoteThread") {
-        if (j["handle"] != "0xffffffffffffffff") {
-            std::stringstream ss;
-            ss << "CreateRemoteThread in foreign process " << j["handle"].get<std::string>();
-            AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
-        }
-    }
-
-
-    if (j["type"] == "dll" && j["func"] == "FreeVirtualMemory") {
-        uint64_t addr = std::stoull(j["addr"].get<std::string>(), nullptr, 16);
-        uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 10);
-
-        MemoryRegion* memoryRegion = targetInfo.GetMemoryRegion(addr);
-        if (memoryRegion != NULL) {
-            // do not remove, but indicate it has been freed
-            //targetInfo.RemoveMemoryRegion(addr, size);
-            memoryRegion->protection += ";freed";
-        }
-        else {
-            //LOG_A(LOG_WARNING, "Free a non-allocated");
-            // No add as its free anyway?
-        }
-    }
-
-    if (j["type"] == "dll" && j["func"] == "ProtectVirtualMemory") {
-        uint64_t addr = std::stoull(j["addr"].get<std::string>(), nullptr, 16);
-        uint64_t size = std::stoull(j["size"].get<std::string>(), nullptr, 10);
-        std::string protection = j["protect"];
-        std::string name = "Protected";
-
-        addr = AlignToPage(addr);
-        // Check if exists
-        MemoryRegion* memoryRegion = targetInfo.GetMemoryRegion(addr);
-        if (memoryRegion == NULL) {
-			//LOG_A(LOG_WARNING, "ProtectVirtualMemory region 0x%llx not found. Adding.",
-            //    addr);
-            MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
-            targetInfo.AddMemoryRegion(addr, region);
-        }
-		else {
-			// Update protection
-			MemoryRegion* region = targetInfo.GetMemoryRegion(addr);
-			region->protection += ";" + protection;
-			//LOG_A(LOG_INFO, "ProtectVirtualMemory: %s 0x%llx 0x%llx %s",
-			//	name.c_str(), addr, size, protection.c_str());
-
-            std::string sus = sus_protect(region->protection);
-            if (sus != "") {
-                AnalyzerNewDetection(j, Criticality::HIGH, sus);
+            addr = AlignToPage(addr);
+            MemoryRegion* memoryRegion = targetInfo.GetMemoryRegion(addr);
+            if (memoryRegion != NULL) {
+                //LOG_A(LOG_WARNING, "Allocate Memory ALREADY FOUND??! 0x%llx %llu end:0x%llx",
+                //   addr, size, addr+size);
+                //LOG_A(LOG_INFO, "              : %s 0x%llx %llu end:0x%llx %s",
+                //    region->name.c_str(), region->addr, region->size,
+                //    region->addr + region->size,
+                //    region->protection.c_str());*/
+                memoryRegion->protection += ";Alloc:" + protection;
             }
-        }
-    }
-
-    // Allocate or map memory with RWX protection
-    if (j.value("protect", "") == "RWX") {
-        j["detection"] += "RWX";
-        Criticality c = Criticality::HIGH;
-
-        std::stringstream ss;
-        ss << "Function " << j["func"].get<std::string>() << " doing RWX";
-        ss << " with size " << j["size"].get<std::string>();
-
-        if (j["func"] == "MapViewOfSection") {
-            ss << " SectionHandle " << j["section_handle"].get<std::string>();
-            c = Criticality::LOW;
-        }
-        else if (j["func"] == "ProtectVirtualMemory") {
-            //ss << " SectionHandle: " << j["section_handle"].get<std::string>();
-            c = Criticality::HIGH;
-        }
-        AnalyzerNewDetection(j, c, ss.str());
-        printed = TRUE;
-    }
-
-    int idx = 0;
-    // Check callstack
-    if (j.contains("callstack") && j["callstack"].is_array()) {
-        for (const auto& callstack_entry : j["callstack"]) {
-            CriticalityManager cm;
-            std::stringstream ss;
-            BOOL print2 = FALSE;
-
-            // Callstack entry from RWX region
-            if (callstack_entry["protect"] == "RWX") {
-                ss << "High: RWX section, ";
-                j["detection"] += "RWX";
-                cm.set(Criticality::HIGH);
-                print2 = TRUE;
+            else {
+                //LOG_A(LOG_WARNING, "Allocate Memory new: 0x%llx %llu",
+                //    addr, size);
+                memoryRegion = new MemoryRegion("Allocated", addr, size, protection);
+                targetInfo.AddMemoryRegion(addr, memoryRegion);
             }
 
-            // Callstack entry from non-image region
-            if (callstack_entry["type"] != "IMAGE") { // MEM_IMAGE
-                if (callstack_entry["type"] == "MAPPED") { // MEM_MAPPED
-                    ss << "Low: MEM_MAPPED section, ";
-                    j["detection"] += "MEM_MAPPED";
-                    cm.set(Criticality::LOW);
-                    print2 = TRUE;
-                }
-                else if (callstack_entry["type"] == "PRIVATE") { // MEM_PRIVATE, unbacked!
-                    ss << "High: MEM_PRIVATE section, ";
-                    j["detection"] += "MEM_PRIVATE";
-                    cm.set(Criticality::HIGH);
-                    print2 = TRUE;
+            if (j["func"] == "FreeVirtualMemory") {
+                uint64_t addr = j["addr"].get<uint64_t>();
+                uint64_t size = j["size"].get<uint64_t>();
+
+                MemoryRegion* memoryRegion = targetInfo.GetMemoryRegion(addr);
+                if (memoryRegion != NULL) {
+                    // do not remove, but indicate it has been freed
+                    //targetInfo.RemoveMemoryRegion(addr, size);
+                    memoryRegion->protection += ";freed";
                 }
                 else {
-                    ss << "Unknown: other section, ";
-                    j["detection"] += "MEM_OTHER";  // TODO: add hex
-                    cm.set(Criticality::MEDIUM);
-                    print2 = TRUE;
+                    //LOG_A(LOG_WARNING, "Free a non-allocated");
+                    // No add as its free anyway?
                 }
             }
+        }
 
-            if (print2) {
-                if (!printed) {
-                    std::stringstream x;
-                    x << "Function " << j["func"].get<std::string>();
-                    printed = TRUE;
-                }
+        if (j["func"] == "ProtectVirtualMemory") {
+            uint64_t addr = j["addr"].get<uint64_t>();
+            uint64_t size = j["size"].get<uint64_t>();
+            std::string protection = j["protect"];
+            std::string name = "Protected";
 
-                std::stringstream s;
-                s << "Suspicious callstack " << idx << " of " << j["callstack"].size() << " by " << j["func"].get<std::string>();
-                /*if (j["func"] == "ProtectVirtualMemory") {
-                    s << " addr " << j["addr"].get<std::string>();
-                    s << " protect " << j["protect"].get<std::string>();
-                }*/
-                s << " addr " << callstack_entry["addr"].get<std::string>();
-                s << " protect " << callstack_entry["protect"].get<std::string>();
-                s << " type " << callstack_entry["type"].get<std::string>();
-                AnalyzerNewDetection(j, cm.get(), s.str());
+            addr = AlignToPage(addr);
+            // Check if exists
+            MemoryRegion* memoryRegion = targetInfo.GetMemoryRegion(addr);
+            if (memoryRegion == NULL) {
+                //LOG_A(LOG_WARNING, "ProtectVirtualMemory region 0x%llx not found. Adding.",
+                //    addr);
+                MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
+                targetInfo.AddMemoryRegion(addr, region);
             }
-            idx += 1;
+            else {
+                // Update protection
+                MemoryRegion* region = targetInfo.GetMemoryRegion(addr);
+                region->protection += ";" + protection;
+                //LOG_A(LOG_INFO, "ProtectVirtualMemory: %s 0x%llx 0x%llx %s",
+                //	name.c_str(), addr, size, protection.c_str());
+            }
         }
     }
+}
 
-    json_entries.push_back(j);
+
+void Analyzer::Analyze(nlohmann::json j) {
+    BOOL printed = FALSE;
+
+    if (j["type"] == "dll") {
+        if (j["func"] == "AllocateVirtualMemory") {
+            if (j["handle"] != -1) {
+                std::stringstream ss;
+                ss << "AllocateVirtualMemory in foreign process " << j["handle"].get<uint64_t>();
+                AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
+            }
+        }
+        if (j["func"] == "WriteVirtualMemory") {
+            if (j["handle"] != -1) {
+                std::stringstream ss;
+                ss << "WriteVirtualMemory in foreign process " << j["handle"].get<uint64_t>();
+                AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
+            }
+        }
+        if (j["func"] == "CreateRemoteThread") {
+            if (j["handle"] != -1) {
+                std::stringstream ss;
+                ss << "CreateRemoteThread in foreign process " << j["handle"].get<uint64_t>();
+                AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
+            }
+        }
+        if (j["func"] == "ProtectVirtualMemory") {
+            // Check for simple RWX
+            if (j.value("protect", "") == "RWX") {
+                std::stringstream ss;
+                ss << "Protect with RWX at addr " << j["addr"].get<uint64_t>();
+                AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
+            }
+
+            // Check if the region has been suspiciously protected before (RW<->RX)
+            uint64_t addr = j["addr"].get<uint64_t>();
+            MemoryRegion* region = targetInfo.GetMemoryRegion(addr);
+            if (region != NULL) {
+                std::string sus = sus_protect(region->protection);
+                if (sus != "") {
+                    AnalyzerNewDetection(j, Criticality::HIGH, sus);
+                }
+            }
+        }
+        if (j["func"] == "MapViewOfSection") {
+            // Check for simple RWX
+            if (j.value("protect", "") == "RWX") {
+                std::stringstream ss;
+                ss << "Protect with RWX at addr " << j["addr"].get<uint64_t>();
+                AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
+            }
+        }
+
+        // Check Injecte-DLL function callstack
+        if (j.contains("callstack") && j["callstack"].is_array()) {
+            for (const auto& callstack_entry : j["callstack"]) {
+                // Callstack entry from RWX region
+                if (callstack_entry["protect"] == "MEM_RWX") {
+                    AnalyzerNewDetection(j, Criticality::HIGH, "RWX");
+                }
+
+                // Callstack entry from non-image region
+                if (callstack_entry["type"] != "IMAGE") { // MEM_IMAGE
+                    if (callstack_entry["type"] == "MAPPED") { // MEM_MAPPED
+                        AnalyzerNewDetection(j, Criticality::LOW, "MEM_MAPPED");
+                    }
+                    else if (callstack_entry["type"] == "PRIVATE") { // MEM_PRIVATE, unbacked!
+                        AnalyzerNewDetection(j, Criticality::HIGH, "MEM_PRIVATE");
+                    }
+                    else {
+                        AnalyzerNewDetection(j, Criticality::MEDIUM, "MEM_UNKNOWN");
+                    }
+                }
+            }
+        }
+    }
 }
 
 
