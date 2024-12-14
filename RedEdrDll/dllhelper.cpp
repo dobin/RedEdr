@@ -160,9 +160,6 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
             if (w == 0) {
                 LOG_A(LOG_ERROR, "Error");
             }
-            else {
-                wprintf(L"BUF: %s", buf);
-            }
         }
         buf_size -= w;
         buf += w;
