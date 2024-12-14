@@ -29,3 +29,4 @@ std::string wstring_to_utf8(std::wstring& wide_string);
 void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize);
 wchar_t* JsonEscape(wchar_t* str, size_t buffer_size);
 std::wstring JsonEscape2(PCWSTR input);
+DWORD StartProcessInBackground(LPCWSTR exePath, LPCWSTR commandLine);

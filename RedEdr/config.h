@@ -34,6 +34,7 @@ public:
 	//bool do_dllinjection_nochildren = false;
 
 	bool etw_standard = true;
+	bool etw_kernelaudit = true;
 	bool etw_secaudit = true;
 	bool etw_defender = false;
 

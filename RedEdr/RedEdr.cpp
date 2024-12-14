@@ -15,6 +15,7 @@
 #include "logging.h"
 #include "manager.h"
 #include "processinfo.h"
+#include "dllinjector.h"
 
 #include "../Shared/common.h"
 
@@ -94,8 +95,9 @@ int main(int argc, char* argv[]) {
         ("5,pplstop", "PPL service: stop", cxxopts::value<bool>()->default_value("false"))
 
         // Debug
+        ("x,test", "Debug: start parts of RedEdr for testing", cxxopts::value<std::string>())
         ("l,dllreader", "Debug: DLL reader but no injection (for manual injection tests)", cxxopts::value<bool>()->default_value("false"))
-        ("d,debug", "Enable debugging", cxxopts::value<bool>()->default_value("false"))
+        ("d,debug", "Debug: Enable debug output", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print usage")
         ;
     options.allow_unrecognised_options();
@@ -133,7 +135,7 @@ int main(int argc, char* argv[]) {
         wchar_t* ss = ConvertCharToWchar(s.c_str());
         g_config.targetExeName = ss;
     }
-    else {
+    else if (! result.count("test")) {
         std::cout << options.help() << std::endl;
         exit(0);
     }
@@ -148,12 +150,31 @@ int main(int argc, char* argv[]) {
     g_config.web_output = result["web"].as<bool>();
     g_config.do_dllinjection_ucallstack = result["dllcallstack"].as<bool>();
 
-	if (result["all"].as<bool>()) {
-		g_config.do_etw = true;
-		g_config.do_etwti = true;
-		g_config.do_kernelcallback = true;
-		g_config.do_dllinjection = true;
+    if (result["all"].as<bool>()) {
+        g_config.do_etw = true;
+        g_config.do_etwti = true;
+        g_config.do_kernelcallback = true;
+        g_config.do_dllinjection = true;
         g_config.do_dllinjection_ucallstack = true;
+    } else if (result.count("test")) {
+        g_config.targetExeName = L"RedEdrTester.exe";
+		std::string s = result["test"].as<std::string>();
+		if (s == "etw") {
+			g_config.do_etw = true;
+            g_config.etw_standard = true;
+            g_config.etw_kernelaudit = false;
+            g_config.etw_secaudit = false;
+            g_config.etw_defender = false;
+		}
+		else if (s == "etwti") {
+			g_config.do_etwti = true;
+		}
+		else if (s == "kernel") {
+			g_config.do_kernelcallback = true;
+		}
+		else if (s == "dll") {
+			g_config.debug_dllreader = true;
+		}
 	} else if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback 
         && !g_config.do_dllinjection && !g_config.do_etwti && !g_config.debug_dllreader) {
         printf("Choose at least one of --etw --etwti --kernel --inject --etwti (--dllreader for testing)");
@@ -197,6 +218,27 @@ int main(int argc, char* argv[]) {
 
     // Analyzer
     InitializeAnalyzer(threads);
+
+    // Test
+    if(result.count("test")) {
+        Sleep(1000); // wait till all is ready
+
+        LOG_A(LOG_INFO, "Tester: Start");
+        LPCWSTR path = L"C:\\Users\\dobin\\source\\repos\\RedEdr\\x64\\Debug\\RedEdrTester.exe";
+        LPCWSTR args = L"dostuff";
+        DWORD pid = StartProcessInBackground(path, args);
+        if (result["test"].as<std::string>() == "dll") {
+            // do the userspace dll injection
+            remote_inject(pid);
+        }
+        LOG_A(LOG_INFO, "Tester: finished");
+
+        Sleep(3000); // give it time to do its thing
+        LOG_A(LOG_INFO, "Tester: Shutdown");
+        ManagerShutdown();
+        keyboard_reader_flag = FALSE;
+        Sleep(1000); // For log output
+    }
 
     // Wait for all threads to complete
     LOG_A(LOG_INFO, "RedEdr: waiting for %llu threads...", threads.size());

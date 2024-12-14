@@ -384,3 +384,45 @@ std::wstring JsonEscape2(PCWSTR input) {
 
     return result;
 }
+
+
+DWORD StartProcessInBackground(LPCWSTR exePath, LPCWSTR commandLine) {
+    STARTUPINFO si = { 0 };
+    si.cb = sizeof(STARTUPINFO);
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE; // Start the process in the background
+
+    PROCESS_INFORMATION pi = { 0 };
+
+    // Combine exePath and commandLine into a single buffer
+    std::wstring fullCommand = std::wstring(exePath) + L" " + std::wstring(commandLine);
+    std::vector<wchar_t> commandBuffer(fullCommand.begin(), fullCommand.end());
+    commandBuffer.push_back(0); // Null-terminate the buffer
+
+    // Create the process
+    if (CreateProcess(
+        nullptr,                 // Application name (null to use command line)
+        commandBuffer.data(),    // Command line
+        nullptr,                 // Process security attributes
+        nullptr,                 // Thread security attributes
+        FALSE,                   // Inherit handles
+        CREATE_NO_WINDOW,        // Creation flags
+        nullptr,                 // Use parent's environment block
+        nullptr,                 // Use parent's current directory
+        &si,                     // Pointer to STARTUPINFO
+        &pi                      // Pointer to PROCESS_INFORMATION
+    )) {
+        DWORD pid = pi.dwProcessId; // Retrieve the process ID
+
+        // Close handles to avoid resource leaks
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+
+        return pid;
+    }
+    else {
+        // Print error and return 0 if process creation failed
+        std::wcerr << L"Failed to start process. Error: " << GetLastError() << std::endl;
+        return 0;
+    }
+}

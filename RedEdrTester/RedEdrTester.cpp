@@ -56,6 +56,44 @@ void GetProcessInfo(DWORD pid, wchar_t* target) {
 }
 
 
+void DoStuff() {
+	constexpr unsigned char shellcode[] =
+		"\xfc\x48";
+	PBYTE       payload = (PBYTE)shellcode;
+	SIZE_T      payloadSize = sizeof(shellcode);
+
+	// RW
+	PVOID shellcodeAddr = VirtualAlloc(NULL, payloadSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	if (shellcodeAddr == NULL) {
+		printf("VirtualAlloc failed\n");
+		return;
+	}
+
+	// COPY
+	memcpy(shellcodeAddr, payload, payloadSize);
+
+	// RW->RWX
+	DWORD dwOldProtection = NULL;
+	if (!VirtualProtect(shellcodeAddr, payloadSize, PAGE_EXECUTE_READWRITE, &dwOldProtection)) {
+		printf("VirtualProtect Failed With Error: %d \n", GetLastError());
+		return;
+	}
+
+	// THREAD
+	DWORD threadId;
+	HANDLE hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)shellcodeAddr, shellcodeAddr, 0, &threadId);
+	if (hThread == NULL) {
+		printf("CreateThread failed\n");
+		return;
+	}
+
+	// WAIT
+	WaitForSingleObject(hThread, INFINITE);
+	CloseHandle(hThread);
+	return;
+}
+
+
 void AnalyzeFile(wchar_t *fname) {
 	std::string filename = wcharToString(fname);
 	LOG_A(LOG_INFO, "Analyzer: Reading %s", filename.c_str());
@@ -114,6 +152,10 @@ int wmain(int argc, wchar_t* argv[]) {
 	}
 	else if (wcscmp(argv[1], L"analyzer") == 0) {
 		AnalyzeFile(argv[2]);
+	}
+	else if (wcscmp(argv[1], L"dostuff") == 0) {
+		Sleep(500); // give time to do dll injection
+		DoStuff();
 	}
 	else {
 		LOG_A(LOG_ERROR, "Unknown command: %s", argv[1]);

@@ -42,7 +42,8 @@ int InitializeEtwReader(std::vector<HANDLE>& threads) {
         else {
             EtwConsumers.push_back(etwConsumer);
         }
-
+    }
+    if (g_config.etw_kernelaudit) {
         etwConsumer = new EtwConsumer();
         if (!etwConsumer->SetupEtw(
             id++,
