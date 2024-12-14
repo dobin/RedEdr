@@ -115,6 +115,10 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         };
         res.set_content(stats.dump(), "application/json; charset=UTF-8");
     });
+    svr.Get("/api/meminfo", [](const httplib::Request&, httplib::Response& res) {
+        nlohmann::json info = g_Analyzer.targetInfo.ToJson();
+        res.set_content(info.dump(), "application/json; charset=UTF-8");
+    });
 
     svr.Get("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
         json response = { {"trace", wcharToString(g_config.targetExeName) }};

@@ -115,6 +115,21 @@ public:
 		}
 	}
 
+	nlohmann::json ToJson() {
+		nlohmann::json j;
+		for (const auto& it : memoryRegions.ranges_) {
+			MemoryRegion* r = (MemoryRegion*)it.data_;
+
+			j.push_back({
+				{"name", r->name},
+				{"addr", r->addr},
+				{"size", r->size},
+				{"protection", r->protection}
+			});
+		}
+		return j;
+	}
+
 private:
 	RangeSet memoryRegions;
 	//std::unordered_map<uint64_t, MemoryRegion*> memoryRegions;

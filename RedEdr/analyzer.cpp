@@ -93,7 +93,7 @@ void Analyzer::AnalyzeEventJson(nlohmann::json j) {
     // additional checks based on counted events
     if (json_entries.size() == 32) {
         if (j.contains("pid")) {
-            DWORD pid = j["pid"].get<DWORD>(); //std::stoull(j["pid"].get<std::string>(), nullptr, 10);
+            DWORD pid = j["pid"].get<DWORD>();
             PrintLoadedModules(pid, NULL);
         }
     }
