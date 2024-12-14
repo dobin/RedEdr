@@ -319,6 +319,7 @@ void Analyzer::AnalyzeNewEvents(std::vector<std::string> events) {
 
 void Analyzer::ResetData() {
     detections.clear();
+    json_entries.clear();
 }
 
 
