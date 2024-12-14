@@ -35,7 +35,7 @@ void Analyzer::AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::strin
     std::string o = CriticalityToString(c) + ": " + s;
     detections.push_back(o);
     j["detections"] += o;
-    LOG_A(LOG_INFO, "%s", o.c_str());
+    //LOG_A(LOG_INFO, "%s", o.c_str());
     //LOG_A(LOG_INFO, "%s", j.dump().c_str());
 }
 
@@ -113,7 +113,7 @@ void Analyzer::ExtractMemoryInfo(nlohmann::json j) {
             uint64_t addr = it["addr"].get<uint64_t>();
             uint64_t size = it["size"].get<uint64_t>();
             std::string protection = "???";
-            std::string name = "loaded_dll:" + it["name"];
+            std::string name = "loaded_dll:" + it["name"].get<std::string>();
 
             addr = AlignToPage(addr);
             // always add, as its early in the process without collisions hopefully
