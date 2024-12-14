@@ -11,6 +11,7 @@
 #include "json.hpp"
 #include "analyzer.h"
 #include "processinfo.h"
+#include "analyzer.h"
 
 
 HANDLE analyzer_thread;
@@ -23,6 +24,11 @@ std::string CriticalityToString(Criticality c);
 void PrintEvent(nlohmann::json j);
 uint64_t AlignToPage(uint64_t addr);
 std::string getLastTwoFields(const std::string& input);
+
+
+Analyzer::Analyzer() {
+    GenerateNewTraceId();
+}
 
 
 void Analyzer::AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::string s) {
@@ -58,6 +64,8 @@ std::string sus_protect(std::string protect) {
 
 
 void Analyzer::AnalyzeEventJson(nlohmann::json j) {
+	j["id"] = json_entries.size();
+    j["trace_id"] = trace_id;
     json_entries.push_back(j);
     return;
 
@@ -318,6 +326,7 @@ void Analyzer::AnalyzeNewEvents(std::vector<std::string> events) {
 
 
 void Analyzer::ResetData() {
+    GenerateNewTraceId();
     detections.clear();
     json_entries.clear();
 }
@@ -370,6 +379,11 @@ DWORD WINAPI AnalyzerThread(LPVOID param) {
 }
 
 
+void Analyzer::GenerateNewTraceId() {
+	g_Analyzer.trace_id = rand();
+}
+
+
 int InitializeAnalyzer(std::vector<HANDLE>& threads) {
     analyzer_thread = CreateThread(NULL, 0, AnalyzerThread, NULL, 0, NULL);
     if (analyzer_thread == NULL) {
@@ -386,7 +400,6 @@ void StopAnalyzer() {
         g_EventProducer.Stop();
     }
 }
-
 
 
 

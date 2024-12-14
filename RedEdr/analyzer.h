@@ -125,6 +125,7 @@ private:
 
 class Analyzer {
 public:
+	Analyzer();
 	void AnalyzeNewEvents(std::vector<std::string> events);
 	void SaveToFile();
 	std::string GetAllAsJson();
@@ -147,8 +148,11 @@ public:
 	void AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::string s);
 
 private:
+	void GenerateNewTraceId();
+
 	std::vector<nlohmann::json> json_entries;
 	std::mutex output_mutex;
+	size_t trace_id = 0;
 };
 
 
