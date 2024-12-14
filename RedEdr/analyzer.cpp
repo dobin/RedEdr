@@ -66,7 +66,6 @@ std::string sus_protect(std::string protect) {
 void Analyzer::AnalyzeEventJson(nlohmann::json& j) {
     j["id"] = json_entries.size();
     j["trace_id"] = trace_id;
-    json_entries.push_back(j);
 
     // Sanity check
     if (!j.contains("type")) {
@@ -102,6 +101,9 @@ void Analyzer::AnalyzeEventJson(nlohmann::json& j) {
     //targetInfo.PrintMemoryRegions();
     Analyze(j);
     
+    // Has to be at the end for some reason
+    json_entries.push_back(j);
+
     return;
 }
 
