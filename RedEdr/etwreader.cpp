@@ -53,6 +53,13 @@ std::wstring utf8_to_wstring(const std::string& str) {
     return result;
 }
 
+bool starts_with2(const std::wstring& str, const std::wstring& prefix) {
+    if (str.size() < prefix.size()) {
+        return false;
+    }
+    return str.compare(0, prefix.size(), prefix) == 0;
+}
+
 
 void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trace_context) {
     krabs::schema schema(record, trace_context.schema_locator);
@@ -60,6 +67,13 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
 
     DWORD processId = record.EventHeader.ProcessId;
     if (!g_ProcessCache.observe(processId)) {
+        return;
+    }
+    int opcode = schema.event_opcode();
+    if (opcode == 98 || opcode == 99) {
+        // temp
+        // PageFaultVirtualAlloc
+		// PageFaultVirtualFree
         return;
     }
 
@@ -85,10 +99,10 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
     std::wstring c = a + b;
     std::string d = wstring_to_utf8_2(c);
 	j["event"] = d;
+
+    j["opcode_id"] = schema.event_opcode();
     
-    std::wstring e = schema.provider_name();
-    std::string f = wstring_to_utf8_2(e);
-	j["provider_name"] = f;
+	j["provider_name"] = std::to_string(record.EventHeader.ProviderId);
     
     //j["event"] = schema.event_name();
 	//j["provider_name"] = schema.provider_name();
@@ -132,6 +146,15 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
             // Get the name and type of the property
             const std::wstring& propertyName = property.name();
             const auto propertyType = property.type();
+
+            /*
+            * Reserved1":"0","Reserved2":"0","Reserved3":"0","Reserved4":"0",
+            * "SignatureLevel":"(Unsupported type)\n","SignatureType":"(Unsupported type)\n
+            */
+			if (starts_with2(propertyName, L"Reserved") || starts_with2(propertyName, L"Signature")) {
+				continue;
+			}
+
 
             // Parse the property value using the parser
             switch (propertyType) {
@@ -204,11 +227,23 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
     krabs::kernel::vamap_provider vamap_provider;
     krabs::kernel::virtual_alloc_provider virtual_alloc_provider;
 
+    thread_dispatch_provider.add_on_event_callback(event_callback);
     image_load_provider.add_on_event_callback(event_callback);
-    //virtual_alloc_provider.add_on_event_callback(event_callback);
+    dpc_provider.add_on_event_callback(event_callback);
+    process_provider.add_on_event_callback(event_callback);
+    system_call_provider.add_on_event_callback(event_callback);
+    thread_provider.add_on_event_callback(event_callback);
+    vamap_provider.add_on_event_callback(event_callback);
+    virtual_alloc_provider.add_on_event_callback(event_callback);
 
+    trace.enable(thread_dispatch_provider);
     trace.enable(image_load_provider);
-    //trace.enable(virtual_alloc_provider);
+    trace.enable(dpc_provider);
+    trace.enable(process_provider);
+    trace.enable(system_call_provider);
+    trace.enable(thread_provider);
+    trace.enable(vamap_provider);
+    trace.enable(virtual_alloc_provider);
 
     LOG_A(LOG_INFO, "ETW: Started...");
     trace.start();
