@@ -1,9 +1,5 @@
-
-#include "eventproducer.h"
-#include "config.h"
-#include "logging.h"
-#include "utils.h"
-#include "json.hpp"
+#include <Windows.h>
+#include <vector>
 
 DWORD WINAPI WebserverThread(LPVOID param);
 int InitializeWebServer(std::vector<HANDLE>& threads);

@@ -3,6 +3,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <Windows.h>
+
 #define PIPE_BUFFER_SIZE 8192 // thats the pipe buffer (default 4096)
 #define DATA_BUFFER_SIZE 4096 // all buffers for strings
 
@@ -12,6 +14,7 @@
 #define WCHAR_SMALL_PIPE 128
 
 #define IOCTL_MY_IOCTL_CODE CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
+
 typedef struct _MY_DRIVER_DATA {
     WCHAR filename[256];
     int enable;

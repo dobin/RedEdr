@@ -159,10 +159,22 @@ wchar_t* stringToWChar(const std::string& str) {
 }
 
 
-std::string wstring_to_utf8(std::wstring& wide_string)
-{
-    static std::wstring_convert<std::codecvt_utf8<wchar_t>> utf8_conv;
-    return utf8_conv.to_bytes(wide_string);
+std::string wstring_to_utf8(std::wstring& wide_string) {
+    if (wide_string.empty()) {
+        return {};
+    }
+
+    // Determine the size needed for the UTF-8 buffer
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, wide_string.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (size_needed <= 0) {
+        throw std::runtime_error("Failed to calculate size for UTF-8 string.");
+    }
+
+    // Allocate the buffer and perform the conversion
+    std::string utf8_string(size_needed - 1, '\0'); // Exclude the null terminator
+    WideCharToMultiByte(CP_UTF8, 0, wide_string.c_str(), -1, &utf8_string[0], size_needed, nullptr, nullptr);
+
+    return utf8_string;
 }
 
 

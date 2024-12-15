@@ -4,18 +4,21 @@
 #include <iostream>
 #include <string.h>
 #include <conio.h>
+#include <vector>
+
+#include "logging.h"
+#include "processcache.h"
+#include "manager.h"
+
 
 #include "cxxops.hpp"
 #include "config.h"
-#include "processcache.h"
 #include "analyzer.h"
 #include "webserver.h"
 #include "kernelinterface.h"
 #include "pplmanager.h"
-#include "logging.h"
-#include "manager.h"
-#include "processinfo.h"
 #include "dllinjector.h"
+#include "utils.h"
 
 #include "../Shared/common.h"
 
@@ -250,6 +253,5 @@ int main(int argc, char* argv[]) {
         LOG_A(LOG_INFO, "RedEdr: Wait failed");
     }
     LOG_A(LOG_INFO, "RedEdr: all %llu threads finished", threads.size());
-
     return 0;
 }

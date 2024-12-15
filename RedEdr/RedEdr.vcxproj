@@ -106,9 +106,11 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;OUTPUT_STDOUT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;OUTPUT_STDOUT;WIN32_LEAN_AND_MEAN
+;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)RedEdrShared/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,7 +137,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\RedEdrShared\etwconsumer.cpp" />
     <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\loguru.cpp" />
     <ClCompile Include="..\RedEdrShared\piping.cpp" />
@@ -147,7 +148,6 @@
     <ClCompile Include="dllinjector.cpp" />
     <ClCompile Include="eventproducer.cpp" />
     <ClCompile Include="kernelinterface.cpp" />
-    <ClCompile Include="etwhandler.cpp" />
     <ClCompile Include="etwreader.cpp" />
     <ClCompile Include="dllreader.cpp" />
     <ClCompile Include="kernelreader.cpp" />
@@ -171,7 +171,6 @@
     <ClInclude Include="dllinjector.h" />
     <ClInclude Include="json.hpp" />
     <ClInclude Include="kernelinterface.h" />
-    <ClInclude Include="etwhandler.h" />
     <ClInclude Include="etwreader.h" />
     <ClInclude Include="httplib.h" />
     <ClInclude Include="dllreader.h" />
@@ -193,6 +192,7 @@
     <None Include="design.css">
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
     </None>
+    <None Include="packages.config" />
     <None Include="recording.html">
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
     </None>
@@ -202,5 +202,12 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\packages\Microsoft.O365.Security.Krabsetw.4.4.3\build\native\Microsoft.O365.Security.Krabsetw.targets" Condition="Exists('..\packages\Microsoft.O365.Security.Krabsetw.4.4.3\build\native\Microsoft.O365.Security.Krabsetw.targets')" />
   </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\Microsoft.O365.Security.Krabsetw.4.4.3\build\native\Microsoft.O365.Security.Krabsetw.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.O365.Security.Krabsetw.4.4.3\build\native\Microsoft.O365.Security.Krabsetw.targets'))" />
+  </Target>
 </Project>

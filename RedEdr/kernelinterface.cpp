@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <windows.h>
-#include <cwchar>  // For wcstol
-#include <cstdlib> // For exit()
+#include <cwchar>
+#include <cstdlib>
 #include <string.h>
 #include <stdio.h>
+#include <winioctl.h>
+
 #include "../Shared/common.h"
+
 #include "logging.h"
 #include "config.h"
 #include "processinfo.h"

@@ -186,6 +186,8 @@ bool RetrieveProcessInfo(Process *process, HANDLE hProcess) {
 
 
 BOOL PrintLoadedModules(DWORD pid, Process* process) {
+    return TRUE;
+
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
     if (hProcess == NULL) {
         // We dont care

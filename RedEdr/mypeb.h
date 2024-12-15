@@ -2,12 +2,9 @@
 
 #include <stdio.h>
 #include <windows.h>
-#include <dbghelp.h>
-#include <wintrust.h>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <winternl.h>
 
 
 // https://github.com/winsiderss/systeminformer/blob/master/phnt/include/ntpebteb.h

@@ -1,157 +1,224 @@
-#include <windows.h>
-#include <evntrace.h>
-#include <tdh.h>
+#include <Windows.h>
 #include <iostream>
 #include <vector>
 #include <string>
 #include <iomanip>
 #include <sstream>
 
+#include <krabs.hpp>
+
+#include "eventproducer.h"
 #include "logging.h"
 #include "etwreader.h"
 #include "processcache.h"
 #include "config.h"
-#include "etwhandler.h"
-#include "etwconsumer.h"
 
-#pragma comment(lib, "tdh.lib")
-#pragma comment(lib, "advapi32.lib")
+#include "json.hpp"
+//#include "utils.cpp"
 
 
-// EtwReader: Setup ETW (EtwConsumer) so it calls the EtwHandlers
+krabs::kernel_trace trace(L"RedEdr");
 
-// Local variables
-std::list<EtwConsumer*> EtwConsumers;
+#include <locale>
+#include <codecvt>
 
 
-int InitializeEtwReader(std::vector<HANDLE>& threads) {
-    int id = 0;
-    EtwConsumer* etwConsumer = NULL;
-
-    if (g_config.etw_standard) {
-        etwConsumer = new EtwConsumer();
-        if (!etwConsumer->SetupEtw(
-            id++,
-            L"{22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716}",
-            &EventRecordCallbackKernelProcess,
-            L"Microsoft-Windows-Kernel-Process",
-            g_config.sessionName.c_str()
-        )) {
-            LOG_W(LOG_ERROR, L"ETW: Problem with: Microsoft-Windows-Kernel-Process");
-        }
-        else {
-            EtwConsumers.push_back(etwConsumer);
-        }
-    }
-    if (g_config.etw_kernelaudit) {
-        etwConsumer = new EtwConsumer();
-        if (!etwConsumer->SetupEtw(
-            id++,
-            L"{e02a841c-75a3-4fa7-afc8-ae09cf9b7f23}",
-            &EventRecordCallbackApiCalls,
-            L"Microsoft-Windows-Kernel-Audit-API-Calls",
-            g_config.sessionName.c_str()
-        )) {
-            LOG_W(LOG_ERROR, L"ETW: Problem with: Microsoft-Windows-Kernel-Audit-API-Calls");
-        }
-        else {
-            EtwConsumers.push_back(etwConsumer);
-        }
-
-        // Nothing interesting in here
-        // L"{8c416c79-d49b-4f01-a467-e56d3aa8234c}", &EventRecordCallbackWin32, L"Microsoft-Windows-Win32k");
+std::string wstring_to_utf8_2(const std::wstring& wide_string) {
+    if (wide_string.empty()) {
+        return {};
     }
 
-    // Security-Auditing, special case
-    if (g_config.etw_secaudit) {
-        // Check: Are we system?
-        char user_name[128] = { 0 };
-        DWORD user_name_length = 128;
-        if (!GetUserNameA(user_name, &user_name_length) || strcmp(user_name, "SYSTEM") != 0)
-        {
-            LOG_A(LOG_ERROR, "ETW: Microsoft-Windows-Security-Auditing can only be traced by SYSTEM");
-        }
-        else {
-            etwConsumer = new EtwConsumer();
-            if (!etwConsumer->SetupEtwSecurityAuditing(
-                id++,
-                &EventRecordCallbackSecurityAuditing,
-                g_config.sessionName.c_str()
-            )) {
-				LOG_W(LOG_ERROR, L"ETW: Problem with: Microsoft-Windows-Security-Auditing");
-			}
-            else {
-				EtwConsumers.push_back(etwConsumer);
-			}
-        }
+    // Determine the size needed for the UTF-8 buffer
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, wide_string.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (size_needed <= 0) {
+        throw std::runtime_error("Failed to calculate size for UTF-8 string.");
     }
 
-    // Antimalware
+    // Allocate the buffer and perform the conversion
+    std::string utf8_string(size_needed - 1, '\0'); // Exclude the null terminator
+    WideCharToMultiByte(CP_UTF8, 0, wide_string.c_str(), -1, &utf8_string[0], size_needed, nullptr, nullptr);
+
+    return utf8_string;
+}
+
+
+std::wstring utf8_to_wstring(const std::string& str) {
+    if (str.empty()) {
+        return {};
+    }
+
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), static_cast<int>(str.size()), nullptr, 0);
+    std::wstring result(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), static_cast<int>(str.size()), &result[0], size_needed);
+    return result;
+}
+
+
+void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trace_context) {
+    krabs::schema schema(record, trace_context.schema_locator);
+    krabs::parser parser(schema);
+
+    DWORD processId = record.EventHeader.ProcessId;
+    if (!g_ProcessCache.observe(processId)) {
+        return;
+    }
+
+    nlohmann::json j;
+/*
+    output << L"{";
+    output << L"\"type\":\"etw\",";
+    output << L"\"time\":" << static_cast<__int64>(eventRecord->EventHeader.TimeStamp.QuadPart) << L",";
+    output << L"\"pid\":" << eventRecord->EventHeader.ProcessId << L",";
+    output << L"\"thread_id\":" << eventRecord->EventHeader.ThreadId << L",";
+    output << L"\"event\":\"" << eventName << L"\",";
+    output << L"\"provider_name\":\"" << (eventInfo->ProviderNameOffset ? (PCWSTR)((PBYTE)eventInfo + eventInfo->ProviderNameOffset) : L"Unknown") << L"\",";
+    */
+
+	j["type"] = "etw";
+	j["time"] = static_cast<__int64>(record.EventHeader.TimeStamp.QuadPart);
+	j["pid"] = record.EventHeader.ProcessId;
+	j["thread_id"] = record.EventHeader.ThreadId;
+
+    // FUUUUUUUUUUUUUUUUUUUUUUCK THIS SHIT OMFG
+    std::wstring a = std::wstring(schema.task_name());
+    std::wstring b = std::wstring(schema.opcode_name());
+    std::wstring c = a + b;
+    std::string d = wstring_to_utf8_2(c);
+	j["event"] = d;
+    
+    std::wstring e = schema.provider_name();
+    std::string f = wstring_to_utf8_2(e);
+	j["provider_name"] = f;
+    
+    //j["event"] = schema.event_name();
+	//j["provider_name"] = schema.provider_name();
+
+    /* 
+    {"DefaultBase":"Value: 00007FFC682D0000",
+    "FileName":"Value: \\Device\\HarddiskVolume3\\Windows\\System32\\ntdll.dll",
+    "ImageBase":"Value: 00007FFC682D0000",
+    "ImageChecksum":"Value: 2198146","ImageSize":"Value: 0000000000217000",
+    "ProcessId":"Value: 6352",
+    "Reserved0":"Value: (Unsupported type)\n","Reserved1":"Value: 0",
+    "Reserved2":"Value: 0","Reserved3":"Value: 0","Reserved4":"Value: 0",
+    "SignatureLevel":"Value: (Unsupported type)\n","SignatureType":"Value: (Unsupported type)\n",
+    "TimeDateStamp":"Value: 3875757754","id":"2cb15d1d-5fc1-11d2-abe1-00a0c911f518",
+    "opcode":2,
+    
+    "opcode_name":"UnLoad","task_name":"Image"}
+    */
+	//j["id"] = std::to_string(record.EventHeader.ProviderId);
+	//j["task_name"] = schema.task_name();
+	//j["opcode"] = schema.event_opcode();
+	//j["opcode_name"] = schema.opcode_name();
+
     /*
-    if (g_config.etw_defender) {
-        reader = SetupTrace(id++, L"{0a002690-3839-4e3a-b3b6-96d8df868d99}", &EventRecordCallbackAntimalwareEngine, L"Microsoft-Antimalware-Engine");
-        if (reader != NULL) {
-            readers.push_back(reader);
-        }
-        reader = SetupTrace(id++, L"{8E92DEEF-5E17-413B-B927-59B2F06A3CFC}", &EventRecordCallbackAntimalwareRtp, L"Microsoft-Antimalware-RTP");
-        if (reader != NULL) {
-            readers.push_back(reader);
-        }
-        reader = SetupTrace(id++, L"{CFEB0608-330E-4410-B00D-56D8DA9986E6}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-AMFilter");
-        if (reader != NULL) {
-            readers.push_back(reader);
-        }
-        reader = SetupTrace(id++, L"{2A576B87-09A7-520E-C21A-4942F0271D67}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Scan-Interface");
-        if (reader != NULL) {
-            readers.push_back(reader);
-        }
-        reader = SetupTrace(id++, L"{e4b70372-261f-4c54-8fa6-a5a7914d73da}", &EventRecordCallbackPrintAll, L"Microsoft-Antimalware-Protection");
-        if (reader != NULL) {
-            readers.push_back(reader);
-        }
-    }*/
+    std::wstringstream ss;
+    ss << L"{";
+    ss << L"\"id:\":\"" << std::to_wstring(record.EventHeader.ProviderId) << "\",";
+    //ss << L"\"provider\":\"" << schema.provider_name() << "\",";
+    //ss << L"\"event_name\":\"" << schema.event_name() << "\",";
+    ss << L"\"task_name\":\"" << schema.task_name() << "\",";
+    ss << L"\"opcode\":\"" << schema.event_opcode() << "\",";
+    ss << L"\"opcode_name\":\"" << schema.opcode_name() << "\"";
+    ss << L"}";
+    */
 
-    // ProcessTrace() can only handle 1 (one) real-time processing session
-    // Create threads instead fuck...
-    LOG_A(LOG_INFO, "ETW: Start the tracing threads");
-    for (const auto& consumer: EtwConsumers) {
-        HANDLE thread = CreateThread(NULL, 0, TraceProcessingThread, consumer, 0, NULL);
-        if (thread == NULL) {
-            LOG_A(LOG_ERROR, "ETW: Failed to create thread, continue");
-            //return 1;
+    // Iterate over all properties defined in the schema
+    for (const auto& property : parser.properties()) {
+        try {
+            std::wstringstream ss;
+
+            // Get the name and type of the property
+            const std::wstring& propertyName = property.name();
+            const auto propertyType = property.type();
+
+            // Parse the property value using the parser
+            switch (propertyType) {
+            case TDH_INTYPE_UINT32:
+                ss << parser.parse<uint32_t>(propertyName);
+                break;
+            case TDH_INTYPE_UINT64:
+                ss << parser.parse<uint64_t>(propertyName);
+                break;
+            case TDH_INTYPE_UNICODESTRING:
+                ss << parser.parse<std::wstring>(propertyName);
+                break;
+            case TDH_INTYPE_ANSISTRING:
+                ss << utf8_to_wstring(parser.parse<std::string>(propertyName));
+                break;
+            case TDH_INTYPE_POINTER:  // hex
+                ss << parser.parse<PVOID>(propertyName);
+                break;
+            case TDH_INTYPE_FILETIME:
+            {
+                FILETIME fileTime = *parser.parse<PFILETIME>(propertyName);
+                SYSTEMTIME stUTC, stLocal;
+                FileTimeToSystemTime(&fileTime, &stUTC);
+                SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
+                ss << stLocal.wYear << L"/" << stLocal.wMonth << L"/" << stLocal.wDay << L" "
+                    << stLocal.wHour << L"." << stLocal.wMinute << L"." << stLocal.wSecond;
+                break;
+            }
+
+            default:
+                ss << L"(Unsupported type)\n";
+                break;
+            }
+
+            // FUCK ME SIDEWAYS
+            std::string key_2 = wstring_to_utf8_2((std::wstring&) propertyName);
+            std::string value_2 = wstring_to_utf8_2((std::wstring&) ss.str());
+            j[key_2] = value_2;
         }
-        else {
-            threads.push_back(thread);
+        catch (const std::exception& ex) {
+            std::wcout << L"Failed to parse property: " << ex.what() << L"\n";
         }
     }
 
-    return 0;
+    // GOD FUCKING DAMNIT
+    std::string json_fuck = j.dump();
+    std::wstring json_fuck_2 = utf8_to_wstring(json_fuck);
+    g_EventProducer.do_output(json_fuck_2);
+}
+
+
+BOOL InitializeEtwReader(std::vector<HANDLE>& threads) {
+    HANDLE thread = CreateThread(NULL, 0, TraceProcessingThread, NULL, 0, NULL);
+    if (thread == NULL) {
+        LOG_A(LOG_ERROR, "ETW: Could not start thread");
+        return FALSE;
+    }
+	threads.push_back(thread);
+    return TRUE;
 }
 
 
 DWORD WINAPI TraceProcessingThread(LPVOID param) {
-    EtwConsumer* etwConsumer = (EtwConsumer*)param;
-    LOG_A(LOG_INFO, "!ETW: Start Thread %i", etwConsumer->getId());
+    krabs::kernel::thread_dispatch_provider thread_dispatch_provider;
+    krabs::kernel::image_load_provider image_load_provider;
+    krabs::kernel::dpc_provider dpc_provider;
+    krabs::kernel::process_provider process_provider;
+    krabs::kernel::system_call_provider system_call_provider;
+    krabs::kernel::thread_provider thread_provider;
+    krabs::kernel::vamap_provider vamap_provider;
+    krabs::kernel::virtual_alloc_provider virtual_alloc_provider;
 
-    if (!etwConsumer->StartEtw()) {
-        LOG_A(LOG_ERROR, "ERror");
-    }
+    image_load_provider.add_on_event_callback(event_callback);
+    //virtual_alloc_provider.add_on_event_callback(event_callback);
 
-    LOG_A(LOG_INFO, "!ETW: Exit Thread %i", etwConsumer->getId());
+    trace.enable(image_load_provider);
+    //trace.enable(virtual_alloc_provider);
+
+    LOG_A(LOG_INFO, "ETW: Started...");
+    trace.start();
+    LOG_A(LOG_INFO, "ETW: Finished...");
     return 0;
 }
 
 
 void EtwReaderStopAll() {
-    LOG_A(LOG_INFO, "ETW: Stopping EtwTracing"); fflush(stdout);
-
-    for (const auto& etwConsumer : EtwConsumers) {
-        etwConsumer->StopEtw();
-    }
-
-    // Todo free memory
-
-    LOG_A(LOG_INFO, "ETW: EtwTracing all stopped"); 
+    LOG_A(LOG_INFO, "ETW: Stopping...");
+    trace.stop();
+    LOG_A(LOG_INFO, "ETW: Stopped"); 
 }
-
-

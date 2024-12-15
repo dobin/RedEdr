@@ -57,12 +57,6 @@
     <ClCompile Include="webserver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdrShared\etwconsumer.cpp">
-      <Filter>Source Files\input</Filter>
-    </ClCompile>
-    <ClCompile Include="etwhandler.cpp">
-      <Filter>Source Files\input</Filter>
-    </ClCompile>
     <ClCompile Include="etwreader.cpp">
       <Filter>Source Files\input</Filter>
     </ClCompile>
@@ -105,9 +99,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="config.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="etwhandler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="logreader.h">
@@ -177,5 +168,6 @@
     <None Include="shared.js">
       <Filter>Source Files\web</Filter>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>
