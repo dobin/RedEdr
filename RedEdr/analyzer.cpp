@@ -275,7 +275,6 @@ void Analyzer::Analyze(nlohmann::json& j) {
 
 
 void Analyzer::AnalyzeEventStr(std::string eventStr) {
-    //std::cout << L"Processing: " << eventStr << std::endl;
     nlohmann::json j;
     try
     {

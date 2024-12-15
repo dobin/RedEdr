@@ -1,11 +1,6 @@
-#include "httplib.h" // Needs to be on top?
-
 #include <iostream>
 #include <sstream>
 #include <vector>
-
-#include <locale>
-#include <codecvt>
 
 #include "eventproducer.h"
 #include "config.h"
@@ -14,17 +9,11 @@
 #include "json.hpp"
 
 
-/* Retrieves events from all subsystems:
-     - ETW
-     - ETWTI
-     - Kernel
-     - DLL
-    as "text", convert to json-text, and buffer em. 
+/* Retrieves events from all subsystems (ETW, ETWTI, Kernel, DLL)
+   as JSON text. Buffer it here until Analyzer collects em.
 
-    It mostly makes sure all events are collected as fast
-    as possible, with as little processing as possible.
-
-    Analyzer will collect the events regularly.
+   It mostly makes sure all events are collected as fast
+   as possible, with as little processing as possible.
 */
 
 // Global
@@ -32,16 +21,14 @@ EventProducer g_EventProducer;
 
 
 void EventProducer::do_output(std::wstring eventWstr) {
-    // Convert to json and add it to the list
-    //std::string json = ConvertLogLineToJsonEvent(eventWstr);
-
+    // Add to cache
     std::string json = wstring_to_utf8(eventWstr);
     output_mutex.lock();
     output_entries.push_back(json);
     output_mutex.unlock();
     output_count++;
 
-    // print it
+    // Output accordingly
     if (g_config.hide_full_output) {
         if (output_count >= 100) {
             if (output_count % 100 == 0) {

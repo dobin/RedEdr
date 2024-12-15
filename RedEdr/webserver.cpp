@@ -141,7 +141,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             }
         }
         catch (const json::parse_error& e) {
-            json error = { {"error", "Invalid JSON data"} };
+            json error = { {"error", "Invalid JSON data: " + std::string(e.what())}};
             res.status = 400;
             res.set_content(error.dump(), "application/json");
         }

@@ -11,11 +11,11 @@
 
 class Range {
 public:
-    Range(int start, int end, void*data) : start_(start), end_(end), data_(data) {
+    Range(uint64_t start, uint64_t end, void*data) : start_(start), end_(end), data_(data) {
         if (start_ > end_) std::swap(start_, end_);
     }
 
-    bool contains(int value) const {
+    bool contains(uint64_t value) const {
         return value >= start_ && value < end_;
     }
 
@@ -40,8 +40,8 @@ public:
             start_, end_);
     }
 
-    int start_;
-    int end_;
+    uint64_t start_;
+    uint64_t end_;
     void* data_;
 
     bool is_adjacent(const Range& other) const {
@@ -57,7 +57,7 @@ public:
         //merge_overlapping();
     }
 
-    BOOL contains(int value) const {
+    BOOL contains(uint64_t value) const {
         for (const auto& range : ranges_) {
             if (range.contains(value)) {
                 return TRUE;
@@ -66,7 +66,7 @@ public:
         return FALSE;
     }
 
-    const Range* get(int value) const {
+    const Range* get(uint64_t value) const {
         for (const auto& range : ranges_) {
             if (range.contains(value)) {
                 return &range;

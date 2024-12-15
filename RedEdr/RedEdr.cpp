@@ -3,7 +3,7 @@
 #include <windows.h>
 #include <iostream>
 #include <string.h>
-#include <conio.h>   // For _kbhit() and _getch()
+#include <conio.h>
 
 #include "cxxops.hpp"
 #include "config.h"
@@ -20,7 +20,7 @@
 #include "../Shared/common.h"
 
 
-BOOL keyboard_reader_flag = TRUE;
+BOOL keyboard_reader_running = TRUE;
 
 
 BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
@@ -32,7 +32,7 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     case CTRL_SHUTDOWN_EVENT:
         LOG_A(LOG_WARNING, "\nRedEdr: Ctrl-c detected, performing shutdown");
         ManagerShutdown();
-        keyboard_reader_flag = FALSE;
+        keyboard_reader_running = FALSE;
         return TRUE; // Indicate that we handled the signal
     default:
         return FALSE; // Let the next handler handle the signal
@@ -41,7 +41,7 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
 
 
 DWORD WINAPI KeyboardReaderThread(LPVOID param) {
-    while (keyboard_reader_flag) {
+    while (keyboard_reader_running) {
         if (_kbhit()) {  // Check if a key was pressed
             char ch = _getch();  // Get the character
             if (ch == 'r') {
@@ -52,6 +52,18 @@ DWORD WINAPI KeyboardReaderThread(LPVOID param) {
         Sleep(200);
     }
     return 0;
+}
+
+
+BOOL InitKeyboardReader(std::vector<HANDLE> threads) {
+    // Keyboard reader
+    HANDLE thread = CreateThread(NULL, 0, KeyboardReaderThread, NULL, 0, NULL);
+    if (thread == NULL) {
+        LOG_A(LOG_ERROR, "Failed to create thread");
+        return FALSE;
+    }
+    threads.push_back(thread);
+    return TRUE;
 }
 
 
@@ -67,7 +79,6 @@ void CreateRequiredFiles() {
 }
 
 
-// https://github.com/s4dbrd/ETWReader
 int main(int argc, char* argv[]) {
     cxxopts::Options options("RedEdr", "Maldev event recorder");
     options.add_options()
@@ -201,22 +212,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Webserver
     if (g_config.web_output) {
         InitializeWebServer(threads);
     }
 
     // Functionality
     ManagerStart(threads);
-
-    // Keyboard reader
-    HANDLE thread = CreateThread(NULL, 0, KeyboardReaderThread, NULL, 0, NULL);
-    if (thread == NULL) {
-        LOG_A(LOG_ERROR, "Failed to create thread");
-        return 1;
-    }
-    threads.push_back(thread);
-
-    // Analyzer
+    InitKeyboardReader(threads);
     InitializeAnalyzer(threads);
 
     // Test
@@ -236,7 +239,7 @@ int main(int argc, char* argv[]) {
         Sleep(3000); // give it time to do its thing
         LOG_A(LOG_INFO, "Tester: Shutdown");
         ManagerShutdown();
-        keyboard_reader_flag = FALSE;
+        keyboard_reader_running = FALSE;
         Sleep(1000); // For log output
     }
 

@@ -115,7 +115,7 @@ void AnalyzeFile(wchar_t *fname) {
 		std::cerr << "JSON data is not an array." << std::endl;
 		return;
 	}
-	for (const auto& event : json_data) {
+	for (auto& event : json_data) {
 		g_Analyzer.AnalyzeEventJson(event);
 	}
 
@@ -151,7 +151,12 @@ int wmain(int argc, wchar_t* argv[]) {
 		GetProcessInfo(pid, argv[3]);
 	}
 	else if (wcscmp(argv[1], L"analyzer") == 0) {
-		AnalyzeFile(argv[2]);
+		if (argc == 3) {
+			AnalyzeFile(argv[2]);
+		}
+		else {
+			AnalyzeFile((wchar_t*) L"C:\\RedEdr\\Data\\notepad.events.txt");
+		}
 	}
 	else if (wcscmp(argv[1], L"dostuff") == 0) {
 		Sleep(500); // give time to do dll injection

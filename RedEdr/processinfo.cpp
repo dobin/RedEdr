@@ -76,6 +76,7 @@ BOOL InitProcessInfo() {
         LOG_A(LOG_ERROR, "Procinfo: Could not get NtQueryVirtualMemory error: %d", GetLastError());
         return FALSE;
     }
+    return TRUE;
 }
 
 
