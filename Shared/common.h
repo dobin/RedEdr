@@ -3,8 +3,6 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <Windows.h>
-
 #define PIPE_BUFFER_SIZE 8192 // thats the pipe buffer (default 4096)
 #define DATA_BUFFER_SIZE 4096 // all buffers for strings
 

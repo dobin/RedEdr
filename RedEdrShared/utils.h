@@ -1,9 +1,8 @@
 #pragma once
-#include <windows.h>
 #include <string>
 #include <vector>
 #include <winternl.h>
-//#include <ntdef.h>
+
 
 void PrintWcharBufferAsHex(const wchar_t* buffer, size_t bufferSize);
 

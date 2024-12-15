@@ -155,8 +155,6 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
 				continue;
 			}
 
-
-            // Parse the property value using the parser
             switch (propertyType) {
             case TDH_INTYPE_UINT32:
                 ss << parser.parse<uint32_t>(propertyName);
@@ -180,7 +178,7 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
                 FileTimeToSystemTime(&fileTime, &stUTC);
                 SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
                 ss << stLocal.wYear << L"/" << stLocal.wMonth << L"/" << stLocal.wDay << L" "
-                    << stLocal.wHour << L"." << stLocal.wMinute << L"." << stLocal.wSecond;
+                    << stLocal.wHour << L":" << stLocal.wMinute << L":" << stLocal.wSecond;
                 break;
             }
 
@@ -207,6 +205,7 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
 
 
 BOOL InitializeEtwReader(std::vector<HANDLE>& threads) {
+    LOG_A(LOG_INFO, "!ETW: Started Thread");
     HANDLE thread = CreateThread(NULL, 0, TraceProcessingThread, NULL, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "ETW: Could not start thread");
@@ -245,15 +244,14 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
     trace.enable(vamap_provider);
     trace.enable(virtual_alloc_provider);
 
-    LOG_A(LOG_INFO, "ETW: Started...");
+    // Blocking, stopped with trace.stop()
     trace.start();
-    LOG_A(LOG_INFO, "ETW: Finished...");
+
+    LOG_A(LOG_INFO, "ETW: Thread Finished...");
     return 0;
 }
 
 
 void EtwReaderStopAll() {
-    LOG_A(LOG_INFO, "ETW: Stopping...");
     trace.stop();
-    LOG_A(LOG_INFO, "ETW: Stopped"); 
 }
