@@ -10,6 +10,7 @@
 #include <tchar.h>
 #include <mutex>
 
+#include "logging.h"
 #include "processcache.h"
 #include "utils.h"
 #include "processinfo.h"
@@ -54,7 +55,7 @@ Process* ProcessCache::getObject(DWORD id) {
 
     // Does not exist, create and add to cache
     Process* process = MakeProcess(id, g_config.targetExeName); // in here cache.cpp...
-    
+
     // every new pid comes through here
     if (process->observe) {
         AugmentProcess(id, process);
