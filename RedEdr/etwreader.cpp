@@ -14,10 +14,10 @@
 #include "config.h"
 
 #include "json.hpp"
-//#include "utils.cpp"
 
 
-krabs::kernel_trace trace(L"RedEdr");
+krabs::kernel_trace trace_kernel(L"RedEdrKernel");
+krabs::user_trace trace_user(L"RedEdrUser");
 
 #include <locale>
 #include <codecvt>
@@ -197,10 +197,38 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
         }
     }
 
+    // Callstack
+    auto stack_trace = schema.stack_trace();
+    for (auto& return_address : stack_trace)
+    {
+        j["stack_trace"] += return_address;
+    }
+
     // GOD FUCKING DAMNIT
     std::string json_fuck = j.dump();
     std::wstring json_fuck_2 = utf8_to_wstring(json_fuck);
     g_EventProducer.do_output(json_fuck_2);
+}
+
+
+void event_callback_stack(const EVENT_RECORD& record, const krabs::trace_context& trace_context) {
+    krabs::schema schema(record, trace_context.schema_locator);
+    krabs::parser parser(schema);
+
+    //if (schema.event_opcode() == 1) {
+        //auto pid = parser.parse<uint32_t>(L"ProcessID");
+        //auto image_name = parser.parse<std::wstring>(L"ImageName");
+        auto stack_trace = schema.stack_trace();
+
+        std::wcout << std::endl << schema.task_name();
+        //std::wcout << L" ProcessID=" << pid;
+        //std::wcout << L" ImageName=" << image_name;
+        std::wcout << std::endl << L"Call Stack:" << std::endl;
+        for (auto& return_address : stack_trace)
+        {
+            std::wcout << L"   0x" << std::hex << return_address << std::endl;
+        }
+    //}
 }
 
 
@@ -217,6 +245,69 @@ BOOL InitializeEtwReader(std::vector<HANDLE>& threads) {
 
 
 DWORD WINAPI TraceProcessingThread(LPVOID param) {
+    // OK
+    krabs::provider<> process_provider(L"Microsoft-Windows-Kernel-Process");
+    //process_provider.any(0x10);
+    process_provider.trace_flags(process_provider.trace_flags() | EVENT_ENABLE_PROPERTY_STACK_TRACE);
+    process_provider.add_on_event_callback(event_callback);
+    trace_user.enable(process_provider);
+    
+    // OK
+    krabs::provider<> auditapi_provider(L"Microsoft-Windows-Kernel-Audit-API-Calls");
+    //auditapi_provider.any(0x10);
+    auditapi_provider.trace_flags(auditapi_provider.trace_flags() | EVENT_ENABLE_PROPERTY_STACK_TRACE);
+    auditapi_provider.add_on_event_callback(event_callback);
+    trace_user.enable(auditapi_provider);
+    
+    // BROKEN? No messages
+    krabs::provider<> securityauditing_provider(L"Microsoft-Windows-Security-Auditing");
+    //securityauditing_provider.any(0x10);
+    securityauditing_provider.trace_flags(securityauditing_provider.trace_flags() | EVENT_ENABLE_PROPERTY_STACK_TRACE);
+    securityauditing_provider.add_on_event_callback(event_callback);
+    trace_user.enable(securityauditing_provider);
+
+
+    /*
+         *    krabs::trace trace;
+         *    // Adjust SE_SYSTEM_PROFILE_NAME token privilege through AdjustTokenPrivileges(...)
+         *    // to enable stack tracing (not done in this example). Then:
+         *    STACK_TRACING_EVENT_ID event_id = {0};
+         *    event_id.EventGuid = krabs::guids::perf_info;
+         *    event_id.Type = 46; // SampleProfile
+         *    trace.open();
+         *    trace.set_trace_information(TraceStackTracingInfo, &event_id, sizeof(STACK_TRACING_EVENT_ID));
+         *    krabs::kernel_provider stack_walk_provider(EVENT_TRACE_FLAG_PROFILE, krabs::guids::stack_walk);
+         *    trace.enable(stack_walk_provider);
+         *    trace.process();
+    */
+
+    
+    /*
+    //krabs::kernel_provider stack_walk_provider(EVENT_TRACE_FLAG_PROFILE, krabs::guids::stack_walk);
+    krabs::kernel_provider stack_walk_provider(EVENT_TRACE_FLAG_PROFILE, krabs::guids::image_load);
+
+    CLASSIC_EVENT_ID    event[1] = { 0 }; 
+    event[0].EventGuid = krabs::guids::image_load; 
+    event[0].Type = EVENT_TRACE_TYPE_END;
+    //event[0].Type = EVENT_TRACE_TYPE_LOAD;
+
+    trace_kernel.open();
+    trace_kernel.set_trace_information(TraceStackTracingInfo, &event, sizeof(event));
+   
+	stack_walk_provider.add_on_event_callback(event_callback_stack);
+    
+    trace_kernel.enable(stack_walk_provider);
+    trace_kernel.process();
+    */
+
+    /*
+    //krabs::kernel_provider provider(SOME_GUID, SOME_ULONG_MASK_VALUE);
+    krabs::kernel_provider my_provider(0, krabs::guids::ob_trace);
+    trace_kernel.enable(my_provider);
+    trace_kernel.set_trace_information();
+    */
+
+    /*
     krabs::kernel::thread_dispatch_provider thread_dispatch_provider;
     krabs::kernel::image_load_provider image_load_provider;
     krabs::kernel::dpc_provider dpc_provider;
@@ -243,9 +334,10 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
     trace.enable(thread_provider);
     trace.enable(vamap_provider);
     trace.enable(virtual_alloc_provider);
+    */
 
     // Blocking, stopped with trace.stop()
-    trace.start();
+    trace_user.start();
 
     LOG_A(LOG_INFO, "ETW: Thread Finished...");
     return 0;
@@ -253,5 +345,5 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
 
 
 void EtwReaderStopAll() {
-    trace.stop();
+    trace_user.stop();
 }
