@@ -101,7 +101,7 @@ void Analyzer::AnalyzeEventJson(nlohmann::json& j) {
     //targetInfo.PrintMemoryRegions();
     Analyze(j);
     
-    // Has to be at the end for some reason
+    // Has to be at the end as we dont store reference
     json_entries.push_back(j);
 
     return;

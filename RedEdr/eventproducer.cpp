@@ -57,7 +57,7 @@ std::vector<std::string> EventProducer::GetEvents() {
     std::vector<std::string> newEvents;
 
     output_mutex.lock();
-    newEvents = output_entries;
+    newEvents = output_entries; // Deep Copy!
     output_entries.clear();
     output_mutex.unlock();
 

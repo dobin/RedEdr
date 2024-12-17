@@ -125,6 +125,11 @@ void AnalyzeFile(wchar_t *fname) {
 	g_Analyzer.targetInfo.PrintMemoryRegions();
 }
 
+#include "krabs.hpp"
+
+void test() {
+
+}
 
 int wmain(int argc, wchar_t* argv[]) {
 	if (argc < 1) {
@@ -164,6 +169,9 @@ int wmain(int argc, wchar_t* argv[]) {
 	else if (wcscmp(argv[1], L"dostuff") == 0) {
 		Sleep(500); // give time to do dll injection
 		DoStuff();
+	}
+	else if (wcscmp(argv[1], L"test") == 0) {
+		test();
 	}
 	else {
 		LOG_A(LOG_ERROR, "Unknown command: %s", argv[1]);

@@ -278,6 +278,7 @@ Process* MakeProcess(DWORD pid, LPCWSTR target_name) {
     HANDLE hProcess;
     WCHAR exePath[MAX_PATH];
 
+
     hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
     if (hProcess == NULL) {
         // We dont care
@@ -286,6 +287,7 @@ Process* MakeProcess(DWORD pid, LPCWSTR target_name) {
     else {
         if (target_name != NULL) {
             if (GetModuleFileNameEx(hProcess, NULL, exePath, MAX_PATH)) {
+                LOG_W(LOG_WARNING, L"Make1: %s", exePath);
                 wchar_t* result = wcsstr(exePath, target_name);
                 if (result) {
                     LOG_W(LOG_INFO, L"Objcache: observe process %lu executable path: %s", pid, exePath);
