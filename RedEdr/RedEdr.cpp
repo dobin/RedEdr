@@ -227,23 +227,32 @@ int main(int argc, char* argv[]) {
 
     // Test
     if(result.count("test")) {
-        Sleep(1000); // wait till all is ready
+        LOG_A(LOG_INFO, "Tester: wait 1");
+        Sleep(1000);
+        if (result["test"].as<std::string>() == "etw") {
+            LOG_A(LOG_INFO, "Tester: wait 2");
+            Sleep(3000); // let ETW warm up
+        }
+		g_config.targetExeName = L"RedEdrTester";
 
-        LOG_A(LOG_INFO, "Tester: Start");
+        LOG_A(LOG_INFO, "Tester: process in background");
         LPCWSTR path = L"C:\\Users\\dobin\\source\\repos\\RedEdr\\x64\\Debug\\RedEdrTester.exe";
         LPCWSTR args = L"dostuff";
         DWORD pid = StartProcessInBackground(path, args);
         if (result["test"].as<std::string>() == "dll") {
             // do the userspace dll injection
+            LOG_A(LOG_INFO, "Tester: Do DLL injection");
             remote_inject(pid);
         }
-        LOG_A(LOG_INFO, "Tester: finished");
+        LOG_A(LOG_INFO, "Tester: wait");
+        for (int n = 0; n < 20; n++) {
+            Sleep(1000); // give it time to do its thing
 
-        Sleep(3000); // give it time to do its thing
+        }
         LOG_A(LOG_INFO, "Tester: Shutdown");
         ManagerShutdown();
         keyboard_reader_running = FALSE;
-        Sleep(1000); // For log output
+        Sleep(3000); // For log output
     }
 
     // Wait for all threads to complete
