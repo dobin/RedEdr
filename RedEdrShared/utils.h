@@ -1,7 +1,20 @@
 #pragma once
+
+#include <windows.h>
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <locale>
+#include <codecvt>
+#include <sstream>
+#include <iostream>
+#include <fstream>
+#include <ctime>
+#include <iomanip>
+
 #include <string>
 #include <vector>
-#include <winternl.h>
 
 void PrintWcharBufferAsHex(const wchar_t* buffer, size_t bufferSize);
 
@@ -20,12 +33,13 @@ wchar_t* wstring2wchar(const std::wstring& str);
 wchar_t* ConvertCharToWchar(const char* arg);
 std::string wcharToString(const wchar_t* wstr);
 std::string wstring_to_utf8(std::wstring& wide_string);
-void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize);
 std::wstring format_wstring(const wchar_t* format, ...);
 void remove_all_occurrences_case_insensitive(std::wstring& str, const std::wstring& to_remove);
 std::wstring ReplaceAll(std::wstring str, const std::wstring& from, const std::wstring& to);
 std::string ReplaceAllA(std::string str, const std::string& from, const std::string& to);
 bool contains_case_insensitive(const std::wstring& haystack, const std::wstring& needle);
+std::wstring utf8_to_wstring(const std::string& str);
+bool wstring_starts_with(const std::wstring& str, const std::wstring& prefix);
 
 wchar_t* JsonEscape(wchar_t* str, size_t buffer_size);
 std::wstring JsonEscape2(PCWSTR input);

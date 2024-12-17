@@ -1,16 +1,3 @@
-#include <windows.h>
-#include <iostream>
-#include <vector>
-#include <string>
-#include <algorithm>
-#include <locale>
-#include <codecvt>
-#include <sstream>
-#include <iostream>
-#include <fstream>
-#include <winternl.h>
-#include <ctime>
-#include <iomanip>
 
 #include "utils.h"
 #include "../Shared/common.h"
@@ -322,33 +309,6 @@ wchar_t* GetMemoryPermissions_Unused(wchar_t* buf, DWORD protection) {
     return buf;
 }
 
-
-void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
-{
-    if (!ustr || !dest || destSize == 0) {
-        return;  // Invalid arguments or destination size is zero
-    }
-
-    // Ensure that the source UNICODE_STRING is valid
-    if (ustr->Length == 0 || ustr->Buffer == NULL) {
-        dest[0] = L'\0';  // Set dest to an empty string
-        return;
-    }
-
-    // Get the number of characters to copy (Length is in bytes, so divide by sizeof(WCHAR))
-    size_t numChars = ustr->Length / sizeof(WCHAR);
-
-    // Copy length should be the smaller of the available characters or the destination size minus 1 (for null terminator)
-    size_t copyLength = (numChars < destSize - 1) ? numChars : destSize - 1;
-
-    // Use wcsncpy_s to safely copy the string
-    wcsncpy_s(dest, destSize, ustr->Buffer, copyLength);
-
-    // Ensure the destination string is null-terminated
-    dest[copyLength] = L'\0';
-}
-
-
 wchar_t* JsonEscape(wchar_t* str, size_t buffer_size) {
     if (str == NULL || buffer_size == 0) {
         str;
@@ -438,4 +398,25 @@ DWORD StartProcessInBackground(LPCWSTR exePath, LPCWSTR commandLine) {
         std::wcerr << L"Failed to start process. Error: " << GetLastError() << std::endl;
         return 0;
     }
+}
+
+
+
+std::wstring utf8_to_wstring(const std::string& str) {
+    if (str.empty()) {
+        return {};
+    }
+
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), static_cast<int>(str.size()), nullptr, 0);
+    std::wstring result(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), static_cast<int>(str.size()), &result[0], size_needed);
+    return result;
+}
+
+
+bool wstring_starts_with(const std::wstring& str, const std::wstring& prefix) {
+    if (str.size() < prefix.size()) {
+        return false;
+    }
+    return str.compare(0, prefix.size(), prefix) == 0;
 }

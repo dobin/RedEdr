@@ -1,6 +1,5 @@
 #include <Windows.h>
 #include <stdio.h>
-#include <winternl.h>
 #include "../Shared/common.h"
 #include <winternl.h>  // needs to be on bottom?
 #include <dbghelp.h>
@@ -17,6 +16,32 @@ BOOL skip_nonzero_baseaddr_mapviewofsection = TRUE;
 
 // Data
 BOOL HooksInitialized = FALSE;
+
+
+void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
+{
+    if (!ustr || !dest || destSize == 0) {
+        return;  // Invalid arguments or destination size is zero
+    }
+
+    // Ensure that the source UNICODE_STRING is valid
+    if (ustr->Length == 0 || ustr->Buffer == NULL) {
+        dest[0] = L'\0';  // Set dest to an empty string
+        return;
+    }
+
+    // Get the number of characters to copy (Length is in bytes, so divide by sizeof(WCHAR))
+    size_t numChars = ustr->Length / sizeof(WCHAR);
+
+    // Copy length should be the smaller of the available characters or the destination size minus 1 (for null terminator)
+    size_t copyLength = (numChars < destSize - 1) ? numChars : destSize - 1;
+
+    // Use wcsncpy_s to safely copy the string
+    wcsncpy_s(dest, destSize, ustr->Buffer, copyLength);
+
+    // Ensure the destination string is null-terminated
+    dest[copyLength] = L'\0';
+}
 
 
 /******************* AllocateVirtualMemory ************************/
