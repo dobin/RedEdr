@@ -54,5 +54,8 @@
     <ClCompile Include="UnitTestRanges.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\RedEdr\meminfo.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

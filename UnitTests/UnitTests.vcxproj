@@ -161,6 +161,7 @@
     <ClCompile Include="..\RedEdr\analyzer.cpp" />
     <ClCompile Include="..\RedEdr\config.cpp" />
     <ClCompile Include="..\RedEdr\eventproducer.cpp" />
+    <ClCompile Include="..\RedEdr\meminfo.cpp" />
     <ClCompile Include="..\RedEdr\processcache.cpp" />
     <ClCompile Include="..\RedEdr\processinfo.cpp" />
     <ClCompile Include="UnitTestAnalyzer.cpp" />

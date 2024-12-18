@@ -12,13 +12,66 @@
 
 #include "processcache.h"
 #include "processinfo.h"
-
+#include "meminfo.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 
 namespace UnitTests
 {
+    TEST_CLASS(MemInfoTest)
+    {
+    public:
+
+        TEST_METHOD(MemInfoBasics)
+        {
+            TargetInfo targetInfo = TargetInfo();
+			MemoryRegion* region = new MemoryRegion("test", 0x1000, 0x1000, "rwx");
+			targetInfo.AddMemoryRegion(0x1000, region);
+			Assert::IsTrue(targetInfo.ExistMemoryRegion(0x1000));
+			Assert::IsFalse(targetInfo.ExistMemoryRegion(0x2000));
+
+			MemoryRegion* region2 = targetInfo.GetMemoryRegion(0x1000);
+			Assert::IsNotNull(region2);
+			Assert::AreEqual(region2->name, region->name);
+			Assert::AreEqual(region2->addr, region->addr);
+			Assert::AreEqual(region2->size, region->size);
+			Assert::AreEqual(region2->protection, region->protection);
+
+			targetInfo.RemoveMemoryRegion(0x1000, 0x1000);
+			Assert::IsFalse(targetInfo.ExistMemoryRegion(0x1000));
+        }
+
+        TEST_METHOD(MemInfoMultiple)
+        {
+			TargetInfo targetInfo = TargetInfo();
+			MemoryRegion* region = new MemoryRegion("test", 0x1000, 0x1000, "rwx");
+			targetInfo.AddMemoryRegion(0x1000, region);
+			Assert::IsTrue(targetInfo.ExistMemoryRegion(0x1000));
+			Assert::IsFalse(targetInfo.ExistMemoryRegion(0x2000));
+
+			MemoryRegion* region2 = new MemoryRegion("test2", 0x2000, 0x1000, "rwx");
+			targetInfo.AddMemoryRegion(0x2000, region2);
+			Assert::IsTrue(targetInfo.ExistMemoryRegion(0x2000));
+			Assert::IsFalse(targetInfo.ExistMemoryRegion(0x3000));
+                
+			MemoryRegion* region3 = targetInfo.GetMemoryRegion(0x2000);
+			Assert::IsNotNull(region3);
+			Assert::AreEqual(region3->name, region2->name);
+			Assert::AreEqual(region3->addr, region2->addr);
+        }
+
+        TEST_METHOD(MemInfoUsage)
+        {
+            TargetInfo targetInfo = TargetInfo();
+            MemoryRegion* region = new MemoryRegion("test", 0x1000, 0x1000, "rwx");
+            targetInfo.AddMemoryRegion(0x1000, region);
+            std::string resolved = targetInfo.ResolveStr(0x1000);
+			Assert::AreEqual(resolved.c_str(), "test");
+        }
+    };
+
+
     TEST_CLASS(ProcessInfoTest)
     {
     public:
