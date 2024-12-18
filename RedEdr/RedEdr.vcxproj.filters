@@ -84,6 +84,9 @@
     <ClCompile Include="manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="meminfo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="etwreader.h">
@@ -150,6 +153,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="eventproducer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="meminfo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

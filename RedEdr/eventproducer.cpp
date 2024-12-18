@@ -48,6 +48,10 @@ void EventProducer::do_output(std::wstring eventWstr) {
         std::wcout << eventWstr << L"\n";
     }
 
+//	if (g_config.debug) {
+//		std::wcout << eventWstr << L"\n";
+//	}
+
     // Notify the analyzer thread
     cv.notify_one();
 }

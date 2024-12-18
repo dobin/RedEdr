@@ -35,6 +35,10 @@ void Analyzer::AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::strin
     std::string o = CriticalityToString(c) + ": " + s;
     detections.push_back(o);
     j["detections"] += o;
+
+	if (g_config.debug) {
+		LOG_A(LOG_INFO, "New Detection: %s", o.c_str());
+	}
     //LOG_A(LOG_INFO, "%s", o.c_str());
     //LOG_A(LOG_INFO, "%s", j.dump().c_str());
 }
@@ -93,7 +97,7 @@ void Analyzer::AnalyzeEventJson(nlohmann::json& j) {
     if (json_entries.size() == 32) {
         if (j.contains("pid")) {
             DWORD pid = j["pid"].get<DWORD>();
-            PrintLoadedModules(pid, NULL);
+            //QueryProcessInfo(pid, NULL);
         }
     }
 

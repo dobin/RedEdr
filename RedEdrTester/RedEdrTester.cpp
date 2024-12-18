@@ -29,6 +29,37 @@
 #include "utils.h"
 
 
+BOOL EnableDebugPrivilege() {
+	HANDLE hToken;
+	TOKEN_PRIVILEGES tp;
+	LUID luid;
+
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken)) {
+		printf("OpenProcessToken failed. Error: %lu\n", GetLastError());
+		return FALSE;
+	}
+
+	if (!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luid)) {
+		printf("LookupPrivilegeValue failed. Error: %lu\n", GetLastError());
+		CloseHandle(hToken);
+		return FALSE;
+	}
+
+	tp.PrivilegeCount = 1;
+	tp.Privileges[0].Luid = luid;
+	tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+	if (!AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), NULL, NULL)) {
+		printf("AdjustTokenPrivileges failed. Error: %lu\n", GetLastError());
+		CloseHandle(hToken);
+		return FALSE;
+	}
+
+	CloseHandle(hToken);
+	return TRUE;
+}
+
+
 void SendToKernel(int enable, wchar_t* target) {
 	EnableKernelDriver(enable, target);
 }
@@ -51,10 +82,13 @@ void SendToDllReader(wchar_t* data) {
 
 
 void GetProcessInfo(DWORD pid, wchar_t* target) {
+	g_config.debug = true;
 	printf("Get info about process: %lu\n", pid);
 	g_config.hide_full_output = 0;
 	g_config.targetExeName = L"Notepad";
 	Process *p = g_ProcessCache.getObject(pid);
+
+	printf("\n\nDisplay:\n");
 	p->display();
 }
 
@@ -152,11 +186,13 @@ int wmain(int argc, wchar_t* argv[]) {
 		SendToDllReader(argv[2]);
 	}
 	else if (wcscmp(argv[1], L"processinfo") == 0) {
-		/*InitProcessInfo();
+		EnableDebugPrivilege();
+		InitProcessInfo();
 		// Example: 1234 notepad.exe
 		wchar_t* end;
 		long pid = wcstoul(argv[2], &end, 10);
-		GetProcessInfo(pid, argv[3]);*/
+		Process process = Process();
+		AugmentProcess(pid, &process);
 	}
 	else if (wcscmp(argv[1], L"analyzer") == 0) {
 		if (argc == 3) {

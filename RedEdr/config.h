@@ -39,6 +39,8 @@ public:
 	bool etw_defender = false;
 
 	bool do_udllinjection = false;
+
+	bool debug = false;
 };
 
 extern Config g_config;

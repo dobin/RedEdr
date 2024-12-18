@@ -25,6 +25,12 @@
 
 #pragma comment(lib, "ntdll.lib")
 
+// Private
+BOOL EnumerateProcessModules(HANDLE hProcess, DWORD pid);
+wchar_t* GetFileNameFromPath(wchar_t* path);
+void PrintModuleSections(HANDLE process, LPVOID moduleBase);
+
+/////////////////////////////////////////////////////////////////
 
 typedef enum _MEMORY_INFORMATION_CLASS {
     MemoryBasicInformation
@@ -65,6 +71,9 @@ std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
 HMODULE hNtDll;
 pNtQueryVirtualMemory NtQueryVirtualMemory;
 
+/////////////////////////////////////////////////////////////////
+
+
 BOOL InitProcessInfo() {
     hNtDll = GetModuleHandle(L"ntdll.dll");
     if (hNtDll == NULL) {
@@ -78,6 +87,199 @@ BOOL InitProcessInfo() {
     }
     return TRUE;
 }
+
+
+bool QuickProcessInfo(Process* process, HANDLE hProcess) {
+    PROCESS_BASIC_INFORMATION pbi;
+    ULONG returnLength;
+
+    NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
+    if (status != 0) {
+        LOG_A(LOG_ERROR, "Procinfo: Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
+        return FALSE;
+    }
+
+    // PPID
+    DWORD parentPid = reinterpret_cast<DWORD>(pbi.Reserved3); // InheritedFromUniqueProcessId lol
+    process->parent_pid = parentPid;
+
+    // PEB
+    MYPEB peb;
+    if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
+        // this is the first read, and may fail. 
+        // dont spam log messages
+        //LOG_A(LOG_WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
+        //    process->id, GetLastError());
+        //process->PebBaseAddress = pbi.PebBaseAddress;
+        return FALSE;
+    }
+
+    // PEB directly accessible
+    /*
+    printf("InheritedAddressSpace: %i\n", peb.InheritedAddressSpace);
+    printf("ReadImageFileExecOptions: %i\n", peb.ReadImageFileExecOptions);
+    printf("BeingDebugged : %i\n", peb.BeingDebugged);
+    printf("IsProtectedProcess : %i\n", peb.IsProtectedProcess);
+    printf("IsImageDynamicallyRelocated : %i\n", peb.IsImageDynamicallyRelocated);
+    printf("IsAppContainer : %i\n", peb.IsAppContainer);
+    printf("IsProtectedProcessLight : %i\n", peb.IsProtectedProcessLight);
+    printf("ImageBaseAddress: 0x%p\n", peb.ImageBaseAddress);
+    printf("ProcessUsingVEH: %i\n", peb.ProcessUsingVEH);
+    printf("pImageHeaderHash: 0x%p\n", peb.pImageHeaderHash);
+    */
+    process->is_debugged = peb.BeingDebugged;
+    process->is_protected_process = peb.IsProtectedProcess;
+    process->is_protected_process_light = peb.IsProtectedProcessLight;
+    process->image_base = peb.ImageBaseAddress;
+
+    // ProcessParameters - anoying copying
+    MY_RTL_USER_PROCESS_PARAMETERS procParams;
+    if (!ReadProcessMemory(hProcess, peb.ProcessParameters, &procParams, sizeof(procParams), NULL)) {
+        LOG_A(LOG_ERROR, "Error: Could not ReadProcessMemory for %d, error: %d", process->id, GetLastError());
+        return FALSE;
+    }
+    process->commandline = GetRemoteUnicodeStr(hProcess, &procParams.CommandLine);
+    process->commandline = ReplaceAll(process->commandline, L"\"", L"\\\"");
+    process->image_path = GetRemoteUnicodeStr(hProcess, &procParams.ImagePathName);
+    process->working_dir = GetRemoteUnicodeStr(hProcess, &procParams.CurrentDirectory.DosPath);
+
+    // No need for these for now
+    //std::wstring DllPath = my_get_str(hProcess, &procParams.DllPath);
+    //std::wstring WindowTitle = my_get_str(hProcess, &procParams.WindowTitle);
+
+    return TRUE;
+}
+
+
+// This should be fast
+Process* MakeProcess(DWORD pid, LPCWSTR target_name) {
+    Process* process = new Process(pid);
+    HANDLE hProcess;
+    WCHAR exePath[MAX_PATH];
+
+    if (target_name == NULL) {
+        return process;
+    }
+
+    hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    if (hProcess == NULL) {
+        // We dont care
+        //LOG_W(LOG_INFO, L"Could not open process %lu error %lu\n", pid, GetLastError());
+        return process;
+    }
+    
+    if (GetModuleFileNameEx(hProcess, NULL, exePath, MAX_PATH)) {
+        wchar_t* result = wcsstr(exePath, target_name);
+        if (result) {
+            LOG_W(LOG_INFO, L"Objcache: observe process %lu executable path: %s", pid, exePath);
+            process->observe = 1;
+        }
+    }
+    CloseHandle(hProcess);
+
+    return process;
+}
+
+
+// Called if observed
+BOOL AugmentProcess(DWORD pid, Process* process) {
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    if (!hProcess) {
+        //LOG_A(LOG_WARNING, "Could not open process pid: %lu error %lu", pid, GetLastError());
+        return FALSE;
+    }
+
+    QuickProcessInfo(process, hProcess);
+    EnumerateProcessModules(hProcess, pid);
+    //QueryMemoryRegions(hProcess);
+
+    CloseHandle(hProcess);
+    return TRUE;
+}
+
+
+/////////////////////////////////////////////////////////////////
+
+BOOL EnumerateProcessModules(HANDLE hProcess, DWORD pid) {
+    PROCESS_BASIC_INFORMATION pbi;
+    ULONG returnLength;
+    NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
+    if (status != 0) {
+        LOG_A(LOG_ERROR, "Procinfo: Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
+        CloseHandle(hProcess);
+        return FALSE;
+    }
+
+    // PEB follows
+    MYPEB peb;
+    if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
+        // this is the first read, and may fail. 
+        // dont spam log messages
+        //LOG_A(LOG_WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
+        //    process->id, GetLastError());
+        //process->PebBaseAddress = pbi.PebBaseAddress;
+        CloseHandle(hProcess);
+        return FALSE;
+    }
+
+    // Read the PEB_LDR_DATA
+    PEB_LDR_DATA ldr;
+    if (!ReadProcessMemory(hProcess, peb.Ldr, &ldr, sizeof(PEB_LDR_DATA), NULL)) {
+        printf("Procinfo: ReadProcessMemory failed for PEB_LDR_DATA\n");
+        CloseHandle(hProcess);
+        return FALSE;
+    }
+
+    // Iterate over the InMemoryOrderModuleList
+    LIST_ENTRY* head = &ldr.InMemoryOrderModuleList;
+    LIST_ENTRY* current = ldr.InMemoryOrderModuleList.Flink;
+    std::wstring csv;
+    while (current != head) {
+        _LDR_DATA_TABLE_ENTRY entry;
+        if (!ReadProcessMemory(hProcess, CONTAINING_RECORD(current, _LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks),
+            &entry, sizeof(_LDR_DATA_TABLE_ENTRY), NULL))
+        {
+            printf("Procinfo: ReadProcessMemory failed for LDR_DATA_TABLE_ENTRY\n");
+            CloseHandle(hProcess);
+            return FALSE;
+        }
+        if (entry.DllBase == 0) { // all zero is last one for some reason
+            break;
+        }
+        // Print information about the loaded module
+        WCHAR fullDllName[MAX_PATH];
+        if (!ReadProcessMemory(hProcess, entry.FullDllName.Buffer, fullDllName, entry.FullDllName.Length, NULL)) {
+            printf("Procinfo: ReadProcessMemory failed for FullDllName\n");
+            CloseHandle(hProcess);
+            return FALSE;
+        }
+        fullDllName[entry.FullDllName.Length / sizeof(WCHAR)] = L'\0';  // Null-terminate the string
+
+        // Short DLLS summary
+        csv += format_wstring(L"{\"addr\":%llu,\"size\":%llu,\"name\":\"%ls\"},",
+            entry.DllBase,
+            (ULONG)entry.Reserved3[1],
+            JsonEscape(GetFileNameFromPath(fullDllName), MAX_PATH));
+
+        // Handle the individual sections 
+        PrintModuleSections(hProcess, entry.DllBase);
+
+        // Move to the next module in the list
+        current = entry.InMemoryOrderLinks.Flink;
+    }
+
+    std::wstring ffff = csv;
+    ffff.pop_back(); // remove fucking last comma
+    std::wstring o = format_wstring(L"{\"type\":\"loaded_dll\",\"time\":%lld,\"pid\":%lld,\"dlls\":[%s]}",
+        get_time(),
+        pid,
+        ffff.c_str()
+    );
+    remove_all_occurrences_case_insensitive(o, std::wstring(L"C:\\\\Windows\\\\system32\\\\"));
+    g_EventProducer.do_output(o);
+}
+
+/////////////////////////////////////////////////////////////////
 
 
 // Unused, produces a lot of data
@@ -123,225 +325,74 @@ bool QueryMemoryRegions(HANDLE hProcess) {
 }
 
 
-bool RetrieveProcessInfo(Process *process, HANDLE hProcess) {
-    PROCESS_BASIC_INFORMATION pbi;
-    ULONG returnLength;
+void PrintModuleSections(HANDLE process, LPVOID moduleBase) {
+    // Buffer for headers
+    IMAGE_DOS_HEADER dosHeader = {};
+    IMAGE_NT_HEADERS ntHeaders = {};
+    std::vector<IMAGE_SECTION_HEADER> sectionHeaders;
 
-    NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
-    if (status != 0) {
-        LOG_A(LOG_ERROR, "Procinfo: Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
-        return FALSE;
+    // Buffer for module name
+    wchar_t moduleName[MAX_PATH] = { 0 };
+    if (!GetModuleBaseName(process, (HMODULE)moduleBase, moduleName, sizeof(moduleName))) {
+        std::cerr << "Failed to retrieve module name. Error: " << GetLastError() << std::endl;
+        return;
     }
 
-    // PBI follows
-    DWORD parentPid = reinterpret_cast<DWORD>(pbi.Reserved3); // InheritedFromUniqueProcessId lol
-    process->parent_pid = parentPid;
-
-    // PEB follows
-    MYPEB peb;
-    if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        // this is the first read, and may fail. 
-        // dont spam log messages
-        //LOG_A(LOG_WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
-        //    process->id, GetLastError());
-        //process->PebBaseAddress = pbi.PebBaseAddress;
-        return FALSE;
+    // Read the DOS header
+    if (!ReadProcessMemory(process, moduleBase, &dosHeader, sizeof(dosHeader), NULL)) {
+        std::cerr << "Failed to read DOS header. Error: " << GetLastError() << std::endl;
+        return;
     }
 
-    // PEB directly accessible
-    /*
-    printf("InheritedAddressSpace: %i\n", peb.InheritedAddressSpace);
-    printf("ReadImageFileExecOptions: %i\n", peb.ReadImageFileExecOptions);
-    printf("BeingDebugged : %i\n", peb.BeingDebugged);
-    printf("IsProtectedProcess : %i\n", peb.IsProtectedProcess);
-    printf("IsImageDynamicallyRelocated : %i\n", peb.IsImageDynamicallyRelocated);
-    printf("IsAppContainer : %i\n", peb.IsAppContainer);
-    printf("IsProtectedProcessLight : %i\n", peb.IsProtectedProcessLight);
-    printf("ImageBaseAddress: 0x%p\n", peb.ImageBaseAddress);
-    printf("ProcessUsingVEH: %i\n", peb.ProcessUsingVEH);
-    printf("pImageHeaderHash: 0x%p\n", peb.pImageHeaderHash);
-    */
-    process->is_debugged = peb.BeingDebugged;
-    process->is_protected_process = peb.IsProtectedProcess;
-    process->is_protected_process_light = peb.IsProtectedProcessLight;
-    process->image_base = peb.ImageBaseAddress;
-
-    // ProcessParameters - anoying copying
-    MY_RTL_USER_PROCESS_PARAMETERS procParams;
-    if (!ReadProcessMemory(hProcess, peb.ProcessParameters, &procParams, sizeof(procParams), NULL)) {
-        LOG_A(LOG_ERROR, "Error: Could not ReadProcessMemory for %d, error: %d", process->id, GetLastError());
-        return FALSE;
+    // Verify DOS signature
+    if (dosHeader.e_magic != IMAGE_DOS_SIGNATURE) {
+        std::cerr << "Invalid DOS signature. Not a valid PE file." << std::endl;
+        return;
     }
-    process->commandline = GetRemoteUnicodeStr(hProcess, &procParams.CommandLine);
-    process->commandline = ReplaceAll(process->commandline, L"\"", L"\\\"");
-    process->image_path = GetRemoteUnicodeStr(hProcess, &procParams.ImagePathName);
-    process->working_dir = GetRemoteUnicodeStr(hProcess, &procParams.CurrentDirectory.DosPath);
-    
-    // No need for these for now
-    //std::wstring DllPath = my_get_str(hProcess, &procParams.DllPath);
-    //std::wstring WindowTitle = my_get_str(hProcess, &procParams.WindowTitle);
 
-    return TRUE;
+    // Read the NT header
+    LPVOID ntHeaderAddress = (LPBYTE)moduleBase + dosHeader.e_lfanew;
+    if (!ReadProcessMemory(process, ntHeaderAddress, &ntHeaders, sizeof(ntHeaders), NULL)) {
+        std::cerr << "Failed to read NT headers. Error: " << GetLastError() << std::endl;
+        return;
+    }
+
+    // Verify NT signature
+    if (ntHeaders.Signature != IMAGE_NT_SIGNATURE) {
+        std::cerr << "Invalid NT signature. Not a valid PE file." << std::endl;
+        return;
+    }
+
+    // Read section headers
+    DWORD numberOfSections = ntHeaders.FileHeader.NumberOfSections;
+    LPVOID sectionHeaderAddress = (LPBYTE)ntHeaderAddress + sizeof(IMAGE_NT_HEADERS);
+    sectionHeaders.resize(numberOfSections);
+
+    if (!ReadProcessMemory(process, sectionHeaderAddress, sectionHeaders.data(),
+        sizeof(IMAGE_SECTION_HEADER) * numberOfSections, NULL)) {
+        std::cerr << "Failed to read section headers. Error: " << GetLastError() << std::endl;
+        return;
+    }
+
+    // Print the sections
+    std::cout << "Module Base: " << moduleBase << "\n";
+    std::wcout << L"Module Name: " << moduleName << L"\n";
+    std::cout << "Sections:\n";
+    std::cout << "Name\t\tVirtual Address\t\tSize\n";
+
+    for (const auto& section : sectionHeaders) {
+        LPVOID sectionAddress = (LPBYTE)moduleBase + section.VirtualAddress;
+		DWORD sectionSize = section.Misc.VirtualSize;
+        std::cout << std::string(reinterpret_cast<const char*>(section.Name), 8) << "\t\t";
+        std::cout << "0x" << std::hex << sectionAddress << "\t\t";
+        std::cout << "0x" << std::hex << sectionSize << "\n";
+    }
 }
 
 
-BOOL PrintLoadedModules(DWORD pid, Process* process) {
-    return TRUE;
-
-    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-    if (hProcess == NULL) {
-        // We dont care
-        LOG_W(LOG_INFO, L"Could not open process %lu error %lu\n", pid, GetLastError());
-        return FALSE;
-    }
-    PROCESS_BASIC_INFORMATION pbi;
-    ULONG returnLength;
-    NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
-    if (status != 0) {
-        LOG_A(LOG_ERROR, "Procinfo: Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
-        CloseHandle(hProcess);
-        return FALSE;
-    }
-
-    // PEB follows
-    MYPEB peb;
-    if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        // this is the first read, and may fail. 
-        // dont spam log messages
-        //LOG_A(LOG_WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
-        //    process->id, GetLastError());
-        //process->PebBaseAddress = pbi.PebBaseAddress;
-        CloseHandle(hProcess);
-        return FALSE;
-    }
-
-    // Read the PEB_LDR_DATA
-    PEB_LDR_DATA ldr;
-    if (!ReadProcessMemory(hProcess, peb.Ldr, &ldr, sizeof(PEB_LDR_DATA), NULL)) {
-        printf("Procinfo: ReadProcessMemory failed for PEB_LDR_DATA\n");
-        CloseHandle(hProcess);
-        return FALSE;
-    }
-
-    // Iterate over the InMemoryOrderModuleList
-    
-    LIST_ENTRY* head = &ldr.InMemoryOrderModuleList;
-    LIST_ENTRY* current = ldr.InMemoryOrderModuleList.Flink;
-    std::wstring csv;
-    while (current != head) {
-        _LDR_DATA_TABLE_ENTRY entry;
-        if (!ReadProcessMemory(hProcess, CONTAINING_RECORD(current, _LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks),
-            &entry, sizeof(_LDR_DATA_TABLE_ENTRY), NULL))
-        {
-            printf("Procinfo: ReadProcessMemory failed for LDR_DATA_TABLE_ENTRY\n");
-            CloseHandle(hProcess);
-            return FALSE;
-        }
-        if (entry.DllBase == 0) { // all zero is last one for some reason
-            break;
-        }
-        // Print information about the loaded module
-        WCHAR fullDllName[MAX_PATH];
-        if (!ReadProcessMemory(hProcess, entry.FullDllName.Buffer, fullDllName, entry.FullDllName.Length, NULL)) {
-            printf("Procinfo: ReadProcessMemory failed for FullDllName\n");
-            CloseHandle(hProcess);
-            return FALSE;
-        }
-        fullDllName[entry.FullDllName.Length / sizeof(WCHAR)] = L'\0';  // Null-terminate the string
-
-        csv += format_wstring(L"{\"addr\":%llu,\"size\":%llu,\"name\":\"%ls\"},",
-            entry.DllBase,
-            (ULONG)entry.Reserved3[1],
-            JsonEscape(fullDllName, 260));
-
-        // Move to the next module in the list
-        current = entry.InMemoryOrderLinks.Flink;
-    }
-    
-    std::wstring ffff = csv;
-    ffff.pop_back(); // remove fucking last comma
-    std::wstring o = format_wstring(L"{\"type\":\"loaded_dll\",\"time\":%lld,\"pid\":%lld,\"dlls\":[%s]}",
-        get_time(),
-        pid,
-        ffff.c_str()
-    );
-    remove_all_occurrences_case_insensitive(o, std::wstring(L"C:\\Windows\\system32\\"));
-    g_EventProducer.do_output(o);
-    CloseHandle(hProcess);
-    return TRUE;
-}
-
-
-Process* MakeProcess(DWORD pid, LPCWSTR target_name) {
-    Process* process = new Process(pid);
-
-    HANDLE hProcess;
-    WCHAR exePath[MAX_PATH];
-
-
-    hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-    if (hProcess == NULL) {
-        // We dont care
-        //LOG_W(LOG_INFO, L"Could not open process %lu error %lu\n", pid, GetLastError());
-    }
-    else {
-        if (target_name != NULL) {
-            if (GetModuleFileNameEx(hProcess, NULL, exePath, MAX_PATH)) {
-                LOG_W(LOG_WARNING, L"Make1: %s", exePath);
-                wchar_t* result = wcsstr(exePath, target_name);
-                if (result) {
-                    LOG_W(LOG_INFO, L"Objcache: observe process %lu executable path: %s", pid, exePath);
-                    //LOG_W(LOG_INFO, L"Substring found in: %s\n", exePath);
-                    process->observe = 1;
-                }
-                else {
-                    //LOG_W(LOG_INFO, L"Substring not found %lu: %s\n", pid, exePath);
-                    process->observe = 0;
-                }
-            }
-            else {
-                //LOG_W(LOG_INFO, L"Failed to get executable path: %lu\n", GetLastError());
-            }
-        }
-        CloseHandle(hProcess);
-    }
-    
-    return process;
-}
-
-
-BOOL AugmentProcess(DWORD pid, Process *process) {
-    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-    if (!hProcess) {
-        //LOG_A(LOG_WARNING, "Could not open process pid: %lu error %lu", pid, GetLastError());
-        return FALSE;
-    }
-
-    RetrieveProcessInfo(process, hProcess);
-    // FIXME check return value?
-
-    /*
-    // CHECK: Observe
-    BOOL observe = FALSE;
-    //if (wcsstr(process->image_path.c_str(), (LPCWSTR)g_config.targetExeName)) {
-    if (process->image_path.find(g_config.targetExeName) != std::wstring::npos) {
-        // CHECK: Process name
-        LOG_A(LOG_INFO, "Procinfo: Observe CMD: %d %ls", pid, process->image_path.c_str());
-        observe = TRUE;
-    } else if (g_cache.containsObject(process->parent_pid)) { // dont recursively resolve all
-        // CHECK: Parent observed?
-        if (g_cache.getObject(process->parent_pid)->doObserve()) {
-            LOG_A(LOG_INFO, "Procinfo: Observe PID: %d (because PPID %d): %ls", pid, process->parent_pid, process->image_path.c_str());
-            observe = TRUE;
-        }
-    }
-    else {
-        //LOG_A(LOG_INFO, "Dont observe: %ls because %ls", process->image_path.c_str(), g_config.targetExeName);
-    }
-    process->observe = observe;
-    */
-    CloseHandle(hProcess);
-    return TRUE;
+wchar_t* GetFileNameFromPath(wchar_t* path) {
+    wchar_t* lastBackslash = wcsrchr(path, L'\\');
+    return (lastBackslash != NULL) ? lastBackslash + 1 : path;
 }
 
 

@@ -57,6 +57,9 @@
     <ClCompile Include="..\RedEdrShared\piping.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
+    <ClCompile Include="..\RedEdr\meminfo.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

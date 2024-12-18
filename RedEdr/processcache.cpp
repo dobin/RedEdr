@@ -72,8 +72,6 @@ Process* ProcessCache::getObject(DWORD id) {
             process->image_base
         );
         g_EventProducer.do_output(o);
-
-        PrintLoadedModules(id, process);
     }
 
     cache_mutex.lock();

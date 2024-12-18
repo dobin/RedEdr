@@ -143,6 +143,7 @@
     <ClCompile Include="..\RedEdrShared\utils.cpp" />
     <ClCompile Include="analyzer.cpp" />
     <ClCompile Include="manager.cpp" />
+    <ClCompile Include="meminfo.cpp" />
     <ClCompile Include="processcache.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="dllinjector.cpp" />
@@ -165,6 +166,7 @@
     <ClInclude Include="analyzer.h" />
     <ClInclude Include="eventproducer.h" />
     <ClInclude Include="manager.h" />
+    <ClInclude Include="meminfo.h" />
     <ClInclude Include="processcache.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="cxxops.hpp" />

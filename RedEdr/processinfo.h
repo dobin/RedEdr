@@ -77,6 +77,6 @@ public:
 
 Process* MakeProcess(DWORD pid, LPCWSTR target_name);
 BOOL AugmentProcess(DWORD pid, Process* process);
-BOOL PrintLoadedModules(DWORD pid, Process* process);
+BOOL QueryProcessInfo(DWORD pid, Process* process);
 DWORD FindProcessIdByName(const std::wstring& processName);
 BOOL InitProcessInfo();
