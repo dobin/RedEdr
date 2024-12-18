@@ -9,12 +9,12 @@
 #include "etwreader.h"
 #include "logreader.h"
 #include "kernelreader.h"
-#include "analyzer.h"
 #include "webserver.h"
 #include "dllreader.h"
 #include "kernelinterface.h"
 #include "pplmanager.h"
 #include "logging.h"
+#include "event_processor.h"
 
 
 // Function to enable a privilege for the current process
@@ -199,5 +199,5 @@ void ManagerShutdown() {
     }
 
     // Analyzer
-    StopAnalyzer();
+    StopEventProcessor();
 }

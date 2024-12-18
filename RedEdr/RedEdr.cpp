@@ -13,7 +13,7 @@
 
 #include "cxxops.hpp"
 #include "config.h"
-#include "analyzer.h"
+#include "event_processor.h"
 #include "webserver.h"
 #include "kernelinterface.h"
 #include "pplmanager.h"
@@ -223,7 +223,7 @@ int main(int argc, char* argv[]) {
     // Functionality
     ManagerStart(threads);
     InitKeyboardReader(threads);
-    InitializeAnalyzer(threads);
+    InitializeEventProcessor(threads);
 
     // Test
     if(result.count("test")) {
@@ -245,14 +245,14 @@ int main(int argc, char* argv[]) {
             remote_inject(pid);
         }
         LOG_A(LOG_INFO, "Tester: wait");
-        for (int n = 0; n < 20; n++) {
+        for (int n = 0; n < 3; n++) {
             Sleep(1000); // give it time to do its thing
 
         }
         LOG_A(LOG_INFO, "Tester: Shutdown");
         ManagerShutdown();
         keyboard_reader_running = FALSE;
-        Sleep(3000); // For log output
+        Sleep(1000); // For log output
     }
 
     // Wait for all threads to complete

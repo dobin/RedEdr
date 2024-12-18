@@ -141,13 +141,15 @@
     <ClCompile Include="..\RedEdrShared\loguru.cpp" />
     <ClCompile Include="..\RedEdrShared\piping.cpp" />
     <ClCompile Include="..\RedEdrShared\utils.cpp" />
-    <ClCompile Include="analyzer.cpp" />
+    <ClCompile Include="event_aggregator.cpp" />
+    <ClCompile Include="event_augmenter.cpp" />
+    <ClCompile Include="event_detector.cpp" />
+    <ClCompile Include="event_processor.cpp" />
     <ClCompile Include="manager.cpp" />
     <ClCompile Include="meminfo.cpp" />
     <ClCompile Include="processcache.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="dllinjector.cpp" />
-    <ClCompile Include="eventproducer.cpp" />
     <ClCompile Include="kernelinterface.cpp" />
     <ClCompile Include="etwreader.cpp" />
     <ClCompile Include="dllreader.cpp" />
@@ -163,8 +165,10 @@
   <ItemGroup>
     <ClInclude Include="..\RedEdrShared\logging.h" />
     <ClInclude Include="..\RedEdrShared\loguru.hpp" />
-    <ClInclude Include="analyzer.h" />
-    <ClInclude Include="eventproducer.h" />
+    <ClInclude Include="event_aggregator.h" />
+    <ClInclude Include="event_augmenter.h" />
+    <ClInclude Include="event_detector.h" />
+    <ClInclude Include="event_processor.h" />
     <ClInclude Include="manager.h" />
     <ClInclude Include="meminfo.h" />
     <ClInclude Include="processcache.h" />

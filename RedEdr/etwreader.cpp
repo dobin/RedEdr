@@ -8,7 +8,7 @@
 #include <krabs.hpp>
 #include "json.hpp"
 
-#include "eventproducer.h"
+#include "event_aggregator.h"
 #include "logging.h"
 #include "etwreader.h"
 #include "processcache.h"
@@ -136,7 +136,7 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
     // Generate the JSON, and convert it back to wstring...
     std::string json_ret = j.dump();
     std::wstring json_retw = utf8_to_wstring(json_ret);
-    g_EventProducer.do_output(json_retw);
+    g_EventAggregator.do_output(json_retw);
 }
 
 

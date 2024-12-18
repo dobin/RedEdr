@@ -16,7 +16,7 @@
 #include "kernelreader.h"
 #include "processcache.h"
 #include "piping.h"
-#include "eventproducer.h"
+#include "event_aggregator.h"
 
 #pragma comment (lib, "wintrust.lib")
 #pragma comment(lib, "dbghelp.lib")
@@ -75,7 +75,7 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
                 break;
             }
             for (const auto& event : events) {
-                g_EventProducer.do_output(event);
+                g_EventAggregator.do_output(event);
                 CheckEventForNewObservable((wchar_t*) event.c_str());
             }
         }

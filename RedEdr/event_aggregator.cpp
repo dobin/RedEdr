@@ -2,7 +2,7 @@
 #include <sstream>
 #include <vector>
 
-#include "eventproducer.h"
+#include "event_aggregator.h"
 #include "config.h"
 #include "logging.h"
 #include "utils.h"
@@ -17,10 +17,10 @@
 */
 
 // Global
-EventProducer g_EventProducer;
+EventAggregator g_EventAggregator;
 
 
-void EventProducer::do_output(std::wstring eventWstr) {
+void EventAggregator::do_output(std::wstring eventWstr) {
     // Add to cache
     std::string json = wstring_to_utf8(eventWstr);
     output_mutex.lock();
@@ -28,16 +28,16 @@ void EventProducer::do_output(std::wstring eventWstr) {
     output_mutex.unlock();
     output_count++;
 
-//	if (g_config.debug) {
-//		std::wcout << eventWstr << L"\n";
-//	}
+    //	if (g_config.debug) {
+    //		std::wcout << eventWstr << L"\n";
+    //	}
 
     // Notify the analyzer thread
     cv.notify_one();
 }
 
 
-std::vector<std::string> EventProducer::GetEvents() {
+std::vector<std::string> EventAggregator::GetEvents() {
     std::vector<std::string> newEvents;
 
     output_mutex.lock();
@@ -49,7 +49,7 @@ std::vector<std::string> EventProducer::GetEvents() {
 }
 
 
-BOOL EventProducer::HasMoreEvents() {
+BOOL EventAggregator::HasMoreEvents() {
     // Lock for now
     std::lock_guard<std::mutex> lock(output_mutex);
 
@@ -62,19 +62,19 @@ BOOL EventProducer::HasMoreEvents() {
 }
 
 
-void EventProducer::Stop() {
+void EventAggregator::Stop() {
     done = TRUE;
-    g_EventProducer.cv.notify_all();
+    cv.notify_all();
 }
 
 
-void EventProducer::ResetData() {
+void EventAggregator::ResetData() {
     output_mutex.lock();
     output_entries.clear();
     output_mutex.unlock();
 }
 
 
-unsigned int EventProducer::GetCount() {
+unsigned int EventAggregator::GetCount() {
     return output_count;
 }

@@ -18,7 +18,7 @@
 #include "utils.h"
 #include "config.h"
 #include "piping.h"
-#include "eventproducer.h"
+#include "event_aggregator.h"
 
 
 // DllReader: Consumes events from injected DLL hooks
@@ -96,7 +96,7 @@ void DllReaderClientThread(PipeServer* pipeServer) {
             return;
         }
         for (const auto& wstr : result) {
-            g_EventProducer.do_output(wstr);
+            g_EventAggregator.do_output(wstr);
         }
     }
 

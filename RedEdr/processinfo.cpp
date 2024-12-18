@@ -21,7 +21,7 @@
 #include "meminfo.h"
 
 #include "mypeb.h"
-#include "eventproducer.h"
+#include "event_aggregator.h"
 #include "../Shared/common.h"
 
 #pragma comment(lib, "ntdll.lib")
@@ -278,7 +278,7 @@ BOOL EnumerateProcessModules(Process *process, HANDLE hProcess) {
         ffff.c_str()
     );
     remove_all_occurrences_case_insensitive(o, std::wstring(L"C:\\\\Windows\\\\system32\\\\"));
-    g_EventProducer.do_output(o);
+    g_EventAggregator.do_output(o);
 }
 
 

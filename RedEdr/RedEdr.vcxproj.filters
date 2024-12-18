@@ -19,21 +19,33 @@
     <Filter Include="Source Files\web">
       <UniqueIdentifier>{81c69665-cc45-4ca7-b535-9be661578dff}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\input">
+      <UniqueIdentifier>{71afe3f2-d067-4212-afab-cd324e6885df}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\process">
+      <UniqueIdentifier>{e6905749-0e08-4e18-a4f4-4f769d79fd46}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\libs">
+      <UniqueIdentifier>{b5b02dc7-53a6-4d22-bfa6-a4102b950d4c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\process">
+      <UniqueIdentifier>{f0d7fa81-5b59-4e94-a796-11bd411a1184}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\windows">
+      <UniqueIdentifier>{f74d6ae9-c05b-493d-9ee1-76ea79ba0703}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\windows">
+      <UniqueIdentifier>{df7f6388-9e99-46c4-89bf-2a931b922311}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\libs">
+      <UniqueIdentifier>{cd33c796-a003-4a9a-a6fc-102aba77837d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RedEdr.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="processcache.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="processinfo.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="config.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="dllinjector.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="serviceutils.cpp">
@@ -42,16 +54,7 @@
     <ClCompile Include="..\RedEdrShared\logging.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdrShared\loguru.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\RedEdrShared\piping.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="eventproducer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="analyzer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="webserver.cpp">
@@ -84,51 +87,39 @@
     <ClCompile Include="manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="processcache.cpp">
+      <Filter>Source Files\windows</Filter>
+    </ClCompile>
     <ClCompile Include="meminfo.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="processinfo.cpp">
+      <Filter>Source Files\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\loguru.cpp">
+      <Filter>Source Files\libs</Filter>
+    </ClCompile>
+    <ClCompile Include="dllinjector.cpp">
+      <Filter>Source Files\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="event_aggregator.cpp">
+      <Filter>Source Files\process</Filter>
+    </ClCompile>
+    <ClCompile Include="event_processor.cpp">
+      <Filter>Source Files\process</Filter>
+    </ClCompile>
+    <ClCompile Include="event_augmenter.cpp">
+      <Filter>Source Files\process</Filter>
+    </ClCompile>
+    <ClCompile Include="event_detector.cpp">
+      <Filter>Source Files\process</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="etwreader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="kernelreader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="processcache.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="processinfo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="logreader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="cxxops.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="dllinjector.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="dllreader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="kernelinterface.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="httplib.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="mypeb.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="pplreader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="pplmanager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="serviceutils.h">
@@ -137,26 +128,68 @@
     <ClInclude Include="..\RedEdrShared\logging.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\RedEdrShared\loguru.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="analyzer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="webserver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="json.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="manager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="eventproducer.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="dllreader.h">
+      <Filter>Header Files\input</Filter>
+    </ClInclude>
+    <ClInclude Include="etwreader.h">
+      <Filter>Header Files\input</Filter>
+    </ClInclude>
+    <ClInclude Include="kernelinterface.h">
+      <Filter>Header Files\input</Filter>
+    </ClInclude>
+    <ClInclude Include="kernelreader.h">
+      <Filter>Header Files\input</Filter>
+    </ClInclude>
+    <ClInclude Include="logreader.h">
+      <Filter>Header Files\input</Filter>
+    </ClInclude>
+    <ClInclude Include="pplreader.h">
+      <Filter>Header Files\input</Filter>
+    </ClInclude>
+    <ClInclude Include="pplmanager.h">
+      <Filter>Header Files\input</Filter>
+    </ClInclude>
+    <ClInclude Include="cxxops.hpp">
+      <Filter>Header Files\libs</Filter>
+    </ClInclude>
+    <ClInclude Include="httplib.h">
+      <Filter>Header Files\libs</Filter>
+    </ClInclude>
+    <ClInclude Include="json.hpp">
+      <Filter>Header Files\libs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\RedEdrShared\loguru.hpp">
+      <Filter>Header Files\libs</Filter>
     </ClInclude>
     <ClInclude Include="meminfo.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="processcache.h">
+      <Filter>Header Files\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="processinfo.h">
+      <Filter>Header Files\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="dllinjector.h">
+      <Filter>Header Files\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="event_aggregator.h">
+      <Filter>Header Files\process</Filter>
+    </ClInclude>
+    <ClInclude Include="event_augmenter.h">
+      <Filter>Header Files\process</Filter>
+    </ClInclude>
+    <ClInclude Include="event_detector.h">
+      <Filter>Header Files\process</Filter>
+    </ClInclude>
+    <ClInclude Include="event_processor.h">
+      <Filter>Header Files\process</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

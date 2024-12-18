@@ -7,7 +7,7 @@
 #include <mutex>
 
 
-class EventProducer {
+class EventAggregator {
 public:
 	// Called by producers
 	void do_output(std::wstring str);
@@ -20,7 +20,7 @@ public:
 	void ResetData();
 	void Stop();
 	unsigned int GetCount();
-	
+
 	// These is all just so a consumer can get a copy of all new
 	// events (Analyzer)
 	std::condition_variable cv; // Will be called upon each insert
@@ -34,4 +34,4 @@ private:
 	unsigned int output_count = 0;
 };
 
-extern EventProducer g_EventProducer;
+extern EventAggregator g_EventAggregator;
