@@ -54,7 +54,7 @@ public:
 
 	// 
     std::vector<std::string> detections;
-	TargetInfo targetInfo;
+	TargetInfo targetMemoryChanges;
 
 	int num_kernel = 0;
 	int num_etw = 0;
@@ -62,6 +62,7 @@ public:
 	int num_dll = 0;
 
 	void ExtractMemoryInfo(nlohmann::json& j);
+	void PrintEvent(nlohmann::json j);
 	void Analyze(nlohmann::json& j);
 	void AnalyzeEventJson(nlohmann::json& j);
 	void AnalyzeEventStr(std::string eventStr);
@@ -73,6 +74,7 @@ private:
 	std::vector<nlohmann::json> json_entries;
 	std::mutex output_mutex;
 	size_t trace_id = 0;
+	size_t event_count = 0;
 };
 
 

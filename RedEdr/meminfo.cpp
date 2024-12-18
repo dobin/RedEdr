@@ -7,6 +7,7 @@
 
 #include "meminfo.h"
 
+TargetInfo g_TargetInfo = TargetInfo();
 
 TargetInfo::TargetInfo() {
 }
@@ -91,4 +92,4 @@ std::string TargetInfo::ResolveStr(uint64_t addr) {
 		return "Unknown";
 	}
 	return r->name;
-}	
+}

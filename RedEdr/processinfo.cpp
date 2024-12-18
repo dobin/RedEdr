@@ -18,6 +18,7 @@
 #include "config.h"
 #include "processinfo.h"
 #include "utils.h"
+#include "meminfo.h"
 
 #include "mypeb.h"
 #include "eventproducer.h"
@@ -26,9 +27,9 @@
 #pragma comment(lib, "ntdll.lib")
 
 // Private
-BOOL EnumerateProcessModules(HANDLE hProcess, DWORD pid);
 wchar_t* GetFileNameFromPath(wchar_t* path);
-void PrintModuleSections(HANDLE process, LPVOID moduleBase);
+BOOL EnumerateProcessModules(Process* process, HANDLE hProcess);
+void EnumerateModuleSections(Process* process, HANDLE hProcess, LPVOID moduleBase);
 
 /////////////////////////////////////////////////////////////////
 
@@ -181,8 +182,9 @@ Process* MakeProcess(DWORD pid, LPCWSTR target_name) {
 }
 
 
-// Called if observed
+// Called if process will be observed
 BOOL AugmentProcess(DWORD pid, Process* process) {
+    LOG_A(LOG_INFO, "Augment process");
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
     if (!hProcess) {
         //LOG_A(LOG_WARNING, "Could not open process pid: %lu error %lu", pid, GetLastError());
@@ -190,7 +192,7 @@ BOOL AugmentProcess(DWORD pid, Process* process) {
     }
 
     QuickProcessInfo(process, hProcess);
-    EnumerateProcessModules(hProcess, pid);
+    EnumerateProcessModules(process, hProcess);
     //QueryMemoryRegions(hProcess);
 
     CloseHandle(hProcess);
@@ -200,7 +202,7 @@ BOOL AugmentProcess(DWORD pid, Process* process) {
 
 /////////////////////////////////////////////////////////////////
 
-BOOL EnumerateProcessModules(HANDLE hProcess, DWORD pid) {
+BOOL EnumerateProcessModules(Process *process, HANDLE hProcess) {
     PROCESS_BASIC_INFORMATION pbi;
     ULONG returnLength;
     NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
@@ -247,7 +249,7 @@ BOOL EnumerateProcessModules(HANDLE hProcess, DWORD pid) {
             break;
         }
         // Print information about the loaded module
-        WCHAR fullDllName[MAX_PATH];
+        WCHAR fullDllName[MAX_PATH] = { 0 };
         if (!ReadProcessMemory(hProcess, entry.FullDllName.Buffer, fullDllName, entry.FullDllName.Length, NULL)) {
             printf("Procinfo: ReadProcessMemory failed for FullDllName\n");
             CloseHandle(hProcess);
@@ -256,13 +258,13 @@ BOOL EnumerateProcessModules(HANDLE hProcess, DWORD pid) {
         fullDllName[entry.FullDllName.Length / sizeof(WCHAR)] = L'\0';  // Null-terminate the string
 
         // Short DLLS summary
-        csv += format_wstring(L"{\"addr\":%llu,\"size\":%llu,\"name\":\"%ls\"},",
+        csv += format_wstring(L"{\"addr\":%llu,\"size\":%llu,\"name\":\"%s\"},",
             entry.DllBase,
             (ULONG)entry.Reserved3[1],
             JsonEscape(GetFileNameFromPath(fullDllName), MAX_PATH));
 
         // Handle the individual sections 
-        PrintModuleSections(hProcess, entry.DllBase);
+        EnumerateModuleSections(process, hProcess, entry.DllBase);
 
         // Move to the next module in the list
         current = entry.InMemoryOrderLinks.Flink;
@@ -272,60 +274,34 @@ BOOL EnumerateProcessModules(HANDLE hProcess, DWORD pid) {
     ffff.pop_back(); // remove fucking last comma
     std::wstring o = format_wstring(L"{\"type\":\"loaded_dll\",\"time\":%lld,\"pid\":%lld,\"dlls\":[%s]}",
         get_time(),
-        pid,
+        process->id,
         ffff.c_str()
     );
     remove_all_occurrences_case_insensitive(o, std::wstring(L"C:\\\\Windows\\\\system32\\\\"));
     g_EventProducer.do_output(o);
 }
 
+
 /////////////////////////////////////////////////////////////////
 
+std::string GetSectionPermissions(DWORD characteristics) {
+    std::string permissions;
 
-// Unused, produces a lot of data
-bool QueryMemoryRegions(HANDLE hProcess) {
-    MEMORY_BASIC_INFORMATION mbi;
-    PVOID address = 0;
-    SIZE_T returnLength = 0;
-    char buf[DATA_BUFFER_SIZE];
+    if (characteristics & IMAGE_SCN_MEM_READ)
+        permissions += "r";
+    if (characteristics & IMAGE_SCN_MEM_WRITE)
+        permissions += "w";
+    if (characteristics & IMAGE_SCN_MEM_EXECUTE)
+        permissions += "x";
 
-    int c = 0, cc = 0;
-    while (NtQueryVirtualMemory(hProcess, address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
-        if (mbi.Type == 0 || mbi.Protect == 0 || mbi.State != MEM_COMMIT) {
-            address = (PVOID)((ULONG_PTR)mbi.BaseAddress + mbi.RegionSize);
-            continue;
-        }
-        // skip IMAGE regions
-        //if (mbi.Type == MEM_IMAGE) {
-        if (mbi.Type != MEM_PRIVATE) {
-            address = (PVOID)((ULONG_PTR)mbi.BaseAddress + mbi.RegionSize);
-            continue;
-        }
-        
-        //printf("addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx\n",
-        //    mbi.BaseAddress, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
+    if (permissions.empty())
+        permissions = "none";
 
-        //printf("addr:%p;size:%zu;protect:0x%lx;type:0x%lx\n",
-        //    mbi.BaseAddress, mbi.RegionSize, mbi.Protect, mbi.Type);
-
-        sprintf_s(buf, sizeof(buf), "addr:%p;size:%zu;protect:0x%lx;",
-            mbi.BaseAddress, mbi.RegionSize, mbi.Protect);
-        c += (int) strlen(buf);
-        cc += 1;
-        printf("%s\n", buf);
-
-        //printf("Protection: ");
-        //PrintProtectionFlags(mbi.Protect);
-        address = (PVOID)((ULONG_PTR)mbi.BaseAddress + mbi.RegionSize);
-    }
-
-    printf("Len bytes: %i   lines: %i\n", c, cc);
-
-    return TRUE;
+    return permissions;
 }
 
 
-void PrintModuleSections(HANDLE process, LPVOID moduleBase) {
+void EnumerateModuleSections(Process *process, HANDLE hProcess, LPVOID moduleBase) {
     // Buffer for headers
     IMAGE_DOS_HEADER dosHeader = {};
     IMAGE_NT_HEADERS ntHeaders = {};
@@ -333,30 +309,28 @@ void PrintModuleSections(HANDLE process, LPVOID moduleBase) {
 
     // Buffer for module name
     wchar_t moduleName[MAX_PATH] = { 0 };
-    if (!GetModuleBaseName(process, (HMODULE)moduleBase, moduleName, sizeof(moduleName))) {
+    if (!GetModuleBaseName(hProcess, (HMODULE)moduleBase, moduleName, sizeof(moduleName))) {
         std::cerr << "Failed to retrieve module name. Error: " << GetLastError() << std::endl;
         return;
     }
+	std::string moduleNameStr = wcharToString(moduleName);
 
     // Read the DOS header
-    if (!ReadProcessMemory(process, moduleBase, &dosHeader, sizeof(dosHeader), NULL)) {
+    if (!ReadProcessMemory(hProcess, moduleBase, &dosHeader, sizeof(dosHeader), NULL)) {
         std::cerr << "Failed to read DOS header. Error: " << GetLastError() << std::endl;
         return;
     }
-
     // Verify DOS signature
     if (dosHeader.e_magic != IMAGE_DOS_SIGNATURE) {
         std::cerr << "Invalid DOS signature. Not a valid PE file." << std::endl;
         return;
     }
-
     // Read the NT header
     LPVOID ntHeaderAddress = (LPBYTE)moduleBase + dosHeader.e_lfanew;
-    if (!ReadProcessMemory(process, ntHeaderAddress, &ntHeaders, sizeof(ntHeaders), NULL)) {
+    if (!ReadProcessMemory(hProcess, ntHeaderAddress, &ntHeaders, sizeof(ntHeaders), NULL)) {
         std::cerr << "Failed to read NT headers. Error: " << GetLastError() << std::endl;
         return;
     }
-
     // Verify NT signature
     if (ntHeaders.Signature != IMAGE_NT_SIGNATURE) {
         std::cerr << "Invalid NT signature. Not a valid PE file." << std::endl;
@@ -367,25 +341,36 @@ void PrintModuleSections(HANDLE process, LPVOID moduleBase) {
     DWORD numberOfSections = ntHeaders.FileHeader.NumberOfSections;
     LPVOID sectionHeaderAddress = (LPBYTE)ntHeaderAddress + sizeof(IMAGE_NT_HEADERS);
     sectionHeaders.resize(numberOfSections);
-
-    if (!ReadProcessMemory(process, sectionHeaderAddress, sectionHeaders.data(),
+    if (!ReadProcessMemory(hProcess, sectionHeaderAddress, sectionHeaders.data(),
         sizeof(IMAGE_SECTION_HEADER) * numberOfSections, NULL)) {
         std::cerr << "Failed to read section headers. Error: " << GetLastError() << std::endl;
         return;
     }
 
     // Print the sections
-    std::cout << "Module Base: " << moduleBase << "\n";
+    /*std::cout << "Module Base: " << moduleBase << "\n";
     std::wcout << L"Module Name: " << moduleName << L"\n";
     std::cout << "Sections:\n";
     std::cout << "Name\t\tVirtual Address\t\tSize\n";
-
+    */
     for (const auto& section : sectionHeaders) {
         LPVOID sectionAddress = (LPBYTE)moduleBase + section.VirtualAddress;
 		DWORD sectionSize = section.Misc.VirtualSize;
-        std::cout << std::string(reinterpret_cast<const char*>(section.Name), 8) << "\t\t";
-        std::cout << "0x" << std::hex << sectionAddress << "\t\t";
-        std::cout << "0x" << std::hex << sectionSize << "\n";
+
+        // Super special constructor so no trailing zeros are in the string
+        std::string sectionName(reinterpret_cast<const char*>(section.Name), strnlen(reinterpret_cast<const char*>(section.Name), 8));
+        std::string full = moduleNameStr + ":" + sectionName;
+		
+        MemoryRegion *memoryRegion = new MemoryRegion(
+            full,
+			reinterpret_cast<uint64_t>(sectionAddress),
+			sectionSize,
+            GetSectionPermissions(section.Characteristics)
+		);
+
+		g_TargetInfo.AddMemoryRegion(
+            reinterpret_cast<uint64_t>(sectionAddress), 
+            memoryRegion);
     }
 }
 
@@ -416,4 +401,47 @@ DWORD FindProcessIdByName(const std::wstring& processName) {
 
     CloseHandle(hSnapshot);
     return processId;
+}
+
+
+// Unused, produces a lot of data
+bool QueryMemoryRegions(HANDLE hProcess) {
+    MEMORY_BASIC_INFORMATION mbi;
+    PVOID address = 0;
+    SIZE_T returnLength = 0;
+    char buf[DATA_BUFFER_SIZE];
+
+    int c = 0, cc = 0;
+    while (NtQueryVirtualMemory(hProcess, address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
+        if (mbi.Type == 0 || mbi.Protect == 0 || mbi.State != MEM_COMMIT) {
+            address = (PVOID)((ULONG_PTR)mbi.BaseAddress + mbi.RegionSize);
+            continue;
+        }
+        // skip IMAGE regions
+        //if (mbi.Type == MEM_IMAGE) {
+        if (mbi.Type != MEM_PRIVATE) {
+            address = (PVOID)((ULONG_PTR)mbi.BaseAddress + mbi.RegionSize);
+            continue;
+        }
+
+        //printf("addr:%p;size:%zu;state:0x%lx;protect:0x%lx;type:0x%lx\n",
+        //    mbi.BaseAddress, mbi.RegionSize, mbi.State, mbi.Protect, mbi.Type);
+
+        //printf("addr:%p;size:%zu;protect:0x%lx;type:0x%lx\n",
+        //    mbi.BaseAddress, mbi.RegionSize, mbi.Protect, mbi.Type);
+
+        sprintf_s(buf, sizeof(buf), "addr:%p;size:%zu;protect:0x%lx;",
+            mbi.BaseAddress, mbi.RegionSize, mbi.Protect);
+        c += (int)strlen(buf);
+        cc += 1;
+        printf("%s\n", buf);
+
+        //printf("Protection: ");
+        //PrintProtectionFlags(mbi.Protect);
+        address = (PVOID)((ULONG_PTR)mbi.BaseAddress + mbi.RegionSize);
+    }
+
+    printf("Len bytes: %i   lines: %i\n", c, cc);
+
+    return TRUE;
 }

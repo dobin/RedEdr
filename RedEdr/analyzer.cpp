@@ -12,6 +12,7 @@
 #include "analyzer.h"
 #include "processinfo.h"
 #include "analyzer.h"
+#include "processcache.h"
 
 
 HANDLE analyzer_thread;
@@ -67,6 +68,49 @@ std::string sus_protect(std::string protect) {
 }
 
 
+void AugmentAddresses(nlohmann::json& j) {
+    if (j.contains("callstack") && j["callstack"].is_array()) {
+        for (auto& callstack_entry : j["callstack"]) {
+			if (callstack_entry.contains("addr")) {
+				uint64_t addr = callstack_entry["addr"].get<uint64_t>();
+				std::string symbol = g_TargetInfo.ResolveStr(addr);
+				callstack_entry["addr_info"] = symbol;
+
+                // log
+				if (g_config.debug) {
+					LOG_A(LOG_INFO, "Addr 0x%llx Symbol: %s", 
+                        addr,
+                        symbol.c_str());
+				}
+            }
+        }
+    }
+}
+
+
+void Analyzer::PrintEvent(nlohmann::json j) {
+    // Output accordingly
+    if (g_config.hide_full_output) {
+        if (event_count >= 100) {
+            if (event_count % 100 == 0) {
+                std::wcout << L"O";
+            }
+        }
+        else if (event_count >= 10) {
+            if (event_count % 10 == 0) {
+                std::wcout << L"o";
+            }
+        }
+        else {
+            std::wcout << L".";
+        }
+    }
+    else {
+        std::cout << j.dump() << "\n";
+    }
+}
+
+
 void Analyzer::AnalyzeEventJson(nlohmann::json& j) {
     j["id"] = json_entries.size();
     j["trace_id"] = trace_id;
@@ -93,6 +137,31 @@ void Analyzer::AnalyzeEventJson(nlohmann::json& j) {
         }
     }
 
+    // augment process information the first time
+    if (!j.contains("pid")) {
+        //LOG_A(LOG_WARNING, "No pid? %s", j.dump().c_str());
+    }
+    else {
+        Process* process = g_ProcessCache.getObject(j["pid"].get<DWORD>());
+        if (process->augmented == 0) {
+            process->augmented++;
+            AugmentProcess(j["pid"].get<DWORD>(), process);
+            std::wstring o = format_wstring(L"{\"type\":\"peb\",\"time\":%lld,\"id\":%lld,\"parent_pid\":%lld,\"image_path\":\"%s\",\"commandline\":\"%s\",\"working_dir\":\"%s\",\"is_debugged\":%d,\"is_protected_process\":%d,\"is_protected_process_light\":%d,\"image_base\":%llu}",
+                get_time(),
+                process->id,
+                process->parent_pid,
+                JsonEscape2(process->image_path.c_str()).c_str(),
+                JsonEscape2(process->commandline.c_str()).c_str(),
+                JsonEscape2(process->working_dir.c_str()).c_str(),
+                process->is_debugged,
+                process->is_protected_process,
+                process->is_protected_process_light,
+                process->image_base
+            );
+            g_EventProducer.do_output(o);
+        }
+    }
+
     // additional checks based on counted events
     if (json_entries.size() == 32) {
         if (j.contains("pid")) {
@@ -101,12 +170,22 @@ void Analyzer::AnalyzeEventJson(nlohmann::json& j) {
         }
     }
 
+    // Augment with memory info
+    AugmentAddresses(j);
+
+    // Memory changes
     ExtractMemoryInfo(j);
-    //targetInfo.PrintMemoryRegions();
+    //targetMemoryChanges.PrintMemoryRegions();
+    
+    // Detections
     Analyze(j);
+
+    // Print it
+    PrintEvent(j);
     
     // Has to be at the end as we dont store reference
     json_entries.push_back(j);
+    event_count++;
 
     return;
 }
@@ -124,7 +203,7 @@ void Analyzer::ExtractMemoryInfo(nlohmann::json& j) {
             addr = AlignToPage(addr);
             // always add, as its early in the process without collisions hopefully
             MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
-            targetInfo.AddMemoryRegion(addr, region);
+            targetMemoryChanges.AddMemoryRegion(addr, region);
         }
     }
 
@@ -139,7 +218,7 @@ void Analyzer::ExtractMemoryInfo(nlohmann::json& j) {
             //std::cout << "Compact JSON: " << jsonString << std::endl;
 
             addr = AlignToPage(addr);
-            MemoryRegion* memoryRegion = targetInfo.GetMemoryRegion(addr);
+            MemoryRegion* memoryRegion = targetMemoryChanges.GetMemoryRegion(addr);
             if (memoryRegion != NULL) {
                 //LOG_A(LOG_WARNING, "Allocate Memory ALREADY FOUND??! 0x%llx %llu end:0x%llx",
                 //   addr, size, addr+size);
@@ -153,17 +232,17 @@ void Analyzer::ExtractMemoryInfo(nlohmann::json& j) {
                 //LOG_A(LOG_WARNING, "Allocate Memory new: 0x%llx %llu",
                 //    addr, size);
                 memoryRegion = new MemoryRegion("Allocated", addr, size, protection);
-                targetInfo.AddMemoryRegion(addr, memoryRegion);
+                targetMemoryChanges.AddMemoryRegion(addr, memoryRegion);
             }
 
             if (j["func"] == "FreeVirtualMemory") {
                 uint64_t addr = j["addr"].get<uint64_t>();
                 uint64_t size = j["size"].get<uint64_t>();
 
-                MemoryRegion* memoryRegion = targetInfo.GetMemoryRegion(addr);
+                MemoryRegion* memoryRegion = targetMemoryChanges.GetMemoryRegion(addr);
                 if (memoryRegion != NULL) {
                     // do not remove, but indicate it has been freed
-                    //targetInfo.RemoveMemoryRegion(addr, size);
+                    //targetMemoryChanges.RemoveMemoryRegion(addr, size);
                     memoryRegion->protection += ";freed";
                 }
                 else {
@@ -181,16 +260,16 @@ void Analyzer::ExtractMemoryInfo(nlohmann::json& j) {
 
             addr = AlignToPage(addr);
             // Check if exists
-            MemoryRegion* memoryRegion = targetInfo.GetMemoryRegion(addr);
+            MemoryRegion* memoryRegion = targetMemoryChanges.GetMemoryRegion(addr);
             if (memoryRegion == NULL) {
                 //LOG_A(LOG_WARNING, "ProtectVirtualMemory region 0x%llx not found. Adding.",
                 //    addr);
                 MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
-                targetInfo.AddMemoryRegion(addr, region);
+                targetMemoryChanges.AddMemoryRegion(addr, region);
             }
             else {
                 // Update protection
-                MemoryRegion* region = targetInfo.GetMemoryRegion(addr);
+                MemoryRegion* region = targetMemoryChanges.GetMemoryRegion(addr);
                 region->protection += ";" + protection;
                 //LOG_A(LOG_INFO, "ProtectVirtualMemory: %s 0x%llx 0x%llx %s",
                 //	name.c_str(), addr, size, protection.c_str());
@@ -235,7 +314,7 @@ void Analyzer::Analyze(nlohmann::json& j) {
 
             // Check if the region has been suspiciously protected before (RW<->RX)
             uint64_t addr = j["addr"].get<uint64_t>();
-            MemoryRegion* region = targetInfo.GetMemoryRegion(addr);
+            MemoryRegion* region = targetMemoryChanges.GetMemoryRegion(addr);
             if (region != NULL) {
                 std::string sus = sus_protect(region->protection);
                 if (sus != "") {

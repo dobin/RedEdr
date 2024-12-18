@@ -11,6 +11,9 @@
 #include <vector>
 
 
+#include "meminfo.h"
+
+
 class Process {
 public:
     Process() {
@@ -71,7 +74,8 @@ public:
     DWORD is_protected_process = 0;
     DWORD is_protected_process_light = 0;
     PVOID image_base = 0;
-    //LPCVOID PebBaseAddress = 0;
+
+    unsigned int augmented = 0;
 };
 
 

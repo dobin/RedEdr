@@ -11,6 +11,7 @@
 #include "json.hpp"
 
 
+
 class MemoryRegion {
 public:
 	MemoryRegion(const std::string& name, uint64_t addr, uint64_t size, std::string protection)
@@ -41,3 +42,5 @@ private:
 	//std::unordered_map<uint64_t, MemoryRegion*> memoryRegions;
 };
 
+
+extern TargetInfo g_TargetInfo;

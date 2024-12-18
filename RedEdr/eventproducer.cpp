@@ -28,26 +28,6 @@ void EventProducer::do_output(std::wstring eventWstr) {
     output_mutex.unlock();
     output_count++;
 
-    // Output accordingly
-    if (g_config.hide_full_output) {
-        if (output_count >= 100) {
-            if (output_count % 100 == 0) {
-                std::wcout << L"O";
-            }
-        }
-        else if (output_count >= 10) {
-            if (output_count % 10 == 0) {
-                std::wcout << L"o";
-            }
-        }
-        else {
-            std::wcout << L".";
-        }
-    }
-    else {
-        std::wcout << eventWstr << L"\n";
-    }
-
 //	if (g_config.debug) {
 //		std::wcout << eventWstr << L"\n";
 //	}
