@@ -948,7 +948,7 @@ NTSTATUS NTAPI Catch_NtCreateSection(
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtCreateSection\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"section_handle\":%llu", (unsigned long long) SectionHandleValue);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"section_handle\":%llu,", (unsigned long long) SectionHandleValue);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"access_mask\":%lu,", DesiredAccess);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"max_size\":%llu,", MaximumSize);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"page_protection\":%lu,", SectionPageProtection);
