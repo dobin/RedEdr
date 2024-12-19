@@ -7,7 +7,7 @@
 #include <sstream>
 #include <mutex>
 
-#include "meminfo.h"
+#include "json.hpp"
 
 
 class EventProcessor {

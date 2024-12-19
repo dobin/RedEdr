@@ -7,10 +7,7 @@
 #include <vector>
 
 #include "logging.h"
-#include "processcache.h"
 #include "manager.h"
-
-
 #include "cxxops.hpp"
 #include "config.h"
 #include "event_processor.h"
@@ -19,6 +16,7 @@
 #include "pplmanager.h"
 #include "dllinjector.h"
 #include "utils.h"
+#include "process_query.h"
 
 #include "../Shared/common.h"
 
@@ -49,7 +47,7 @@ DWORD WINAPI KeyboardReaderThread(LPVOID param) {
             char ch = _getch();  // Get the character
             if (ch == 'r') {
                 LOG_A(LOG_WARNING, "Resetting data...");
-                g_ProcessCache.removeAll();
+                // g_ProcessResolver.removeAll();
             }
         }
         Sleep(200);

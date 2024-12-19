@@ -10,7 +10,7 @@
 #include "utils.h"
 #include "json.hpp"
 #include "webserver.h"
-#include "processcache.h"
+#include "process_resolver.h"
 #include "manager.h"
 #include "event_detector.h"
 #include "event_processor.h"
@@ -112,7 +112,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             {"num_etw", g_EventProcessor.num_etw},
             {"num_etwti", g_EventProcessor.num_etwti},
             {"num_dll", g_EventProcessor.num_dll},
-            {"num_process_cache", g_ProcessCache.GetCacheCount()}
+            {"num_process_cache", g_ProcessResolver.GetCacheCount()}
         };
         res.set_content(stats.dump(), "application/json; charset=UTF-8");
     });
@@ -157,7 +157,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         LOG_A(LOG_INFO, "Reset stats");
         g_EventAggregator.ResetData();
         g_EventProcessor.ResetData();
-        g_ProcessCache.removeAll();
+        g_ProcessResolver.removeAll();
     });
 
     svr.Get("/api/start", [](const httplib::Request& req, httplib::Response& res) {

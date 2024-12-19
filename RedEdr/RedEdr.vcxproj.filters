@@ -87,12 +87,6 @@
     <ClCompile Include="manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="processcache.cpp">
-      <Filter>Source Files\windows</Filter>
-    </ClCompile>
-    <ClCompile Include="meminfo.cpp">
-      <Filter>Source Files\windows</Filter>
-    </ClCompile>
     <ClCompile Include="processinfo.cpp">
       <Filter>Source Files\windows</Filter>
     </ClCompile>
@@ -113,6 +107,21 @@
     </ClCompile>
     <ClCompile Include="event_detector.cpp">
       <Filter>Source Files\process</Filter>
+    </ClCompile>
+    <ClCompile Include="process_resolver.cpp">
+      <Filter>Source Files\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="process.cpp">
+      <Filter>Source Files\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="process_query.cpp">
+      <Filter>Source Files\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="mem_static.cpp">
+      <Filter>Source Files\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="mem_dynamic.cpp">
+      <Filter>Source Files\windows</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -167,15 +176,6 @@
     <ClInclude Include="..\RedEdrShared\loguru.hpp">
       <Filter>Header Files\libs</Filter>
     </ClInclude>
-    <ClInclude Include="meminfo.h">
-      <Filter>Header Files\windows</Filter>
-    </ClInclude>
-    <ClInclude Include="processcache.h">
-      <Filter>Header Files\windows</Filter>
-    </ClInclude>
-    <ClInclude Include="processinfo.h">
-      <Filter>Header Files\windows</Filter>
-    </ClInclude>
     <ClInclude Include="dllinjector.h">
       <Filter>Header Files\windows</Filter>
     </ClInclude>
@@ -190,6 +190,24 @@
     </ClInclude>
     <ClInclude Include="event_processor.h">
       <Filter>Header Files\process</Filter>
+    </ClInclude>
+    <ClInclude Include="jsonw.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="process_resolver.h">
+      <Filter>Header Files\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="process.h">
+      <Filter>Header Files\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="process_query.h">
+      <Filter>Header Files\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="mem_static.h">
+      <Filter>Header Files\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="mem_dynamic.h">
+      <Filter>Header Files\windows</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

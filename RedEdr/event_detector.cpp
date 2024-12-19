@@ -4,7 +4,8 @@
 #include <locale>
 #include <codecvt>
 
-#include "processinfo.h"
+#include "process_query.h"
+#include "mem_static.h"
 #include "event_detector.h"
 #include "config.h"
 
@@ -19,7 +20,7 @@ std::string getLastTwoFields(const std::string& input);
 
 
 std::vector<std::string> detections;
-TargetInfo targetMemoryChanges;
+MemStatic targetMemoryChanges;
 
 
 std::string sus_protect(std::string protect) {
@@ -251,7 +252,7 @@ size_t GetDetectionsCount() {
     return detections.size();
 }
 
-TargetInfo* GetTargetMemoryChanges() {
+MemStatic* GetTargetMemoryChanges() {
 	return &targetMemoryChanges;
 }
 

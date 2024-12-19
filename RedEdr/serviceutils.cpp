@@ -7,7 +7,7 @@
 #include "../Shared/common.h"
 #include "logging.h"
 #include "config.h"
-#include "processinfo.h"
+#include "process_query.h"
 #include "dllinjector.h"
 
 #include "serviceutils.h"

@@ -2,12 +2,12 @@
 #include <sstream>
 #include <vector>
 
-#include "processinfo.h"
+#include "process_query.h"
 #include "event_processor.h"
 #include "event_aggregator.h"
 #include "event_augmenter.h"
 #include "event_detector.h"
-#include "processcache.h"
+#include "process_resolver.h"
 
 #include "utils.h"
 #include "config.h"
@@ -84,7 +84,7 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
         //LOG_A(LOG_WARNING, "No pid? %s", j.dump().c_str());
     }
     else {
-        Process* process = g_ProcessCache.getObject(j["pid"].get<DWORD>());
+        Process* process = g_ProcessResolver.getObject(j["pid"].get<DWORD>());
         if (process->augmented == 0) {
             // Augment the process (could take some time)
             AugmentProcess(j["pid"].get<DWORD>(), process);

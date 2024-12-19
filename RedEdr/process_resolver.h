@@ -11,13 +11,13 @@
 #include <memory>
 #include <tchar.h>
 
-#include "processinfo.h"
-#include "processcache.h"
+#include "process.h"
+#include "process_query.h"
 
 
-class ProcessCache {
+class ProcessResolver {
 public:
-    ProcessCache();
+    ProcessResolver();
     size_t GetCacheCount();
     void addObject(DWORD id, const Process& obj);
     BOOL containsObject(DWORD pid);
@@ -31,4 +31,4 @@ private:
 };
 
 // Declare a global instance
-extern ProcessCache g_ProcessCache; 
+extern ProcessResolver g_ProcessResolver;

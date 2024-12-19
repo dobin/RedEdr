@@ -17,7 +17,7 @@
 #include "config.h"
 
 // Stuff we test
-#include "processinfo.h"
+#include "process_query.h"
 #include "dllinjector.h"
 #include "analyzer.h"
 #include "webserver.h"
@@ -156,7 +156,7 @@ void AnalyzeFile(wchar_t *fname) {
 		g_Analyzer.AnalyzeEventJson(event);
 	}
 
-	g_Analyzer.targetInfo.PrintMemoryRegions();
+	//g_Analyzer.targetInfo.PrintMemoryRegions();
 }
 
 #include "krabs.hpp"
@@ -193,6 +193,7 @@ int wmain(int argc, wchar_t* argv[]) {
 		long pid = wcstoul(argv[2], &end, 10);
 		Process process = Process();
 		AugmentProcess(pid, &process);
+		g_TargetInfo.PrintMemoryRegions();
 	}
 	else if (wcscmp(argv[1], L"analyzer") == 0) {
 		if (argc == 3) {

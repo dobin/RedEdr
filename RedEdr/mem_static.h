@@ -11,7 +11,6 @@
 #include "json.hpp"
 
 
-
 class MemoryRegion {
 public:
 	MemoryRegion(const std::string& name, uint64_t addr, uint64_t size, std::string protection)
@@ -24,10 +23,9 @@ public:
 };
 
 
-// Target Info
-class TargetInfo {
+class MemStatic {
 public:
-	TargetInfo();
+	MemStatic();
 	void AddMemoryRegion(uint64_t addr, MemoryRegion* region);
 	BOOL ExistMemoryRegion(uint64_t addr);
 	MemoryRegion* GetMemoryRegion(uint64_t addr);
@@ -39,8 +37,7 @@ public:
 
 private:
 	RangeSet memoryRegions;
-	//std::unordered_map<uint64_t, MemoryRegion*> memoryRegions;
 };
 
 
-extern TargetInfo g_TargetInfo;
+extern MemStatic g_MemStatic;

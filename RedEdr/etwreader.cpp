@@ -11,7 +11,7 @@
 #include "event_aggregator.h"
 #include "logging.h"
 #include "etwreader.h"
-#include "processcache.h"
+#include "process_resolver.h"
 #include "config.h"
 #include "utils.h"
 
@@ -26,7 +26,7 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
     // This function should be high performance, or we lose events.
 
     DWORD processId = record.EventHeader.ProcessId;
-    if (!g_ProcessCache.observe(processId)) {
+    if (!g_ProcessResolver.observe(processId)) {
         return;
     }
     int opcode = schema.event_opcode();

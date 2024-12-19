@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>
+#include "mem_static.h"
+
 
 // Criticality 
 
@@ -35,4 +37,4 @@ void ScanForDetections(nlohmann::json& j);
 std::string CriticalityToString(Criticality c);
 std::string GetAllDetectionsAsJson();
 size_t GetDetectionsCount();
-TargetInfo* GetTargetMemoryChanges();
+MemStatic* GetTargetMemoryChanges();

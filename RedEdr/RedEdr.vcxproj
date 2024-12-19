@@ -146,8 +146,6 @@
     <ClCompile Include="event_detector.cpp" />
     <ClCompile Include="event_processor.cpp" />
     <ClCompile Include="manager.cpp" />
-    <ClCompile Include="meminfo.cpp" />
-    <ClCompile Include="processcache.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="dllinjector.cpp" />
     <ClCompile Include="kernelinterface.cpp" />
@@ -155,9 +153,14 @@
     <ClCompile Include="dllreader.cpp" />
     <ClCompile Include="kernelreader.cpp" />
     <ClCompile Include="logreader.cpp" />
+    <ClCompile Include="mem_dynamic.cpp" />
+    <ClCompile Include="mem_static.cpp" />
     <ClCompile Include="pplmanager.cpp" />
     <ClCompile Include="pplreader.cpp" />
+    <ClCompile Include="process.cpp" />
     <ClCompile Include="processinfo.cpp" />
+    <ClCompile Include="process_query.cpp" />
+    <ClCompile Include="process_resolver.cpp" />
     <ClCompile Include="RedEdr.cpp" />
     <ClCompile Include="serviceutils.cpp" />
     <ClCompile Include="webserver.cpp" />
@@ -169,9 +172,8 @@
     <ClInclude Include="event_augmenter.h" />
     <ClInclude Include="event_detector.h" />
     <ClInclude Include="event_processor.h" />
+    <ClInclude Include="jsonw.hpp" />
     <ClInclude Include="manager.h" />
-    <ClInclude Include="meminfo.h" />
-    <ClInclude Include="processcache.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="cxxops.hpp" />
     <ClInclude Include="dllinjector.h" />
@@ -182,10 +184,14 @@
     <ClInclude Include="dllreader.h" />
     <ClInclude Include="kernelreader.h" />
     <ClInclude Include="logreader.h" />
+    <ClInclude Include="mem_dynamic.h" />
+    <ClInclude Include="mem_static.h" />
     <ClInclude Include="mypeb.h" />
     <ClInclude Include="pplmanager.h" />
     <ClInclude Include="pplreader.h" />
-    <ClInclude Include="processinfo.h" />
+    <ClInclude Include="process.h" />
+    <ClInclude Include="process_query.h" />
+    <ClInclude Include="process_resolver.h" />
     <ClInclude Include="serviceutils.h" />
     <ClInclude Include="webserver.h" />
   </ItemGroup>

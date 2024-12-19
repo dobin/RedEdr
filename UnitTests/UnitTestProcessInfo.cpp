@@ -11,7 +11,7 @@
 #include "utils.h"
 
 #include "processcache.h"
-#include "processinfo.h"
+#include "process_query.h"
 #include "meminfo.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;

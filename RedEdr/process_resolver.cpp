@@ -11,28 +11,29 @@
 #include <mutex>
 
 #include "logging.h"
-#include "processcache.h"
+#include "process_resolver.h"
 #include "utils.h"
-#include "processinfo.h"
+#include "process_query.h"
 #include "config.h"
 #include "event_aggregator.h"
 
-ProcessCache g_ProcessCache;
+
+ProcessResolver g_ProcessResolver;
 std::mutex cache_mutex;
 
 
-ProcessCache::ProcessCache() {
+ProcessResolver::ProcessResolver() {
 }
 
 
 // Add an object to the cache
-void ProcessCache::addObject(DWORD id, const Process& obj) {
+void ProcessResolver::addObject(DWORD id, const Process& obj) {
     cache_mutex.lock();
     cache[id] = obj;
     cache_mutex.unlock();
 }
 
-BOOL ProcessCache::containsObject(DWORD pid) {
+BOOL ProcessResolver::containsObject(DWORD pid) {
     cache_mutex.lock();
     auto it = cache.find(pid);
     cache_mutex.unlock();
@@ -45,7 +46,7 @@ BOOL ProcessCache::containsObject(DWORD pid) {
 }
 
 // Get an object from the cache
-Process* ProcessCache::getObject(DWORD id) {
+Process* ProcessResolver::getObject(DWORD id) {
     cache_mutex.lock();
     auto it = cache.find(id);
     cache_mutex.unlock();
@@ -62,7 +63,7 @@ Process* ProcessCache::getObject(DWORD id) {
     return &cache[id];
 }
 
-BOOL ProcessCache::observe(DWORD id) {
+BOOL ProcessResolver::observe(DWORD id) {
     Process* p = getObject(id);
     if (p != NULL) {
         return p->doObserve();
@@ -71,20 +72,20 @@ BOOL ProcessCache::observe(DWORD id) {
 }
 
 // Remove an object from the cache
-void ProcessCache::removeObject(DWORD id) {
+void ProcessResolver::removeObject(DWORD id) {
     cache_mutex.lock();
     cache.erase(id);
     cache_mutex.unlock();
 }
 
-void ProcessCache::removeAll() {
+void ProcessResolver::removeAll() {
     cache_mutex.lock();
     cache.clear();
     cache_mutex.unlock();
 }
 
 
-size_t ProcessCache::GetCacheCount() {
+size_t ProcessResolver::GetCacheCount() {
     size_t s = cache.size();
     return s;
 }

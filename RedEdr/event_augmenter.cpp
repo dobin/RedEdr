@@ -3,12 +3,13 @@
 #include "config.h"
 #include "json.hpp"
 
-#include "processinfo.h"
+#include "process_query.h"
 #include "event_augmenter.h"
+#include "mem_static.h"
 
 
 /* Augments the Event JSON with additional information
- * Depends on TargetInfo to resolve addresses
+ * Depends on MemStatic to resolve addresses
  */
 
 
@@ -22,7 +23,7 @@ void AugmentAddresses(nlohmann::json& j) {
         for (auto& callstack_entry : j["callstack"]) {
             if (callstack_entry.contains("addr")) {
                 uint64_t addr = callstack_entry["addr"].get<uint64_t>();
-                std::string symbol = g_TargetInfo.ResolveStr(addr);
+                std::string symbol = g_MemStatic.ResolveStr(addr);
                 callstack_entry["addr_info"] = symbol;
 
                 // log
