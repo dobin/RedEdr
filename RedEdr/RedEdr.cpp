@@ -194,7 +194,7 @@ int main(int argc, char* argv[]) {
     }
 
     CreateRequiredFiles();
-    InitProcessInfo();
+    InitProcessQuery();
 
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;

@@ -76,7 +76,7 @@ pNtQueryVirtualMemory NtQueryVirtualMemory;
 /////////////////////////////////////////////////////////////////
 
 
-BOOL InitProcessInfo() {
+BOOL InitProcessQuery() {
     hNtDll = GetModuleHandle(L"ntdll.dll");
     if (hNtDll == NULL) {
         LOG_A(LOG_ERROR, "Procinfo: could not find ntdll.dll");

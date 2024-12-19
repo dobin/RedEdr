@@ -14,4 +14,6 @@
 #include "process.h"
 
 BOOL AugmentProcess(DWORD pid, Process* process);
-BOOL InitProcessInfo();
+BOOL InitProcessQuery();
+
+DWORD FindProcessIdByName(const std::wstring& processName);
