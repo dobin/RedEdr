@@ -13,21 +13,21 @@
 #include <iostream>
 
 #include "../Shared/common.h"
-#include "logging.h"
-#include "config.h"
+#include "../RedEdr/config.h"
 
 // Stuff we test
-#include "process_query.h"
-#include "dllinjector.h"
-#include "analyzer.h"
-#include "webserver.h"
-#include "processcache.h"
+#include "../RedEdr/process_query.h"
+#include "../RedEdr/process_resolver.h"
+#include "../RedEdr/event_processor.h"
+#include "../RedEdr/mem_static.h"
+#include "../RedEdr/dllinjector.h"
+#include "../RedEdr/webserver.h"
+#include "../RedEdr/kernelinterface.h"
 
-#include "analyzer.h"
-#include "kernelinterface.h"
+
+// Shared
 #include "piping.h"
 #include "utils.h"
-
 
 BOOL EnableDebugPrivilege() {
 	HANDLE hToken;
@@ -86,7 +86,7 @@ void GetProcessInfo(DWORD pid, wchar_t* target) {
 	printf("Get info about process: %lu\n", pid);
 	g_config.hide_full_output = 0;
 	g_config.targetExeName = L"Notepad";
-	Process *p = g_ProcessCache.getObject(pid);
+	Process *p = g_ProcessResolver.getObject(pid);
 
 	printf("\n\nDisplay:\n");
 	p->display();
@@ -153,13 +153,12 @@ void AnalyzeFile(wchar_t *fname) {
 		return;
 	}
 	for (auto& event : json_data) {
-		g_Analyzer.AnalyzeEventJson(event);
+		g_EventProcessor.AnalyzeEventJson(event);
 	}
-
 	//g_Analyzer.targetInfo.PrintMemoryRegions();
 }
 
-#include "krabs.hpp"
+//#include "krabs.hpp"
 
 void test() {
 
@@ -187,13 +186,13 @@ int wmain(int argc, wchar_t* argv[]) {
 	}
 	else if (wcscmp(argv[1], L"processinfo") == 0) {
 		EnableDebugPrivilege();
-		InitProcessInfo();
+		InitProcessQuery();
 		// Example: 1234 notepad.exe
 		wchar_t* end;
 		long pid = wcstoul(argv[2], &end, 10);
 		Process process = Process();
 		AugmentProcess(pid, &process);
-		g_TargetInfo.PrintMemoryRegions();
+		g_MemStatic.PrintMemoryRegions();
 	}
 	else if (wcscmp(argv[1], L"analyzer") == 0) {
 		if (argc == 3) {
