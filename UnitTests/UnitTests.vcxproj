@@ -158,12 +158,16 @@
   <ItemGroup>
     <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\utils.cpp" />
-    <ClCompile Include="..\RedEdr\analyzer.cpp" />
     <ClCompile Include="..\RedEdr\config.cpp" />
-    <ClCompile Include="..\RedEdr\eventproducer.cpp" />
-    <ClCompile Include="..\RedEdr\meminfo.cpp" />
-    <ClCompile Include="..\RedEdr\processcache.cpp" />
-    <ClCompile Include="..\RedEdr\processinfo.cpp" />
+    <ClCompile Include="..\RedEdr\event_aggregator.cpp" />
+    <ClCompile Include="..\RedEdr\event_augmenter.cpp" />
+    <ClCompile Include="..\RedEdr\event_detector.cpp" />
+    <ClCompile Include="..\RedEdr\event_processor.cpp" />
+    <ClCompile Include="..\RedEdr\mem_dynamic.cpp" />
+    <ClCompile Include="..\RedEdr\mem_static.cpp" />
+    <ClCompile Include="..\RedEdr\process.cpp" />
+    <ClCompile Include="..\RedEdr\process_query.cpp" />
+    <ClCompile Include="..\RedEdr\process_resolver.cpp" />
     <ClCompile Include="UnitTestAnalyzer.cpp" />
     <ClCompile Include="UnitTestProcessInfo.cpp" />
     <ClCompile Include="UnitTestEventProducer.cpp" />

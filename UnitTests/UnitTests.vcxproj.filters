@@ -33,28 +33,40 @@
     <ClCompile Include="..\RedEdr\config.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdr\eventproducer.cpp">
-      <Filter>Source Files\existing</Filter>
-    </ClCompile>
     <ClCompile Include="..\RedEdrShared\logging.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
     <ClCompile Include="..\RedEdrShared\utils.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdr\processinfo.cpp">
-      <Filter>Source Files\existing</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdr\processcache.cpp">
-      <Filter>Source Files\existing</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdr\analyzer.cpp">
-      <Filter>Source Files\existing</Filter>
-    </ClCompile>
     <ClCompile Include="UnitTestRanges.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdr\meminfo.cpp">
+    <ClCompile Include="..\RedEdr\event_aggregator.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdr\event_augmenter.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdr\event_detector.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdr\event_processor.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdr\mem_dynamic.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdr\mem_static.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdr\process.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdr\process_query.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdr\process_resolver.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
   </ItemGroup>
