@@ -45,7 +45,7 @@ BOOL ManagerReload() {
 }
 
 
-BOOL ManagerStart(std::vector<HANDLE> threads) {
+BOOL ManagerStart(std::vector<HANDLE>& threads) {
     // Do kernel module stuff first, as it can fail hard
     // we can then just bail out without tearing down the other threads
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {

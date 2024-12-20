@@ -57,7 +57,7 @@ DWORD WINAPI KeyboardReaderThread(LPVOID param) {
 }
 
 
-BOOL InitKeyboardReader(std::vector<HANDLE> threads) {
+BOOL InitKeyboardReader(std::vector<HANDLE>& threads) {
     // Keyboard reader
     HANDLE thread = CreateThread(NULL, 0, KeyboardReaderThread, NULL, 0, NULL);
     if (thread == NULL) {

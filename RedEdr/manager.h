@@ -6,5 +6,5 @@
 
 
 void ManagerShutdown();
-BOOL ManagerStart(std::vector<HANDLE> threads);
+BOOL ManagerStart(std::vector<HANDLE>& threads);
 BOOL ManagerReload();

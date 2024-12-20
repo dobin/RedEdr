@@ -132,7 +132,7 @@ std::vector<std::wstring> PipeServer::ReceiveBatch() {
             }
         }
         if (last_potential_str_start == 0) {
-            LOG_A(LOG_ERROR, "DllReader: No 0x00 0x00 byte found, errornous input?");
+            LOG_A(LOG_ERROR, "Piping: No 0x00 0x00 byte found, errornous input?");
         }
 
         if (last_potential_str_start != full_len) {
@@ -150,11 +150,12 @@ std::vector<std::wstring> PipeServer::ReceiveBatch() {
     }
     else {
         if (GetLastError() == ERROR_BROKEN_PIPE) {
-            LOG_A(LOG_INFO, "DllReader: Injected DLL disconnected");
+            LOG_W(LOG_INFO, L"Piping: %s: disconnected", name);
             hPipe = NULL;
         }
         else {
-            LOG_A(LOG_ERROR, "DllReader: Error reading from named pipe: %ld", GetLastError());
+            LOG_W(LOG_ERROR, L"Piping: %s: Error reading from named pipe: %ld", name, GetLastError());
+            hPipe = NULL;
         }
     }
 
