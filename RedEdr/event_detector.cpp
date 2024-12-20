@@ -66,32 +66,32 @@ void AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::string s) {
 
 void ScanEventForDetections(nlohmann::json& j) {
     if (j["type"] == "dll") {
-        if (j["func"] == "AllocateVirtualMemory") {
+        if (j["func"] == "NtAllocateVirtualMemory") {
             if (j["handle"] != -1) {
                 std::stringstream ss;
-                ss << "AllocateVirtualMemory in foreign process " << j["handle"].get<uint64_t>();
+                ss << "NtAllocateVirtualMemory in foreign process " << j["handle"].get<uint64_t>();
                 AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
             }
         }
-        if (j["func"] == "WriteVirtualMemory") {
+        if (j["func"] == "NtWriteVirtualMemory") {
             if (j["handle"] != -1) {
                 std::stringstream ss;
-                ss << "WriteVirtualMemory in foreign process " << j["handle"].get<uint64_t>();
+                ss << "NtWriteVirtualMemory in foreign process " << j["handle"].get<uint64_t>();
                 AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
             }
         }
-        if (j["func"] == "CreateRemoteThread") {
+        if (j["func"] == "NtCreateRemoteThread") {
             if (j["handle"] != -1) {
                 std::stringstream ss;
-                ss << "CreateRemoteThread in foreign process " << j["handle"].get<uint64_t>();
+                ss << "NtCreateRemoteThread in foreign process " << j["handle"].get<uint64_t>();
                 AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
             }
         }
-        if (j["func"] == "ProtectVirtualMemory") {
+        if (j["func"] == "NtProtectVirtualMemory") {
             // Check for simple RWX
             if (j.value("protect", "") == "RWX") {
                 std::stringstream ss;
-                ss << "Protect with RWX at addr " << j["addr"].get<uint64_t>();
+                ss << "NtProtectVirtualMemory with RWX at addr " << j["addr"].get<uint64_t>();
                 AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
             }
 
@@ -105,11 +105,11 @@ void ScanEventForDetections(nlohmann::json& j) {
                 }
             }
         }
-        if (j["func"] == "MapViewOfSection") {
+        if (j["func"] == "NtMapViewOfSection") {
             // Check for simple RWX
             if (j.value("protect", "") == "RWX") {
                 std::stringstream ss;
-                ss << "Protect with RWX at addr " << j["addr"].get<uint64_t>();
+                ss << "NtMapViewOfSection with RWX at addr " << j["addr"].get<uint64_t>();
                 AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
             }
         }
@@ -158,7 +158,7 @@ void ScanEventForMemoryChanges(nlohmann::json& j) {
 
     // From injected dll
     if (j["type"] == "dll") {
-        if (j["func"] == "AllocateVirtualMemory") {
+        if (j["func"] == "NtAllocateVirtualMemory") {
             uint64_t addr = j["addr"].get<uint64_t>();
             uint64_t size = j["size"].get<uint64_t>();
             std::string protection = j["protect"];
@@ -184,7 +184,7 @@ void ScanEventForMemoryChanges(nlohmann::json& j) {
                 targetMemoryChanges.AddMemoryRegion(addr, memoryRegion);
             }
 
-            if (j["func"] == "FreeVirtualMemory") {
+            if (j["func"] == "NtFreeVirtualMemory") {
                 uint64_t addr = j["addr"].get<uint64_t>();
                 uint64_t size = j["size"].get<uint64_t>();
 
@@ -201,7 +201,7 @@ void ScanEventForMemoryChanges(nlohmann::json& j) {
             }
         }
 
-        if (j["func"] == "ProtectVirtualMemory") {
+        if (j["func"] == "NtProtectVirtualMemory") {
             uint64_t addr = j["addr"].get<uint64_t>();
             uint64_t size = j["size"].get<uint64_t>();
             std::string protection = j["protect"];
