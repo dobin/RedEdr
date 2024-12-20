@@ -30,29 +30,6 @@ EventProcessor::EventProcessor() {
 }
 
 
-void EventProcessor::PrintEvent(nlohmann::json j) {
-    // Output accordingly
-    if (g_config.hide_full_output) {
-        if (event_count >= 100) {
-            if (event_count % 100 == 0) {
-                std::wcout << L"O";
-            }
-        }
-        else if (event_count >= 10) {
-            if (event_count % 10 == 0) {
-                std::wcout << L"o";
-            }
-        }
-        else {
-            std::wcout << L".";
-        }
-    }
-    else {
-        std::cout << j.dump() << "\n";
-    }
-}
-
-
 void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
     j["id"] = json_entries.size();
     j["trace_id"] = trace_id;
@@ -63,31 +40,16 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
         return;
     }
 
-    // Stats
-    if (j["type"] == "kernel") {
-        num_kernel += 1;
-    }
-    else if (j["type"] == "dll") {
-        num_dll += 1;
-    }
-    else if (j["type"] == "etw") {
-        if (j["provider_name"] == "Microsoft-Windows-Threat-Intelligence") {
-            num_etwti += 1;
-        }
-        else {
-            num_etw += 1;
-        }
-    }
+    // Stats (for UI)
+    EventStats(j);
 
-    // augment process information the first time
-    if (!j.contains("pid")) {
-        //LOG_A(LOG_WARNING, "No pid? %s", j.dump().c_str());
-    }
-    else {
+    // Handle if we see the pid the first time, by augmenting our internal data structures
+    if (j.contains("pid")) {
         Process* process = g_ProcessResolver.getObject(j["pid"].get<DWORD>());
         if (process->augmented == 0) {
             // Augment the process (could take some time)
             AugmentProcess(j["pid"].get<DWORD>(), process);
+            process->augmented++;
             
             // Print some of the gathered information
             std::wstring o = format_wstring(L"{\"type\":\"peb\",\"time\":%lld,\"id\":%lld,\"parent_pid\":%lld,\"image_path\":\"%s\",\"commandline\":\"%s\",\"working_dir\":\"%s\",\"is_debugged\":%d,\"is_protected_process\":%d,\"is_protected_process_light\":%d,\"image_base\":%llu}",
@@ -102,13 +64,11 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
                 process->is_protected_process_light,
                 process->image_base
             );
-
-            process->augmented++;
             g_EventAggregator.do_output(o);
         }
     }
 
-    // additional checks based on counted events
+    // Augment additionally
     if (json_entries.size() == 32) {
         if (j.contains("pid")) {
             DWORD pid = j["pid"].get<DWORD>();
@@ -117,14 +77,13 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
     }
 
     // Augment with memory info
-    AugmentAddresses(j);
+    AugmentEventWithMemAddrInfo(j);
 
     // Track Memory changes
-    ScanForMemoryChanges(j);
-    //targetMemoryChanges.PrintMemoryRegions();
+    ScanEventForMemoryChanges(j);
 
     // Perform Detections
-    ScanForDetections(j);
+    ScanEventForDetections(j);
 
     // Print it
     PrintEvent(j);
@@ -161,6 +120,47 @@ void EventProcessor::AnalyzeNewEvents(std::vector<std::string> events) {
 }
 
 
+void EventProcessor::PrintEvent(nlohmann::json j) {
+    // Output accordingly
+    if (g_config.hide_full_output) {
+        if (event_count >= 100) {
+            if (event_count % 100 == 0) {
+                std::wcout << L"O";
+            }
+        }
+        else if (event_count >= 10) {
+            if (event_count % 10 == 0) {
+                std::wcout << L"o";
+            }
+        }
+        else {
+            std::wcout << L".";
+        }
+    }
+    else {
+        std::cout << j.dump() << "\n";
+    }
+}
+
+
+void EventProcessor::EventStats(nlohmann::json& j) {
+    if (j["type"] == "kernel") {
+        num_kernel += 1;
+    }
+    else if (j["type"] == "dll") {
+        num_dll += 1;
+    }
+    else if (j["type"] == "etw") {
+        if (j["provider_name"] == "Microsoft-Windows-Threat-Intelligence") {
+            num_etwti += 1;
+        }
+        else {
+            num_etw += 1;
+        }
+    }
+}
+
+
 void EventProcessor::ResetData() {
     GenerateNewTraceId();
     //detections.clear();
@@ -190,6 +190,7 @@ void EventProcessor::SaveToFile() {
 HANDLE EventProcessor_thread;
 
 
+// Thread which retrieves and processes events from EventAggregator
 DWORD WINAPI EventProcessorThread(LPVOID param) {
     LOG_A(LOG_INFO, "!EventProcessor: Start thread");
     size_t arrlen = 0;
@@ -203,6 +204,8 @@ DWORD WINAPI EventProcessorThread(LPVOID param) {
         }
         // get em events
         std::vector<std::string> new_entries = g_EventAggregator.GetEvents();
+
+        // process
         g_EventProcessor.AnalyzeNewEvents(new_entries);
     }
 

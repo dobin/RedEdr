@@ -64,7 +64,7 @@ void AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::string s) {
 
 
 
-void ScanForDetections(nlohmann::json& j) {
+void ScanEventForDetections(nlohmann::json& j) {
     if (j["type"] == "dll") {
         if (j["func"] == "AllocateVirtualMemory") {
             if (j["handle"] != -1) {
@@ -140,7 +140,7 @@ void ScanForDetections(nlohmann::json& j) {
 }
 
 
-void ScanForMemoryChanges(nlohmann::json& j) {
+void ScanEventForMemoryChanges(nlohmann::json& j) {
     // Loaded dll's
     if (j["type"] == "loaded_dll") {
         for (const auto& it : j["dlls"]) {

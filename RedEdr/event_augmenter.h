@@ -4,4 +4,4 @@
 
 
 void AugmentEvent(nlohmann::json& j);
-void AugmentAddresses(nlohmann::json& j);
+void AugmentEventWithMemAddrInfo(nlohmann::json& j);

@@ -32,8 +32,8 @@ public:
     }
 };
 
-void ScanForMemoryChanges(nlohmann::json& j);
-void ScanForDetections(nlohmann::json& j);
+void ScanEventForMemoryChanges(nlohmann::json& j);
+void ScanEventForDetections(nlohmann::json& j);
 std::string CriticalityToString(Criticality c);
 std::string GetAllDetectionsAsJson();
 size_t GetDetectionsCount();

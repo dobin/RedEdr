@@ -31,20 +31,21 @@
 wchar_t* GetFileNameFromPath(wchar_t* path);
 BOOL EnumerateProcessModules(Process* process, HANDLE hProcess);
 void EnumerateModuleSections(Process* process, HANDLE hProcess, LPVOID moduleBase);
+std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u);
+BOOL ProcessPebInfo(Process* process, HANDLE hProcess);
+std::string GetSectionPermissions(DWORD characteristics);
 
-/////////////////////////////////////////////////////////////////
 
+// Some stupid definitions (dont belong in the .h)
 typedef enum _MEMORY_INFORMATION_CLASS {
     MemoryBasicInformation
 } MEMORY_INFORMATION_CLASS;
-
 typedef NTSTATUS(NTAPI* pNtQueryInformationProcess)(
     HANDLE ProcessHandle,
     PROCESSINFOCLASS ProcessInformationClass,
     PVOID ProcessInformation,
     ULONG ProcessInformationLength,
     PULONG ReturnLength);
-
 typedef NTSTATUS(NTAPI* pNtQueryVirtualMemory)(
     HANDLE                   ProcessHandle,
     PVOID                    BaseAddress,
@@ -55,28 +56,12 @@ typedef NTSTATUS(NTAPI* pNtQueryVirtualMemory)(
     );
 
 
-// Gets a UNICODE_STRING content in a remote process as wstring
-std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
-    std::wstring s;
-    //std::vector<wchar_t> commandLine(u->Length / sizeof(wchar_t));
-    std::vector<wchar_t> uni(u->Length);
-    if (!ReadProcessMemory(hProcess, u->Buffer, uni.data(), u->Length, NULL)) {
-        LOG_A(LOG_ERROR, "Procinfo: Could not ReadProcessMemory error: %d", GetLastError());
-    }
-    else {
-        s.assign(uni.begin(), uni.end());
-    }
-    return s;
-}
-
-
-HMODULE hNtDll;
+// Additional low level windows functions
 pNtQueryVirtualMemory NtQueryVirtualMemory;
-
-/////////////////////////////////////////////////////////////////
 
 
 BOOL InitProcessQuery() {
+    HMODULE hNtDll;
     hNtDll = GetModuleHandle(L"ntdll.dll");
     if (hNtDll == NULL) {
         LOG_A(LOG_ERROR, "Procinfo: could not find ntdll.dll");
@@ -91,7 +76,25 @@ BOOL InitProcessQuery() {
 }
 
 
-bool ProcessPebInfo(Process* process, HANDLE hProcess) {
+BOOL AugmentProcess(DWORD pid, Process* process) {
+    LOG_A(LOG_INFO, "Augmenting process %ul", pid);
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    if (!hProcess) {
+        //LOG_A(LOG_WARNING, "Could not open process pid: %lu error %lu", pid, GetLastError());
+        return FALSE;
+    }
+
+    ProcessPebInfo(process, hProcess);
+    EnumerateProcessModules(process, hProcess);
+    //QueryMemoryRegions(hProcess);
+
+    CloseHandle(hProcess);
+    return TRUE;
+}
+
+
+// Process: PEB Info
+BOOL ProcessPebInfo(Process* process, HANDLE hProcess) {
     PROCESS_BASIC_INFORMATION pbi;
     ULONG returnLength;
 
@@ -108,11 +111,8 @@ bool ProcessPebInfo(Process* process, HANDLE hProcess) {
     // PEB
     MYPEB peb;
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        // this is the first read, and may fail. 
-        // dont spam log messages
-        //LOG_A(LOG_WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
-        //    process->id, GetLastError());
-        //process->PebBaseAddress = pbi.PebBaseAddress;
+        LOG_A(LOG_WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
+            process->id, GetLastError());
         return FALSE;
     }
 
@@ -153,25 +153,7 @@ bool ProcessPebInfo(Process* process, HANDLE hProcess) {
 }
 
 
-BOOL AugmentProcess(DWORD pid, Process* process) {
-    LOG_A(LOG_INFO, "Augment process");
-    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-    if (!hProcess) {
-        //LOG_A(LOG_WARNING, "Could not open process pid: %lu error %lu", pid, GetLastError());
-        return FALSE;
-    }
-
-    ProcessPebInfo(process, hProcess);
-    EnumerateProcessModules(process, hProcess);
-    //QueryMemoryRegions(hProcess);
-
-    CloseHandle(hProcess);
-    return TRUE;
-}
-
-
-/////////////////////////////////////////////////////////////////
-
+// Enumerate all modules loaded in the process (DLL's), and their sections
 BOOL EnumerateProcessModules(Process* process, HANDLE hProcess) {
     PROCESS_BASIC_INFORMATION pbi;
     ULONG returnLength;
@@ -185,11 +167,8 @@ BOOL EnumerateProcessModules(Process* process, HANDLE hProcess) {
     // PEB follows
     MYPEB peb;
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        // this is the first read, and may fail. 
-        // dont spam log messages
-        //LOG_A(LOG_WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
-        //    process->id, GetLastError());
-        //process->PebBaseAddress = pbi.PebBaseAddress;
+        LOG_A(LOG_WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
+            process->id, GetLastError());
         CloseHandle(hProcess);
         return FALSE;
     }
@@ -252,25 +231,6 @@ BOOL EnumerateProcessModules(Process* process, HANDLE hProcess) {
 }
 
 
-/////////////////////////////////////////////////////////////////
-
-std::string GetSectionPermissions(DWORD characteristics) {
-    std::string permissions;
-
-    if (characteristics & IMAGE_SCN_MEM_READ)
-        permissions += "r";
-    if (characteristics & IMAGE_SCN_MEM_WRITE)
-        permissions += "w";
-    if (characteristics & IMAGE_SCN_MEM_EXECUTE)
-        permissions += "x";
-
-    if (permissions.empty())
-        permissions = "none";
-
-    return permissions;
-}
-
-
 void EnumerateModuleSections(Process* process, HANDLE hProcess, LPVOID moduleBase) {
     // Buffer for headers
     IMAGE_DOS_HEADER dosHeader = {};
@@ -318,11 +278,6 @@ void EnumerateModuleSections(Process* process, HANDLE hProcess, LPVOID moduleBas
     }
 
     // Print the sections
-    /*std::cout << "Module Base: " << moduleBase << "\n";
-    std::wcout << L"Module Name: " << moduleName << L"\n";
-    std::cout << "Sections:\n";
-    std::cout << "Name\t\tVirtual Address\t\tSize\n";
-    */
     for (const auto& section : sectionHeaders) {
         LPVOID sectionAddress = (LPBYTE)moduleBase + section.VirtualAddress;
         DWORD sectionSize = section.Misc.VirtualSize;
@@ -342,35 +297,6 @@ void EnumerateModuleSections(Process* process, HANDLE hProcess, LPVOID moduleBas
             reinterpret_cast<uint64_t>(sectionAddress),
             memoryRegion);
     }
-}
-
-
-wchar_t* GetFileNameFromPath(wchar_t* path) {
-    wchar_t* lastBackslash = wcsrchr(path, L'\\');
-    return (lastBackslash != NULL) ? lastBackslash + 1 : path;
-}
-
-
-DWORD FindProcessIdByName(const std::wstring& processName) {
-    DWORD processId = 0;
-    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (hSnapshot == INVALID_HANDLE_VALUE) {
-        return 0;
-    }
-
-    PROCESSENTRY32 pe;
-    pe.dwSize = sizeof(PROCESSENTRY32);
-    if (Process32First(hSnapshot, &pe)) {
-        do {
-            if (!_wcsicmp(pe.szExeFile, processName.c_str())) {
-                processId = pe.th32ProcessID;
-                break;
-            }
-        } while (Process32Next(hSnapshot, &pe));
-    }
-
-    CloseHandle(hSnapshot);
-    return processId;
 }
 
 
@@ -414,4 +340,67 @@ bool QueryMemoryRegions(HANDLE hProcess) {
     printf("Len bytes: %i   lines: %i\n", c, cc);
 
     return TRUE;
+}
+
+
+// Utils
+
+std::string GetSectionPermissions(DWORD characteristics) {
+    std::string permissions;
+
+    if (characteristics & IMAGE_SCN_MEM_READ)
+        permissions += "r";
+    if (characteristics & IMAGE_SCN_MEM_WRITE)
+        permissions += "w";
+    if (characteristics & IMAGE_SCN_MEM_EXECUTE)
+        permissions += "x";
+
+    if (permissions.empty())
+        permissions = "none";
+
+    return permissions;
+}
+
+
+// Gets a UNICODE_STRING content in a remote process as wstring
+std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
+    std::wstring s;
+    //std::vector<wchar_t> commandLine(u->Length / sizeof(wchar_t));
+    std::vector<wchar_t> uni(u->Length);
+    if (!ReadProcessMemory(hProcess, u->Buffer, uni.data(), u->Length, NULL)) {
+        LOG_A(LOG_ERROR, "Procinfo: Could not ReadProcessMemory error: %d", GetLastError());
+    }
+    else {
+        s.assign(uni.begin(), uni.end());
+    }
+    return s;
+}
+
+
+wchar_t* GetFileNameFromPath(wchar_t* path) {
+    wchar_t* lastBackslash = wcsrchr(path, L'\\');
+    return (lastBackslash != NULL) ? lastBackslash + 1 : path;
+}
+
+
+DWORD FindProcessIdByName(const std::wstring& processName) {
+    DWORD processId = 0;
+    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hSnapshot == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+
+    PROCESSENTRY32 pe;
+    pe.dwSize = sizeof(PROCESSENTRY32);
+    if (Process32First(hSnapshot, &pe)) {
+        do {
+            if (!_wcsicmp(pe.szExeFile, processName.c_str())) {
+                processId = pe.th32ProcessID;
+                break;
+            }
+        } while (Process32Next(hSnapshot, &pe));
+    }
+
+    CloseHandle(hSnapshot);
+    return processId;
 }

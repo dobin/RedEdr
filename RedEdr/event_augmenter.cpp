@@ -14,11 +14,11 @@
 
 
 void AugmentEvent(nlohmann::json& j) {
-	AugmentAddresses(j);
+	AugmentEventWithMemAddrInfo(j);
 }
 
 
-void AugmentAddresses(nlohmann::json& j) {
+void AugmentEventWithMemAddrInfo(nlohmann::json& j) {
     if (j.contains("callstack") && j["callstack"].is_array()) {
         for (auto& callstack_entry : j["callstack"]) {
             if (callstack_entry.contains("addr")) {
