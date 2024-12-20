@@ -25,10 +25,18 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
 
     // This function should be high performance, or we lose events.
 
+    // This will get information about the process, which may be slow, if not
+    // done beofore. It can be done before, e.g. when Kernel event arrived
     DWORD processId = record.EventHeader.ProcessId;
+    Process* process = g_ProcessResolver.getObject(processId);
+    if (process == NULL) {
+        return;
+    }
     if (!g_ProcessResolver.observe(processId)) {
         return;
     }
+
+
     int opcode = schema.event_opcode();
     if (opcode == 98 || opcode == 99) {
         // temp:
@@ -92,7 +100,8 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
                 break;
             case TDH_INTYPE_FILETIME:
             {
-                FILETIME fileTime = *parser.parse<PFILETIME>(propertyName);
+                // Not a PFILETIME!
+                FILETIME fileTime = parser.parse<FILETIME>(propertyName);
 
                 // As int
                 ULARGE_INTEGER uli;
@@ -107,7 +116,7 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
                 ss << stLocal.wYear << L"/" << stLocal.wMonth << L"/" << stLocal.wDay << L" "
                     << stLocal.wHour << L":" << stLocal.wMinute << L":" << stLocal.wSecond;
                 */
-				
+
                 break;
             }
 

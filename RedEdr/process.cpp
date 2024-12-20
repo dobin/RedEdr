@@ -14,6 +14,7 @@
 #include <tchar.h>
 #include <tlhelp32.h>
 
+#include "config.h"
 #include "process.h"
 #include "logging.h"
 
@@ -37,6 +38,9 @@ Process* MakeProcess(DWORD pid, LPCWSTR target_name) {
         return process;
     }
     if (GetModuleFileNameEx(hProcess, NULL, exePath, MAX_PATH)) {
+        if (g_config.debug) {
+            LOG_W(LOG_INFO, L"Check new process with name: %s", exePath);
+        }
         wchar_t* result = wcsstr(exePath, target_name);
         if (result) {
             LOG_W(LOG_INFO, L"Objcache: observe process %lu executable path: %s", pid, exePath);
