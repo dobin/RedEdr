@@ -17,57 +17,6 @@
 #include "event_processor.h"
 
 
-// Function to enable a privilege for the current process
-BOOL PermissionSetPrivilege(HANDLE hToken, LPCTSTR lpszPrivilege, BOOL bEnablePrivilege) {
-    TOKEN_PRIVILEGES tp;
-    LUID luid;
-
-    if (!LookupPrivilegeValue(NULL, lpszPrivilege, &luid)) {
-        LOG_A(LOG_ERROR, "LookupPrivilegeValue error: %d", GetLastError());
-        return FALSE;
-    }
-
-    tp.PrivilegeCount = 1;
-    tp.Privileges[0].Luid = luid;
-    tp.Privileges[0].Attributes = (bEnablePrivilege) ? SE_PRIVILEGE_ENABLED : 0;
-
-    // Enable the privilege or disable all privileges.
-    if (!AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL)) {
-        LOG_A(LOG_ERROR, "AdjustTokenPrivileges error: %d", GetLastError());
-        return FALSE;
-    }
-
-    if (GetLastError() == ERROR_NOT_ALL_ASSIGNED) {
-        LOG_A(LOG_ERROR, "The token does not have the specified privilege.");
-        return FALSE;
-    }
-
-    return TRUE;
-}
-
-
-BOOL PermissionMakeMeDebug() {
-    // Get a handle to the current process token
-    HANDLE hToken;
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken)) {
-        LOG_A(LOG_ERROR, "OpenProcessToken failed: %d", GetLastError());
-        return FALSE;
-    }
-
-    // Enable SeDebugPrivilege
-    if (!PermissionSetPrivilege(hToken, SE_DEBUG_NAME, TRUE)) {
-        LOG_A(LOG_ERROR, "Failed to enable SeDebugPrivilege.");
-        CloseHandle(hToken);
-        return FALSE;
-    }
-
-    CloseHandle(hToken);
-
-    LOG_A(LOG_INFO, "--[ Enable SE_DEBUG: OK");
-    return TRUE;
-}
-
-
 BOOL ManagerReload() {
     // DLL
     // -> Automatic upon connect of DLL (initiated by Kernel)
@@ -77,17 +26,17 @@ BOOL ManagerReload() {
     
     // Kernel
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
-        LOG_A(LOG_INFO, "RedEdr: Tell Kernel about new target: %ls", g_config.targetExeName);
+        LOG_A(LOG_INFO, "Manager: Tell Kernel about new target: %ls", g_config.targetExeName);
         const wchar_t* target = g_config.targetExeName;
         if (!EnableKernelDriver(g_config.enabled, (wchar_t*)target)) {
-            LOG_A(LOG_ERROR, "RedEdr: Could not communicate with kernel driver, aborting.");
+            LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
             return FALSE;
         }
     }
 
     // PPL
     if (g_config.do_etwti) {
-        LOG_A(LOG_INFO, "RedEdr: Tell ETW-TI about new target: %ls", g_config.targetExeName);
+        LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new target: %ls", g_config.targetExeName);
         wchar_t* target = (wchar_t*)g_config.targetExeName;
         EnablePplProducer(g_config.enabled, target);
     }
@@ -101,10 +50,10 @@ BOOL ManagerStart(std::vector<HANDLE> threads) {
     // we can then just bail out without tearing down the other threads
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
         if (IsServiceRunning(g_config.driverName)) {
-            LOG_A(LOG_INFO, "Kernel: RedEdr Driver already loaded");
+            LOG_A(LOG_INFO, "Manager: RedEdr Driver already loaded");
         }
         else {
-            LOG_A(LOG_INFO, "RedEdr: Load Kernel Driver");
+            LOG_A(LOG_INFO, "Manager: Load Kernel Driver");
             if (!LoadKernelDriver()) {
                 LOG_A(LOG_ERROR, "RedEdr: Could not load driver");
                 return FALSE;
@@ -113,31 +62,31 @@ BOOL ManagerStart(std::vector<HANDLE> threads) {
 
         // Start the kernel server first
         // The kernel module will connect to it
-        LOG_A(LOG_INFO, "RedEdr: Start kernel reader  thread");
+        LOG_A(LOG_INFO, "Manager: Start kernel reader  thread");
         KernelReaderInit(threads);
 
         // Enable it
-        LOG_A(LOG_INFO, "RedEdr: Tell Kernel to start collecting telemetry of: \"%ls\"", g_config.targetExeName);
+        LOG_A(LOG_INFO, "Manager: Tell Kernel to start collecting telemetry of: \"%ls\"", g_config.targetExeName);
         const wchar_t* target = g_config.targetExeName;
         if (!EnableKernelDriver(1, (wchar_t*)target)) {
-            LOG_A(LOG_ERROR, "RedEdr: Could not communicate with kernel driver, aborting.");
+            LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
             return FALSE;
         }
     }
     if (g_config.do_etw) {
-        LOG_A(LOG_INFO, "RedEdr: Start ETW reader thread");
+        LOG_A(LOG_INFO, "Manager: Start ETW reader thread");
         InitializeEtwReader(threads);
     }
     if (g_config.do_mplog) {
-        LOG_A(LOG_INFO, "RedEdr: Start MPLOG Reader");
+        LOG_A(LOG_INFO, "Manager: Start MPLOG Reader");
         InitializeLogReader(threads);
     }
     if (g_config.do_dllinjection || g_config.debug_dllreader || g_config.do_etwti) {
-        LOG_A(LOG_INFO, "RedEdr: Start InjectedDll reader thread");
+        LOG_A(LOG_INFO, "Manager: Start InjectedDll reader thread");
         DllReaderInit(threads);
     }
     if (g_config.do_etwti) {
-        LOG_A(LOG_INFO, "RedEdr: Start ETW-TI reader");
+        LOG_A(LOG_INFO, "Manager: Start ETW-TI reader");
         Sleep(500);
         wchar_t* target = (wchar_t*)g_config.targetExeName;
         InitPplService();
@@ -150,26 +99,26 @@ BOOL ManagerStart(std::vector<HANDLE> threads) {
 
 void ManagerShutdown() {
     if (g_config.do_mplog) {
-        LOG_A(LOG_INFO, "RedEdr: Stop log reader");
+        LOG_A(LOG_INFO, "Manager: Stop log reader");
         LogReaderStopAll();
     }
 
     // Lets shut down ETW stuff first, its more important
     // ETW-TI
     if (g_config.do_etwti) {
-        LOG_A(LOG_INFO, "RedEdr: Stop ETWTI reader");
+        LOG_A(LOG_INFO, "Manager: Stop ETWTI reader");
         EnablePplProducer(FALSE, NULL);
     }
     // ETW
     if (g_config.do_etw) {
-        LOG_A(LOG_INFO, "RedEdr: Stop ETW readers");
+        LOG_A(LOG_INFO, "Manager: Stop ETW readers");
         EtwReaderStopAll();
     }
 
     // Make kernel module stop emitting events
     //    Disconnects KernelPipe client
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
-        LOG_A(LOG_INFO, "RedEdr: Disable kernel driver");
+        LOG_A(LOG_INFO, "Manager: Disable kernel driver");
         const wchar_t* target = L"";
         EnableKernelDriver(0, (wchar_t*)target);
     }
@@ -177,24 +126,24 @@ void ManagerShutdown() {
     // The following may crash?
     // Shutdown kernel reader
     if (g_config.do_kernelcallback) {
-        LOG_A(LOG_INFO, "RedEdr: Stop kernel reader");
+        LOG_A(LOG_INFO, "Manager: Stop kernel reader");
         KernelReaderShutdown();
     }
     // Shutdown dll reader
     if (g_config.do_dllinjection || g_config.do_etwti) {
-        LOG_A(LOG_INFO, "RedEdr: Stop DLL reader");
+        LOG_A(LOG_INFO, "Manager: Stop DLL reader");
         DllReaderShutdown();
     }
 
     // Special case
     if (g_config.debug_dllreader) {
-        LOG_A(LOG_INFO, "RedEdr: Stop DLL reader");
+        LOG_A(LOG_INFO, "Manager: Stop DLL reader");
         DllReaderShutdown();
     }
 
     // Web server
     if (g_config.web_output) {
-        LOG_A(LOG_INFO, "RedEdr: Stop web server");
+        LOG_A(LOG_INFO, "Manager: Stop web server");
         StopWebServer();
     }
 

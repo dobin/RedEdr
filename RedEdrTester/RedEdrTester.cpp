@@ -23,41 +23,12 @@
 #include "../RedEdr/dllinjector.h"
 #include "../RedEdr/webserver.h"
 #include "../RedEdr/kernelinterface.h"
-
+#include "../RedEdr/serviceutils.h"
 
 // Shared
 #include "piping.h"
 #include "utils.h"
 
-BOOL EnableDebugPrivilege() {
-	HANDLE hToken;
-	TOKEN_PRIVILEGES tp;
-	LUID luid;
-
-	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken)) {
-		printf("OpenProcessToken failed. Error: %lu\n", GetLastError());
-		return FALSE;
-	}
-
-	if (!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luid)) {
-		printf("LookupPrivilegeValue failed. Error: %lu\n", GetLastError());
-		CloseHandle(hToken);
-		return FALSE;
-	}
-
-	tp.PrivilegeCount = 1;
-	tp.Privileges[0].Luid = luid;
-	tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-
-	if (!AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), NULL, NULL)) {
-		printf("AdjustTokenPrivileges failed. Error: %lu\n", GetLastError());
-		CloseHandle(hToken);
-		return FALSE;
-	}
-
-	CloseHandle(hToken);
-	return TRUE;
-}
 
 
 void SendToKernel(int enable, wchar_t* target) {
@@ -158,6 +129,23 @@ void AnalyzeFile(wchar_t *fname) {
 	//g_Analyzer.targetInfo.PrintMemoryRegions();
 }
 
+
+void processinfo(wchar_t *pidStr) {
+	PermissionMakeMeDebug();
+	InitProcessQuery();
+
+	wchar_t* end;
+	long pid = wcstoul(pidStr, &end, 10);
+	Process* process = new Process();
+
+	// only from process
+	AugmentProcess(pid, process);
+
+	g_MemStatic.PrintMemoryRegions(); // memory regions
+	process->display(); // peb stuff
+}
+
+
 //#include "krabs.hpp"
 
 void test() {
@@ -185,14 +173,7 @@ int wmain(int argc, wchar_t* argv[]) {
 		SendToDllReader(argv[2]);
 	}
 	else if (wcscmp(argv[1], L"processinfo") == 0) {
-		EnableDebugPrivilege();
-		InitProcessQuery();
-		// Example: 1234 notepad.exe
-		wchar_t* end;
-		long pid = wcstoul(argv[2], &end, 10);
-		Process process = Process();
-		AugmentProcess(pid, &process);
-		g_MemStatic.PrintMemoryRegions();
+		processinfo(argv[2]);
 	}
 	else if (wcscmp(argv[1], L"analyzer") == 0) {
 		if (argc == 3) {

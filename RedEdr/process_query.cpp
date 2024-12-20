@@ -27,6 +27,7 @@
 
 #pragma comment(lib, "ntdll.lib")
 
+
 // Private
 wchar_t* GetFileNameFromPath(wchar_t* path);
 BOOL EnumerateProcessModules(Process* process, HANDLE hProcess);
@@ -141,7 +142,7 @@ BOOL ProcessPebInfo(Process* process, HANDLE hProcess) {
         return FALSE;
     }
     process->commandline = GetRemoteUnicodeStr(hProcess, &procParams.CommandLine);
-    process->commandline = ReplaceAll(process->commandline, L"\"", L"\\\"");
+    //process->commandline = ReplaceAll(process->commandline, L"\"", L"\\\"");
     process->image_path = GetRemoteUnicodeStr(hProcess, &procParams.ImagePathName);
     process->working_dir = GetRemoteUnicodeStr(hProcess, &procParams.CurrentDirectory.DosPath);
 

@@ -59,9 +59,10 @@ void MemStatic::ClearMemoryRegions() {
 
 
 void MemStatic::PrintMemoryRegions() {
+	printf("Memory Regions: \n");
 	for (const auto& it : memoryRegions.ranges_) {
 		MemoryRegion* r = (MemoryRegion*)it.data_;
-		printf("Entry: %s 0x%llx 0x%llx  %s\n",
+		printf("  %s 0x%llx 0x%llx  %s\n",
 			r->name.c_str(),
 			r->addr,
 			r->size,

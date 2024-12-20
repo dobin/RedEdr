@@ -146,6 +146,7 @@
     <ClCompile Include="..\RedEdr\process.cpp" />
     <ClCompile Include="..\RedEdr\process_query.cpp" />
     <ClCompile Include="..\RedEdr\process_resolver.cpp" />
+    <ClCompile Include="..\RedEdr\serviceutils.cpp" />
     <ClCompile Include="RedEdrTester.cpp" />
   </ItemGroup>
   <ItemGroup>

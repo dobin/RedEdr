@@ -13,6 +13,76 @@
 #include "serviceutils.h"
 
 
+
+BOOL PermissionMakeMePrivileged() {
+    HANDLE hToken;
+    TOKEN_PRIVILEGES tp;
+    LUID luid;
+
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken)) {
+        printf("Permissions: OpenProcessToken failed. Error: %lu\n", GetLastError());
+        return FALSE;
+    }
+
+    // Debug too
+    if (!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luid)) {
+        printf("Permissions: LookupPrivilegeValue failed. Error: %lu\n", GetLastError());
+        CloseHandle(hToken);
+        return FALSE;
+    }
+
+    tp.PrivilegeCount = 1;
+    tp.Privileges[0].Luid = luid;
+    tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED; // Privileged!
+
+    if (!AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), NULL, NULL)) {
+        printf("Permissions: Could not apply specified privilege: PRIVILEGED\n");
+        CloseHandle(hToken);
+        return FALSE;
+    }
+
+    LOG_A(LOG_INFO, "Permissions: Enabled PRIVILEGED & DEBUG");
+    CloseHandle(hToken);
+    return TRUE;
+}
+
+
+BOOL PermissionMakeMeDebug() {
+    // Get a handle to the current process token
+    HANDLE hToken;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken)) {
+        LOG_A(LOG_ERROR, "Permissions: OpenProcessToken failed: %d", GetLastError());
+        return FALSE;
+    }
+
+    // Enable SeDebugPrivilege
+    TOKEN_PRIVILEGES tp;
+    LUID luid;
+
+    if (!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luid)) {
+        LOG_A(LOG_ERROR, "Permissions: LookupPrivilegeValue error: %d", GetLastError());
+        return FALSE;
+    }
+
+    tp.PrivilegeCount = 1;
+    tp.Privileges[0].Luid = luid;
+    tp.Privileges[0].Attributes = 0; // Not privileged
+
+    if (!AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL)) {
+        LOG_A(LOG_ERROR, "Permissions: AdjustTokenPrivileges error: %d", GetLastError());
+        return FALSE;
+    }
+    if (GetLastError() == ERROR_NOT_ALL_ASSIGNED) {
+        LOG_A(LOG_ERROR, "Permissions: Coudl not apply specified privilege: DEBUG");
+        return FALSE;
+    }
+
+    LOG_A(LOG_INFO, "Permissions: Enabled SE_DEBUG");
+    CloseHandle(hToken);
+    return TRUE;
+}
+
+
 BOOL DoesServiceExist(LPCWSTR serviceName) {
     // Open the Service Control Manager
     SC_HANDLE scmHandle = OpenSCManager(nullptr, nullptr, SC_MANAGER_CONNECT);

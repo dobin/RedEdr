@@ -17,6 +17,7 @@
 #include "dllinjector.h"
 #include "utils.h"
 #include "process_query.h"
+#include "serviceutils.h"
 
 #include "../Shared/common.h"
 
@@ -198,13 +199,17 @@ int main(int argc, char* argv[]) {
 
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
-    LOG_A(LOG_INFO, "--( RedEdr 0.2");
-    LOG_A(LOG_INFO, "--( Tracing process name %ls and its children", g_config.targetExeName);
+    LOG_A(LOG_INFO, "--( RedEdr 0.3");
+    LOG_W(LOG_INFO, L"--( Tracing process name %s and its children", g_config.targetExeName);
 
     // SeDebug
-    BOOL dbg = PermissionMakeMeDebug();
-    if (!dbg) {
-        LOG_A(LOG_ERROR, "RedEdr: ERROR MakeMeSeDebug: Did you start with local admin or SYSTEM?");
+    if (!PermissionMakeMeDebug()) {
+        LOG_A(LOG_ERROR, "RedEdr: Permission error - Did you start with local admin");
+        return 1;
+    }
+    if (!PermissionMakeMePrivileged()) {
+		LOG_A(LOG_ERROR, "RedEdr: Permission error: Not started as SYSTEM");
+		//return 1;
     }
 
     // Ctrl+C
