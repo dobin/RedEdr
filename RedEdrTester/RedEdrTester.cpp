@@ -19,11 +19,14 @@
 #include "../RedEdr/process_query.h"
 #include "../RedEdr/process_resolver.h"
 #include "../RedEdr/event_processor.h"
+#include "../RedEdr/event_detector.h"
 #include "../RedEdr/mem_static.h"
 #include "../RedEdr/dllinjector.h"
 #include "../RedEdr/webserver.h"
 #include "../RedEdr/kernelinterface.h"
 #include "../RedEdr/serviceutils.h"
+#include "../RedEdr/json.hpp"
+
 
 // Shared
 #include "piping.h"
@@ -103,6 +106,8 @@ void DoStuff() {
 
 
 void AnalyzeFile(wchar_t *fname) {
+	g_config.hide_full_output = 1;
+	g_config.debug = 1;
 	std::string filename = wcharToString(fname);
 	LOG_A(LOG_INFO, "Analyzer: Reading %s", filename.c_str());
 	std::string json_file_content = read_file(filename);
@@ -126,7 +131,11 @@ void AnalyzeFile(wchar_t *fname) {
 	for (auto& event : json_data) {
 		g_EventProcessor.AnalyzeEventJson(event);
 	}
-	//g_Analyzer.targetInfo.PrintMemoryRegions();
+	std::cout << GetAllDetectionsAsJson() << std::endl;
+
+	// Parse the JSON string into a nlohmann::json object
+	std::string j = GetTargetMemoryChanges()->ToJson().dump(4);
+	std::cout << j << std::endl;
 }
 
 
@@ -154,7 +163,7 @@ void test() {
 
 int wmain(int argc, wchar_t* argv[]) {
 	if (argc < 1) {
-		LOG_A(LOG_ERROR, "Usage: %s <what> <data>", argv[0]);
+		LOG_W(LOG_ERROR, L"Usage: %s <what>", argv[0]);
 		return 1;
 	}
 
@@ -191,6 +200,6 @@ int wmain(int argc, wchar_t* argv[]) {
 		test();
 	}
 	else {
-		LOG_A(LOG_ERROR, "Unknown command: %s", argv[1]);
+		LOG_W(LOG_ERROR, L"Unknown command: %s", argv[1]);
 	}
 }
