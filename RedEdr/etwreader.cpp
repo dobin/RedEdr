@@ -28,9 +28,14 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
     // This will get information about the process, which may be slow, if not
     // done beofore. It can be done before, e.g. when Kernel event arrived
     DWORD processId = record.EventHeader.ProcessId;
-    if (!g_ProcessResolver.getObject(processId)) {
+    Process* process = g_ProcessResolver.getObject(processId);
+    if (process == NULL) {
         return;
     }
+    if (!g_ProcessResolver.observe(processId)) {
+        return;
+    }
+
 
     int opcode = schema.event_opcode();
     if (opcode == 98 || opcode == 99) {
