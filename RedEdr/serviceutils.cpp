@@ -4,6 +4,9 @@
 #include <cstdlib> // For exit()
 #include <string.h>
 #include <stdio.h>
+#include <sddl.h> // For ConvertSidToStringSid
+
+
 #include "../Shared/common.h"
 #include "logging.h"
 #include "config.h"
@@ -13,8 +16,7 @@
 #include "serviceutils.h"
 
 
-
-BOOL PermissionMakeMePrivileged() {
+BOOL PermissionMakeMeDebug() {
     HANDLE hToken;
     TOKEN_PRIVILEGES tp;
     LUID luid;
@@ -47,8 +49,64 @@ BOOL PermissionMakeMePrivileged() {
 }
 
 
-BOOL PermissionMakeMeDebug() {
-    return PermissionMakeMePrivileged();
+bool IsRunningAsSystem() {
+    HANDLE hToken = NULL;
+
+    // Open the current process token
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
+        std::cerr << "Failed to open process token. Error: " << GetLastError() << std::endl;
+        return false;
+    }
+
+    // Get the size of the token information
+    DWORD dwBufferSize = 0;
+    GetTokenInformation(hToken, TokenUser, NULL, 0, &dwBufferSize);
+    if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+        std::cerr << "Failed to get token information size. Error: " << GetLastError() << std::endl;
+        CloseHandle(hToken);
+        return false;
+    }
+
+    // Allocate buffer for the token information
+    PTOKEN_USER pTokenUser = (PTOKEN_USER)malloc(dwBufferSize);
+    if (!pTokenUser) {
+        std::cerr << "Memory allocation failed." << std::endl;
+        CloseHandle(hToken);
+        return false;
+    }
+
+    // Retrieve the token information
+    if (!GetTokenInformation(hToken, TokenUser, pTokenUser, dwBufferSize, &dwBufferSize)) {
+        std::cerr << "Failed to get token information. Error: " << GetLastError() << std::endl;
+        free(pTokenUser);
+        CloseHandle(hToken);
+        return false;
+    }
+
+    // Convert the SID to a string
+    LPTSTR sidString = NULL;
+    if (!ConvertSidToStringSid(pTokenUser->User.Sid, &sidString)) {
+        std::cerr << "Failed to convert SID to string. Error: " << GetLastError() << std::endl;
+        free(pTokenUser);
+        CloseHandle(hToken);
+        return false;
+    }
+
+    // Check if the SID corresponds to SYSTEM
+    bool isSystem = (_tcscmp(sidString, _T("S-1-5-18")) == 0); // SYSTEM SID: S-1-5-18
+    if (isSystem) {
+        std::cout << "The process is running as SYSTEM." << std::endl;
+    }
+    else {
+        std::cout << "The process is NOT running as SYSTEM. SID: " << sidString << std::endl;
+    }
+
+    // Cleanup
+    LocalFree(sidString);
+    free(pTokenUser);
+    CloseHandle(hToken);
+
+    return isSystem;
 }
 
 
