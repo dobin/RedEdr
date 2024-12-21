@@ -93,6 +93,11 @@ public:
         }
     }
 
+    
+    void ResetData() {
+		ranges_.clear();
+    }
+
     std::vector<Range> ranges_;
 
 private:

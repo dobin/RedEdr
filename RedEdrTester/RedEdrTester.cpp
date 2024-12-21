@@ -131,10 +131,10 @@ void AnalyzeFile(wchar_t *fname) {
 	for (auto& event : json_data) {
 		g_EventProcessor.AnalyzeEventJson(event);
 	}
-	std::cout << GetAllDetectionsAsJson() << std::endl;
+	std::cout << g_EventDetector.GetAllDetectionsAsJson() << std::endl;
 
 	// Parse the JSON string into a nlohmann::json object
-	std::string j = GetTargetMemoryChanges()->ToJson().dump(4);
+	std::string j = g_EventDetector.GetTargetMemoryChanges()->ToJson().dump(4);
 	std::cout << j << std::endl;
 }
 

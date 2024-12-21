@@ -33,6 +33,7 @@ void ProcessResolver::addObject(DWORD id, const Process& obj) {
     cache_mutex.unlock();
 }
 
+
 BOOL ProcessResolver::containsObject(DWORD pid) {
     cache_mutex.lock();
     auto it = cache.find(pid);
@@ -44,6 +45,7 @@ BOOL ProcessResolver::containsObject(DWORD pid) {
         return FALSE;
     }
 }
+
 
 // Get an object from the cache
 Process* ProcessResolver::getObject(DWORD id) {
@@ -63,6 +65,7 @@ Process* ProcessResolver::getObject(DWORD id) {
     return &cache[id];
 }
 
+
 BOOL ProcessResolver::observe(DWORD id) {
     Process* p = getObject(id);
     if (p != NULL) {
@@ -71,6 +74,7 @@ BOOL ProcessResolver::observe(DWORD id) {
     return FALSE;
 }
 
+
 // Remove an object from the cache
 void ProcessResolver::removeObject(DWORD id) {
     cache_mutex.lock();
@@ -78,7 +82,8 @@ void ProcessResolver::removeObject(DWORD id) {
     cache_mutex.unlock();
 }
 
-void ProcessResolver::removeAll() {
+
+void ProcessResolver::ResetData() {
     cache_mutex.lock();
     cache.clear();
     cache_mutex.unlock();

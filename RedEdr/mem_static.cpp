@@ -50,11 +50,8 @@ void MemStatic::RemoveMemoryRegion(uint64_t addr, size_t size) {
 }
 
 
-void MemStatic::ClearMemoryRegions() {
-	//for (auto& it : memoryRegions) {
-	//	delete it.second;
-	//}
-	//memoryRegions.clear();
+void MemStatic::ResetData() {
+	memoryRegions.ResetData();
 }
 
 

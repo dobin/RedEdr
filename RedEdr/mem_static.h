@@ -30,7 +30,7 @@ public:
 	BOOL ExistMemoryRegion(uint64_t addr);
 	MemoryRegion* GetMemoryRegion(uint64_t addr);
 	void RemoveMemoryRegion(uint64_t addr, size_t size);
-	void ClearMemoryRegions();
+	void ResetData();
 	void PrintMemoryRegions();
 	nlohmann::json ToJson();
 	std::string ResolveStr(uint64_t addr);

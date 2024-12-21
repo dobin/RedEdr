@@ -5,7 +5,7 @@
 #include <codecvt>
 
 #include "process_query.h"
-#include "mem_static.h"
+#include "mem_dynamic.h"
 #include "event_detector.h"
 #include "config.h"
 
@@ -225,9 +225,13 @@ void EventDetector::ScanEventForMemoryChanges(nlohmann::json& j) {
 }
 
 
+void EventDetector::ResetData() {
+	detections.clear();
+	targetMemoryChanges.ResetData();
+}
+
+
 /* Utils */
-
-
 
 std::string CriticalityToString(Criticality c) {
     switch (c) {

@@ -38,6 +38,7 @@ public:
     void AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::string s);
     void ScanEventForMemoryChanges(nlohmann::json& j);
     void ScanEventForDetections(nlohmann::json& j);
+    void ResetData();
 
     std::string GetAllDetectionsAsJson();
     size_t GetDetectionsCount();
@@ -53,6 +54,3 @@ extern EventDetector g_EventDetector;
 
 
 std::string CriticalityToString(Criticality c);
-std::string GetAllDetectionsAsJson();
-size_t GetDetectionsCount();
-MemStatic* GetTargetMemoryChanges();

@@ -24,7 +24,7 @@ public:
     Process* getObject(DWORD id);
     BOOL observe(DWORD id);
     void removeObject(DWORD id);
-    void removeAll();
+    void ResetData();
 
 private:
     std::unordered_map<DWORD, Process> cache;

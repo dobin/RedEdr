@@ -30,6 +30,7 @@ std::wstring StripToFirstDot(const std::wstring& input) {
     return input;
 }
 
+
 std::vector<std::wstring> GetFilesInDirectory(const std::wstring& directory) {
     std::vector<std::wstring> files;
     WIN32_FIND_DATA findFileData;
@@ -51,10 +52,10 @@ std::vector<std::wstring> GetFilesInDirectory(const std::wstring& directory) {
     return files;
 }
 
+
 std::string getRecordingsAsJson() {
     std::stringstream output;
     output << "[";
-    //std::vector<std::wstring> names = GetFilesInDirectory(L"C:\\RedEdr\\Data\\*.events.json");
     std::vector<std::wstring> names = GetFilesInDirectory(L"C:\\RedEdr\\Data\\*.events.json");
     for (auto it = names.begin(); it != names.end(); ++it) {
         output << "\"" << wstring_to_utf8(*it) << "\"";
@@ -65,6 +66,7 @@ std::string getRecordingsAsJson() {
     output << "]";
     return output.str();
 }
+
 
 DWORD WINAPI WebserverThread(LPVOID param) {
     LOG_A(LOG_INFO, "!WEB: Start Webserver thread");
@@ -91,7 +93,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
 
     svr.Get("/api/detections", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content(GetAllDetectionsAsJson(), "application/json; charset=UTF-8");
+        res.set_content(g_EventDetector.GetAllDetectionsAsJson(), "application/json; charset=UTF-8");
     });
 
     svr.Get("/api/recordings", [](const httplib::Request&, httplib::Response& res) {
@@ -107,7 +109,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     svr.Get("/api/stats", [](const httplib::Request&, httplib::Response& res) {
         nlohmann::json stats = {
             {"events_count", g_EventAggregator.GetCount()},
-            {"detections_count", GetDetectionsCount()},
+            {"detections_count", g_EventDetector.GetDetectionsCount()},
             {"num_kernel", g_EventProcessor.num_kernel},
             {"num_etw", g_EventProcessor.num_etw},
             {"num_etwti", g_EventProcessor.num_etwti},
@@ -117,7 +119,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         res.set_content(stats.dump(), "application/json; charset=UTF-8");
     });
     svr.Get("/api/meminfo", [](const httplib::Request&, httplib::Response& res) {
-        nlohmann::json info = GetTargetMemoryChanges()->ToJson();
+        nlohmann::json info = g_EventDetector.GetTargetMemoryChanges()->ToJson();
         res.set_content(info.dump(), "application/json; charset=UTF-8");
     });
 
@@ -147,19 +149,12 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             res.set_content(error.dump(), "application/json");
         }
     });
-
     svr.Get("/api/save", [](const httplib::Request&, httplib::Response& res) {
-        LOG_A(LOG_INFO, "Save stats");
         g_EventProcessor.SaveToFile();
     });
-
     svr.Get("/api/reset", [](const httplib::Request&, httplib::Response& res) {
-        LOG_A(LOG_INFO, "Reset stats");
-        g_EventAggregator.ResetData();
-        g_EventProcessor.ResetData();
-        g_ProcessResolver.removeAll();
+        ResetEverything();
     });
-
     svr.Get("/api/start", [](const httplib::Request& req, httplib::Response& res) {
         g_config.enabled = TRUE;
         ManagerReload();

@@ -48,7 +48,7 @@ DWORD WINAPI KeyboardReaderThread(LPVOID param) {
             char ch = _getch();  // Get the character
             if (ch == 'r') {
                 LOG_A(LOG_WARNING, "Resetting data...");
-                // g_ProcessResolver.removeAll();
+                // g_ProcessResolver.ResetData();
             }
         }
         Sleep(200);
