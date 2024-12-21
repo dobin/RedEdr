@@ -139,7 +139,10 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
     auto stack_trace = schema.stack_trace();
     for (auto& return_address : stack_trace)
     {
-        j["stack_trace"] += return_address;
+        // Only add non-kernelspace addresses
+		if (return_address < 0xFFFF080000000000) {
+            j["stack_trace"] += return_address;
+		}
     }
 
     // Generate the JSON, and convert it back to wstring...

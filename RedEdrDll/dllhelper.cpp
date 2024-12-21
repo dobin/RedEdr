@@ -135,11 +135,13 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
     MEMORY_BASIC_INFORMATION mbi;
     int n = 0;
     SIZE_T returnLength = 0;
+    int didWalk = 0;
     while (StackWalk64(machineType, hProcess, hThread, &stackFrame, &context,
         NULL, NULL, NULL, NULL))
     {
         DWORD64 address = stackFrame.AddrPC.Offset;
         size_t w = 0;
+        didWalk = 1;
 
         if (n > MAX_CALLSTACK_ENTRIES) {
             // dont go too deep
@@ -183,9 +185,15 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
         n += 1;
     }
 
-    // remove last comma fuck
-    buf[wcslen(buf) - 1] = L']';
-    buf[wcslen(buf) - 0] = L'\x00';
+    // remove last comma if we added at least one entry
+    if (didWalk) {
+        buf[wcslen(buf) - 1] = L']';
+        buf[wcslen(buf) - 0] = L'\x00';
+    }
+    else {
+        buf[wcslen(buf) - 0] = L']';
+        buf[wcslen(buf) + 1] = L'\x00';
+    }
 
     // We should have space...
     //l = wcscat_s(buf, buf_size, L"]");
