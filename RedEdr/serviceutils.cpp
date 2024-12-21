@@ -48,38 +48,7 @@ BOOL PermissionMakeMePrivileged() {
 
 
 BOOL PermissionMakeMeDebug() {
-    // Get a handle to the current process token
-    HANDLE hToken;
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken)) {
-        LOG_A(LOG_ERROR, "Permissions: OpenProcessToken failed: %d", GetLastError());
-        return FALSE;
-    }
-
-    // Enable SeDebugPrivilege
-    TOKEN_PRIVILEGES tp;
-    LUID luid;
-
-    if (!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luid)) {
-        LOG_A(LOG_ERROR, "Permissions: LookupPrivilegeValue error: %d", GetLastError());
-        return FALSE;
-    }
-
-    tp.PrivilegeCount = 1;
-    tp.Privileges[0].Luid = luid;
-    tp.Privileges[0].Attributes = 0; // Not privileged
-
-    if (!AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL)) {
-        LOG_A(LOG_ERROR, "Permissions: AdjustTokenPrivileges error: %d", GetLastError());
-        return FALSE;
-    }
-    if (GetLastError() == ERROR_NOT_ALL_ASSIGNED) {
-        LOG_A(LOG_ERROR, "Permissions: Coudl not apply specified privilege: DEBUG");
-        return FALSE;
-    }
-
-    LOG_A(LOG_INFO, "Permissions: Enabled SE_DEBUG");
-    CloseHandle(hToken);
-    return TRUE;
+    return PermissionMakeMePrivileged();
 }
 
 
