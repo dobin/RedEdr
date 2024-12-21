@@ -5,14 +5,12 @@
 
 
 // Criticality 
-
 enum class Criticality {
     LOW,
     MEDIUM,
     HIGH
 };
 std::string CriticalityToString(Criticality c);
-
 
 class CriticalityManager {
 private:
@@ -32,8 +30,28 @@ public:
     }
 };
 
-void ScanEventForMemoryChanges(nlohmann::json& j);
-void ScanEventForDetections(nlohmann::json& j);
+
+// Detection
+
+class EventDetector {
+public:
+    void AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::string s);
+    void ScanEventForMemoryChanges(nlohmann::json& j);
+    void ScanEventForDetections(nlohmann::json& j);
+
+    std::string GetAllDetectionsAsJson();
+    size_t GetDetectionsCount();
+    MemStatic* GetTargetMemoryChanges();
+
+
+private:
+    std::vector<std::string> detections;
+    MemStatic targetMemoryChanges;
+};
+
+extern EventDetector g_EventDetector;
+
+
 std::string CriticalityToString(Criticality c);
 std::string GetAllDetectionsAsJson();
 size_t GetDetectionsCount();

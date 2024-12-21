@@ -49,7 +49,7 @@ BOOL PermissionMakeMeDebug() {
 }
 
 
-bool IsRunningAsSystem() {
+BOOL IsRunningAsSystem() {
     HANDLE hToken = NULL;
 
     // Open the current process token

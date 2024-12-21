@@ -80,10 +80,10 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
     AugmentEventWithMemAddrInfo(j);
 
     // Track Memory changes
-    ScanEventForMemoryChanges(j);
+    g_EventDetector.ScanEventForMemoryChanges(j);
 
     // Perform Detections
-    ScanEventForDetections(j);
+    g_EventDetector.ScanEventForDetections(j);
 
     // Print it
     PrintEvent(j);

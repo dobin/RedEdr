@@ -18,9 +18,7 @@
 uint64_t AlignToPage(uint64_t addr);
 std::string getLastTwoFields(const std::string& input);
 
-
-std::vector<std::string> detections;
-MemStatic targetMemoryChanges;
+EventDetector g_EventDetector = EventDetector();
 
 
 std::string sus_protect(std::string protect) {
@@ -50,7 +48,7 @@ std::string sus_protect(std::string protect) {
 }
 
 
-void AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::string s) {
+void EventDetector::AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::string s) {
     std::string o = CriticalityToString(c) + ": " + s;
     detections.push_back(o);
     j["detections"] += o;
@@ -63,8 +61,7 @@ void AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::string s) {
 }
 
 
-
-void ScanEventForDetections(nlohmann::json& j) {
+void EventDetector::ScanEventForDetections(nlohmann::json& j) {
     if (j["type"] == "dll") {
         if (j["func"] == "NtAllocateVirtualMemory") {
             if (j["handle"] != -1) {
@@ -140,7 +137,7 @@ void ScanEventForDetections(nlohmann::json& j) {
 }
 
 
-void ScanEventForMemoryChanges(nlohmann::json& j) {
+void EventDetector::ScanEventForMemoryChanges(nlohmann::json& j) {
     // Loaded dll's
     if (j["type"] == "loaded_dll") {
         for (const auto& it : j["dlls"]) {
@@ -242,17 +239,18 @@ std::string CriticalityToString(Criticality c) {
 }
 
 
-std::string GetAllDetectionsAsJson() {
+std::string EventDetector::GetAllDetectionsAsJson() {
     nlohmann::json jsonArray = detections;
     return jsonArray.dump();
 }
 
 
-size_t GetDetectionsCount() {
+size_t EventDetector::GetDetectionsCount() {
     return detections.size();
 }
 
-MemStatic* GetTargetMemoryChanges() {
+
+MemStatic* EventDetector::GetTargetMemoryChanges() {
 	return &targetMemoryChanges;
 }
 
@@ -261,6 +259,7 @@ uint64_t AlignToPage(uint64_t addr) {
     constexpr uint64_t pageSize = 4096;
     return addr & ~(pageSize - 1);
 }
+
 
 std::string getLastTwoFields(const std::string& input) {
     // Find the last semicolon
