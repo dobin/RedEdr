@@ -30,7 +30,7 @@
 
 // Private
 wchar_t* GetFileNameFromPath(wchar_t* path);
-BOOL EnumerateProcessModules(Process* process, HANDLE hProcess);
+BOOL ProcessEnumerateModules(Process* process, HANDLE hProcess);
 void EnumerateModuleSections(Process* process, HANDLE hProcess, LPVOID moduleBase);
 std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u);
 BOOL ProcessPebInfo(Process* process, HANDLE hProcess);
@@ -65,12 +65,12 @@ BOOL InitProcessQuery() {
     HMODULE hNtDll;
     hNtDll = GetModuleHandle(L"ntdll.dll");
     if (hNtDll == NULL) {
-        LOG_A(LOG_ERROR, "Procinfo: could not find ntdll.dll");
+        LOG_A(LOG_ERROR, "ProcessQuery: could not find ntdll.dll");
         return FALSE;
     }
     NtQueryVirtualMemory = (pNtQueryVirtualMemory)GetProcAddress(hNtDll, "NtQueryVirtualMemory");
     if (NtQueryVirtualMemory == NULL) {
-        LOG_A(LOG_ERROR, "Procinfo: Could not get NtQueryVirtualMemory error: %d", GetLastError());
+        LOG_A(LOG_ERROR, "ProcessQuery: Could not get NtQueryVirtualMemory error: %d", GetLastError());
         return FALSE;
     }
     return TRUE;
@@ -78,7 +78,7 @@ BOOL InitProcessQuery() {
 
 
 BOOL AugmentProcess(DWORD pid, Process* process) {
-    LOG_A(LOG_INFO, "Augmenting process %ul", pid);
+    LOG_A(LOG_INFO, "ProcessQuery: Augmenting process %lu", pid);
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
     if (!hProcess) {
         //LOG_A(LOG_WARNING, "Could not open process pid: %lu error %lu", pid, GetLastError());
@@ -86,7 +86,7 @@ BOOL AugmentProcess(DWORD pid, Process* process) {
     }
 
     ProcessPebInfo(process, hProcess);
-    EnumerateProcessModules(process, hProcess);
+    ProcessEnumerateModules(process, hProcess);
     //QueryMemoryRegions(hProcess);
 
     CloseHandle(hProcess);
@@ -112,7 +112,7 @@ BOOL ProcessPebInfo(Process* process, HANDLE hProcess) {
     // PEB
     MYPEB peb;
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        LOG_A(LOG_WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
+        LOG_A(LOG_WARNING, "ProcessQuery: Error: Could not ReadProcessMemory1 for process %d error: %d", 
             process->id, GetLastError());
         return FALSE;
     }
@@ -138,7 +138,7 @@ BOOL ProcessPebInfo(Process* process, HANDLE hProcess) {
     // ProcessParameters - anoying copying
     MY_RTL_USER_PROCESS_PARAMETERS procParams;
     if (!ReadProcessMemory(hProcess, peb.ProcessParameters, &procParams, sizeof(procParams), NULL)) {
-        LOG_A(LOG_ERROR, "Error: Could not ReadProcessMemory for %d, error: %d", process->id, GetLastError());
+        LOG_A(LOG_ERROR, "ProcessQuery: Error: Could not ReadProcessMemory for %d, error: %d", process->id, GetLastError());
         return FALSE;
     }
     process->commandline = GetRemoteUnicodeStr(hProcess, &procParams.CommandLine);
@@ -155,12 +155,12 @@ BOOL ProcessPebInfo(Process* process, HANDLE hProcess) {
 
 
 // Enumerate all modules loaded in the process (DLL's), and their sections
-BOOL EnumerateProcessModules(Process* process, HANDLE hProcess) {
+BOOL ProcessEnumerateModules(Process* process, HANDLE hProcess) {
     PROCESS_BASIC_INFORMATION pbi;
     ULONG returnLength;
     NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
     if (status != 0) {
-        LOG_A(LOG_ERROR, "Procinfo: Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
+        LOG_A(LOG_ERROR, "ProcessQuery: Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
         CloseHandle(hProcess);
         return FALSE;
     }
@@ -168,7 +168,7 @@ BOOL EnumerateProcessModules(Process* process, HANDLE hProcess) {
     // PEB follows
     MYPEB peb;
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        LOG_A(LOG_WARNING, "Error: Could not ReadProcessMemory1 for process %d error: %d", 
+        LOG_A(LOG_WARNING, "ProcessQuery: Error: Could not ReadProcessMemory1 for process %d error: %d", 
             process->id, GetLastError());
         CloseHandle(hProcess);
         return FALSE;
@@ -177,7 +177,7 @@ BOOL EnumerateProcessModules(Process* process, HANDLE hProcess) {
     // Read the PEB_LDR_DATA
     PEB_LDR_DATA ldr;
     if (!ReadProcessMemory(hProcess, peb.Ldr, &ldr, sizeof(PEB_LDR_DATA), NULL)) {
-        printf("Procinfo: ReadProcessMemory failed for PEB_LDR_DATA\n");
+        printf("ProcessQuery:ReadProcessMemory failed for PEB_LDR_DATA\n");
         CloseHandle(hProcess);
         return FALSE;
     }
@@ -191,7 +191,7 @@ BOOL EnumerateProcessModules(Process* process, HANDLE hProcess) {
         if (!ReadProcessMemory(hProcess, CONTAINING_RECORD(current, _LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks),
             &entry, sizeof(_LDR_DATA_TABLE_ENTRY), NULL))
         {
-            printf("Procinfo: ReadProcessMemory failed for LDR_DATA_TABLE_ENTRY\n");
+            printf("ProcessQuery: ReadProcessMemory failed for LDR_DATA_TABLE_ENTRY\n");
             CloseHandle(hProcess);
             return FALSE;
         }
@@ -201,7 +201,7 @@ BOOL EnumerateProcessModules(Process* process, HANDLE hProcess) {
         // Print information about the loaded module
         WCHAR fullDllName[MAX_PATH] = { 0 };
         if (!ReadProcessMemory(hProcess, entry.FullDllName.Buffer, fullDllName, entry.FullDllName.Length, NULL)) {
-            printf("Procinfo: ReadProcessMemory failed for FullDllName\n");
+            printf("ProcessQuery: ReadProcessMemory failed for FullDllName\n");
             CloseHandle(hProcess);
             return FALSE;
         }
@@ -222,7 +222,7 @@ BOOL EnumerateProcessModules(Process* process, HANDLE hProcess) {
 
     std::wstring ffff = csv;
     ffff.pop_back(); // remove fucking last comma
-    std::wstring o = format_wstring(L"{\"type\":\"loaded_dll\",\"time\":%lld,\"pid\":%lld,\"dlls\":[%s]}",
+    std::wstring o = format_wstring(L"{\"func\":\"loaded_dll\",\"type\":\"process_query\",\"time\":%lld,\"pid\":%lld,\"dlls\":[%s]}",
         get_time(),
         process->id,
         ffff.c_str()
@@ -241,30 +241,32 @@ void EnumerateModuleSections(Process* process, HANDLE hProcess, LPVOID moduleBas
     // Buffer for module name
     wchar_t moduleName[MAX_PATH] = { 0 };
     if (!GetModuleBaseName(hProcess, (HMODULE)moduleBase, moduleName, sizeof(moduleName))) {
-        std::cerr << "Failed to retrieve module name. Error: " << GetLastError() << std::endl;
+        LOG_A(LOG_WARNING, "ProcessQuery: Failed to retrieve module name. Error: %lu", GetLastError());
         return;
     }
     std::string moduleNameStr = wcharToString(moduleName);
 
     // Read the DOS header
     if (!ReadProcessMemory(hProcess, moduleBase, &dosHeader, sizeof(dosHeader), NULL)) {
-        std::cerr << "Failed to read DOS header. Error: " << GetLastError() << std::endl;
+        LOG_A(LOG_WARNING, "ProcessQuery: Failed to read DOS header. Error: %lu", GetLastError());
         return;
     }
     // Verify DOS signature
     if (dosHeader.e_magic != IMAGE_DOS_SIGNATURE) {
-        std::cerr << "Invalid DOS signature. Not a valid PE file." << std::endl;
+        LOG_A(LOG_WARNING, "ProcessQuery: Invalid DOS signature. Not a valid PE file");
         return;
     }
     // Read the NT header
     LPVOID ntHeaderAddress = (LPBYTE)moduleBase + dosHeader.e_lfanew;
     if (!ReadProcessMemory(hProcess, ntHeaderAddress, &ntHeaders, sizeof(ntHeaders), NULL)) {
-        std::cerr << "Failed to read NT headers. Error: " << GetLastError() << std::endl;
+        LOG_A(LOG_WARNING, "ProcessQuery: Failed to read NT headers. Error: %lu", GetLastError());
+
         return;
     }
     // Verify NT signature
     if (ntHeaders.Signature != IMAGE_NT_SIGNATURE) {
-        std::cerr << "Invalid NT signature. Not a valid PE file." << std::endl;
+        LOG_A(LOG_WARNING, "ProcessQuery: Invalid NT signature. Not a valid PE file.");
+
         return;
     }
 
@@ -274,7 +276,7 @@ void EnumerateModuleSections(Process* process, HANDLE hProcess, LPVOID moduleBas
     sectionHeaders.resize(numberOfSections);
     if (!ReadProcessMemory(hProcess, sectionHeaderAddress, sectionHeaders.data(),
         sizeof(IMAGE_SECTION_HEADER) * numberOfSections, NULL)) {
-        std::cerr << "Failed to read section headers. Error: " << GetLastError() << std::endl;
+        LOG_A(LOG_WARNING, "ProcessQuery: Failed to read section headers. Error: %lu", GetLastError());
         return;
     }
 
@@ -298,6 +300,17 @@ void EnumerateModuleSections(Process* process, HANDLE hProcess, LPVOID moduleBas
             reinterpret_cast<uint64_t>(sectionAddress),
             memoryRegion);
     }
+}
+
+
+BOOL ProcessAddrInfo(HANDLE hProcess, DWORD address) {
+    MEMORY_BASIC_INFORMATION mbi;
+    SIZE_T returnLength = 0;
+    if (! NtQueryVirtualMemory(hProcess, (PVOID)address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
+        LOG_A(LOG_WARNING, "ProcessQuery: Could not query memory address 0x%llx in process 0x%x", address, hProcess);
+    }
+
+    // return?
 }
 
 
@@ -369,7 +382,7 @@ std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
     //std::vector<wchar_t> commandLine(u->Length / sizeof(wchar_t));
     std::vector<wchar_t> uni(u->Length);
     if (!ReadProcessMemory(hProcess, u->Buffer, uni.data(), u->Length, NULL)) {
-        LOG_A(LOG_ERROR, "Procinfo: Could not ReadProcessMemory error: %d", GetLastError());
+        LOG_A(LOG_ERROR, "ProcessQuery: Could not ReadProcessMemory error: %d", GetLastError());
     }
     else {
         s.assign(uni.begin(), uni.end());

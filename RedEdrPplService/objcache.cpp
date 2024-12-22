@@ -55,8 +55,8 @@ struct my_hashmap* get_obj(int pid) {
             else {
                 //LOG_W(LOG_INFO, L"Failed to get executable path: %lu\n", GetLastError());
             }
-            CloseHandle(hProcess);
         }
+        CloseHandle(hProcess);
     }
 
     struct my_hashmap* res = add_obj(pid, observe);

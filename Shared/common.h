@@ -4,12 +4,9 @@
 #define COMMON_H
 
 #define PIPE_BUFFER_SIZE 8192 // thats the pipe buffer (default 4096)
-#define DATA_BUFFER_SIZE 4096 // all buffers for strings
+#define DATA_BUFFER_SIZE 8192 // all buffers for strings
 
-#define WCHAR_BUFFER_SIZE 2048 // half of DATA_BUFFER_SIZE as its 2 bytes per char
-
-#define SMALL_PIPE 512
-#define WCHAR_SMALL_PIPE 256
+#define WCHAR_BUFFER_SIZE 1024 // Just a bit smaller, used for many things
 
 #define IOCTL_MY_IOCTL_CODE CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
@@ -30,6 +27,6 @@ typedef struct _MY_DRIVER_DATA {
 #define DRIVER_NAME L"c:\\RedEdr\\elam_driver.sys"
 #define MAX_BUF_SIZE 2048
 
-#define MAX_CALLSTACK_ENTRIES 5
+#define MAX_CALLSTACK_ENTRIES 16
 
 #endif

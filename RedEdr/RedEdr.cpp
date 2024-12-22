@@ -21,7 +21,6 @@
 
 #include "../Shared/common.h"
 
-
 BOOL keyboard_reader_running = TRUE;
 
 
@@ -200,7 +199,7 @@ int main(int argc, char* argv[]) {
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
     LOG_A(LOG_INFO, "--( RedEdr 0.3");
-    LOG_W(LOG_INFO, L"--( Tracing process name %s and its children", g_config.targetExeName);
+    LOG_W(LOG_INFO, L"--( Tracing processes with name \"%s\"", g_config.targetExeName);
 
     // SeDebug
     if (!PermissionMakeMeDebug()) {
@@ -258,7 +257,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Wait for all threads to complete
-    LOG_A(LOG_INFO, "RedEdr: waiting for %llu threads...", threads.size());
+    LOG_A(LOG_INFO, "RedEdr: All started, waiting for %llu threads to exit", threads.size());
     DWORD res = WaitForMultipleObjects((DWORD) threads.size(), threads.data(), TRUE, INFINITE);
     if (res == WAIT_FAILED) {
         LOG_A(LOG_INFO, "RedEdr: Wait failed");

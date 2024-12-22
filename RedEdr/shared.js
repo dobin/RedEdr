@@ -21,12 +21,12 @@ function displayEvents(events) {
             }
 
             // header
-            if (key === 'type' || key === 'time' || key === 'pid' || key === 'tid' ||
+            if (key === 'time' || key === 'pid' || key === 'tid' ||
                 key === 'krn_pid' || key === 'ppid' || key === 'observe' ||
                 key === 'thread_id' || key === 'provider_name'  || key === 'id' || key == 'trace_id'
             ) {
                 eventHeader += `<span class="highlight_a">${key}:${value}</span> `;
-            } else if (key === 'func' || key === 'callback' || key === 'event') {
+            } else if (key === 'type' || key === 'func' || key === 'event') {
                 eventTitle += `<span class="highlight_b"><b>${value}</b></span> `;
 
             // detection
@@ -38,7 +38,7 @@ function displayEvents(events) {
                 eventDetails += JSON.stringify(value, null, 0);
                 
             // callstack
-            } else if (key == 'callstack') {
+            } else if (key == 'callstack' || key == 'stack_trace') {
                 let x = '';
                 for ([key_c, value_c] of Object.entries(value)) {
                     for ([key_d, value_d] of Object.entries(value_c)) {
@@ -52,7 +52,6 @@ function displayEvents(events) {
 
                 //eventCallstack = '<span class="highlight_d">callstack:<br>' + JSON.stringify(value, null, 0) + "</span>";
                 eventCallstack = '<span class="highlight_d">callstack:<br>' + x + "</span>";
-
             // important
             } else if (key === 'addr') {
                 eventDetails += `<b>${key}:${value}</b> `;

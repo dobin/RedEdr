@@ -22,7 +22,7 @@ BOOL EnablePplProducer(BOOL e, wchar_t* target_name);
 
 
 BOOL EnablePplProducer(BOOL e, wchar_t* target_name) {
-    wchar_t buffer[WCHAR_SMALL_PIPE] = { 0 };
+    wchar_t buffer[WCHAR_BUFFER_SIZE] = { 0 };
 
     if (!pipeClient.Connect(PPL_SERVICE_PIPE_NAME)) {
         LOG_A(LOG_ERROR, "ETW-TI: Error connecting to RedEdrPplService pipe: error code %ld", GetLastError());
@@ -37,7 +37,7 @@ BOOL EnablePplProducer(BOOL e, wchar_t* target_name) {
             LOG_A(LOG_ERROR, "ETW-TI: Enable, but no target name given. Abort.");
             return FALSE;
         }
-        swprintf_s(buffer, WCHAR_SMALL_PIPE, L"start:%s", target_name);
+        swprintf_s(buffer, WCHAR_BUFFER_SIZE, L"start:%s", target_name);
         if (!pipeClient.Send(buffer)) {
             LOG_A(LOG_INFO, "ETW-TI: Error sending: %s to ppl service", buffer);
             return FALSE;
@@ -46,7 +46,7 @@ BOOL EnablePplProducer(BOOL e, wchar_t* target_name) {
     }
     else {
         //wcscpy_s(buffer, DATA_BUFFER_SIZE, L"stop");
-        swprintf_s(buffer, WCHAR_SMALL_PIPE, L"stop");
+        swprintf_s(buffer, WCHAR_BUFFER_SIZE, L"stop");
         if (!pipeClient.Send(buffer)) {
             return FALSE;
         }

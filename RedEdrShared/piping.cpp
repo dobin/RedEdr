@@ -216,7 +216,7 @@ BOOL PipeClient::Send(wchar_t* buffer) {
     DWORD len = (DWORD)(wcslen(buffer) + 1) * 2; // -> include two trailing 0 bytes
     res = WriteFile(hPipe, buffer, len, NULL, NULL);
     if (res == FALSE) {
-        LOG_W(LOG_ERROR, L"Piping Client: Error when sending to pipe: %d", GetLastError());
+        //LOG_W(LOG_ERROR, L"Piping Client: Error when sending to pipe: %d", GetLastError());
         return FALSE;
     }
     return TRUE;
