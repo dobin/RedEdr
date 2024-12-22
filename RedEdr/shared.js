@@ -21,12 +21,12 @@ function displayEvents(events) {
             }
 
             // header
-            if (key === 'type' || key === 'time' || key === 'pid' || key === 'tid' ||
+            if (key === 'time' || key === 'pid' || key === 'tid' ||
                 key === 'krn_pid' || key === 'ppid' || key === 'observe' ||
                 key === 'thread_id' || key === 'provider_name'  || key === 'id' || key == 'trace_id'
             ) {
                 eventHeader += `<span class="highlight_a">${key}:${value}</span> `;
-            } else if (key === 'func' || key === 'callback' || key === 'event') {
+            } else if (key === 'type' || key === 'func' || key === 'event') {
                 eventTitle += `<span class="highlight_b"><b>${value}</b></span> `;
 
             // detection
@@ -49,6 +49,18 @@ function displayEvents(events) {
                     }
                     x += "<br>";
                 }
+
+                //eventCallstack = '<span class="highlight_d">callstack:<br>' + JSON.stringify(value, null, 0) + "</span>";
+                eventCallstack = '<span class="highlight_d">callstack:<br>' + x + "</span>";
+            } else if (key == 'stack_trace') {
+                let x = '';
+                for ([key_d, value_d] of Object.entries(value)) {
+                    if (typeof value_d === "number") {
+                        value_d = myHex(value_d);
+                    }
+                    x += `${key_d}:${value_d} `;
+                }
+                x += "<br>";
 
                 //eventCallstack = '<span class="highlight_d">callstack:<br>' + JSON.stringify(value, null, 0) + "</span>";
                 eventCallstack = '<span class="highlight_d">callstack:<br>' + x + "</span>";
