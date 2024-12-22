@@ -33,6 +33,8 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
     if (!enabled_consumer) {
         return;
     }
+
+    // Check if we should follow this process
     DWORD processId = record.EventHeader.ProcessId;
     struct my_hashmap* obj = get_obj(processId);
     if (!obj->value) {
