@@ -38,7 +38,7 @@ function displayEvents(events) {
                 eventDetails += JSON.stringify(value, null, 0);
                 
             // callstack
-            } else if (key == 'callstack') {
+            } else if (key == 'callstack' || key == 'stack_trace') {
                 let x = '';
                 for ([key_c, value_c] of Object.entries(value)) {
                     for ([key_d, value_d] of Object.entries(value_c)) {
@@ -52,19 +52,6 @@ function displayEvents(events) {
 
                 //eventCallstack = '<span class="highlight_d">callstack:<br>' + JSON.stringify(value, null, 0) + "</span>";
                 eventCallstack = '<span class="highlight_d">callstack:<br>' + x + "</span>";
-            } else if (key == 'stack_trace') {
-                let x = '';
-                for ([key_d, value_d] of Object.entries(value)) {
-                    if (typeof value_d === "number") {
-                        value_d = myHex(value_d);
-                    }
-                    x += `${key_d}:${value_d} `;
-                }
-                x += "<br>";
-
-                //eventCallstack = '<span class="highlight_d">callstack:<br>' + JSON.stringify(value, null, 0) + "</span>";
-                eventCallstack = '<span class="highlight_d">callstack:<br>' + x + "</span>";
-
             // important
             } else if (key === 'addr') {
                 eventDetails += `<b>${key}:${value}</b> `;
