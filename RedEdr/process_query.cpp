@@ -280,6 +280,15 @@ void EnumerateModuleSections(Process* process, HANDLE hProcess, LPVOID moduleBas
         return;
     }
 
+    // PE header, but is this really true?
+	uint64_t a = reinterpret_cast<uint64_t>(moduleBase);
+    MemoryRegion* memoryRegionPe = new MemoryRegion(
+        moduleNameStr + ": .PE_hdr", a, 4096, "r"
+    );
+    g_MemStatic.AddMemoryRegion(
+        a,
+        memoryRegionPe);
+
     // Print the sections
     for (const auto& section : sectionHeaders) {
         LPVOID sectionAddress = (LPBYTE)moduleBase + section.VirtualAddress;
@@ -287,7 +296,7 @@ void EnumerateModuleSections(Process* process, HANDLE hProcess, LPVOID moduleBas
 
         // Super special constructor so no trailing zeros are in the string
         std::string sectionName(reinterpret_cast<const char*>(section.Name), strnlen(reinterpret_cast<const char*>(section.Name), 8));
-        std::string full = moduleNameStr + ":" + sectionName;
+        std::string full = moduleNameStr + ": " + sectionName;
 
         MemoryRegion* memoryRegion = new MemoryRegion(
             full,
@@ -311,6 +320,7 @@ BOOL ProcessAddrInfo(HANDLE hProcess, DWORD address) {
     }
 
     // return?
+	return TRUE;
 }
 
 
