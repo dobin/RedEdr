@@ -58,8 +58,8 @@ void InitDllPipe() {
     // Retrieve config (first packet)
     //   this is the only time we read from this pipe
     LOG_A(LOG_INFO, "Waiting for config...");
-    wchar_t buffer[WCHAR_SMALL_PIPE];
-    if (pipeClient.Receive(buffer, WCHAR_SMALL_PIPE)) {
+    wchar_t buffer[WCHAR_BUFFER_SIZE];
+    if (pipeClient.Receive(buffer, WCHAR_BUFFER_SIZE)) {
         if (wcsstr(buffer, L"callstack:1") != NULL) {
             Config.do_stacktrace = true;
             LOG_W(LOG_INFO, L"Config: Callstack Enabled");

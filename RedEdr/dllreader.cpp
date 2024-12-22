@@ -82,8 +82,8 @@ DWORD WINAPI DllReaderThread(LPVOID param) {
 void DllReaderClientThread(PipeServer* pipeServer) {
     // send config as first packet
     //   this is the only write for this pipe
-    wchar_t config[WCHAR_SMALL_PIPE];
-    swprintf_s(config, WCHAR_SMALL_PIPE, L"callstack:%d;", g_config.do_dllinjection_ucallstack);
+    wchar_t config[WCHAR_BUFFER_SIZE];
+    swprintf_s(config, WCHAR_BUFFER_SIZE, L"callstack:%d;", g_config.do_dllinjection_ucallstack);
     pipeServer->Send(config);
 
     // Now receive only
@@ -112,9 +112,9 @@ void DllReaderShutdown() {
     // Disconnect server pipe
     // Send some stuff so the ReadFile() in the reader thread returns
     PipeClient pipeClient;
-    wchar_t buf[WCHAR_SMALL_PIPE] = { 0 };
+    wchar_t buf[WCHAR_BUFFER_SIZE] = { 0 };
     pipeClient.Connect(DLL_PIPE_NAME);
-    pipeClient.Receive(buf, WCHAR_SMALL_PIPE);
+    pipeClient.Receive(buf, WCHAR_BUFFER_SIZE);
     pipeClient.Send((wchar_t *) L"");
     pipeClient.Disconnect();
 }

@@ -120,9 +120,9 @@ void KernelReaderShutdown() {
 
     if (! kernelPipeServer->IsConnected()) {
         PipeClient pipeClient;
-        wchar_t buf[WCHAR_SMALL_PIPE] = { 0 };
+        wchar_t buf[WCHAR_BUFFER_SIZE] = { 0 };
         pipeClient.Connect(KERNEL_PIPE_NAME);
-        pipeClient.Receive(buf, WCHAR_SMALL_PIPE);
+        pipeClient.Receive(buf, WCHAR_BUFFER_SIZE);
         pipeClient.Send((wchar_t*)L"");
         pipeClient.Disconnect();
     }

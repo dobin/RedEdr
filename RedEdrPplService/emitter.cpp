@@ -22,8 +22,8 @@ BOOL ConnectEmitterPipe() {
 
     // Retrieve config (first packet)
     // this is the only read for this pipe
-    wchar_t buffer[WCHAR_SMALL_PIPE];
-    if (pipeClient.Receive(buffer, WCHAR_SMALL_PIPE)) {
+    wchar_t buffer[WCHAR_BUFFER_SIZE];
+    if (pipeClient.Receive(buffer, WCHAR_BUFFER_SIZE)) {
         // Ignore config atm
     }
 
