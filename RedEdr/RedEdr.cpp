@@ -21,7 +21,6 @@
 
 #include "../Shared/common.h"
 
-
 BOOL keyboard_reader_running = TRUE;
 
 

@@ -96,7 +96,7 @@ void tailFileW(const wchar_t* filePath) {
 
 
 std::wstring findFiles(const std::wstring& directory, const std::wstring& pattern) {
-    WIN32_FIND_DATA findFileData;
+    /*WIN32_FIND_DATA findFileData;
     HANDLE hFind = INVALID_HANDLE_VALUE;
     std::wstring fullPattern = directory + L"\\" + pattern;
 
@@ -120,6 +120,8 @@ std::wstring findFiles(const std::wstring& directory, const std::wstring& patter
             return L"";
         }
     }
+    */
+    return L"";
 }
 
 
