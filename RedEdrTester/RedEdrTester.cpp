@@ -13,9 +13,14 @@
 #include <iostream>
 
 #include "../Shared/common.h"
-#include "../RedEdr/config.h"
+
+// Shared
+#include "piping.h"
+#include "utils.h"
+#include "json.hpp"
 
 // Stuff we test
+#include "../RedEdr/config.h"
 #include "../RedEdr/process_query.h"
 #include "../RedEdr/process_resolver.h"
 #include "../RedEdr/event_processor.h"
@@ -25,13 +30,6 @@
 #include "../RedEdr/webserver.h"
 #include "../RedEdr/kernelinterface.h"
 #include "../RedEdr/serviceutils.h"
-#include "../RedEdr/json.hpp"
-
-
-// Shared
-#include "piping.h"
-#include "utils.h"
-
 
 
 void SendToKernel(int enable, wchar_t* target) {

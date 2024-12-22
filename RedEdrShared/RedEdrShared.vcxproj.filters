@@ -33,6 +33,9 @@
     <ClCompile Include="ranges.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="etw_krabs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="logging.h">
@@ -50,5 +53,14 @@
     <ClInclude Include="ranges.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="json.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="etw_krabs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

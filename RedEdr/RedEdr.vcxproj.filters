@@ -40,6 +40,9 @@
     <Filter Include="Source Files\libs">
       <UniqueIdentifier>{cd33c796-a003-4a9a-a6fc-102aba77837d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\existing">
+      <UniqueIdentifier>{aac45432-501a-4c40-8440-16c4e8725eb9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RedEdr.cpp">
@@ -123,6 +126,9 @@
     <ClCompile Include="mem_dynamic.cpp">
       <Filter>Source Files\windows</Filter>
     </ClCompile>
+    <ClCompile Include="..\RedEdrShared\etw_krabs.cpp">
+      <Filter>Header Files\existing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config.h">
@@ -168,9 +174,6 @@
       <Filter>Header Files\libs</Filter>
     </ClInclude>
     <ClInclude Include="httplib.h">
-      <Filter>Header Files\libs</Filter>
-    </ClInclude>
-    <ClInclude Include="json.hpp">
       <Filter>Header Files\libs</Filter>
     </ClInclude>
     <ClInclude Include="..\RedEdrShared\loguru.hpp">

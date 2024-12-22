@@ -45,6 +45,9 @@
     <ClCompile Include="..\RedEdrShared\utils.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
+    <ClCompile Include="..\RedEdrShared\etw_krabs.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="emitter.h">

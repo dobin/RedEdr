@@ -137,6 +137,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\RedEdrShared\etw_krabs.cpp" />
     <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\loguru.cpp" />
     <ClCompile Include="..\RedEdrShared\piping.cpp" />
@@ -177,7 +178,6 @@
     <ClInclude Include="config.h" />
     <ClInclude Include="cxxops.hpp" />
     <ClInclude Include="dllinjector.h" />
-    <ClInclude Include="json.hpp" />
     <ClInclude Include="kernelinterface.h" />
     <ClInclude Include="etwreader.h" />
     <ClInclude Include="httplib.h" />

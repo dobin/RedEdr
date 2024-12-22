@@ -102,9 +102,10 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Users\hacker\source\repos\RedEdr\RedEdrShared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -128,6 +129,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="etw_krabs.cpp" />
     <ClCompile Include="logging.cpp" />
     <ClCompile Include="loguru.cpp" />
     <ClCompile Include="piping.cpp" />
@@ -136,13 +138,25 @@
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="etw_krabs.h" />
+    <ClInclude Include="json.hpp" />
     <ClInclude Include="logging.h" />
     <ClInclude Include="loguru.hpp" />
     <ClInclude Include="piping.h" />
     <ClInclude Include="ranges.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\packages\Microsoft.O365.Security.Krabsetw.4.4.3\build\native\Microsoft.O365.Security.Krabsetw.targets" Condition="Exists('..\packages\Microsoft.O365.Security.Krabsetw.4.4.3\build\native\Microsoft.O365.Security.Krabsetw.targets')" />
   </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\Microsoft.O365.Security.Krabsetw.4.4.3\build\native\Microsoft.O365.Security.Krabsetw.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.O365.Security.Krabsetw.4.4.3\build\native\Microsoft.O365.Security.Krabsetw.targets'))" />
+  </Target>
 </Project>
