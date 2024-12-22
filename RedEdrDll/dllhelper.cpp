@@ -191,8 +191,8 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
         buf[wcslen(buf) - 0] = L'\x00';
     }
     else {
-        buf[wcslen(buf) - 0] = L']';
-        buf[wcslen(buf) + 1] = L'\x00';
+        wcscat_s(buf, buf_size, L"]");
+        written += 1;
     }
 
     // We should have space...
