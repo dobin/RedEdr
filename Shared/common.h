@@ -11,7 +11,7 @@
 #define IOCTL_MY_IOCTL_CODE CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
 typedef struct _MY_DRIVER_DATA {
-    WCHAR filename[256];
+    wchar_t filename[256];
     int enable;
     int dll_inject;
 } MY_DRIVER_DATA, * PMY_DRIVER_DATA;
