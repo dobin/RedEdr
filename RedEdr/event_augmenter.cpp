@@ -46,7 +46,7 @@ void AugmentEventWithMemAddrInfo(nlohmann::json& j) {
                 callstack_entry["addr_info"] = symbol;
 
                 // log
-                if (1) {
+                if (g_config.debug) {
                     LOG_A(LOG_INFO, "Addr 0x%llx Symbol: %s",
                         addr,
                         symbol.c_str());

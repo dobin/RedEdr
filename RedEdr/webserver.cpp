@@ -37,7 +37,10 @@ std::vector<std::wstring> GetFilesInDirectory(const std::wstring& directory) {
     HANDLE hFind = FindFirstFile(directory.c_str(), &findFileData);
 
     if (hFind == INVALID_HANDLE_VALUE) {
-        std::wcerr << L"Failed to open directory: " << directory << std::endl;
+        // Can be empty, ignore
+        if (g_config.debug) {
+            LOG_W(LOG_INFO, L"No files found in %s", directory.c_str());
+        }
         return files;
     }
 
