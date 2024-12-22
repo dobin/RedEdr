@@ -56,6 +56,7 @@ The last piece of the puzzle, kernel based callstacks, is not implemented yet.
 
 * Callstacks
   * On ntdll.dll hook invocation
+  * On several ETW events
  
 * Loaded DLL's
   * On process create
@@ -78,6 +79,8 @@ bcdedit -debug on
 If you use Hyper-V, uncheck "Security -> Enable Secure Boot". 
 
 Extract release.zip into `C:\RedEdr`. **No other directories are supported.**
+
+Install https://aka.ms/vs/17/release/vc_redist.x64.exe.
 
 Start terminal as local admin.
 
@@ -114,13 +117,16 @@ Try: `.\RedEdr.exe --all --trace otepad`, and then start notepad
 
 ## Standard Usage
 
-RedEdr will trace all processes containing by process image name (exe path). And its children, recursively. 
+RedEdr will trace all processes containing by process image name (exe path).
 
 Enable all consumers, and provide as web on `http://localhost:8080`, 
 and disable output logging for performance:
 ```
 PS > .\RedEdr.exe --all --web --hide --trace notepad.exe
 ```
+
+Be aware ETW-TI (and possibly other ETW) will record the DLL hooking events if used together
+like this.
 
 
 ### Kernel Callbacks
@@ -166,6 +172,48 @@ See `Data/` directory:
 
 ## Hacking
 
+Arch:
+```
+      ┌─────┐  ┌────────┐ ┌─────────┐  ┌──────┐                            
+      │ ETW │  │ ETW-TI │ │ Kernel  │  │ DLL  │                            
+      └──┬──┘  └───┬────┘ └────┬────┘  └──┬───┘                            
+         │         │           │          │                                
+         └─────────┴─────────┬─┴──────────┘                                
+                             │                                             
+                             │                                             
+                             ▼                                             
+                     ┌────────────────┐                                    
+                     │                │                                    
+Event as JSON string │  Event         │                                    
+                     │  Aggregator    │                                    
+                     │                │               ┌──────────┐         
+                     └───────┬────────┘               │ Process  │         
+                             │                        └──────────┘         
+                             │                             ▲               
+                             ▼                             │               
+                     ┌────────────────┐                    │               
+                     │                │         ┌──────────┴────┐          
+Event as JSON in C++ │  Event         ├────────►│ Process Query │          
+                     │  Processor     │         └───────────────┘          
+                     │                │                                    
+                     └┬───────────────┘                                    
+                      │                                    ┌──────────────┐
+                      │ ┌────────────────────────┐         │              │
+                      ├─┤Event Augment           │◄────────┤  Mem Static  │
+                      │ └────────────────────────┘         │              │
+                      │ ┌────────────────────────┐         └──────────────┘
+                      ├─┤Event Mem Tracker       ├──────┐                  
+                      │ └────────────────────────┘      │  ┌──────────────┐
+                      │ ┌────────────────────────┐      └─►│              │
+                      ├─┤Event Detection         │◄──┐     │ Mem Dynamic  │
+                      │ └────────────────────────┘   └─────┤              │
+                      │ ┌────────────────────────┐         └──────────────┘
+                      └─┤Event Storage & Output  │                         
+                        └────────────────────────┘                         
+```
+
+
+IPC:
 ```
   RedEdr.exe                                                                                       
 ┌────────────┐                    ┌─────────────────┐                                             
@@ -206,24 +254,17 @@ See `Data/` directory:
 └────────────┘                                                                                    
 ```
 
-* https://github.com/dobin/RedEdr/blob/master/RedEdrDriver/kcallbacks.c
-* https://github.com/dobin/RedEdr/blob/master/RedEdrDll/dllmain.cpp
-* https://github.com/dobin/RedEdr/blob/master/RedEdr/etwreader.cpp
-* https://github.com/dobin/RedEdr/blob/master/RedEdr/dllreader.cpp
-* https://github.com/dobin/RedEdr/blob/master/RedEdr/kernelreader.cpp
-
 
 ## Compiling 
 
-Use VS2022. 
+Good luck.
+
+Use VS2022. Compile as Release.
 
 To compile the kernel driver: 
 * Install WDK (+SDK): https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk
 
-After compiling solution (all "Debug"), you should have: 
-* C:\RedEdr\RedEdr.exe: The userspace component
-* C:\RedEdr\RedEdrDriver\*: The kernel module
-* C:\RedEdr\RedEdrDll.dll: The injectable DLL (amsi.dll)
+It should deploy everything into `C:\RedEdr\`.
 
 
 ## Todo

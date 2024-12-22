@@ -4,4 +4,4 @@
 
 void enable_consumer(BOOL enable);
 void StartEtwtiReader();
-BOOL ShutdownEtwtiReader();
+void ShutdownEtwtiReader();

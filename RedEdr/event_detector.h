@@ -47,7 +47,7 @@ public:
 
 private:
     std::vector<std::string> detections;
-    MemStatic targetMemoryChanges;
+    MemStatic memDynamic;
 };
 
 extern EventDetector g_EventDetector;

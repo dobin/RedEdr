@@ -128,7 +128,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="etwconsumer.cpp" />
     <ClCompile Include="logging.cpp" />
     <ClCompile Include="loguru.cpp" />
     <ClCompile Include="piping.cpp" />
@@ -137,7 +136,6 @@
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="etwconsumer.h" />
     <ClInclude Include="logging.h" />
     <ClInclude Include="loguru.hpp" />
     <ClInclude Include="piping.h" />

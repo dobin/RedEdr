@@ -27,9 +27,6 @@
     <ClCompile Include="piping.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="etwconsumer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -45,9 +42,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="piping.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="etwconsumer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="utils.h">

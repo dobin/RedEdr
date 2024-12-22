@@ -94,7 +94,7 @@ void EventDetector::ScanEventForDetections(nlohmann::json& j) {
 
             // Check if the region has been suspiciously protected before (RW<->RX)
             uint64_t addr = j["addr"].get<uint64_t>();
-            MemoryRegion* region = targetMemoryChanges.GetMemoryRegion(addr);
+            MemoryRegion* region = memDynamic.GetMemoryRegion(addr);
             if (region != NULL) {
                 std::string sus = sus_protect(region->protection);
                 if (sus != "") {
@@ -149,7 +149,7 @@ void EventDetector::ScanEventForMemoryChanges(nlohmann::json& j) {
             addr = AlignToPage(addr);
             // always add, as its early in the process without collisions hopefully
             MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
-            targetMemoryChanges.AddMemoryRegion(addr, region);
+            memDynamic.AddMemoryRegion(addr, region);
         }
     }
 
@@ -164,7 +164,7 @@ void EventDetector::ScanEventForMemoryChanges(nlohmann::json& j) {
             //std::cout << "Compact JSON: " << jsonString << std::endl;
 
             addr = AlignToPage(addr);
-            MemoryRegion* memoryRegion = targetMemoryChanges.GetMemoryRegion(addr);
+            MemoryRegion* memoryRegion = memDynamic.GetMemoryRegion(addr);
             if (memoryRegion != NULL) {
                 //LOG_A(LOG_WARNING, "Allocate Memory ALREADY FOUND??! 0x%llx %llu end:0x%llx",
                 //   addr, size, addr+size);
@@ -178,17 +178,17 @@ void EventDetector::ScanEventForMemoryChanges(nlohmann::json& j) {
                 //LOG_A(LOG_WARNING, "Allocate Memory new: 0x%llx %llu",
                 //    addr, size);
                 memoryRegion = new MemoryRegion("Allocated", addr, size, protection);
-                targetMemoryChanges.AddMemoryRegion(addr, memoryRegion);
+                memDynamic.AddMemoryRegion(addr, memoryRegion);
             }
 
             if (j["func"] == "NtFreeVirtualMemory") {
                 uint64_t addr = j["addr"].get<uint64_t>();
                 uint64_t size = j["size"].get<uint64_t>();
 
-                MemoryRegion* memoryRegion = targetMemoryChanges.GetMemoryRegion(addr);
+                MemoryRegion* memoryRegion = memDynamic.GetMemoryRegion(addr);
                 if (memoryRegion != NULL) {
                     // do not remove, but indicate it has been freed
-                    //targetMemoryChanges.RemoveMemoryRegion(addr, size);
+                    //memDynamic.RemoveMemoryRegion(addr, size);
                     memoryRegion->protection += ";freed";
                 }
                 else {
@@ -206,16 +206,16 @@ void EventDetector::ScanEventForMemoryChanges(nlohmann::json& j) {
 
             addr = AlignToPage(addr);
             // Check if exists
-            MemoryRegion* memoryRegion = targetMemoryChanges.GetMemoryRegion(addr);
+            MemoryRegion* memoryRegion = memDynamic.GetMemoryRegion(addr);
             if (memoryRegion == NULL) {
                 //LOG_A(LOG_WARNING, "ProtectVirtualMemory region 0x%llx not found. Adding.",
                 //    addr);
                 MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
-                targetMemoryChanges.AddMemoryRegion(addr, region);
+                memDynamic.AddMemoryRegion(addr, region);
             }
             else {
                 // Update protection
-                MemoryRegion* region = targetMemoryChanges.GetMemoryRegion(addr);
+                MemoryRegion* region = memDynamic.GetMemoryRegion(addr);
                 region->protection += ";" + protection;
                 //LOG_A(LOG_INFO, "ProtectVirtualMemory: %s 0x%llx 0x%llx %s",
                 //	name.c_str(), addr, size, protection.c_str());
@@ -227,7 +227,7 @@ void EventDetector::ScanEventForMemoryChanges(nlohmann::json& j) {
 
 void EventDetector::ResetData() {
 	detections.clear();
-	targetMemoryChanges.ResetData();
+	memDynamic.ResetData();
 }
 
 
@@ -255,7 +255,7 @@ size_t EventDetector::GetDetectionsCount() {
 
 
 MemStatic* EventDetector::GetTargetMemoryChanges() {
-	return &targetMemoryChanges;
+	return &memDynamic;
 }
 
 

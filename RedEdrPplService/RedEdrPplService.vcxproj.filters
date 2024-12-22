@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\existing">
+      <UniqueIdentifier>{83eed843-5368-434d-9678-52c4f9aac887}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RedEdrPplService.cpp">
@@ -30,20 +33,17 @@
     <ClCompile Include="objcache.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdrShared\logging.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdrShared\piping.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="etwtihandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdrShared\etwconsumer.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\RedEdrShared\logging.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\piping.cpp">
+      <Filter>Source Files\existing</Filter>
     </ClCompile>
     <ClCompile Include="..\RedEdrShared\utils.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\existing</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
