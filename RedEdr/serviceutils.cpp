@@ -94,12 +94,14 @@ BOOL IsRunningAsSystem() {
 
     // Check if the SID corresponds to SYSTEM
     bool isSystem = (_tcscmp(sidString, _T("S-1-5-18")) == 0); // SYSTEM SID: S-1-5-18
+    /*
     if (isSystem) {
         std::cout << "The process is running as SYSTEM." << std::endl;
     }
     else {
         std::cout << "The process is NOT running as SYSTEM. SID: " << sidString << std::endl;
     }
+    */
 
     // Cleanup
     LocalFree(sidString);
