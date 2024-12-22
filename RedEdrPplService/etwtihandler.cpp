@@ -135,11 +135,12 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
 
     // Callstack
     auto stack_trace = schema.stack_trace();
+    j["stack_trace"] = {};
     for (auto& return_address : stack_trace)
     {
         // Only add non-kernelspace addresses
         if (return_address < 0xFFFF080000000000) {
-            j["stack_trace"] += return_address;
+            j["stack_trace"] += { {"addr", return_address} };
         }
     }
 

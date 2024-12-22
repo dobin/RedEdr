@@ -19,6 +19,7 @@ void AugmentEvent(nlohmann::json& j) {
 
 
 void AugmentEventWithMemAddrInfo(nlohmann::json& j) {
+    // InjectedDLL: callstack
     if (j.contains("callstack") && j["callstack"].is_array()) {
         for (auto& callstack_entry : j["callstack"]) {
             if (callstack_entry.contains("addr")) {
@@ -28,6 +29,24 @@ void AugmentEventWithMemAddrInfo(nlohmann::json& j) {
 
                 // log
                 if (g_config.debug) {
+                    LOG_A(LOG_INFO, "Addr 0x%llx Symbol: %s",
+                        addr,
+                        symbol.c_str());
+                }
+            }
+        }
+    }
+
+    // ETW: stack_trace
+    if (j.contains("stack_trace") && j["stack_trace"].is_array()) {
+        for (auto& callstack_entry : j["stack_trace"]) {
+            if (callstack_entry.contains("addr")) {
+                uint64_t addr = callstack_entry["addr"].get<uint64_t>();
+                std::string symbol = g_MemStatic.ResolveStr(addr);
+                callstack_entry["addr_info"] = symbol;
+
+                // log
+                if (1) {
                     LOG_A(LOG_INFO, "Addr 0x%llx Symbol: %s",
                         addr,
                         symbol.c_str());
