@@ -222,7 +222,7 @@ BOOL EnumerateProcessModules(Process* process, HANDLE hProcess) {
 
     std::wstring ffff = csv;
     ffff.pop_back(); // remove fucking last comma
-    std::wstring o = format_wstring(L"{\"type\":\"loaded_dll\",\"time\":%lld,\"pid\":%lld,\"dlls\":[%s]}",
+    std::wstring o = format_wstring(L"{\"func\":\"loaded_dll\",\"type\":\"process_query\",\"time\":%lld,\"pid\":%lld,\"dlls\":[%s]}",
         get_time(),
         process->id,
         ffff.c_str()

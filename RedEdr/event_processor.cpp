@@ -52,7 +52,7 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
             process->augmented++;
             
             // Print some of the gathered information
-            std::wstring o = format_wstring(L"{\"type\":\"peb\",\"time\":%lld,\"id\":%lld,\"parent_pid\":%lld,\"image_path\":\"%s\",\"commandline\":\"%s\",\"working_dir\":\"%s\",\"is_debugged\":%d,\"is_protected_process\":%d,\"is_protected_process_light\":%d,\"image_base\":%llu}",
+            std::wstring o = format_wstring(L"{\"type\":\"proces_query\",\"func\":\"peb\",\"time\":%lld,\"id\":%lld,\"parent_pid\":%lld,\"image_path\":\"%s\",\"commandline\":\"%s\",\"working_dir\":\"%s\",\"is_debugged\":%d,\"is_protected_process\":%d,\"is_protected_process_light\":%d,\"image_base\":%llu}",
                 get_time(),
                 process->id,
                 process->parent_pid,
