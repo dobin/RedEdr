@@ -13,12 +13,12 @@
 class EventProcessor {
 public:
 	EventProcessor();
+	void init();
 	void AnalyzeNewEvents(std::vector<std::string> events);
 	void SaveToFile();
 	std::string GetAllAsJson();
 	void ResetData();
 	void EventStats(nlohmann::json& j);
-
 
 	int num_kernel = 0;
 	int num_etw = 0;

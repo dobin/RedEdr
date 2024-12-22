@@ -26,7 +26,36 @@ EventProcessor g_EventProcessor;
 
 
 EventProcessor::EventProcessor() {
+    init();
+}
+
+void EventProcessor::init() {
+    json_entries.clear();
+
+	num_kernel = 0;
+	num_etw = 0;
+	num_etwti = 0;
+	num_dll = 0;
+    event_count = 0;
     GenerateNewTraceId();
+
+    // Add meta data
+	nlohmann::json j;
+	j["type"] = "meta";
+    j["func"] = "init";
+	j["date"] = get_time_for_file();
+    j["version"] = "0.3";
+	j["trace_id"] = trace_id;
+
+	j["do_etw"] = g_config.do_etw;
+	j["do_etwti"] = g_config.do_etwti;
+	j["do_mplog"] = g_config.do_mplog;
+	j["do_kernelcallback"] = g_config.do_kernelcallback;
+	j["do_dllinjection"] = g_config.do_dllinjection;
+	j["do_dllinjection_ucallstack"] = g_config.do_dllinjection_ucallstack;
+	    
+	j["target"] = g_config.targetExeName;
+    json_entries.push_back(j);
 }
 
 
@@ -162,9 +191,7 @@ void EventProcessor::EventStats(nlohmann::json& j) {
 
 
 void EventProcessor::ResetData() {
-    GenerateNewTraceId();
-    //detections.clear();
-    json_entries.clear();
+    init();
 }
 
 
