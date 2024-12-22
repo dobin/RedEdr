@@ -195,6 +195,7 @@ int main(int argc, char* argv[]) {
 
     CreateRequiredFiles();
     InitProcessQuery();
+    g_EventProcessor.init(); // we also do it in constructor, but wont have g_config
 
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
