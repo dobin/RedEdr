@@ -109,7 +109,7 @@ std::wstring KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sc
     {
         // Only add non-kernelspace addresses
         if (return_address < 0xFFFF080000000000) {
-            j["stack_trace"] += return_address;
+            j["stack_trace"] += { "addr", return_address };
         }
     }
 
