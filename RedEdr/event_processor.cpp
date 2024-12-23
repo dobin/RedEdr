@@ -59,11 +59,76 @@ void EventProcessor::init() {
 }
 
 
+/*
+BOOL EventProcessor::AugmentProcess(DWORD pid, Process* process) {
+    LOG_A(LOG_INFO, "ProcessQuery: Augmenting process %lu", pid);
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    if (!hProcess) {
+        //LOG_A(LOG_WARNING, "Could not open process pid: %lu error %lu", pid, GetLastError());
+        return FALSE;
+    }
+
+    ProcessPebInfo(process, hProcess);
+    ProcessEnumerateModules(process, hProcess);
+    //QueryMemoryRegions(hProcess);
+
+    CloseHandle(hProcess);
+    return TRUE;
+}
+*/
+
+
+void EventProcessor::InitialProcessInfo(Process *process) {
+    // Log: Peb Info
+    ProcessPebInfoRet processPebInfoRet = ProcessPebInfo(process->GetHandle());
+    std::wstring o = format_wstring(L"{\"type\":\"proces_query\",\"func\":\"peb\",\"time\":%lld,\"id\":%lld,\"parent_pid\":%lld,\"image_path\":\"%s\",\"commandline\":\"%s\",\"working_dir\":\"%s\",\"is_debugged\":%d,\"is_protected_process\":%d,\"is_protected_process_light\":%d,\"image_base\":%llu}",
+        get_time(),
+        process->id,
+        processPebInfoRet.parent_pid,
+        JsonEscape2(processPebInfoRet.image_path.c_str()).c_str(),
+        JsonEscape2(processPebInfoRet.commandline.c_str()).c_str(),
+        JsonEscape2(processPebInfoRet.working_dir.c_str()).c_str(),
+        processPebInfoRet.is_debugged,
+        processPebInfoRet.is_protected_process,
+        processPebInfoRet.is_protected_process_light,
+        processPebInfoRet.image_base
+    );
+    g_EventAggregator.do_output(o);
+
+    // Log: Loaded Modules Info
+    std::vector<ProcessLoadedDll> processLoadedDlls = ProcessEnumerateModules(process->GetHandle());
+    std::wstring csv;
+    for (auto dllEntry : processLoadedDlls) {
+        csv += format_wstring(L"{\"addr\":%llu,\"size\":%llu,\"name\":\"%s\"},",
+            dllEntry.dll_base,
+            dllEntry.size,
+            dllEntry.name.c_str()
+        );
+        csv.pop_back(); // remove fucking last comma
+        std::wstring o = format_wstring(L"{\"func\":\"loaded_dll\",\"type\":\"process_query\",\"time\":%lld,\"pid\":%lld,\"dlls\":[%s]}",
+            get_time(),
+            process->id,
+            csv.c_str()
+        );
+        remove_all_occurrences_case_insensitive(o, std::wstring(L"C:\\\\Windows\\\\system32\\\\"));
+    }
+    g_EventAggregator.do_output(o);
+
+    // DB: MemStatic
+    for (auto processLoadedDll : processLoadedDlls) {
+        std::vector<MemoryRegion> memoryRegions = EnumerateModuleSections(process->GetHandle(), processLoadedDll.dll_base);
+        for (auto memoryRegion : memoryRegions) {
+            g_MemStatic.AddMemoryRegion(memoryRegion.addr, &memoryRegion);
+        }
+    }
+}
+
+
 void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
     j["id"] = json_entries.size();
     j["trace_id"] = trace_id;
 
-    // Sanity check
+    // Sanity checks
     if (!j.contains("type")) {
         LOG_A(LOG_WARNING, "No type? %s", j.dump().c_str());
         return;
@@ -76,45 +141,21 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
     if (j.contains("pid")) {
         Process* process = g_ProcessResolver.getObject(j["pid"].get<DWORD>());
         if (process->augmented == 0) {
-            // Augment the process (could take some time)
-            AugmentProcess(j["pid"].get<DWORD>(), process);
             process->augmented++;
-            
-            // Print some of the gathered information
-            std::wstring o = format_wstring(L"{\"type\":\"proces_query\",\"func\":\"peb\",\"time\":%lld,\"id\":%lld,\"parent_pid\":%lld,\"image_path\":\"%s\",\"commandline\":\"%s\",\"working_dir\":\"%s\",\"is_debugged\":%d,\"is_protected_process\":%d,\"is_protected_process_light\":%d,\"image_base\":%llu}",
-                get_time(),
-                process->id,
-                process->parent_pid,
-                JsonEscape2(process->image_path.c_str()).c_str(),
-                JsonEscape2(process->commandline.c_str()).c_str(),
-                JsonEscape2(process->working_dir.c_str()).c_str(),
-                process->is_debugged,
-                process->is_protected_process,
-                process->is_protected_process_light,
-                process->image_base
-            );
-            g_EventAggregator.do_output(o);
+            InitialProcessInfo(process);
         }
     }
 
-    // Augment additionally
-    if (json_entries.size() == 32) {
-        if (j.contains("pid")) {
-            DWORD pid = j["pid"].get<DWORD>();
-            //QueryProcessInfo(pid, NULL);
-        }
-    }
-
-    // Augment with memory info
+    // Augment Event with memory info
     AugmentEventWithMemAddrInfo(j);
 
-    // Track Memory changes
+    // Track Memory changes of Event (MemDynamic)
     g_EventDetector.ScanEventForMemoryChanges(j);
 
-    // Perform Detections
+    // Perform Detections on Event
     g_EventDetector.ScanEventForDetections(j);
 
-    // Print it
+    // Print Event
     PrintEvent(j);
 
     // Has to be at the end as we dont store reference

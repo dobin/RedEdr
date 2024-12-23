@@ -53,15 +53,49 @@ void SendToDllReader(wchar_t* data) {
 }
 
 
-void GetProcessInfo(DWORD pid, wchar_t* target) {
-	g_config.debug = true;
-	printf("Get info about process: %lu\n", pid);
-	g_config.hide_full_output = 0;
-	g_config.targetExeName = L"Notepad";
-	Process *p = g_ProcessResolver.getObject(pid);
+void processinfo(wchar_t* pidStr) {
+	PermissionMakeMeDebug();
+	InitProcessQuery();
 
-	printf("\n\nDisplay:\n");
-	p->display();
+	wchar_t* end;
+	long pid = wcstoul(pidStr, &end, 10);
+
+	g_config.debug = 1;
+	g_config.hide_full_output = 0;
+	g_config.targetExeName = L"otepad";
+
+	//Process* process = new Process(pid);
+	Process* process = g_ProcessResolver.getObject(pid);  // use the real resolver
+	
+	// PEB
+	ProcessPebInfoRet processPebInfoRet = ProcessPebInfo(process->GetHandle());
+	wprintf(L"PEB:\n");
+	wprintf(L"  Commandline: %s\n", processPebInfoRet.commandline.c_str());
+
+	// DLLs
+	std::vector<ProcessLoadedDll> processLoadedDlls = ProcessEnumerateModules(process->GetHandle());
+	printf("\nLoaded DLLs (%d):\n", processLoadedDlls.size());
+	for (auto loadedDll : processLoadedDlls) {
+		wprintf(L"0x%llx %lu %s\n", 
+			loadedDll.dll_base,
+			loadedDll.size,
+			loadedDll.name.c_str());
+	}
+
+	// DLL sections
+	printf("\nLoaded DLL regions:\n");
+	for (auto processLoadedDll : processLoadedDlls) {
+		std::vector<MemoryRegion> memoryRegions = EnumerateModuleSections(process->GetHandle(), processLoadedDll.dll_base);
+		for (auto memoryRegion : memoryRegions) {
+			printf("0x%llx %lu %s %s\n",
+				memoryRegion.addr,
+				memoryRegion.size,
+				memoryRegion.name.c_str(),
+				memoryRegion.protection.c_str());
+		}
+	}
+
+	process->CloseTarget();
 }
 
 
@@ -137,20 +171,6 @@ void AnalyzeFile(wchar_t *fname) {
 }
 
 
-void processinfo(wchar_t *pidStr) {
-	PermissionMakeMeDebug();
-	InitProcessQuery();
-
-	wchar_t* end;
-	long pid = wcstoul(pidStr, &end, 10);
-	Process* process = new Process();
-
-	// only from process
-	AugmentProcess(pid, process);
-
-	g_MemStatic.PrintMemoryRegions(); // memory regions
-	process->display(); // peb stuff
-}
 
 
 //#include "krabs.hpp"

@@ -96,7 +96,7 @@ namespace UnitTests
             p = g_ProcessResolver.getObject(pid);
             Assert::IsNotNull(p);
             Assert::IsTrue(p->observe);
-            Assert::IsTrue(contains_case_insensitive(p->image_path, processName));
+            Assert::IsTrue(contains_case_insensitive(p->commandline, processName));
         }
 
         TEST_METHOD(TestProcessViaMakeProcess)
@@ -110,7 +110,7 @@ namespace UnitTests
             p = g_ProcessResolver.getObject(pid);
             Assert::IsNotNull(p);
             Assert::IsTrue(p->observe);
-            Assert::IsTrue(contains_case_insensitive(p->image_path, processName));
+            Assert::IsTrue(contains_case_insensitive(p->commandline, processName));
         }
 
         TEST_METHOD(TestProcessNonObserverValidProcess)

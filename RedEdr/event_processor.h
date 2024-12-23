@@ -8,12 +8,14 @@
 #include <mutex>
 
 #include "json.hpp"
+#include "process.h"
 
 
 class EventProcessor {
 public:
 	EventProcessor();
 	void init();
+	void InitialProcessInfo(Process* process);
 	void AnalyzeNewEvents(std::vector<std::string> events);
 	void SaveToFile();
 	std::string GetAllAsJson();
