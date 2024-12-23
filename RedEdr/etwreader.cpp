@@ -6,15 +6,18 @@
 #include <sstream>
 
 #include <krabs.hpp>
+
 #include "json.hpp"
+#include "utils.h"
+#include "etw_krabs.h"
+#include "logging.h"
 
 #include "event_aggregator.h"
-#include "logging.h"
+
 #include "etwreader.h"
 #include "process_resolver.h"
 #include "config.h"
-#include "utils.h"
-#include "etw_krabs.h"
+
 
 
 krabs::user_trace trace_user(L"RedEdrUser");

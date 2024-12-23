@@ -149,9 +149,6 @@
     <ClInclude Include="manager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="dllreader.h">
-      <Filter>Header Files\input</Filter>
-    </ClInclude>
     <ClInclude Include="etwreader.h">
       <Filter>Header Files\input</Filter>
     </ClInclude>
@@ -211,6 +208,9 @@
     </ClInclude>
     <ClInclude Include="mem_dynamic.h">
       <Filter>Header Files\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="dllreader.h">
+      <Filter>Header Files\existing</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
