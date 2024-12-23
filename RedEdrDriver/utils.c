@@ -4,6 +4,8 @@
 
 #include "../Shared/common.h"
 
+#define KRN_LOG_LEN 1024
+
 
 void LOG_A(int severity, const char* format, ...)
 {

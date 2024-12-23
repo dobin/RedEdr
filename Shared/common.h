@@ -13,7 +13,6 @@
 #define DLL_CONFIG_LEN 128 // for DLL pipe
 #define PPL_CONFIG_LEN 128 // for PPL pipe
 #define KRN_CONFIG_LEN 128 // for Kernel pipe
-#define KRN_LOG_LEN 1024
 
 typedef struct _MY_DRIVER_DATA {
     wchar_t filename[TARGET_WSTR_LEN];
