@@ -168,7 +168,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\RedEdrShared\logging.h" />
     <ClInclude Include="detours.h" />
     <ClInclude Include="dllhelper.h" />
     <ClInclude Include="framework.h" />
@@ -176,6 +175,7 @@
   <ItemGroup>
     <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\piping.cpp" />
+    <ClCompile Include="..\RedEdrShared\process_query.cpp" />
     <ClCompile Include="..\RedEdrShared\utils.cpp" />
     <ClCompile Include="dllhelper.cpp" />
     <ClCompile Include="dllmain.cpp">

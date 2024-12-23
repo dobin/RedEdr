@@ -33,9 +33,6 @@
     <ClCompile Include="..\RedEdr\mem_static.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdr\process_query.cpp">
-      <Filter>Source Files\existing</Filter>
-    </ClCompile>
     <ClCompile Include="..\RedEdr\process_resolver.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
@@ -70,6 +67,9 @@
       <Filter>Source Files\existing</Filter>
     </ClCompile>
     <ClCompile Include="..\RedEdr\serviceutils.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\process_query.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
   </ItemGroup>

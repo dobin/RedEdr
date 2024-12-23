@@ -8,6 +8,7 @@
 #include "logging.h"
 #include "detours.h"
 #include "utils.h"
+#include "process_query.h" // to init it
 
 // Config
 BOOL skip_self_readprocess = TRUE;
@@ -1309,6 +1310,7 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
 
     LOG_A(LOG_INFO, "Injected DLL Detours Main thread started on pid %lu  threadid %lu",
         GetCurrentProcessId(), GetCurrentThreadId());
+    InitProcessQuery();
     InitDllPipe();
     SendDllPipe(start_str);
 

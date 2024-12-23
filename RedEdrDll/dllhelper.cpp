@@ -5,9 +5,11 @@
 #include <stdio.h>
 #include <thread>
 #include <mutex>
+
 #include "piping.h"
 #include "logging.h"
 #include "utils.h"
+#include "process_query.h"
 
 #pragma comment(lib, "dbghelp.lib")
 
@@ -29,27 +31,11 @@ typedef enum _MEMORY_INFORMATION_CLASS {
 } MEMORY_INFORMATION_CLASS;
 
 
-typedef NTSTATUS(NTAPI* pNtQueryVirtualMemory)(
-    HANDLE                   ProcessHandle,
-    PVOID                    BaseAddress,
-    MEMORY_INFORMATION_CLASS MemoryInformationClass,
-    PVOID                    MemoryInformation,
-    SIZE_T                   MemoryInformationLength,
-    PSIZE_T                  ReturnLength
-    );
-
-pNtQueryVirtualMemory NtQueryVirtualMemory = nullptr;
-
-
 //----------------------------------------------------
 // Pipe stuff
 
 // Pipe Init
 void InitDllPipe() {
-    HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
-    if (hNtdll) {
-        NtQueryVirtualMemory = (pNtQueryVirtualMemory)GetProcAddress(hNtdll, "NtQueryVirtualMemory");
-    }
     if (!pipeClient.Connect(DLL_PIPE_NAME)) {
         LOG_W(LOG_ERROR, L"Could not connect to RedEdr.exe at %s", DLL_PIPE_NAME);
         return;
@@ -153,15 +139,17 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
             break;
         }
 
-        if (NtQueryVirtualMemory(hProcess, (PVOID)address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
-            w = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{\"idx\":%i,\"addr\":%llu,\"page_addr\":%llu,\"size\":%zu,\"state\":%lu,\"protect\":\"%s\",\"type\":\"%s\"},",
-                n, address, mbi.BaseAddress, mbi.RegionSize, 
-                getMemoryRegionState(mbi.State), 
-                getMemoryRegionProtect(mbi.Protect), 
-                getMemoryRegionType(mbi.Type));
-            if (w == 0) {
-                LOG_A(LOG_ERROR, "Error");
-            }
+        ProcessAddrInfoRet processAddrInfoRet = ProcessAddrInfo(hProcess, address);
+        w = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{\"idx\":%i,\"addr\":%llu,\"page_addr\":%llu,\"size\":%zu,\"state\":%lu,\"protect\":\"%s\",\"type\":\"%s\"},",
+            n, 
+            address, 
+            processAddrInfoRet.base_addr,
+            processAddrInfoRet.region_size, 
+            processAddrInfoRet.stateStr, 
+            processAddrInfoRet.protectStr,
+            processAddrInfoRet.typeStr);
+        if (w == 0) {
+            LOG_A(LOG_ERROR, "Error");
         }
         buf_size -= w;
         buf += w;

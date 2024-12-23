@@ -14,19 +14,22 @@
 #include <tchar.h>
 #include <tlhelp32.h>
 
-#include "logging.h"
-#include "config.h"
 #include "process_query.h"
+#include "logging.h"
 #include "utils.h"
-#include "process.h"
-
 #include "mypeb.h"
+
 #include "../Shared/common.h"
 
 #pragma comment(lib, "ntdll.lib")
 
+/* Process Query
+ * Provides functions to query a process for more information
+ * No side effects
+ */
 
-// Private
+
+ // Private
 wchar_t* GetFileNameFromPath(wchar_t* path);
 std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u);
 std::string GetSectionPermissions(DWORD characteristics);
@@ -102,7 +105,7 @@ ProcessPebInfoRet ProcessPebInfo(HANDLE hProcess) {
     // PEB
     MYPEB peb;
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        LOG_A(LOG_WARNING, "ProcessQuery: Error: Could not ReadProcessMemory1 error: %d", 
+        LOG_A(LOG_WARNING, "ProcessQuery: Error: Could not ReadProcessMemory1 error: %d",
             GetLastError());
         return processPebInfoRet;
     }
@@ -159,7 +162,7 @@ std::vector<ProcessLoadedDll> ProcessEnumerateModules(HANDLE hProcess) {
     // PEB
     MYPEB peb;
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        LOG_A(LOG_WARNING, "ProcessQuery: Error: Could not ReadProcessMemory1 error: %d", 
+        LOG_A(LOG_WARNING, "ProcessQuery: Error: Could not ReadProcessMemory1 error: %d",
             GetLastError());
         return processLoadedDlls;
     }
@@ -208,8 +211,8 @@ std::vector<ProcessLoadedDll> ProcessEnumerateModules(HANDLE hProcess) {
 }
 
 
-std::vector<MemoryRegion> EnumerateModuleSections(HANDLE hProcess, LPVOID moduleBase) {
-    std::vector<MemoryRegion> memoryRegions;
+std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID moduleBase) {
+    std::vector<ModuleSection> memoryRegions;
 
     // Buffer for headers
     IMAGE_DOS_HEADER dosHeader = {};
@@ -257,8 +260,8 @@ std::vector<MemoryRegion> EnumerateModuleSections(HANDLE hProcess, LPVOID module
     }
 
     // Note: PE header, but is this really true?
-	uint64_t a = reinterpret_cast<uint64_t>(moduleBase);
-    MemoryRegion memoryRegionPe = MemoryRegion(
+    uint64_t a = reinterpret_cast<uint64_t>(moduleBase);
+    ModuleSection memoryRegionPe = ModuleSection(
         moduleNameStr + ": .PE_hdr", a, 4096, "r"
     );
     memoryRegions.push_back(memoryRegionPe);
@@ -271,7 +274,7 @@ std::vector<MemoryRegion> EnumerateModuleSections(HANDLE hProcess, LPVOID module
         std::string sectionName(reinterpret_cast<const char*>(section.Name), strnlen(reinterpret_cast<const char*>(section.Name), 8));
         std::string full = moduleNameStr + ":" + sectionName;
 
-        MemoryRegion memoryRegion = MemoryRegion(
+        ModuleSection memoryRegion = ModuleSection(
             full,
             reinterpret_cast<uint64_t>(sectionAddress),
             sectionSize,
@@ -287,7 +290,7 @@ std::vector<MemoryRegion> EnumerateModuleSections(HANDLE hProcess, LPVOID module
 ProcessAddrInfoRet ProcessAddrInfo(HANDLE hProcess, DWORD address) {
     MEMORY_BASIC_INFORMATION mbi;
     SIZE_T returnLength = 0;
-    if (! NtQueryVirtualMemory(hProcess, (PVOID)address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
+    if (!NtQueryVirtualMemory(hProcess, (PVOID)address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
         LOG_A(LOG_WARNING, "ProcessQuery: Could not query memory address 0x%llx in process 0x%x", address, hProcess);
     }
 
@@ -304,7 +307,7 @@ ProcessAddrInfoRet ProcessAddrInfo(HANDLE hProcess, DWORD address) {
     processAddrInfoRet.protectStr = getMemoryRegionProtect(mbi.Protect);
     processAddrInfoRet.typeStr = getMemoryRegionType(mbi.Type);
 
-	return processAddrInfoRet;
+    return processAddrInfoRet;
 }
 
 

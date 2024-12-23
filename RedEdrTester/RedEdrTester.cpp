@@ -18,10 +18,10 @@
 #include "piping.h"
 #include "utils.h"
 #include "json.hpp"
+#include "process_query.h"
 
 // Stuff we test
 #include "../RedEdr/config.h"
-#include "../RedEdr/process_query.h"
 #include "../RedEdr/process_resolver.h"
 #include "../RedEdr/event_processor.h"
 #include "../RedEdr/event_detector.h"
@@ -85,7 +85,7 @@ void processinfo(wchar_t* pidStr) {
 	// DLL sections
 	printf("\nLoaded DLL regions:\n");
 	for (auto processLoadedDll : processLoadedDlls) {
-		std::vector<MemoryRegion> memoryRegions = EnumerateModuleSections(process->GetHandle(), processLoadedDll.dll_base);
+		std::vector<ModuleSection> memoryRegions = EnumerateModuleSections(process->GetHandle(), processLoadedDll.dll_base);
 		for (auto memoryRegion : memoryRegions) {
 			printf("0x%llx %lu %s %s\n",
 				memoryRegion.addr,

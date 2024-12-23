@@ -116,8 +116,13 @@ void EventProcessor::InitialProcessInfo(Process *process) {
 
     // DB: MemStatic
     for (auto processLoadedDll : processLoadedDlls) {
-        std::vector<MemoryRegion> memoryRegions = EnumerateModuleSections(process->GetHandle(), processLoadedDll.dll_base);
-        for (auto memoryRegion : memoryRegions) {
+        std::vector<ModuleSection> moduleSections = EnumerateModuleSections(process->GetHandle(), processLoadedDll.dll_base);
+        for (auto moduleSection : moduleSections) {
+            MemoryRegion memoryRegion = MemoryRegion(
+                moduleSection.name,
+                moduleSection.addr, 
+                moduleSection.size, 
+                moduleSection.protection);
             g_MemStatic.AddMemoryRegion(memoryRegion.addr, &memoryRegion);
         }
     }
@@ -134,9 +139,12 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
         return;
     }
 
+    //printf("A1\n");
+
     // Stats (for UI)
     EventStats(j);
 
+    //printf("A2\n");
     // Handle if we see the pid the first time, by augmenting our internal data structures
     if (j.contains("pid")) {
         Process* process = g_ProcessResolver.getObject(j["pid"].get<DWORD>());
@@ -145,15 +153,19 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
             InitialProcessInfo(process);
         }
     }
-
+    //printf("A3\n");
     // Augment Event with memory info
-    AugmentEventWithMemAddrInfo(j);
+    //AugmentEventWithMemAddrInfo(j);
+    //printf("A4\n");
 
     // Track Memory changes of Event (MemDynamic)
     g_EventDetector.ScanEventForMemoryChanges(j);
+    //printf("A5\n");
 
     // Perform Detections on Event
     g_EventDetector.ScanEventForDetections(j);
+
+    //printf("A6\n");
 
     // Print Event
     PrintEvent(j);

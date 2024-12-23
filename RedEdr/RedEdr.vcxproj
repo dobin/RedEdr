@@ -146,6 +146,7 @@
     <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\loguru.cpp" />
     <ClCompile Include="..\RedEdrShared\piping.cpp" />
+    <ClCompile Include="..\RedEdrShared\process_query.cpp" />
     <ClCompile Include="..\RedEdrShared\utils.cpp" />
     <ClCompile Include="event_aggregator.cpp" />
     <ClCompile Include="event_augmenter.cpp" />
@@ -165,7 +166,6 @@
     <ClCompile Include="pplreader.cpp" />
     <ClCompile Include="process.cpp" />
     <ClCompile Include="processinfo.cpp" />
-    <ClCompile Include="process_query.cpp" />
     <ClCompile Include="process_resolver.cpp" />
     <ClCompile Include="RedEdr.cpp" />
     <ClCompile Include="serviceutils.cpp" />
@@ -191,11 +191,9 @@
     <ClInclude Include="logreader.h" />
     <ClInclude Include="mem_dynamic.h" />
     <ClInclude Include="mem_static.h" />
-    <ClInclude Include="mypeb.h" />
     <ClInclude Include="pplmanager.h" />
     <ClInclude Include="pplreader.h" />
     <ClInclude Include="process.h" />
-    <ClInclude Include="process_query.h" />
     <ClInclude Include="process_resolver.h" />
     <ClInclude Include="serviceutils.h" />
     <ClInclude Include="webserver.h" />

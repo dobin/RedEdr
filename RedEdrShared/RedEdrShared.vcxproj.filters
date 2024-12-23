@@ -36,6 +36,9 @@
     <ClCompile Include="etw_krabs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="process_query.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="logging.h">
@@ -57,6 +60,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="etw_krabs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="process_query.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mypeb.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

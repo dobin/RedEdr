@@ -12,7 +12,6 @@
 #include "ranges.h"
 #include "json.hpp"
 #include "process.h"
-#include "mem_static.h"
 
 
 std::wstring GetProcessName(HANDLE hProcess);
@@ -60,5 +59,15 @@ struct ProcessLoadedDll {
 std::vector<ProcessLoadedDll> ProcessEnumerateModules(HANDLE hProcess);
 
 
-std::vector<MemoryRegion> EnumerateModuleSections(HANDLE hProcess, LPVOID moduleBase);
+struct ModuleSection {
+public:
+    ModuleSection(const std::string& name, uint64_t addr, uint64_t size, std::string protection)
+        : name(name), addr(addr), size(size), protection(protection) {}
+
+    std::string name;
+    uint64_t addr;
+    uint64_t size;
+    std::string protection;
+};
+std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID moduleBase);
 

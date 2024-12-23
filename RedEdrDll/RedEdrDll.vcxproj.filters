@@ -12,14 +12,14 @@
     <ClCompile Include="..\RedEdrShared\utils.cpp">
       <Filter>existing</Filter>
     </ClCompile>
+    <ClCompile Include="..\RedEdrShared\process_query.cpp">
+      <Filter>existing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="detours.h" />
     <ClInclude Include="dllhelper.h" />
     <ClInclude Include="framework.h" />
-    <ClInclude Include="..\RedEdrShared\logging.h">
-      <Filter>existing</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="existing">
