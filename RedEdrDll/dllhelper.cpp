@@ -145,9 +145,9 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
             address, 
             processAddrInfoRet.base_addr,
             processAddrInfoRet.region_size, 
-            processAddrInfoRet.stateStr, 
-            processAddrInfoRet.protectStr,
-            processAddrInfoRet.typeStr);
+            processAddrInfoRet.stateStr.c_str(),
+            processAddrInfoRet.protectStr.c_str(),
+            processAddrInfoRet.typeStr.c_str());
         if (w == 0) {
             LOG_A(LOG_ERROR, "Error");
         }
