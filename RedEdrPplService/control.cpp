@@ -20,7 +20,7 @@ PipeServer pipeServer(L"EtwTi");
 
 
 DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
-    wchar_t buffer[WCHAR_BUFFER_SIZE];
+    wchar_t buffer[PPL_CONFIG_LEN];
 
     while (keep_running) {
         LOG_W(LOG_INFO, L"Control: Waiting for client (RedEdr.exe) to connect...");
@@ -30,7 +30,7 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
         }
         while (keep_running) {
             memset(buffer, 0, sizeof(buffer));
-            if (!pipeServer.Receive(buffer, WCHAR_BUFFER_SIZE)) {
+            if (!pipeServer.Receive(buffer, PPL_CONFIG_LEN)) {
                 //LOG_A(LOG_ERROR, "Error waiting for RedEdr.exe config");
                 break;
             }

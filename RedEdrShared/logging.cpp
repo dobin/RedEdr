@@ -185,12 +185,12 @@ void LOG_A(int verbosity, const char* format, ...)
 
 void LOG_W(int verbosity, const wchar_t* format, ...)
 {
-    WCHAR message[WCHAR_BUFFER_SIZE] = L"[RedEdr PPL] ";
+    WCHAR message[DATA_BUFFER_SIZE] = L"[RedEdr PPL] ";
     size_t offset = wcslen(message);
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
-    int ret = vswprintf(&message[offset], WCHAR_BUFFER_SIZE - offset, format, arg_ptr);
+    int ret = vswprintf(&message[offset], DATA_BUFFER_SIZE - offset, format, arg_ptr);
     va_end(arg_ptr);
 
     Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage(message);
@@ -226,12 +226,12 @@ void LOG_A(int verbosity, const char* format, ...)
 
 void LOG_W(int verbosity, const wchar_t* format, ...)
 {
-    WCHAR message[WCHAR_BUFFER_SIZE] = L"[RedEdr PPL] ";
+    WCHAR message[DATA_BUFFER_SIZE] = L"[RedEdr PPL] ";
     size_t offset = wcslen(message);
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
-    int ret = vswprintf(&message[offset], WCHAR_BUFFER_SIZE - offset, format, arg_ptr);
+    int ret = vswprintf(&message[offset], DATA_BUFFER_SIZE - offset, format, arg_ptr);
     va_end(arg_ptr);
 
     printf("%s", message);

@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "../Shared/common.h"
+
 typedef struct _config {
 	int init_processnotify;
 	int init_threadnotify;
@@ -14,7 +16,7 @@ typedef struct _config {
 
 	HANDLE trace_pid;
 	int trace_children;
-	WCHAR target[256];  // zero length means disabled
+	WCHAR target[TARGET_WSTR_LEN];  // zero length means disabled
 } Config;
 
 

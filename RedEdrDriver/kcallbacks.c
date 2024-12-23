@@ -137,18 +137,18 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
 
     UNREFERENCED_PARAMETER(ImageInfo);
     wchar_t line[DATA_BUFFER_SIZE] = { 0 };
-    wchar_t ImageName[256] = { 0 };
+    wchar_t ImageName[PATH_LEN] = { 0 };
 
     // We may only have KAPC injection, and no logging
     if (g_config.enable_logging) {
         PROCESS_INFO* procInfo = LookupProcessInfo(ProcessId);
         if (procInfo != NULL && procInfo->observe) {
-            UnicodeStringToWChar(FullImageName, ImageName, 256);
+            UnicodeStringToWChar(FullImageName, ImageName, PATH_LEN);
             swprintf(line, L"{\"type\":\"kernel\",\"time\":%llu,\"callback\":\"image_load\",\"krn_pid\":%llu,\"pid\":%llu,\"image\":\"%s\"}",
                 systemTime,
                 (unsigned __int64)PsGetCurrentProcessId(),
                 (unsigned __int64)ProcessId,
-                JsonEscape(ImageName, 256));
+                JsonEscape(ImageName, PATH_LEN));
             LogEvent(line);
         }
     }

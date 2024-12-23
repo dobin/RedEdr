@@ -40,14 +40,14 @@ BOOL EnableKernelDriver(int enable, wchar_t* target) {
     else {
         dataToSend.enable = 0;
     }
-    char buffer_incoming[128] = { 0 };
+    char buffer_incoming[128] = { 0 }; // Answer will be "OK" or "FAIL" so this is enough
     DWORD bytesReturned = 0;
     BOOL success = DeviceIoControl(hDevice,
         IOCTL_MY_IOCTL_CODE,
         (LPVOID)&dataToSend,
         (DWORD)sizeof(dataToSend),
         buffer_incoming,
-        sizeof(buffer_incoming),
+        sizeof(buffer_incoming), // this should get the correct size
         &bytesReturned,
         NULL);
     if (!success) {

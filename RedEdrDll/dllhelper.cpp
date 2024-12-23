@@ -44,8 +44,8 @@ void InitDllPipe() {
     // Retrieve config (first packet)
     //   this is the only time we read from this pipe
     LOG_A(LOG_INFO, "Waiting for config...");
-    wchar_t buffer[WCHAR_BUFFER_SIZE];
-    if (pipeClient.Receive(buffer, WCHAR_BUFFER_SIZE)) {
+    wchar_t buffer[DLL_CONFIG_LEN];
+    if (pipeClient.Receive(buffer, DLL_CONFIG_LEN)) {
         if (wcsstr(buffer, L"callstack:1") != NULL) {
             Config.do_stacktrace = true;
             LOG_W(LOG_INFO, L"Config: Callstack Enabled");
@@ -133,14 +133,14 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
             // dont go too deep
             break;
         }
-        if (buf_size > DATA_BUFFER_SIZE - 2) { // -2 for ending ]
+        /*if (buf_size > DATA_BUFFER_SIZE - 2) { // -2 for ending ]
             // as buf_size is size_t, it will underflow when too much callstack is appended
             LOG_A(LOG_WARNING, "StackWalk: Not enough space for whole stack, stopped at %i", n);
             break;
-        }
+        }*/
 
         ProcessAddrInfoRet processAddrInfoRet = ProcessAddrInfo(hProcess, address);
-        w = swprintf_s(buf, WCHAR_BUFFER_SIZE, L"{\"idx\":%i,\"addr\":%llu,\"page_addr\":%llu,\"size\":%zu,\"state\":%lu,\"protect\":\"%s\",\"type\":\"%s\"},",
+        w = swprintf_s(buf, buf_size, L"{\"idx\":%i,\"addr\":%llu,\"page_addr\":%llu,\"size\":%zu,\"state\":%lu,\"protect\":\"%s\",\"type\":\"%s\"},",
             n, 
             address, 
             processAddrInfoRet.base_addr,
@@ -149,27 +149,12 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
             processAddrInfoRet.protectStr.c_str(),
             processAddrInfoRet.typeStr.c_str());
         if (w == 0) {
-            LOG_A(LOG_ERROR, "Error");
+            LOG_A(LOG_ERROR, "Error writing callstack entry, not enough space? %d", buf_size);
+            break;
         }
         buf_size -= w;
         buf += w;
         written += w;
-
-        // Resolve the symbol at this address
-        /*char symbolBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
-        PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)symbolBuffer;
-        pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-        pSymbol->MaxNameLen = MAX_SYM_NAME;
-
-        if (SymFromAddr(hProcess, address, 0, pSymbol))
-        {
-            printf("  %s - 0x%0llX\n", pSymbol->Name, pSymbol->Address);
-        }
-        else
-        {
-            printf("  [Unknown symbol] - 0x%0llX\n", address);
-        }*/
-
         n += 1;
     }
 

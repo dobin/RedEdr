@@ -82,14 +82,11 @@ DWORD WINAPI DllReaderThread(LPVOID param) {
 void DllReaderClientThread(PipeServer* pipeServer) {
     // send config as first packet
     //   this is the only write for this pipe
-    wchar_t config[WCHAR_BUFFER_SIZE];
-    swprintf_s(config, WCHAR_BUFFER_SIZE, L"callstack:%d;", g_config.do_dllinjection_ucallstack);
+    wchar_t config[DLL_CONFIG_LEN];
+    swprintf_s(config, DLL_CONFIG_LEN, L"callstack:%d;", g_config.do_dllinjection_ucallstack);
     pipeServer->Send(config);
 
     // Now receive only
-    char buffer[DATA_BUFFER_SIZE] = {0};
-    char* buf_ptr = buffer; // buf_ptr and rest_len are synchronized
-    int rest_len = 0;
     while (!DllReaderThreadStop) {
         std::vector<std::wstring> result = pipeServer->ReceiveBatch();
         if (result.empty()) {
@@ -112,9 +109,9 @@ void DllReaderShutdown() {
     // Disconnect server pipe
     // Send some stuff so the ReadFile() in the reader thread returns
     PipeClient pipeClient;
-    wchar_t buf[WCHAR_BUFFER_SIZE] = { 0 };
+    wchar_t buf[DLL_CONFIG_LEN] = { 0 };
     pipeClient.Connect(DLL_PIPE_NAME);
-    pipeClient.Receive(buf, WCHAR_BUFFER_SIZE);
+    pipeClient.Receive(buf, DLL_CONFIG_LEN);
     pipeClient.Send((wchar_t *) L"");
     pipeClient.Disconnect();
 }

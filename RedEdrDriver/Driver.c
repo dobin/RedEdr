@@ -54,7 +54,7 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
                 g_config.enable_kapc_injection = 1;
             }
             g_config.enable_logging = 1;
-            wcscpy_s(g_config.target, sizeof(g_config.target), data->filename);
+            wcscpy_s(g_config.target, TARGET_WSTR_LEN, data->filename);
 
             if (!IsUserspacePipeConnected()) {
                 int ret = ConnectUserspacePipe();
@@ -75,7 +75,7 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
             LOG_A(LOG_INFO, "[IOCTL] Stop\n");
             g_config.enable_kapc_injection = 0;
             g_config.enable_logging = 0;
-            wcscpy_s(g_config.target, sizeof(g_config.target), data->filename); // should be zero
+            wcscpy_s(g_config.target, TARGET_WSTR_LEN, data->filename); // should be zero
             DisconnectUserspacePipe();
             answer = "OK";
         }
