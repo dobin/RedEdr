@@ -86,13 +86,13 @@ void processinfo(wchar_t* pidStr) {
 	// DLL sections
 	printf("\nLoaded DLL regions:\n");
 	for (auto processLoadedDll : processLoadedDlls) {
-		std::vector<ModuleSection> memoryRegions = EnumerateModuleSections(process->GetHandle(), processLoadedDll.dll_base);
-		for (auto memoryRegion : memoryRegions) {
+		std::vector<ModuleSection> moduleSections = EnumerateModuleSections(process->GetHandle(), processLoadedDll.dll_base);
+		for (auto moduleSection : moduleSections) {
 			printf("0x%llx %lu %s %s\n",
-				memoryRegion.addr,
-				memoryRegion.size,
-				memoryRegion.name.c_str(),
-				memoryRegion.protection.c_str());
+				moduleSection.addr,
+				moduleSection.size,
+				moduleSection.name.c_str(),
+				moduleSection.protection.c_str());
 		}
 	}
 

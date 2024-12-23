@@ -212,7 +212,7 @@ std::vector<ProcessLoadedDll> ProcessEnumerateModules(HANDLE hProcess) {
 
 
 std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID moduleBase) {
-    std::vector<ModuleSection> memoryRegions;
+    std::vector<ModuleSection> moduleSections;
 
     // Buffer for headers
     IMAGE_DOS_HEADER dosHeader = {};
@@ -223,30 +223,30 @@ std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID modul
     wchar_t moduleName[MAX_PATH] = { 0 };
     if (!GetModuleBaseName(hProcess, (HMODULE)moduleBase, moduleName, sizeof(moduleName))) {
         LOG_A(LOG_WARNING, "ProcessQuery: Failed to retrieve module name. Error: %lu", GetLastError());
-        return memoryRegions;
+        return moduleSections;
     }
     std::string moduleNameStr = wcharToString(moduleName);
 
     // Read the DOS header
     if (!ReadProcessMemory(hProcess, moduleBase, &dosHeader, sizeof(dosHeader), NULL)) {
         LOG_A(LOG_WARNING, "ProcessQuery: Failed to read DOS header. Error: %lu", GetLastError());
-        return memoryRegions;
+        return moduleSections;
     }
     // Verify DOS signature
     if (dosHeader.e_magic != IMAGE_DOS_SIGNATURE) {
         LOG_A(LOG_WARNING, "ProcessQuery: Invalid DOS signature. Not a valid PE file");
-        return memoryRegions;
+        return moduleSections;
     }
     // Read the NT header
     LPVOID ntHeaderAddress = (LPBYTE)moduleBase + dosHeader.e_lfanew;
     if (!ReadProcessMemory(hProcess, ntHeaderAddress, &ntHeaders, sizeof(ntHeaders), NULL)) {
         LOG_A(LOG_WARNING, "ProcessQuery: Failed to read NT headers. Error: %lu", GetLastError());
-        return memoryRegions;
+        return moduleSections;
     }
     // Verify NT signature
     if (ntHeaders.Signature != IMAGE_NT_SIGNATURE) {
         LOG_A(LOG_WARNING, "ProcessQuery: Invalid NT signature. Not a valid PE file.");
-        return memoryRegions;
+        return moduleSections;
     }
 
     // Read section headers
@@ -256,7 +256,7 @@ std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID modul
     if (!ReadProcessMemory(hProcess, sectionHeaderAddress, sectionHeaders.data(),
         sizeof(IMAGE_SECTION_HEADER) * numberOfSections, NULL)) {
         LOG_A(LOG_WARNING, "ProcessQuery: Failed to read section headers. Error: %lu", GetLastError());
-        return memoryRegions;
+        return moduleSections;
     }
 
     // Note: PE header, but is this really true?
@@ -264,7 +264,7 @@ std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID modul
     ModuleSection memoryRegionPe = ModuleSection(
         moduleNameStr + ": .PE_hdr", a, 4096, "r"
     );
-    memoryRegions.push_back(memoryRegionPe);
+    moduleSections.push_back(memoryRegionPe);
 
     for (const auto& section : sectionHeaders) {
         LPVOID sectionAddress = (LPBYTE)moduleBase + section.VirtualAddress;
@@ -280,10 +280,10 @@ std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID modul
             sectionSize,
             GetSectionPermissions(section.Characteristics)
         );
-        memoryRegions.push_back(memoryRegion);
+        moduleSections.push_back(memoryRegion);
     }
 
-    return memoryRegions;
+    return moduleSections;
 }
 
 
