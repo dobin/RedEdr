@@ -238,7 +238,7 @@ int main(int argc, char* argv[]) {
 		g_config.targetExeName = L"RedEdrTester";
 
         LOG_A(LOG_INFO, "Tester: process in background");
-        LPCWSTR path = L"C:\\Users\\dobin\\source\\repos\\RedEdr\\x64\\Debug\\RedEdrTester.exe";
+        LPCWSTR path = L"C:\\RedEdr\\RedEdrTester.exe";
         LPCWSTR args = L"dostuff";
         DWORD pid = StartProcessInBackground(path, args);
         if (result["test"].as<std::string>() == "dll") {
