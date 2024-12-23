@@ -33,6 +33,7 @@
 
 
 void SendToKernel(int enable, wchar_t* target) {
+	wprintf(L"Sending: %d %s", enable, target);
 	EnableKernelDriver(enable, target);
 }
 
@@ -188,8 +189,8 @@ int wmain(int argc, wchar_t* argv[]) {
 	if (wcscmp(argv[1], L"send2kernel") == 0) {
 		// Example: 1 notepad.exe
 		wchar_t* end;
-		long enable = wcstol(argv[1], &end, 10);
-		SendToKernel(enable, argv[2]);
+		long enable = wcstol(argv[2], &end, 10);
+		SendToKernel(enable, argv[3]);
 	}
 	else if (wcscmp(argv[1], L"send2kernelreader") == 0) {
 		// Example: 
