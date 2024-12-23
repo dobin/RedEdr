@@ -419,7 +419,7 @@ NTSTATUS NTAPI Catch_NtSetContextThread(
 */
 
 /******************* LdrLoadDll ************************/
-
+#define DLL_NAME_LEN 128
 typedef NTSTATUS(NTAPI* pLdrLoadDll)(
     IN PWSTR            SearchPath          OPTIONAL,
     IN PULONG           DllCharacteristics  OPTIONAL,
@@ -435,12 +435,12 @@ NTSTATUS NTAPI Catch_LdrLoadDll(
 ) {
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
-    wchar_t wDllName[1024] = L"";  // Buffer for the decoded DllName
+    wchar_t wDllName[DLL_NAME_LEN] = L"";  // Buffer for the decoded DllName
     wchar_t empty[32] = L"<broken>";        // Empty string in case SearchPath is NULL
 
     if (HooksInitialized) { // dont log our own hooking
         wchar_t* searchPath = empty;   // SearchPath seems to be 8 (the number 8, not a string) BROKEN
-        UnicodeStringToWChar(DllName, wDllName, 1024);
+        UnicodeStringToWChar(DllName, wDllName, DLL_NAME_LEN);
         ULONG dllCharacteristics = (DllCharacteristics != NULL) ? *DllCharacteristics : 0;
 
         int offset = 0;
@@ -463,7 +463,7 @@ NTSTATUS NTAPI Catch_LdrLoadDll(
 
 
 /******************* LdrGetProcedureAddress ************************/
-
+#define WIDE_FUNCTION_NAME_LEN 128
 typedef NTSTATUS(NTAPI* pLdrGetProcedureAddress)(
     IN HMODULE              ModuleHandle,
     IN PANSI_STRING         FunctionName,
@@ -479,14 +479,14 @@ NTSTATUS NTAPI Catch_LdrGetProcedureAddress(
 ) {
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
-    wchar_t wideFunctionName[1024] = L"";
+    wchar_t wideFunctionName[WIDE_FUNCTION_NAME_LEN] = L"";
 
     if (HooksInitialized) { // dont log our own hooking
-        //UnicodeStringToWChar(FunctionName, wideFunctionName, 1024);
+        //UnicodeStringToWChar(FunctionName, wideFunctionName, WIDE_FUNCTION_NAME_LEN);
 
         if (FunctionName && FunctionName->Buffer) {
             // Convert ANSI string to wide string
-            MultiByteToWideChar(CP_ACP, 0, FunctionName->Buffer, -1, wideFunctionName, 1024);
+            MultiByteToWideChar(CP_ACP, 0, FunctionName->Buffer, -1, wideFunctionName, WIDE_FUNCTION_NAME_LEN);
         }
 
         int offset = 0;
@@ -786,6 +786,7 @@ NTSTATUS NTAPI Catch_NtOpenProcess(
 
 /******************* NtLoadDriver ************************/
 
+#define WIDE_SERVICE_NAME_LEN 128
 typedef NTSTATUS(NTAPI* pNtLoadDriver)(
     IN PUNICODE_STRING      DriverServiceName
     );
@@ -795,11 +796,11 @@ NTSTATUS NTAPI Catch_NtLoadDriver(
 ) {
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
-    wchar_t wDriverServiceName[1024];
+    wchar_t wDriverServiceName[WIDE_SERVICE_NAME_LEN];
 
     if (HooksInitialized) { // dont log our own hooking
         OutputDebugString(L"A12");
-        UnicodeStringToWChar(DriverServiceName, wDriverServiceName, 1024);
+        UnicodeStringToWChar(DriverServiceName, wDriverServiceName, WIDE_SERVICE_NAME_LEN);
 
         int offset = 0;
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
@@ -1292,6 +1293,7 @@ NTSTATUS NTAPI Catch_NtResumeThread(
 }
 
 //----------------------------------------------------
+#define STARTSTOP_LEN 1024
 
 // This function initializes the hooks via the MinHook library
 DWORD WINAPI InitHooksThread(LPVOID param) {
@@ -1300,12 +1302,12 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     if (DetourIsHelperProcess()) {
         return TRUE;
     }
-    wchar_t start_str[1024] = { 0 };
-    wchar_t stop_str[1024] = { 0 };
+    wchar_t start_str[STARTSTOP_LEN] = { 0 };
+    wchar_t stop_str[STARTSTOP_LEN] = { 0 };
 
-    swprintf(start_str, 1024, L"{\"type\":\"dll\",\"func\":\"hooking_start\",\"pid\":%lu,\"tid\":%lu}",
+    swprintf(start_str, STARTSTOP_LEN, L"{\"type\":\"dll\",\"func\":\"hooking_start\",\"pid\":%lu,\"tid\":%lu}",
         (DWORD)GetCurrentProcessId(), (DWORD)GetCurrentThreadId());
-    swprintf(stop_str, 1024, L"{\"type\":\"dll\",\"func\":\"hooking_finished\",\"pid\":%lu,\"tid\":%lu}",
+    swprintf(stop_str, STARTSTOP_LEN, L"{\"type\":\"dll\",\"func\":\"hooking_finished\",\"pid\":%lu,\"tid\":%lu}",
         (DWORD)GetCurrentProcessId(), (DWORD)GetCurrentThreadId());
 
     LOG_A(LOG_INFO, "Injected DLL Detours Main thread started on pid %lu  threadid %lu",

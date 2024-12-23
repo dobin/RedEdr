@@ -97,7 +97,7 @@ void LOG_A(int verbosity, const char* format, ...)
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
-    int ret = vsnprintf_s(&message[offset], DATA_BUFFER_SIZE - offset, MAX_BUF_SIZE - offset, format, arg_ptr);
+    int ret = vsnprintf_s(&message[offset], DATA_BUFFER_SIZE - offset, DATA_BUFFER_SIZE - offset, format, arg_ptr);
     va_end(arg_ptr);
 
     OutputDebugStringA(message);
@@ -133,7 +133,7 @@ void LOG_A(int verbosity, const char* format, ...)
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
-    int ret = vsnprintf_s(&message[offset], DATA_BUFFER_SIZE - offset, MAX_BUF_SIZE - offset, format, arg_ptr);
+    int ret = vsnprintf_s(&message[offset], DATA_BUFFER_SIZE - offset, DATA_BUFFER_SIZE - offset, format, arg_ptr);
     va_end(arg_ptr);
 
     OutputDebugStringA(message);
@@ -174,7 +174,7 @@ void LOG_A(int verbosity, const char* format, ...)
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
-    int ret = vsnprintf_s(&message[offset], DATA_BUFFER_SIZE - offset, MAX_BUF_SIZE - offset, format, arg_ptr);
+    int ret = vsnprintf_s(&message[offset], DATA_BUFFER_SIZE - offset, DATA_BUFFER_SIZE - offset, format, arg_ptr);
     va_end(arg_ptr);
 
     Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage(message);
@@ -217,7 +217,7 @@ void LOG_A(int verbosity, const char* format, ...)
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
-    int ret = vsnprintf_s(&message[offset], DATA_BUFFER_SIZE - offset, MAX_BUF_SIZE - offset, format, arg_ptr);
+    int ret = vsnprintf_s(&message[offset], DATA_BUFFER_SIZE - offset, DATA_BUFFER_SIZE - offset, format, arg_ptr);
     va_end(arg_ptr);
 
     printf("%s", message);

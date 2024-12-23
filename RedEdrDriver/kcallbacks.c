@@ -59,9 +59,9 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         }
 
         processInfo->ProcessId = pid;
-        UnicodeStringToWChar(processName, processInfo->name, 128);
+        UnicodeStringToWChar(processName, processInfo->name, PROC_NAME_LEN);
         processInfo->ppid = createInfo->ParentProcessId;
-        UnicodeStringToWChar(parent_processName, processInfo->parent_name, 128);
+        UnicodeStringToWChar(parent_processName, processInfo->parent_name, PROC_NAME_LEN);
         processInfo->observe = 0;
 
         // Search in the unicode atm
@@ -89,9 +89,9 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
             systemTime,
             (unsigned __int64)PsGetCurrentProcessId(),
             (unsigned __int64)pid, 
-            JsonEscape(processInfo->name, 128),
+            JsonEscape(processInfo->name, PROC_NAME_LEN),
             (unsigned __int64)createInfo->ParentProcessId, 
-            JsonEscape(processInfo->parent_name, 128),
+            JsonEscape(processInfo->parent_name, PROC_NAME_LEN),
             processInfo->observe);
         LogEvent(line);
     }

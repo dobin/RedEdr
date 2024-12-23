@@ -139,7 +139,7 @@ BOOL InstallPplService()
         return FALSE;
     }
 
-    WCHAR serviceCMD[MAX_BUF_SIZE] = L"c:\\RedEdr\\RedEdrPplService.exe";
+    WCHAR serviceCMD[PATH_LEN] = L"c:\\RedEdr\\RedEdrPplService.exe";
 
     // Add PPL option
     hService = CreateService(

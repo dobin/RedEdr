@@ -4,7 +4,7 @@
 #define COMMON_H
 
 #define PIPE_BUFFER_SIZE 8192 // thats the pipe buffer (default 4096)
-#define DATA_BUFFER_SIZE 4096 // events, most important
+#define DATA_BUFFER_SIZE 8192 // events, most important
 
 #define IOCTL_MY_IOCTL_CODE CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
@@ -13,6 +13,7 @@
 #define DLL_CONFIG_LEN 128 // for DLL pipe
 #define PPL_CONFIG_LEN 128 // for PPL pipe
 #define KRN_CONFIG_LEN 128 // for Kernel pipe
+#define KRN_LOG_LEN 1024
 
 typedef struct _MY_DRIVER_DATA {
     wchar_t filename[TARGET_WSTR_LEN];
@@ -29,8 +30,7 @@ typedef struct _MY_DRIVER_DATA {
 #define SERVICE_NAME  L"RedEdrPplService"
 
 #define DRIVER_NAME L"c:\\RedEdr\\elam_driver.sys"
-#define MAX_BUF_SIZE 2048
 
-#define MAX_CALLSTACK_ENTRIES 5
+#define MAX_CALLSTACK_ENTRIES 8
 
 #endif

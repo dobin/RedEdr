@@ -4,12 +4,15 @@
 #include <string.h>
 #include <stdio.h>
 
+
+#define PROC_NAME_LEN 128
+
 typedef struct _PROCESS_INFO {
     HANDLE ProcessId;
-    wchar_t name[128];
+    wchar_t name[PROC_NAME_LEN];
 
     HANDLE ppid;
-    wchar_t parent_name[128];
+    wchar_t parent_name[PROC_NAME_LEN];
 
     int observe;
     int injected;

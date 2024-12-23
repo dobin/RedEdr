@@ -102,10 +102,10 @@ void StopControl() {
 // broken atm
 void rededr_remove_service() {
     //wchar_t* cmd = L"C:\\RedEdr\\RedEdr.exe --pplstop";
-    WCHAR childCMD[MAX_BUF_SIZE] = { 0 };
-    //wcscpy_s(childCMD, MAX_BUF_SIZE, L"C:\\windows\\system32\\cmd.exe /c \"echo AAA > c:\\rededr\\aa\"");
-    //wcscpy_s(childCMD, MAX_BUF_SIZE, L"C:\\RedEdr\\RedEdrPplRemover.exe");
-    wcscpy_s(childCMD, MAX_BUF_SIZE, L"C:\\RedEdr\\RedEdr.exe --pplstop");
+    WCHAR childCMD[PATH_LEN] = { 0 };
+    //wcscpy_s(childCMD, PATH_LEN, L"C:\\windows\\system32\\cmd.exe /c \"echo AAA > c:\\rededr\\aa\"");
+    //wcscpy_s(childCMD, PATH_LEN, L"C:\\RedEdr\\RedEdrPplRemover.exe");
+    wcscpy_s(childCMD, PATH_LEN, L"C:\\RedEdr\\RedEdr.exe --pplstop");
     start_child_process(childCMD);
 }
 
@@ -113,7 +113,6 @@ void rededr_remove_service() {
 DWORD start_child_process(wchar_t* childCMD)
 {
     DWORD retval = 0;
-    DWORD dataSize = MAX_BUF_SIZE;
     LOG_W(LOG_INFO, L"start_child_process: Starting");
 
     // Create Attribute List

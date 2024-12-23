@@ -8,14 +8,14 @@
 void LOG_A(int severity, const char* format, ...)
 {
     UNREFERENCED_PARAMETER(severity);
-    char message[MAX_BUF_SIZE] = "[RedEdr KRN] ";
+    char message[KRN_LOG_LEN] = "[RedEdr KRN] ";
     size_t offset = strlen(message);
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
 
     // Use RtlStringCbVPrintfA for kernel-safe string formatting
-    RtlStringCbVPrintfA(&message[offset], MAX_BUF_SIZE - offset, format, arg_ptr);
+    RtlStringCbVPrintfA(&message[offset], KRN_LOG_LEN - offset, format, arg_ptr);
 
     va_end(arg_ptr);
 
