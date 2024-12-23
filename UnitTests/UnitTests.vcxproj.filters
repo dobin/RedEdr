@@ -63,10 +63,10 @@
     <ClCompile Include="..\RedEdr\process.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdr\process_query.cpp">
+    <ClCompile Include="..\RedEdr\process_resolver.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdr\process_resolver.cpp">
+    <ClCompile Include="..\RedEdrShared\process_query.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
   </ItemGroup>

@@ -159,6 +159,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\RedEdrShared\logging.cpp" />
+    <ClCompile Include="..\RedEdrShared\process_query.cpp" />
     <ClCompile Include="..\RedEdrShared\utils.cpp" />
     <ClCompile Include="..\RedEdr\config.cpp" />
     <ClCompile Include="..\RedEdr\event_aggregator.cpp" />
@@ -168,7 +169,6 @@
     <ClCompile Include="..\RedEdr\mem_dynamic.cpp" />
     <ClCompile Include="..\RedEdr\mem_static.cpp" />
     <ClCompile Include="..\RedEdr\process.cpp" />
-    <ClCompile Include="..\RedEdr\process_query.cpp" />
     <ClCompile Include="..\RedEdr\process_resolver.cpp" />
     <ClCompile Include="UnitTestAnalyzer.cpp" />
     <ClCompile Include="UnitTestProcessInfo.cpp" />
