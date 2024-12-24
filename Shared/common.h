@@ -4,16 +4,19 @@
 #define COMMON_H
 
 #define PIPE_BUFFER_SIZE 8192 // thats the pipe buffer (default 4096)
-#define DATA_BUFFER_SIZE 8192 // events, most important
+#define DATA_BUFFER_SIZE 4096 // events, most important
 
 #define IOCTL_MY_IOCTL_CODE CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
-#define TARGET_WSTR_LEN 256
+// PATH_LEN > TARGET_WSTR_LEN
+#define TARGET_WSTR_LEN 128
 #define PATH_LEN 1024
-#define DLL_CONFIG_LEN 128 // for DLL pipe
-#define PPL_CONFIG_LEN 128 // for PPL pipe
-#define KRN_CONFIG_LEN 128 // for Kernel pipe
 
+#define DLL_CONFIG_LEN 256 // for DLL pipe
+#define PPL_CONFIG_LEN 256 // for PPL pipe
+
+// Kernel
+#define KRN_CONFIG_LEN 128 // for Kernel pipe
 typedef struct _MY_DRIVER_DATA {
     wchar_t filename[TARGET_WSTR_LEN];
     int enable;

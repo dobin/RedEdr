@@ -19,7 +19,7 @@ void init_config() {
 	g_config.trace_pid = 0;
 	g_config.trace_children = 0;
 
-	wcscpy_s(g_config.target, sizeof(g_config.target), L""); // disable
+	wcscpy_s(g_config.target, TARGET_WSTR_LEN, L""); // disable
 }
 
 

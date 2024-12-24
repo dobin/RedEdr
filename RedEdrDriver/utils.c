@@ -4,7 +4,7 @@
 
 #include "../Shared/common.h"
 
-#define KRN_LOG_LEN 1024
+#define KRN_LOG_LEN 4096
 
 
 void LOG_A(int severity, const char* format, ...)
@@ -32,7 +32,7 @@ int IsSubstringInUnicodeString(PUNICODE_STRING pDestString, PCWSTR pSubString) {
         return FALSE;
     }
     size_t lengthInWchars = pDestString->Length / sizeof(WCHAR);
-    WCHAR tempBuffer[1024];
+    WCHAR tempBuffer[KRN_LOG_LEN];
     if (lengthInWchars >= sizeof(tempBuffer) / sizeof(WCHAR)) {
         return FALSE;
     }
