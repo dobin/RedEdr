@@ -26,7 +26,7 @@ EventProcessor g_EventProcessor;
 
 
 EventProcessor::EventProcessor() {
-    init();
+    //init();
 }
 
 void EventProcessor::init() {
