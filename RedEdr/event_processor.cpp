@@ -86,7 +86,9 @@ void EventProcessor::InitialProcessInfo(Process *process) {
             dllEntry.name.c_str()
         );
     }
-    outModules.pop_back(); // remove fucking last comma
+    if (outModules.size() > 0) {
+        outModules.pop_back(); // remove last comma
+    }
     std::wstring outDlls = format_wstring(L"{\"func\":\"loaded_dll\",\"type\":\"process_query\",\"time\":%lld,\"pid\":%lld,\"dlls\":[%s]}",
         get_time(),
         process->id,
