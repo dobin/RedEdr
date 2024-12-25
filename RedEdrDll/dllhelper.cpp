@@ -139,7 +139,7 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
             break;
         }*/
 
-        ProcessAddrInfoRet processAddrInfoRet = ProcessAddrInfo(hProcess, address);
+        ProcessAddrInfoRet processAddrInfoRet = ProcessAddrInfo(hProcess, (PVOID) address);
         w = swprintf_s(buf, buf_size, L"{\"idx\":%i,\"addr\":%llu,\"page_addr\":%llu,\"size\":%zu,\"state\":%lu,\"protect\":\"%s\",\"type\":\"%s\"},",
             n, 
             address, 

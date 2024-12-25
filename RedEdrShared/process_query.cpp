@@ -287,10 +287,10 @@ std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID modul
 }
 
 
-ProcessAddrInfoRet ProcessAddrInfo(HANDLE hProcess, DWORD address) {
+ProcessAddrInfoRet ProcessAddrInfo(HANDLE hProcess, PVOID address) {
     MEMORY_BASIC_INFORMATION mbi;
     SIZE_T returnLength = 0;
-    if (!NtQueryVirtualMemory(hProcess, (PVOID)address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
+    if (!NtQueryVirtualMemory(hProcess, address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
         LOG_A(LOG_WARNING, "ProcessQuery: Could not query memory address 0x%llx in process 0x%x", address, hProcess);
     }
 

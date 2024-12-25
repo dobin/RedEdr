@@ -35,7 +35,7 @@ struct ProcessAddrInfoRet {
     std::wstring protectStr;
     std::wstring typeStr;
 };
-ProcessAddrInfoRet ProcessAddrInfo(HANDLE hProcess, DWORD address);
+ProcessAddrInfoRet ProcessAddrInfo(HANDLE hProcess, PVOID address);
 
 
 struct ProcessPebInfoRet {
