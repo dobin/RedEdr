@@ -2,13 +2,12 @@
 #include <sstream>
 #include <vector>
 
+#include "process_resolver.h"
 #include "process_query.h"
 #include "event_processor.h"
 #include "event_aggregator.h"
 #include "event_augmenter.h"
 #include "event_detector.h"
-#include "process_resolver.h"
-
 #include "utils.h"
 #include "config.h"
 
@@ -147,6 +146,11 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
 
     // Augment Event with memory info
     AugmentEventWithMemAddrInfo(j);
+
+    // Check if we should skip as its our own DLL patching
+    if (EventHasOurDllCallstack(j)) {
+        return;
+    }
 
     // Track Memory changes of Event (MemDynamic)
     g_EventDetector.ScanEventForMemoryChanges(j);

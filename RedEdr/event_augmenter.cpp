@@ -3,7 +3,6 @@
 #include "config.h"
 #include "json.hpp"
 
-#include "process_query.h"
 #include "event_augmenter.h"
 #include "mem_static.h"
 
@@ -27,7 +26,6 @@ void AugmentEventWithMemAddrInfo(nlohmann::json& j) {
                 std::string symbol = g_MemStatic.ResolveStr(addr);
                 callstack_entry["addr_info"] = symbol;
 
-                // log
                 if (g_config.debug) {
                     LOG_A(LOG_INFO, "Addr 0x%llx Symbol: %s",
                         addr,
@@ -45,7 +43,6 @@ void AugmentEventWithMemAddrInfo(nlohmann::json& j) {
                 std::string symbol = g_MemStatic.ResolveStr(addr);
                 callstack_entry["addr_info"] = symbol;
 
-                // log
                 if (g_config.debug) {
                     LOG_A(LOG_INFO, "Addr 0x%llx Symbol: %s",
                         addr,
@@ -54,6 +51,27 @@ void AugmentEventWithMemAddrInfo(nlohmann::json& j) {
             }
         }
     }
+}
+
+
+BOOL EventHasOurDllCallstack(nlohmann::json& j) {
+    // For ETW
+    unsigned int occurences = 0;
+    if (j.contains("stack_trace") && j["stack_trace"].is_array()) {
+        for (auto& callstack_entry : j["stack_trace"]) {
+            if (callstack_entry.contains("addr_info")) {
+                if (callstack_entry["addr_info"].get<std::string>().find("RedEdrDll.dll") != std::string::npos) {
+                    occurences += 1;
+
+                    // ONE RedEdrDll.dll entry if hooked
+                    if (occurences == 2) {
+                        return TRUE;
+                    }
+                }
+            }
+        }
+    }
+    return FALSE;
 }
 
 
