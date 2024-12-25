@@ -4,7 +4,7 @@
 
 #include "../Shared/common.h"
 
-#define KRN_LOG_LEN 4096
+#define KRN_LOG_LEN 512
 
 
 void LOG_A(int severity, const char* format, ...)

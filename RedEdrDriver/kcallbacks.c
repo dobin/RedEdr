@@ -15,6 +15,34 @@
 #include "../Shared/common.h"
 
 
+wchar_t* ProcessLine;
+wchar_t* ImageLine;
+wchar_t* ThreadLine;
+
+
+int InitCallbacks() {
+    ProcessLine = ExAllocatePool2(POOL_FLAG_NON_PAGED, DATA_BUFFER_SIZE * 2, 'log');
+    if (ProcessLine == NULL) {
+        return FALSE;
+    }
+    ImageLine = ExAllocatePool2(POOL_FLAG_NON_PAGED, DATA_BUFFER_SIZE * 2, 'log');
+    if (ImageLine == NULL) {
+        return FALSE;
+    }
+    ThreadLine = ExAllocatePool2(POOL_FLAG_NON_PAGED, DATA_BUFFER_SIZE * 2, 'log');
+    if (ThreadLine == NULL) {
+        return FALSE;
+    }
+    return TRUE;
+}
+
+void UninitCallbacks() {
+    ExFreePool(ProcessLine);
+    ExFreePool(ImageLine);
+    ExFreePool(ThreadLine);
+}
+
+
 // For: PsSetCreateProcessNotifyRoutineEx()
 void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE_NOTIFY_INFO createInfo) {
     // Still execute even if we are globally disabled, but need kapc injection
@@ -84,8 +112,7 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
     }
 
     if (g_config.enable_logging && processInfo->observe) {
-        wchar_t line[DATA_BUFFER_SIZE] = { 0 };
-        swprintf(line, L"{\"type\":\"kernel\",\"time\":%llu,\"callback\":\"process_create\",\"krn_pid\":%llu,\"pid\":%llu,\"name\":\"%s\",\"ppid\":%llu,\"parent_name\":\"%s\",\"observe\":%d}",
+        swprintf(ProcessLine, L"{\"type\":\"kernel\",\"time\":%llu,\"callback\":\"process_create\",\"krn_pid\":%llu,\"pid\":%llu,\"name\":\"%s\",\"ppid\":%llu,\"parent_name\":\"%s\",\"observe\":%d}",
             systemTime,
             (unsigned __int64)PsGetCurrentProcessId(),
             (unsigned __int64)pid, 
@@ -93,7 +120,7 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
             (unsigned __int64)createInfo->ParentProcessId, 
             JsonEscape(processInfo->parent_name, PROC_NAME_LEN),
             processInfo->observe);
-        LogEvent(line);
+        LogEvent(ProcessLine);
     }
 }
 
@@ -103,27 +130,28 @@ void CreateThreadNotifyRoutine(HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Create
     if (!g_config.enable_logging) {
         return;
     }
-
     PROCESS_INFO* procInfo = LookupProcessInfo(ProcessId);
     if (procInfo == NULL || !procInfo->observe) {
         return;
     }
+
     ULONG64 systemTime;
     KeQuerySystemTime(&systemTime);
 
-    wchar_t line[DATA_BUFFER_SIZE] = { 0 };
-    swprintf(line, L"{\"type\":\"kernel\",\"time\":%llu,\"callback\":\"thread_create\",\"krn_pid\":%llu,\"pid\":%llu,\"threadid\":%llu,\"create\":%d}",
+    swprintf(ThreadLine, L"{\"type\":\"kernel\",\"time\":%llu,\"callback\":\"thread_create\",\"krn_pid\":%llu,\"pid\":%llu,\"threadid\":%llu,\"create\":%d}",
         systemTime,
         (unsigned __int64)PsGetCurrentProcessId(),
         (unsigned __int64)ProcessId,
         (unsigned __int64)ThreadId,
         Create);
-    LogEvent(line);
+    LogEvent(ThreadLine);
 }
 
 
 // For: PsSetLoadImageNotifyRoutine
 void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIMAGE_INFO ImageInfo) {
+    UNREFERENCED_PARAMETER(ImageInfo);
+
     // Still execute even if we are globally disabled, but need kapc injection
     if (!g_config.enable_logging && !g_config.enable_kapc_injection) {
         return;
@@ -134,9 +162,6 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
 
     ULONG64 systemTime;
     KeQuerySystemTime(&systemTime);
-
-    UNREFERENCED_PARAMETER(ImageInfo);
-    wchar_t line[DATA_BUFFER_SIZE] = { 0 };
     wchar_t ImageName[PATH_LEN] = { 0 };
 
     // We may only have KAPC injection, and no logging
@@ -144,12 +169,12 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
         PROCESS_INFO* procInfo = LookupProcessInfo(ProcessId);
         if (procInfo != NULL && procInfo->observe) {
             UnicodeStringToWChar(FullImageName, ImageName, PATH_LEN);
-            swprintf(line, L"{\"type\":\"kernel\",\"time\":%llu,\"callback\":\"image_load\",\"krn_pid\":%llu,\"pid\":%llu,\"image\":\"%s\"}",
+            swprintf(ImageLine, L"{\"type\":\"kernel\",\"time\":%llu,\"callback\":\"image_load\",\"krn_pid\":%llu,\"pid\":%llu,\"image\":\"%s\"}",
                 systemTime,
                 (unsigned __int64)PsGetCurrentProcessId(),
                 (unsigned __int64)ProcessId,
                 JsonEscape(ImageName, PATH_LEN));
-            LogEvent(line);
+            LogEvent(ImageLine);
         }
     }
     if (g_config.enable_kapc_injection) {

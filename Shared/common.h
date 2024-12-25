@@ -4,7 +4,7 @@
 #define COMMON_H
 
 #define PIPE_BUFFER_SIZE 8192 // thats the pipe buffer (default 4096)
-#define DATA_BUFFER_SIZE 4096 // events, most important
+#define DATA_BUFFER_SIZE 8192 // events, most important
 
 #define IOCTL_MY_IOCTL_CODE CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
 

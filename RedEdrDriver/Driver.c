@@ -200,6 +200,7 @@ void RedEdrUnload(_In_ PDRIVER_OBJECT DriverObject) {
 
     // Remove all data
     FreeHashTable();
+    UninitCallbacks();
 
     // Delete the driver device 
     IoDeleteDevice(DriverObject->DeviceObject);
@@ -260,6 +261,7 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
         return status;
     }
 
+    InitCallbacks();
     init_config();
     LoadKernelCallbacks(); // always load the callbacks, based on config
     if (g_config.enable_logging) { // only connect when we enable this (deamon may not be ready on load)

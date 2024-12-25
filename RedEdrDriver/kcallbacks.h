@@ -38,6 +38,8 @@ typedef struct _TD_CALLBACK_REGISTRATION {
 }
 TD_CALLBACK_REGISTRATION, * PTD_CALLBACK_REGISTRATION;
 
+int InitCallbacks();
+void UninitCallbacks();
 
 void CreateProcessNotifyRoutine(PEPROCESS, HANDLE, PPS_CREATE_NOTIFY_INFO);
 void CreateThreadNotifyRoutine(HANDLE, HANDLE, BOOLEAN);
