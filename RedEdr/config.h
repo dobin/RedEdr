@@ -39,6 +39,7 @@ public:
 	bool etw_defender = false;
 
 	bool do_udllinjection = false;
+	bool replay_events = false;
 
 	bool debug = false;
 };

@@ -34,12 +34,14 @@ wchar_t* ConvertCharToWchar(const char* arg);
 std::string wcharToString(const wchar_t* wstr);
 std::string wstring_to_utf8(std::wstring& wide_string);
 std::wstring format_wstring(const wchar_t* format, ...);
-void remove_all_occurrences_case_insensitive(std::wstring& str, const std::wstring& to_remove);
+std::wstring utf8_to_wstring(const std::string& str);
+
+bool wstring_starts_with(const std::wstring& str, const std::wstring& prefix);
 std::wstring ReplaceAll(std::wstring str, const std::wstring& from, const std::wstring& to);
 std::string ReplaceAllA(std::string str, const std::string& from, const std::string& to);
 bool contains_case_insensitive(const std::wstring& haystack, const std::wstring& needle);
-std::wstring utf8_to_wstring(const std::string& str);
-bool wstring_starts_with(const std::wstring& str, const std::wstring& prefix);
+void remove_all_occurrences_case_insensitive(std::wstring& str, const std::wstring& to_remove);
+
 
 wchar_t* JsonEscape(wchar_t* str, size_t buffer_size);
 std::wstring JsonEscape2(PCWSTR input);

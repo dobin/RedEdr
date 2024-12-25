@@ -144,7 +144,7 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
     EventStats(j);
 
     // Handle if we see the pid the first time, by augmenting our internal data structures
-    if (j.contains("pid")) {
+    if (j.contains("pid") && !g_config.replay_events) {
         Process* process = g_ProcessResolver.getObject(j["pid"].get<DWORD>());
 
         // Check if the process is initialized (ready to be queried by us)

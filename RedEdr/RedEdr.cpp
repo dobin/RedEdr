@@ -11,6 +11,7 @@
 #include "cxxops.hpp"
 #include "config.h"
 #include "event_processor.h"
+#include "event_aggregator.h"
 #include "webserver.h"
 #include "kernelinterface.h"
 #include "pplmanager.h"
@@ -80,6 +81,23 @@ void CreateRequiredFiles() {
 }
 
 
+void ReplayEvents(std::string filename) {
+    LOG_A(LOG_INFO, "Replaying file: %s", filename.c_str());
+    FILE* recording_file = NULL;
+    errno_t err = fopen_s(&recording_file, filename.c_str(), "r");
+    if (err != 0 || !recording_file) {
+        LOG_A(LOG_ERROR, "Could not open %s for reading", filename.c_str());
+    }
+
+    char buffer[DATA_BUFFER_SIZE];
+    while (fgets(buffer, DATA_BUFFER_SIZE, recording_file)) {
+        std::wstring bufferw = utf8_to_wstring(std::string(buffer));
+        g_EventAggregator.do_output(bufferw);
+    }
+    fclose(recording_file);
+}
+
+
 int main(int argc, char* argv[]) {
     cxxopts::Options options("RedEdr", "Maldev event recorder");
     options.add_options()
@@ -107,6 +125,8 @@ int main(int argc, char* argv[]) {
         ("5,pplstop", "PPL service: stop", cxxopts::value<bool>()->default_value("false"))
 
         // Debug
+        ("r,record", "Debug: Record all events to file", cxxopts::value<std::string>())
+        ("p,replay", "Debug: Replay all events from file", cxxopts::value<std::string>())
         ("x,test", "Debug: start parts of RedEdr for testing", cxxopts::value<std::string>())
         ("l,dllreader", "Debug: DLL reader but no injection (for manual injection tests)", cxxopts::value<bool>()->default_value("false"))
         ("d,debug", "Debug: Enable debug output", cxxopts::value<bool>()->default_value("false"))
@@ -147,7 +167,7 @@ int main(int argc, char* argv[]) {
         wchar_t* ss = ConvertCharToWchar(s.c_str());
         g_config.targetExeName = ss;
     }
-    else if (! result.count("test")) {
+    else if (! result.count("test") && !result.count("replay")) {
         std::cout << options.help() << std::endl;
         exit(0);
     }
@@ -168,29 +188,37 @@ int main(int argc, char* argv[]) {
         g_config.do_kernelcallback = true;
         g_config.do_dllinjection = true;
         g_config.do_dllinjection_ucallstack = true;
-    } else if (result.count("test")) {
+    }
+    else if (result.count("test")) {
         g_config.targetExeName = L"RedEdrTester.exe";
-		std::string s = result["test"].as<std::string>();
-		if (s == "etw") {
-			g_config.do_etw = true;
+        std::string s = result["test"].as<std::string>();
+        if (s == "etw") {
+            g_config.do_etw = true;
             g_config.etw_standard = true;
             g_config.etw_kernelaudit = false;
             g_config.etw_secaudit = false;
             g_config.etw_defender = false;
-		}
-		else if (s == "etwti") {
-			g_config.do_etwti = true;
-		}
-		else if (s == "kernel") {
-			g_config.do_kernelcallback = true;
-		}
-		else if (s == "dll") {
-			g_config.debug_dllreader = true;
-		}
+        }
+        else if (s == "etwti") {
+            g_config.do_etwti = true;
+        }
+        else if (s == "kernel") {
+            g_config.do_kernelcallback = true;
+        }
+        else if (s == "dll") {
+            g_config.debug_dllreader = true;
+        }
+    } else if (result.count("replay")) {
+        g_config.replay_events = TRUE;
 	} else if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback 
         && !g_config.do_dllinjection && !g_config.do_etwti && !g_config.debug_dllreader) {
         printf("Choose at least one of --etw --etwti --kernel --inject --etwti (--dllreader for testing)");
         return 1;
+    }
+
+    // Event Record
+    if (result.count("record")) {
+        g_EventAggregator.InitRecorder(result["record"].as<std::string>());
     }
 
     CreateRequiredFiles();
@@ -199,8 +227,8 @@ int main(int argc, char* argv[]) {
 
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
-    LOG_A(LOG_INFO, "--( RedEdr 0.3");
-    LOG_W(LOG_INFO, L"--( Tracing processes with name \"%s\"", g_config.targetExeName);
+    LOG_A(LOG_INFO, "RedEdr 0.3");
+    LOG_W(LOG_INFO, L"Tracing processes with name \"%s\"", g_config.targetExeName);
 
     // SeDebug
     if (!PermissionMakeMeDebug()) {
@@ -226,6 +254,11 @@ int main(int argc, char* argv[]) {
     ManagerStart(threads);
     InitKeyboardReader(threads);
     InitializeEventProcessor(threads);
+
+    // Replay
+    if (result.count("replay")) {
+        ReplayEvents(result["replay"].as<std::string>());
+    }
 
     // Test
     if(result.count("test")) {

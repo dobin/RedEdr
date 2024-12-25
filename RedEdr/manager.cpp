@@ -113,6 +113,8 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
 
 
 void ManagerShutdown() {
+    g_EventAggregator.StopRecorder();
+
     if (g_config.do_mplog) {
         LOG_A(LOG_INFO, "Manager: Stop log reader");
         LogReaderStopAll();
