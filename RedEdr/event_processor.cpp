@@ -60,25 +60,6 @@ void EventProcessor::init() {
 }
 
 
-/*
-BOOL EventProcessor::AugmentProcess(DWORD pid, Process* process) {
-    LOG_A(LOG_INFO, "ProcessQuery: Augmenting process %lu", pid);
-    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-    if (!hProcess) {
-        //LOG_A(LOG_WARNING, "Could not open process pid: %lu error %lu", pid, GetLastError());
-        return FALSE;
-    }
-
-    ProcessPebInfo(process, hProcess);
-    ProcessEnumerateModules(process, hProcess);
-    //QueryMemoryRegions(hProcess);
-
-    CloseHandle(hProcess);
-    return TRUE;
-}
-*/
-
-
 void EventProcessor::InitialProcessInfo(Process *process) {
     // Log: Peb Info
     ProcessPebInfoRet processPebInfoRet = ProcessPebInfo(process->GetHandle());
@@ -119,12 +100,12 @@ void EventProcessor::InitialProcessInfo(Process *process) {
     for (auto processLoadedDll : processLoadedDlls) {
         std::vector<ModuleSection> moduleSections = EnumerateModuleSections(process->GetHandle(), processLoadedDll.dll_base);
         for (auto moduleSection : moduleSections) {
-            MemoryRegion memoryRegion = MemoryRegion(
+            MemoryRegion* memoryRegion = new MemoryRegion(
                 moduleSection.name,
                 moduleSection.addr, 
                 moduleSection.size, 
                 moduleSection.protection);
-            g_MemStatic.AddMemoryRegion(memoryRegion.addr, &memoryRegion);
+            g_MemStatic.AddMemoryRegion(memoryRegion->addr, memoryRegion);
         }
     }
 }
@@ -165,7 +146,7 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
     }
 
     // Augment Event with memory info
-    //AugmentEventWithMemAddrInfo(j);
+    AugmentEventWithMemAddrInfo(j);
 
     // Track Memory changes of Event (MemDynamic)
     g_EventDetector.ScanEventForMemoryChanges(j);
