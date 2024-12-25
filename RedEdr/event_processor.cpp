@@ -60,6 +60,15 @@ void EventProcessor::init() {
 
 
 void EventProcessor::InitialProcessInfo(Process *process) {
+    DWORD exitCode;
+    if (process->GetHandle() == NULL || GetExitCodeProcess(process->GetHandle(), &exitCode)) {
+        if (exitCode != STILL_ACTIVE) {
+            LOG_A(LOG_WARNING, "EventProcessor: Cant access Process pid %lu",
+                process->id);
+            return;
+        }
+    }
+
     // Log: Peb Info
     ProcessPebInfoRet processPebInfoRet = ProcessPebInfo(process->GetHandle());
     std::wstring outPeb = format_wstring(L"{\"type\":\"proces_query\",\"func\":\"peb\",\"time\":%lld,\"id\":%lld,\"parent_pid\":%lld,\"image_path\":\"%s\",\"commandline\":\"%s\",\"working_dir\":\"%s\",\"is_debugged\":%d,\"is_protected_process\":%d,\"is_protected_process_light\":%d,\"image_base\":%llu}",

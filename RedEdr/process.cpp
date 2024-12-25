@@ -77,12 +77,14 @@ HANDLE Process::GetHandle() {
 
 Process::Process() {
     observe = FALSE;
+    hProcess = NULL;
 }
 
 
 Process::Process(DWORD _id) {
     id = _id;
     observe = FALSE;
+    hProcess = NULL;
 }
 
 

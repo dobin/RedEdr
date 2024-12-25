@@ -94,7 +94,8 @@ ProcessPebInfoRet ProcessPebInfo(HANDLE hProcess) {
 
     NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
     if (status != 0) {
-        LOG_A(LOG_ERROR, "Procinfo: Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
+        LOG_A(LOG_ERROR, "ProcessPebInfo: Could not NtQueryInformationProcess, ret: %lu, error: %d",
+            status, GetLastError());
         return processPebInfoRet;
     }
 
@@ -105,7 +106,7 @@ ProcessPebInfoRet ProcessPebInfo(HANDLE hProcess) {
     // PEB
     MYPEB peb;
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        LOG_A(LOG_WARNING, "ProcessQuery: Error: Could not ReadProcessMemory1 error: %d",
+        LOG_A(LOG_WARNING, "ProcessPebInfo: Error: Could not ReadProcessMemory1 error: %d",
             GetLastError());
         return processPebInfoRet;
     }
@@ -155,14 +156,14 @@ std::vector<ProcessLoadedDll> ProcessEnumerateModules(HANDLE hProcess) {
     // PBI
     NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
     if (status != 0) {
-        LOG_A(LOG_ERROR, "ProcessQuery: Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
+        LOG_A(LOG_ERROR, "ProcessEnumerateModules: Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
         return processLoadedDlls;
     }
 
     // PEB
     MYPEB peb;
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        LOG_A(LOG_WARNING, "ProcessQuery: Error: Could not ReadProcessMemory1 error: %d",
+        LOG_A(LOG_WARNING, "ProcessEnumerateModules: Error: Could not ReadProcessMemory1 error: %d",
             GetLastError());
         return processLoadedDlls;
     }
@@ -170,7 +171,7 @@ std::vector<ProcessLoadedDll> ProcessEnumerateModules(HANDLE hProcess) {
     // PEB_LDR_DATA
     PEB_LDR_DATA ldr;
     if (!ReadProcessMemory(hProcess, peb.Ldr, &ldr, sizeof(PEB_LDR_DATA), NULL)) {
-        printf("ProcessQuery:ReadProcessMemory failed for PEB_LDR_DATA\n");
+        printf("ProcessEnumerateModules: ReadProcessMemory failed for PEB_LDR_DATA\n");
         return processLoadedDlls;
     }
 
@@ -184,7 +185,7 @@ std::vector<ProcessLoadedDll> ProcessEnumerateModules(HANDLE hProcess) {
         if (!ReadProcessMemory(hProcess, CONTAINING_RECORD(current, _LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks),
             &entry, sizeof(_LDR_DATA_TABLE_ENTRY), NULL))
         {
-            printf("ProcessQuery: ReadProcessMemory failed for LDR_DATA_TABLE_ENTRY\n");
+            printf("ProcessEnumerateModules: ReadProcessMemory failed for LDR_DATA_TABLE_ENTRY\n");
             return processLoadedDlls;
         }
         if (entry.DllBase == 0) { // all zero is last one for some reason
@@ -193,7 +194,7 @@ std::vector<ProcessLoadedDll> ProcessEnumerateModules(HANDLE hProcess) {
 
         WCHAR fullDllName[MAX_PATH] = { 0 };
         if (!ReadProcessMemory(hProcess, entry.FullDllName.Buffer, fullDllName, entry.FullDllName.Length, NULL)) {
-            printf("ProcessQuery: ReadProcessMemory failed for FullDllName\n");
+            printf("ProcessEnumerateModules: ReadProcessMemory failed for FullDllName\n");
             return processLoadedDlls;
         }
         fullDllName[entry.FullDllName.Length / sizeof(WCHAR)] = L'\0';  // Null-terminate the string
