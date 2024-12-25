@@ -23,8 +23,9 @@ public:
 public:
     // Internal
     DWORD id = 0;
-    BOOL observe = 0;
+    BOOL observe = FALSE;
     unsigned int augmented = 0;
+    BOOL initialized = FALSE;
 
     std::wstring commandline;
     HANDLE hProcess;

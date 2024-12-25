@@ -22,6 +22,7 @@
  * 
  */
 
+
 EventProcessor g_EventProcessor;
 
 
@@ -81,7 +82,7 @@ BOOL EventProcessor::AugmentProcess(DWORD pid, Process* process) {
 void EventProcessor::InitialProcessInfo(Process *process) {
     // Log: Peb Info
     ProcessPebInfoRet processPebInfoRet = ProcessPebInfo(process->GetHandle());
-    std::wstring o = format_wstring(L"{\"type\":\"proces_query\",\"func\":\"peb\",\"time\":%lld,\"id\":%lld,\"parent_pid\":%lld,\"image_path\":\"%s\",\"commandline\":\"%s\",\"working_dir\":\"%s\",\"is_debugged\":%d,\"is_protected_process\":%d,\"is_protected_process_light\":%d,\"image_base\":%llu}",
+    std::wstring outPeb = format_wstring(L"{\"type\":\"proces_query\",\"func\":\"peb\",\"time\":%lld,\"id\":%lld,\"parent_pid\":%lld,\"image_path\":\"%s\",\"commandline\":\"%s\",\"working_dir\":\"%s\",\"is_debugged\":%d,\"is_protected_process\":%d,\"is_protected_process_light\":%d,\"image_base\":%llu}",
         get_time(),
         process->id,
         processPebInfoRet.parent_pid,
@@ -93,26 +94,26 @@ void EventProcessor::InitialProcessInfo(Process *process) {
         processPebInfoRet.is_protected_process_light,
         processPebInfoRet.image_base
     );
-    g_EventAggregator.do_output(o);
+    g_EventAggregator.do_output(outPeb);
 
     // Log: Loaded Modules Info
     std::vector<ProcessLoadedDll> processLoadedDlls = ProcessEnumerateModules(process->GetHandle());
-    std::wstring csv;
+    std::wstring outModules;
     for (auto dllEntry : processLoadedDlls) {
-        csv += format_wstring(L"{\"addr\":%llu,\"size\":%llu,\"name\":\"%s\"},",
+        outModules += format_wstring(L"{\"addr\":%llu,\"size\":%llu,\"name\":\"%s\"},",
             dllEntry.dll_base,
             dllEntry.size,
             dllEntry.name.c_str()
         );
-        csv.pop_back(); // remove fucking last comma
-        std::wstring o = format_wstring(L"{\"func\":\"loaded_dll\",\"type\":\"process_query\",\"time\":%lld,\"pid\":%lld,\"dlls\":[%s]}",
-            get_time(),
-            process->id,
-            csv.c_str()
-        );
-        remove_all_occurrences_case_insensitive(o, std::wstring(L"C:\\\\Windows\\\\system32\\\\"));
     }
-    g_EventAggregator.do_output(o);
+    outModules.pop_back(); // remove fucking last comma
+    std::wstring outDlls = format_wstring(L"{\"func\":\"loaded_dll\",\"type\":\"process_query\",\"time\":%lld,\"pid\":%lld,\"dlls\":[%s]}",
+        get_time(),
+        process->id,
+        outModules.c_str()
+    );
+    remove_all_occurrences_case_insensitive(outDlls, std::wstring(L"C:\\\\Windows\\\\system32\\\\"));
+    g_EventAggregator.do_output(outDlls);
 
     // DB: MemStatic
     for (auto processLoadedDll : processLoadedDlls) {
@@ -139,33 +140,38 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
         return;
     }
 
-    //printf("A1\n");
-
     // Stats (for UI)
     EventStats(j);
 
-    //printf("A2\n");
     // Handle if we see the pid the first time, by augmenting our internal data structures
     if (j.contains("pid")) {
         Process* process = g_ProcessResolver.getObject(j["pid"].get<DWORD>());
-        if (process->augmented == 0) {
+
+        // Check if the process is initialized (ready to be queried by us)
+        if (!process->initialized) {
+            // If we receive on of these, its for sure initialized
+            // If we only do kernel callbacks, it will never be initialized. (But nobody uses that)
+            // Also, we just need the info we gather for ETW and DLL events anyway
+            if (j["type"] == "etw" || j["type"] == "dll") {
+                process->initialized = true;
+            }
+        }
+
+        // If process is ready (not early kernel events), gather information
+        if (process->augmented == 0 && process->initialized) {
             process->augmented++;
             InitialProcessInfo(process);
         }
     }
-    //printf("A3\n");
+
     // Augment Event with memory info
     //AugmentEventWithMemAddrInfo(j);
-    //printf("A4\n");
 
     // Track Memory changes of Event (MemDynamic)
     g_EventDetector.ScanEventForMemoryChanges(j);
-    //printf("A5\n");
 
     // Perform Detections on Event
     g_EventDetector.ScanEventForDetections(j);
-
-    //printf("A6\n");
 
     // Print Event
     PrintEvent(j);
