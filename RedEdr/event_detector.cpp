@@ -4,7 +4,6 @@
 #include <locale>
 #include <codecvt>
 
-#include "process_query.h"
 #include "mem_dynamic.h"
 #include "event_detector.h"
 #include "config.h"

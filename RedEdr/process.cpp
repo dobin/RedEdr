@@ -23,7 +23,6 @@
 // This should be fast
 Process* MakeProcess(DWORD pid, LPCWSTR target_name) {
     Process* process;
-    HANDLE hProcess;
 
     process = new Process(pid);
     if (target_name == NULL) {

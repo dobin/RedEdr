@@ -34,7 +34,6 @@ HANDLE threadReadyness; // ready to accept clients
 
 // Private functions
 DWORD WINAPI KernelReaderProcessingThread(LPVOID param);
-void CheckEventForNewObservable(wchar_t* line);
 
 
 void KernelReaderInit(std::vector<HANDLE>& threads) {
@@ -76,7 +75,6 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
             }
             for (const auto& event : events) {
                 g_EventAggregator.do_output(event);
-                CheckEventForNewObservable((wchar_t*) event.c_str());
             }
         }
 
@@ -87,31 +85,6 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
 
     LOG_A(LOG_INFO, "!DllReader Server Thread: end");
     return 0;
-}
-
-
-void CheckEventForNewObservable(wchar_t* line) {
-    // Check if "observe:1" exists
-    wchar_t* observe_str = wcsstr(line, L"observe:");
-    if (!observe_str) {
-        return;
-    }
-
-    // something like
-    // "type:kernel;time:133711655617407173;callback:create_process;krn_pid:5564;pid:4240;name:\\Device\\HarddiskVolume2\\Windows\\System32\\notepad.exe;ppid:5564;parent_name:\\Device\\HarddiskVolume2\\Windows\\explorer.exe;observe:1"
-    // find "observe:<int>" and pid from "pid:<int>"
-    int observe_value = 0;
-    swscanf_s(observe_str, L"observe:%d", &observe_value);
-    if (observe_value == 1) {
-        // Now extract the pid
-        wchar_t* pid_str = wcsstr(line, L";pid:");
-        if (pid_str) {
-            int pid = 0;
-            swscanf_s(pid_str, L";pid:%d", &pid);
-            LOG_A(LOG_WARNING, "KernelReader: observe pid: %d (%d)", pid, observe_value);
-            g_ProcessResolver.getObject(pid); // FIXME this actually creates the process 
-        }
-    }
 }
 
 
