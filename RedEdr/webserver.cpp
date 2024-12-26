@@ -95,7 +95,6 @@ bool StartWithExplorer(std::string programPath) {
 
 BOOL ExecMalware(std::string filename, std::string filedata) {
     std::string filepath = "C:\\RedEdr\\data\\" + filename;
-    printf("FUkcing path: %s\n", filepath.c_str());
     std::ofstream ofs(filepath, std::ios::binary);
     if (ofs) {
         ofs.write(filedata.data(), filedata.size());
