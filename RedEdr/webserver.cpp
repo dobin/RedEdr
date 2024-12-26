@@ -71,6 +71,44 @@ std::string getRecordingsAsJson() {
 }
 
 
+bool StartWithExplorer(std::string programPath) {
+    std::string fullpath = "explorer.exe " + programPath;
+    wchar_t* commandLine = stringToWChar(fullpath);
+
+    LOG_W(LOG_INFO, L"Executing malware: %s", commandLine);
+    
+    // Start the process
+    STARTUPINFO si = { sizeof(STARTUPINFO) };
+    PROCESS_INFORMATION pi = { 0 };
+    if (!CreateProcessW(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+        wprintf(L"Failed to start %s with explorer.exe. Error: %d\n", 
+            commandLine, GetLastError());
+        return false;
+    }
+
+    // Clean up
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    return true;
+}
+
+
+BOOL ExecMalware(std::string filename, std::string filedata) {
+    std::string filepath = "C:\\RedEdr\\data\\" + filename;
+    printf("FUkcing path: %s\n", filepath.c_str());
+    std::ofstream ofs(filepath, std::ios::binary);
+    if (ofs) {
+        ofs.write(filedata.data(), filedata.size());
+        ofs.close();
+    }
+    else {
+        LOG_A(LOG_ERROR, "Could not write file");
+        return FALSE;
+    }
+    return StartWithExplorer(filepath);
+}
+
+
 DWORD WINAPI WebserverThread(LPVOID param) {
     LOG_A(LOG_INFO, "!WEB: Start Webserver thread");
     
@@ -167,6 +205,20 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     svr.Get("/api/stop", [](const httplib::Request& req, httplib::Response& res) {
         g_config.enabled = FALSE;
         ManagerReload();
+        json response = { {"status", "ok"} };
+        res.set_content(response.dump(), "application/json");
+    });
+    svr.Post("/api/exec", [](const httplib::Request& req, httplib::Response& res) {
+        // curl.exe -X POST http://localhost:8080/api/exec -F "file=@C:\tools\procexp64.exe"
+        auto file = req.get_file_value("file");
+        auto filename = file.filename;
+        if (file.content.empty() || filename.empty()) {
+            LOG_A(LOG_WARNING, "Webserver: Data error: %d %d", file.content.size(), filename.size());
+            res.status = 400;
+            res.set_content("Invalid request: filename or file data is missing.", "text/plain");
+            return;
+        }
+        BOOL ret = ExecMalware(filename, file.content);
         json response = { {"status", "ok"} };
         res.set_content(response.dump(), "application/json");
     });
