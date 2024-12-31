@@ -60,13 +60,16 @@ void EventProcessor::init() {
 
 
 void EventProcessor::InitialProcessInfo(Process *process) {
+    if (process->GetHandle() == NULL) {
+        LOG_A(LOG_WARNING, "EventProcessor: Cant access Process pid %lu",
+            process->id);
+    }
     DWORD exitCode;
-    if (process->GetHandle() == NULL || GetExitCodeProcess(process->GetHandle(), &exitCode)) {
-        if (exitCode != STILL_ACTIVE) {
-            LOG_A(LOG_WARNING, "EventProcessor: Cant access Process pid %lu",
-                process->id);
-            return;
-        }
+    GetExitCodeProcess(process->GetHandle(), &exitCode);
+    if (exitCode != STILL_ACTIVE) {
+        LOG_A(LOG_WARNING, "EventProcessor: Cant access Process pid %lu",
+            process->id);
+        return;
     }
 
     // Log: Peb Info
