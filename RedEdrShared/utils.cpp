@@ -271,6 +271,53 @@ wchar_t* getMemoryRegionType(DWORD type) {
 }
 
 
+
+std::string GetSectionPermissions(DWORD characteristics) {
+    std::string permissions;
+
+    switch (characteristics) {
+    case PAGE_EXECUTE:
+        permissions = "--X";
+        break;
+    case PAGE_EXECUTE_READ:
+        permissions = "R-X";
+        break;
+    case PAGE_EXECUTE_READWRITE:
+        permissions = "RWX";
+        break;
+    case PAGE_EXECUTE_WRITECOPY:
+        permissions = "EXECUTE_WRITECOPY";
+        break;
+    case PAGE_NOACCESS:
+        permissions = "NOACCESS";
+        break;
+    case PAGE_READONLY:
+        permissions ="R--";
+        break;
+    case PAGE_READWRITE:
+        permissions ="RW-";
+        break;
+    case PAGE_WRITECOPY:
+        permissions = "WRITECOPY";
+        break;
+    case PAGE_GUARD:
+        permissions = "GUARD";
+        break;
+    case PAGE_NOCACHE:
+        permissions = "NOCACHE";
+        break;
+    case PAGE_WRITECOMBINE:
+        permissions = "WRITECOMBINE";
+        break;
+    default:
+        permissions = "Unknown";
+        break;
+    }
+    return permissions;
+}
+
+
+
 wchar_t* getMemoryRegionState(DWORD type) {
     const wchar_t* memoryType;
     switch (type) {

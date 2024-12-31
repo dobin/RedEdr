@@ -23,6 +23,7 @@ std::string read_file(const std::string& path);
 wchar_t* getMemoryRegionProtect(DWORD protect);
 wchar_t* getMemoryRegionType(DWORD type);
 wchar_t* getMemoryRegionState(DWORD type);
+std::string GetSectionPermissions(DWORD characteristics);
 DWORD StartProcessInBackground(LPCWSTR exePath, LPCWSTR commandLine);
 void write_file(std::string path, std::string data);
 std::string get_time_for_file();

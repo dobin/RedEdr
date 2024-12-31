@@ -8,6 +8,7 @@
 #include <krabs.hpp>
 #include "json.hpp"
 #include "utils.h"
+#include "process_query.h"
 
 
 std::wstring KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema schema) {
@@ -49,14 +50,22 @@ std::wstring KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sc
             }
             std::string jsonKey = wstring_to_utf8((std::wstring&)propertyName);
 
+            // Special cases
+            if (propertyName == L"ProtectionMask" || propertyName == L"LastProtectionMask") {
+                uint32_t protection_mask = parser.parse<uint32_t>(propertyName);
+                j[jsonKey] = GetSectionPermissions(protection_mask);
+                continue;
+            }
 
             switch (propertyType) {
             case TDH_INTYPE_UINT32:
                 j[jsonKey] = (uint32_t) parser.parse<uint32_t>(propertyName);
+                //j[jsonKey + "_vartype"] = "TDH_INTYPE_UINT32";
                 break;
 
             case TDH_INTYPE_UINT64:
                 j[jsonKey] = (uint64_t) parser.parse<uint64_t>(propertyName);
+                //j[jsonKey + "_vartype"] = "TDH_INTYPE_UINT64";
                 break;
 
             case TDH_INTYPE_UNICODESTRING:
@@ -74,6 +83,7 @@ std::wstring KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sc
 
             case TDH_INTYPE_POINTER:
                 j[jsonKey] = (uint64_t) parser.parse<PVOID>(propertyName);
+                //j[jsonKey + "_vartype"] = "TDH_INTYPE_POINTER";
                 break;
 
             case TDH_INTYPE_FILETIME:

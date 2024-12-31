@@ -32,7 +32,6 @@
  // Private
 wchar_t* GetFileNameFromPath(wchar_t* path);
 std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u);
-std::string GetSectionPermissions(DWORD characteristics);
 
 
 // Some stupid definitions (dont belong in the .h)
@@ -356,22 +355,6 @@ bool QueryMemoryRegions(HANDLE hProcess) {
 
 
 // Utils
-
-std::string GetSectionPermissions(DWORD characteristics) {
-    std::string permissions;
-
-    if (characteristics & IMAGE_SCN_MEM_READ)
-        permissions += "r";
-    if (characteristics & IMAGE_SCN_MEM_WRITE)
-        permissions += "w";
-    if (characteristics & IMAGE_SCN_MEM_EXECUTE)
-        permissions += "x";
-
-    if (permissions.empty())
-        permissions = "none";
-
-    return permissions;
-}
 
 
 // Gets a UNICODE_STRING content in a remote process as wstring
