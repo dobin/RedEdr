@@ -26,7 +26,7 @@ function displayEvents(events) {
                 key === 'thread_id' || key === 'provider_name'  || key === 'id' || key == 'trace_id'
             ) {
                 eventHeader += `<span class="highlight_a">${key}:${value}</span> `;
-            } else if (key === 'type' || key === 'func' || key === 'event') {
+            } else if (key === 'type' || key === 'func' || key === 'event' || key === 'task') {
                 eventTitle += `<span class="highlight_b"><b>${value}</b></span> `;
 
             // detection
@@ -73,17 +73,6 @@ function displayEvents(events) {
                    ! key.startsWith("Target") && 
                    ! key.startsWith("Original"))
                {
-                   // translate some ETWTI for now
-                   if (key == 'ProtectionMask' || key == 'LastProtectionMask') {
-                       value = translateProtectionFlags(value);
-                   }
-                   if (key == 'BaseAddress') {
-                       etwti_startaddr = value;
-                   }
-                   if (key == 'RegionSize') {
-                       value = value - etwti_startaddr;
-                   }
-
                    eventDetails += `<span class="highlight_c">${key}:${value}</span> `;
                }
             }
@@ -111,24 +100,6 @@ function displayDetections(detections) {
         detectionDiv.textContent = `${index}: ${detection}`;
         container.appendChild(detectionDiv);
     });
-}
-
-function translateProtectionFlags(flags) {
-    // Define the mapping of protection flags to "rwx" permissions
-    const protectionMapping = {
-        0x01: "---", // PAGE_NOACCESS (no access, for completeness)
-        0x02: "r--", // PAGE_READONLY
-        0x04: "rw-", // PAGE_READWRITE
-        0x08: "rw-c", // PAGE_WRITECOPY
-        0x10: "--x", // PAGE_EXECUTE
-        0x20: "r-x", // PAGE_EXECUTE_READ
-        0x40: "rwx", // PAGE_EXECUTE_READWRITE
-        0x80: "rwxc", // PAGE_EXECUTE_WRITECOPY
-    };
-    // Mask out modifiers that don't affect basic permissions
-    const basicFlags = flags & 0xFF;
-    // Get the permissions string from the mapping
-    return protectionMapping[basicFlags] || "unknown";
 }
 
 function myHex(num) {
