@@ -26,9 +26,8 @@ std::wstring KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sc
     // Construct the event string, like "ImageLoad"
     std::wstring a = std::wstring(schema.task_name());
     std::wstring b = std::wstring(schema.opcode_name());
-    std::string c = wstring_to_utf8(a);
-    std::string d = wstring_to_utf8(b);
-    j["task"] = c;
+    std::wstring c = a + b;
+    std::string d = wstring_to_utf8(c);
     j["event"] = d;
 
     j["opcode_id"] = schema.event_opcode();
@@ -37,8 +36,6 @@ std::wstring KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sc
     // Iterate over all properties defined in the schema
     for (const auto& property : parser.properties()) {
         try {
-            std::wstringstream ss;
-
             // Get the name and type of the property
             const std::wstring& propertyName = property.name();
             const auto propertyType = property.type();
@@ -50,23 +47,35 @@ std::wstring KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sc
             if (wstring_starts_with(propertyName, L"Reserved") || wstring_starts_with(propertyName, L"Signature")) {
                 continue;
             }
+            std::string jsonKey = wstring_to_utf8((std::wstring&)propertyName);
+
 
             switch (propertyType) {
             case TDH_INTYPE_UINT32:
-                ss << parser.parse<uint32_t>(propertyName);
+                j[jsonKey] = (uint32_t) parser.parse<uint32_t>(propertyName);
                 break;
+
             case TDH_INTYPE_UINT64:
-                ss << parser.parse<uint64_t>(propertyName);
+                j[jsonKey] = (uint64_t) parser.parse<uint64_t>(propertyName);
                 break;
+
             case TDH_INTYPE_UNICODESTRING:
+            {
+                std::wstringstream ss;
                 ss << parser.parse<std::wstring>(propertyName);
+                std::string s = wstring_to_utf8((std::wstring&)ss.str());
+                j[jsonKey] = s;
+            }
                 break;
+
             case TDH_INTYPE_ANSISTRING:
-                ss << utf8_to_wstring(parser.parse<std::string>(propertyName));
+                j[jsonKey] = parser.parse<std::string>(propertyName);
                 break;
-            case TDH_INTYPE_POINTER:  // hex
-                ss << parser.parse<PVOID>(propertyName);
+
+            case TDH_INTYPE_POINTER:
+                j[jsonKey] = (uint64_t) parser.parse<PVOID>(propertyName);
                 break;
+
             case TDH_INTYPE_FILETIME:
             {
                 // Not a PFILETIME!
@@ -76,28 +85,16 @@ std::wstring KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sc
                 ULARGE_INTEGER uli;
                 uli.LowPart = fileTime.dwLowDateTime;
                 uli.HighPart = fileTime.dwHighDateTime;
-                ss << uli.QuadPart;
 
-                // As string
-                /*SYSTEMTIME stUTC, stLocal;
-                FileTimeToSystemTime(&fileTime, &stUTC);
-                SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
-                ss << stLocal.wYear << L"/" << stLocal.wMonth << L"/" << stLocal.wDay << L" "
-                    << stLocal.wHour << L":" << stLocal.wMinute << L":" << stLocal.wSecond;
-                */
-
+                j[jsonKey] = uli.QuadPart;
                 break;
             }
 
             default:
-                ss << L"(Unsupported type)\n";
+                j[jsonKey] = "unsupported";
                 break;
             }
 
-            // Add the key/value as UTF-8 to the JSON
-            std::string key_2 = wstring_to_utf8((std::wstring&)propertyName);
-            std::string value_2 = wstring_to_utf8((std::wstring&)ss.str());
-            j[key_2] = value_2;
         }
         catch (const std::exception& ex) {
             std::wcout << L"Failed to parse property: " << ex.what() << L"\n";
