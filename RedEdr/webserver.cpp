@@ -1,6 +1,10 @@
 #include <iostream>
 #include <filesystem>
 #include <vector>
+#include <tchar.h>
+#include <windows.h>
+#include <wtsapi32.h>
+#include <UserEnv.h>
 
 #include "httplib.h" // Needs to be on top?
 
@@ -14,6 +18,10 @@
 #include "manager.h"
 #include "event_detector.h"
 #include "event_processor.h"
+
+#pragma comment(lib, "wtsapi32.lib")
+#pragma comment(lib, "userenv.lib")
+
 
 using json = nlohmann::json;
 
@@ -93,6 +101,84 @@ bool StartWithExplorer(std::string programPath) {
 }
 
 
+bool DropPrivilegesAndRunAsUser(const wchar_t* programPath) {
+    HANDLE hToken = nullptr;
+    HANDLE hTokenDup = nullptr;
+    DWORD sessionId = 0;
+    WTS_SESSION_INFO* pSessionInfo = nullptr;
+    DWORD sessionCount = 0;
+
+    // Enumerate all sessions
+    if (WTSEnumerateSessions(WTS_CURRENT_SERVER_HANDLE, 0, 1, &pSessionInfo, &sessionCount)) {
+        for (DWORD i = 0; i < sessionCount; ++i) {
+            if (pSessionInfo[i].State == WTSActive) { // Look for active user session
+                sessionId = pSessionInfo[i].SessionId;
+                break;
+            }
+        }
+        WTSFreeMemory(pSessionInfo);
+    }
+    else {
+        std::wcerr << L"Failed to enumerate sessions, error: " << GetLastError() << std::endl;
+        return false;
+    }
+
+    // Get the user token for the active session
+    if (!WTSQueryUserToken(sessionId, &hToken)) {
+        std::wcerr << L"Failed to query user token, error: " << GetLastError() << std::endl;
+        return false;
+    }
+
+    // Duplicate the token to create a primary token
+    if (!DuplicateTokenEx(hToken, TOKEN_ALL_ACCESS, nullptr, SecurityImpersonation, TokenPrimary, &hTokenDup)) {
+        std::wcerr << L"Failed to duplicate token, error: " << GetLastError() << std::endl;
+        CloseHandle(hToken);
+        return false;
+    }
+
+    // Set up environment for the new process
+    LPVOID env = nullptr;
+    if (!CreateEnvironmentBlock(&env, hTokenDup, TRUE)) {
+        std::wcerr << L"Failed to create environment block, error: " << GetLastError() << std::endl;
+    }
+
+    // Prepare process startup info
+    STARTUPINFO si = { sizeof(STARTUPINFO) };
+    PROCESS_INFORMATION pi = { 0 };
+
+    // Launch the process
+    if (!CreateProcessAsUser(
+        hTokenDup,
+        programPath,
+        nullptr,
+        nullptr,
+        nullptr,
+        FALSE,
+        CREATE_UNICODE_ENVIRONMENT,
+        env,
+        nullptr,
+        &si,
+        &pi)) {
+        std::wcerr << L"Failed to create process as user, error: " << GetLastError() << std::endl;
+        if (env) DestroyEnvironmentBlock(env);
+        CloseHandle(hTokenDup);
+        CloseHandle(hToken);
+        return false;
+    }
+
+    std::wcout << L"Process started successfully!" << std::endl;
+
+    // Clean up
+    if (env) DestroyEnvironmentBlock(env);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    CloseHandle(hTokenDup);
+    CloseHandle(hToken);
+
+    return true;
+}
+
+
 BOOL ExecMalware(std::string filename, std::string filedata) {
     std::string filepath = "C:\\RedEdr\\data\\" + filename;
     std::ofstream ofs(filepath, std::ios::binary);
@@ -104,7 +190,8 @@ BOOL ExecMalware(std::string filename, std::string filedata) {
         LOG_A(LOG_ERROR, "Could not write file");
         return FALSE;
     }
-    return StartWithExplorer(filepath);
+    //return StartWithExplorer(filepath);
+	return(DropPrivilegesAndRunAsUser(stringToWChar(filepath.c_str())));
 }
 
 
@@ -207,23 +294,25 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         json response = { {"status", "ok"} };
         res.set_content(response.dump(), "application/json");
     });
-    svr.Post("/api/exec", [](const httplib::Request& req, httplib::Response& res) {
-        // curl.exe -X POST http://localhost:8080/api/exec -F "file=@C:\tools\procexp64.exe"
-        auto file = req.get_file_value("file");
-        auto filename = file.filename;
-        if (file.content.empty() || filename.empty()) {
-            LOG_A(LOG_WARNING, "Webserver: Data error: %d %d", file.content.size(), filename.size());
-            res.status = 400;
-            res.set_content("Invalid request: filename or file data is missing.", "text/plain");
-            return;
-        }
-        BOOL ret = ExecMalware(filename, file.content);
-        json response = { {"status", "ok"} };
-        res.set_content(response.dump(), "application/json");
-    });
+    if (g_config.do_remoteexec) {
+        svr.Post("/api/exec", [](const httplib::Request& req, httplib::Response& res) {
+            // curl.exe -X POST http://localhost:8080/api/exec -F "file=@C:\tools\procexp64.exe"
+            auto file = req.get_file_value("file");
+            auto filename = file.filename;
+            if (file.content.empty() || filename.empty()) {
+                LOG_A(LOG_WARNING, "Webserver: Data error: %d %d", file.content.size(), filename.size());
+                res.status = 400;
+                res.set_content("Invalid request: filename or file data is missing.", "text/plain");
+                return;
+            }
+            BOOL ret = ExecMalware(filename, file.content);
+            json response = { {"status", "ok"} };
+            res.set_content(response.dump(), "application/json");
+        });
+    }
 
-    LOG_A(LOG_INFO, "WEB: Web Server listening on http://localhost:8080");
-    svr.listen("localhost", 8080);
+    LOG_A(LOG_INFO, "WEB: Web Server listening on http://0.0.0.0:8080");
+    svr.listen("0.0.0.0", 8080);
     LOG_A(LOG_INFO, "!WEB: Exit Webserver thread");
 
     return 0;

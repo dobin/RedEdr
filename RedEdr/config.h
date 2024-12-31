@@ -31,6 +31,7 @@ public:
 	bool do_dllinjection = false;
 	bool do_dllinjection_ucallstack = true;
 	bool debug_dllreader = false;
+	bool do_remoteexec = true;
 	//bool do_dllinjection_nochildren = false;
 
 	bool etw_standard = true;
