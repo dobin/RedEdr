@@ -737,8 +737,8 @@ NTSTATUS NTAPI Catch_NtCreateThreadEx(
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"thread_handle\":%lld,", rThreadHandle);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"handle\":%lld,", (long long)ProcessHandle);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"start_routine\":%llu,", StartRoutine);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"argument\":%llu,", Argument);
-        offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
+        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"argument\":%llu", Argument);
+        //offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
         SendDllPipe(buf);
     }
