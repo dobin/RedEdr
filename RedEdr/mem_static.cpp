@@ -88,7 +88,7 @@ nlohmann::json MemStatic::ToJson() {
 std::string MemStatic::ResolveStr(uint64_t addr) {
 	MemoryRegion* r = GetMemoryRegion(addr);
 	if (r == NULL) {
-		return "Unknown";
+		return "NOT_IMAGE";
 	}
 	return r->name;
 }
