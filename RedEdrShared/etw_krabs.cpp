@@ -26,8 +26,9 @@ std::wstring KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sc
     // Construct the event string, like "ImageLoad"
     std::wstring a = std::wstring(schema.task_name());
     std::wstring b = std::wstring(schema.opcode_name());
-    std::wstring c = a + b;
-    std::string d = wstring_to_utf8(c);
+    std::string c = wstring_to_utf8(a);
+    std::string d = wstring_to_utf8(b);
+    j["task"] = c;
     j["event"] = d;
 
     j["opcode_id"] = schema.event_opcode();
