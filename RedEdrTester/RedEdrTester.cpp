@@ -162,7 +162,7 @@ void AnalyzeFile(wchar_t *fname) {
 		return;
 	}
 	for (auto& event : json_data) {
-		g_EventProcessor.AnalyzeEventJson(event);
+		g_EventDetector.ScanEventForDetections(event);
 	}
 	std::cout << g_EventDetector.GetAllDetectionsAsJson() << std::endl;
 
