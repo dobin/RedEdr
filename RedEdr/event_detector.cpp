@@ -61,6 +61,27 @@ void EventDetector::AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::
 
 
 void EventDetector::ScanEventForDetections(nlohmann::json& j) {
+    if (j["type"] == "etw") {
+        // ETW-TI
+        if (j["provider_name"] == "f4e1897c-bb5d-5668-f1d8-040f4d8dd344") {
+            if (j["event"] == "KERNEL_THREATINT_TASK_PROTECTVM") {
+                if (j["ProtectionMask"] == "RWX") {
+                    std::stringstream ss;
+                    ss << "ProtectMemory with RWX at addr " << j["BaseAddress"].get<std::uint64_t>();
+                    AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
+                }
+            }
+
+            // Callstack
+            if (j.contains("stack_trace") && j["stack_trace"].is_array()) {
+                for (const auto& callstack_entry : j["stack_trace"]) {
+                    if (callstack_entry["addr_info"] == "NOT_IMAGE") {
+                        AnalyzerNewDetection(j, Criticality::HIGH, "Callstack contains non-image entry");
+                    }
+                }
+            }
+        }
+    }
     if (j["type"] == "dll") {
         if (j["func"] == "NtAllocateVirtualMemory") {
             if (j["handle"] != -1) {
