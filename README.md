@@ -15,17 +15,23 @@ It generates [JSON files](https://github.com/dobin/RedEdr/tree/master/Data)
 collecting [the telemetry](https://github.com/dobin/RedEdr/blob/master/Doc/captured_events.md) 
 of your RedTeaming tools. 
 
+Try it on [rededr.r00ted.ch](https://rededr.r00ted.ch)
 
-**Note Nov. 2024 v0.2**: It works but its buggy.
-Ctrl-c will exit RedEdr.exe, but some ETW providers may 
-not be able to be accessed anymore, and are broken until reboot. 
-Use the web UI to start/stop tracing instead without killing RedEdr.exe.
-Also, RedEdr crashes sometimes. Also, sometimes meterpreter stops
-working (no full connection) without reason when under DLL injection, 
-which can be solved by just trying again. Using ETW-TI and DLL 
-injection at the same time will emit the DLL hooking events in ETW-TI, 
-so its recommended to not use them both at the same time. 
-The last piece of the puzzle, kernel based callstacks, is not implemented yet.
+
+## Screenshots
+
+Doing:
+```c
+	PVOID shellcodeAddr = VirtualAlloc(NULL, payloadSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	memcpy(shellcodeAddr, payload, payloadSize);
+	VirtualProtect(shellcodeAddr, payloadSize, PAGE_EXECUTE_READWRITE, &dwOldProtection));
+	HANDLE hThread = CreateThread(NULL, 0, shellcodeAddr, shellcodeAddr, 0, &threadId);
+```
+
+We can see the RW->RWX and CreateThread:
+![RedEdr Screenshot DLL Injection](https://raw.github.com/dobin/RedEdr/master/Doc/screenshot-web-rwx-dll.png)
+
+![RedEdr Screenshot EWW](https://raw.github.com/dobin/RedEdr/master/Doc/screenshot-web-rwx-etw.png)
 
 
 ## Implemented Telemetry Consumers
@@ -58,16 +64,15 @@ The last piece of the puzzle, kernel based callstacks, is not implemented yet.
   * On ntdll.dll hook invocation
   * On several ETW events
  
-* Loaded DLL's
-  * On process create
-
-* process information:
-  * PEB (on process create)
+* process query:
+  * PEB
+  * Loaded DLL's (and their regions)
 
 
 ## Installation
 
 Use a dedicated VM for RedEdr. Tested on unlicensed (no Defender) Win10 Pro. 
+Install VS2022 as we need it's debug libraries.
 
 Change Windows boot options to enable self-signed kernel drivers and reboot.
 As admin cmd:
@@ -79,8 +84,6 @@ bcdedit -debug on
 If you use Hyper-V, uncheck "Security -> Enable Secure Boot". 
 
 Extract release.zip into `C:\RedEdr`. **No other directories are supported.**
-
-Install https://aka.ms/vs/17/release/vc_redist.x64.exe.
 
 Start terminal as local admin.
 
@@ -164,6 +167,10 @@ PS > .\RedEdr.exe --etwti --trace notepad.exe
 ```
 
 
+## Detections
+
+
+
 ## Example Output
 
 See `Data/` directory:
@@ -190,28 +197,27 @@ Event as JSON string │  Event         │
                      └───────┬────────┘               │ Process  │         
                              │                        └──────────┘         
                              │                             ▲               
-                             ▼                             │               
+                             ▼                             │query          
                      ┌────────────────┐                    │               
                      │                │         ┌──────────┴────┐          
 Event as JSON in C++ │  Event         ├────────►│ Process Query │          
-                     │  Processor     │         └───────────────┘          
-                     │                │                                    
-                     └┬───────────────┘                                    
+                     │  Processor     │         └─────────────┬─┘          
+                     │                │                       │add         
+                     └┬───────────────┘                       ▼            
                       │                                    ┌──────────────┐
-                      │ ┌────────────────────────┐         │              │
-                      ├─┤Event Augment           │◄────────┤  Mem Static  │
+                      │ ┌────────────────────────┐query    │              │
+                      ├─┤Event Augment           ├────────►┤  Mem Static  │
                       │ └────────────────────────┘         │              │
-                      │ ┌────────────────────────┐         └──────────────┘
+                      │ ┌────────────────────────┐add      └──────────────┘
                       ├─┤Event Mem Tracker       ├──────┐                  
                       │ └────────────────────────┘      │  ┌──────────────┐
-                      │ ┌────────────────────────┐      └─►│              │
-                      ├─┤Event Detection         │◄──┐     │ Mem Dynamic  │
-                      │ └────────────────────────┘   └─────┤              │
-                      │ ┌────────────────────────┐         └──────────────┘
+                      │ ┌────────────────────────┐query └─►│              │
+                      ├─┤Event Detection         ├───┐     │ Mem Dynamic  │
+                      │ └────────────────────────┘   └────►│              │
+                      ▼ ┌────────────────────────┐         └──────────────┘
                       └─┤Event Storage & Output  │                         
                         └────────────────────────┘                         
 ```
-
 
 IPC:
 ```
@@ -259,7 +265,7 @@ IPC:
 
 Good luck.
 
-Use VS2022. Compile as Release.
+Use VS2022. Compile as DEBUG.
 
 To compile the kernel driver: 
 * Install WDK (+SDK): https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk

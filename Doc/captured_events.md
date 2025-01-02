@@ -116,4 +116,13 @@ PROTECTVM_LOCAL type:etw time:133770294491496374 pid:5296 thread_id:5976 provide
   RegionSize:0x000001C79B58D720 
   ProtectionMask:rwx 
   LastProtectionMask:r-x
+  stack_trace:
+  [
+     {idx:0, addr:0x7ffa2d499491, type:IMAGE}, 
+     {idx:1, addr:0x7ffa2d49c590, type:IMAGE}, 
+     {idx:2, addr:0x7ffa385111ee, type:IMAGE}, 
+     {idx:3, addr:0x7ffa38510ca0, type:IMAGE}, 
+     {idx:4, addr:0x7ffa38510160, type:IMAGE}, 
+     {idx:5, addr:0x7ffa384cfb53, type:IMAGE}
+  ]
 ```
