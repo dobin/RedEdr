@@ -288,8 +288,8 @@ NTSTATUS NTAPI Catch_NtMapViewOfSection(
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"view_size\":%llu,", viewSizeValue);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"inherit_disposition\":%x,", InheritDisposition);
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"alloc_type\":%x,", AllocationType);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"protect\":\"%s\",", getMemoryRegionProtect(Protect));
-    offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
+    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"protect\":\"%s\"", getMemoryRegionProtect(Protect));
+    //offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset); // makes cs410 staged crash
     offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
 
     SendDllPipe(buf);
@@ -569,7 +569,6 @@ NTSTATUS NTAPI Catch_NtQueueApcThreadEx(
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
     if (HooksInitialized) { // dont log our own hooking
-        OutputDebugString(L"A8");
         int offset = 0;
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
@@ -619,7 +618,6 @@ NTSTATUS NTAPI Catch_NtCreateProcess(
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
     if (HooksInitialized) { // dont log our own hooking
-        OutputDebugString(L"A9");
         int offset = 0;
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
@@ -799,7 +797,6 @@ NTSTATUS NTAPI Catch_NtLoadDriver(
     wchar_t wDriverServiceName[WIDE_SERVICE_NAME_LEN];
 
     if (HooksInitialized) { // dont log our own hooking
-        OutputDebugString(L"A12");
         UnicodeStringToWChar(DriverServiceName, wDriverServiceName, WIDE_SERVICE_NAME_LEN);
 
         int offset = 0;
@@ -856,7 +853,6 @@ NTSTATUS NTAPI Catch_NtCreateNamedPipeFile(
     LARGE_INTEGER time = get_time();
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
-    OutputDebugString(L"A13");
     if (HooksInitialized) { // dont log our own hooking
         int offset = 0;
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
@@ -993,8 +989,6 @@ NTSTATUS NTAPI Catch_NtCreateProcessEx(
     wchar_t buf[DATA_BUFFER_SIZE] = L"";
 
     if (HooksInitialized) { // dont log our own hooking
-        OutputDebugString(L"A16");
-
         int offset = 0;
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
