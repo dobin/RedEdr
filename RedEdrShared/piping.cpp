@@ -10,7 +10,11 @@
 #include "../Shared/common.h"
 
 
-/* Server */
+/* Piping.ch: Provide pipes for communication with components
+ *   server and client
+ *   send, receive, receive-batch
+ */
+
 
 PipeServer::PipeServer(const wchar_t *pipe_name) {
     hPipe = NULL;

@@ -16,6 +16,12 @@
 #include "serviceutils.h"
 
 
+/* serviceutils.c: Interaction with windows servers
+ *   service start/stop/check
+ *   permissions
+ */
+
+
 BOOL PermissionMakeMeDebug() {
     HANDLE hToken;
     TOKEN_PRIVILEGES tp;

@@ -22,6 +22,16 @@
 
 #include "../Shared/common.h"
 
+
+/* RedEdr.c: Main file
+ *   Parse args
+ *   Set flags in the Config object
+ *   Init necessary things
+ *   Start all threads (mostly through Manager)
+ *   Wait for threads to exit
+ */
+
+
 BOOL keyboard_reader_running = TRUE;
 
 
@@ -58,7 +68,6 @@ DWORD WINAPI KeyboardReaderThread(LPVOID param) {
 
 
 BOOL InitKeyboardReader(std::vector<HANDLE>& threads) {
-    // Keyboard reader
     HANDLE thread = CreateThread(NULL, 0, KeyboardReaderThread, NULL, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "Failed to create thread");
@@ -81,6 +90,8 @@ void CreateRequiredFiles() {
 }
 
 
+// Pushes all events to the EventAggregator (like normal operation)
+// Just have to make sure the process query aint happening
 void ReplayEvents(std::string filename) {
     LOG_A(LOG_INFO, "Replaying file: %s", filename.c_str());
     FILE* recording_file = NULL;
@@ -89,6 +100,7 @@ void ReplayEvents(std::string filename) {
         LOG_A(LOG_ERROR, "Could not open %s for reading", filename.c_str());
     }
 
+	g_config.replay_events = true;
     char buffer[DATA_BUFFER_SIZE];
     while (fgets(buffer, DATA_BUFFER_SIZE, recording_file)) {
         std::wstring bufferw = utf8_to_wstring(std::string(buffer));

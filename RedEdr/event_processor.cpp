@@ -12,13 +12,12 @@
 #include "config.h"
 
 
-/* Gets new events from EventAggregator and processes them:
- * - Keeps stats
- * - Keeps copy of all events
- * - Augments events with additional information
- * - Perform the detections
- * - Query process for more information
- * 
+/* event_processor.c: Gets new events from EventAggregator and processes them
+ *   Keeps stats
+ *   Keeps copy of all events
+ *   Augments events with additional information
+ *   Perform the detections
+ *   Query process for more information
  */
 
 

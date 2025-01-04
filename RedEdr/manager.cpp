@@ -22,6 +22,13 @@
 #include "mem_dynamic.h"
 
 
+/* manager.cpp: Knows and manages all subsystems (Input's)
+ *   start, stop, restart components
+ *   start, stop, restart components logging
+ *   set new configuration (process trace etc.)
+ */
+
+
 void ResetEverything() {
     g_EventAggregator.ResetData();
     g_EventProcessor.ResetData();

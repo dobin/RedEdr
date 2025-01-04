@@ -23,6 +23,12 @@
 #pragma comment(lib, "userenv.lib")
 
 
+/* Webserver.cpp: Webserver with REST api to the whole thing
+ *   UI to interact with rededr
+ *   REST interface (e.g. for RedEdrUi)
+ */
+
+
 using json = nlohmann::json;
 
 

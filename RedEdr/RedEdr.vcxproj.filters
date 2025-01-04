@@ -54,12 +54,6 @@
     <ClCompile Include="serviceutils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdrShared\logging.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdrShared\piping.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="webserver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -128,6 +122,12 @@
     </ClCompile>
     <ClCompile Include="..\RedEdrShared\process_query.cpp">
       <Filter>Header Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\logging.cpp">
+      <Filter>Source Files\libs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\piping.cpp">
+      <Filter>Source Files\libs</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
