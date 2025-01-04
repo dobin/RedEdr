@@ -861,11 +861,15 @@ NTSTATUS NTAPI Catch_NtCreateNamedPipeFile(
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtCreateNamedPipeFile\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pipe_handle\":%lld,", NamedPipeFileHandle);
+        
+        //offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pipe_handle\":%lld,", NamedPipeFileHandle);
+        
+        // beware of the following 4
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"access_mask\":%lu,", DesiredAccess);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"share_access\":%lu,", ShareAccess);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pipe_type\":%lu,", NamedPipeType);
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"read_mode\":%lu", ReadMode);
+        
         offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
         SendDllPipe(buf);
     }
@@ -1346,6 +1350,7 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     // All the hooks
     //DetourAttach(&(PVOID&)Real_NtSetContextThread, Catch_NtSetContextThread); // broken
     //DetourAttach(&(PVOID&)Real_LdrLoadDll, Catch_LdrLoadDll); // broken
+    //DetourAttach(&(PVOID&)Real_NtCreateNamedPipeFile, Catch_NtCreateNamedPipeFile);  // broken for cs410 stager
     DetourAttach(&(PVOID&)Real_LdrGetProcedureAddress, Catch_LdrGetProcedureAddress);
     DetourAttach(&(PVOID&)Real_NtQueueApcThread, Catch_NtQueueApcThread);
     DetourAttach(&(PVOID&)Real_NtQueueApcThreadEx, Catch_NtQueueApcThreadEx);
@@ -1355,7 +1360,6 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     DetourAttach(&(PVOID&)Real_NtResumeThread, Catch_NtResumeThread);
     DetourAttach(&(PVOID&)Real_NtOpenProcess, Catch_NtOpenProcess);
     DetourAttach(&(PVOID&)Real_NtLoadDriver, Catch_NtLoadDriver);
-    DetourAttach(&(PVOID&)Real_NtCreateNamedPipeFile, Catch_NtCreateNamedPipeFile);
     DetourAttach(&(PVOID&)Real_NtCreateSection, Catch_NtCreateSection);
     DetourAttach(&(PVOID&)Real_NtCreateProcessEx, Catch_NtCreateProcessEx);
     DetourAttach(&(PVOID&)Real_NtCreateEvent, Catch_NtCreateEvent);
@@ -1371,10 +1375,10 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
 
     error = DetourTransactionCommit();
     if (error == NO_ERROR) {
-        LOG_A(LOG_INFO, "simple" DETOURS_STRINGIFY(DETOURS_BITS) ".dll: Detoured SleepEx().\n");
+        LOG_A(LOG_INFO, "simple" DETOURS_STRINGIFY(DETOURS_BITS) ".dll: Detoured OK\n");
     }
     else {
-        LOG_A(LOG_ERROR, "simple" DETOURS_STRINGIFY(DETOURS_BITS) ".dll:Error detouring SleepEx(): %ld\n", error);
+        LOG_A(LOG_ERROR, "simple" DETOURS_STRINGIFY(DETOURS_BITS) ".dll:Error detouring %ld\n", error);
     }
     SendDllPipe(stop_str);
     HooksInitialized = TRUE;
