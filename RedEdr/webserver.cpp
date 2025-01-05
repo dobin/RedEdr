@@ -300,6 +300,10 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         json response = { {"status", "ok"} };
         res.set_content(response.dump(), "application/json");
     });
+    svr.Get("/log", [](const httplib::Request& req, httplib::Response& res) {
+        json response = GetLogs();
+        res.set_content(response.dump(), "application/json");
+    });
     if (g_config.do_remoteexec) {
         svr.Post("/api/exec", [](const httplib::Request& req, httplib::Response& res) {
             // curl.exe -X POST http://localhost:8080/api/exec -F "file=@C:\tools\procexp64.exe"

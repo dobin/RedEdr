@@ -22,9 +22,20 @@
 
 #include <iostream>
 #include <windows.h>
+#include <vector>
+#include <string>
+#include <mutex>
 
 #include "logging.h"
 #include "loguru.hpp"
+
+std::vector<std::string> error_messages;
+std::mutex error_mutex;
+
+
+std::vector <std::string> GetLogs() {
+    return error_messages;
+}
 
 
 void LOG_A(int verbosity, const char* format, ...)
@@ -52,6 +63,9 @@ void LOG_A(int verbosity, const char* format, ...)
         break;
     }
     va_end(args);
+
+    std::lock_guard<std::mutex> lock(error_mutex);
+    error_messages.push_back(std::string(buffer));
 }
 
 
@@ -82,6 +96,9 @@ void LOG_W(int verbosity, const wchar_t* format, ...)
         break;
     }
     va_end(args);
+
+    std::lock_guard<std::mutex> lock(error_mutex);
+    error_messages.push_back(std::string(buffer));
 }
 
 #elif defined OUTPUT_DLL
