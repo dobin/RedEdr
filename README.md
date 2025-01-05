@@ -15,7 +15,7 @@ It generates [JSON files](https://github.com/dobin/RedEdr/tree/master/Data)
 collecting [the telemetry](https://github.com/dobin/RedEdr/blob/master/Doc/captured_events.md) 
 of your RedTeaming tools. 
 
-Try it on [rededr.r00ted.ch](https://rededr.r00ted.ch)
+Try it online at [rededr.r00ted.ch](https://rededr.r00ted.ch)
 
 
 ## Screenshots
@@ -28,10 +28,14 @@ Doing:
 	HANDLE hThread = CreateThread(NULL, 0, shellcodeAddr, shellcodeAddr, 0, &threadId);
 ```
 
-We can see the RW->RWX and CreateThread:
-![RedEdr Screenshot DLL Injection](https://raw.github.com/dobin/RedEdr/master/Doc/screenshot-web-rwx-dll.png)
+We can see the RW->RWX and CreateThread.
 
-![RedEdr Screenshot EWW](https://raw.github.com/dobin/RedEdr/master/Doc/screenshot-web-rwx-etw.png)
+With ntdll.dll hooking:
+![RedEdr Screenshot ntdll.dll hooking](https://raw.github.com/dobin/RedEdr/master/Doc/screenshot-web-rwx-dll.png)
+
+
+ETW events:
+![RedEdr Screenshot ETW](https://raw.github.com/dobin/RedEdr/master/Doc/screenshot-web-rwx-etw.png)
 
 
 ## Implemented Telemetry Consumers
@@ -93,36 +97,26 @@ PS C:\rededr> .\RedEdr.exe
 Maldev event recorder
 Usage:
   RedEdr [OPTION...]
-
   -t, --trace arg     Process name to trace
   -e, --etw           Input: Consume ETW Events
   -g, --etwti         Input: Consume ETW-TI Events
   -m, --mplog         Input: Consume Defender mplog file
   -k, --kernel        Input: Consume kernel callback events
   -i, --inject        Input: Consume DLL injection
-  -c, --dllcallstack  Input: Enable DLL injection hook callstacks
   -w, --web           Output: Web server
-  -u, --hide          Output: Hide messages (performance. use with --web)
-  -1, --krnload       Kernel Module: Load
-  -2, --krnunload     Kernel Module: Unload
-  -4, --pplstart      PPL service: load
-  -5, --pplstop       PPL service: stop
-  -l, --dllreader     Debug: DLL reader but no injection (for manual
-                      injection tests)
-  -d, --debug         Enable debugging
-  -h, --help          Print usage
-
+...
 ```
 
 Try: `.\RedEdr.exe --all --trace otepad`, and then start notepad 
 (will be `notepad.exe` on Windows 10, `Notepad.exe` on Windows 11).
+The log should be printed as stdout.
 
 
 ## Standard Usage
 
 RedEdr will trace all processes containing by process image name (exe path).
 
-Enable all consumers, and provide as web on `http://localhost:8080`, 
+Enable all consumers, and provide as web on [http://localhost:8080](http://localhost:8080), 
 and disable output logging for performance:
 ```
 PS > .\RedEdr.exe --all --web --hide --trace notepad.exe
@@ -132,9 +126,9 @@ Be aware ETW-TI (and possibly other ETW) will record the DLL hooking events if u
 like this.
 
 
-### Kernel Callbacks
+### ntdll.dll hooking
 
-Kernel module callbacks. And KAPC DLL injection: 
+KAPC DLL injection for ntdll.dll hooking: 
 ```
 PS > .\RedEdr.exe --kernel --inject --trace notepad.exe
 ```
@@ -169,6 +163,9 @@ PS > .\RedEdr.exe --etwti --trace notepad.exe
 
 ## Detections
 
+* RWX allocation
+* RW->RX protection change
+* Callstack from non-image
 
 
 ## Example Output
@@ -271,14 +268,6 @@ To compile the kernel driver:
 * Install WDK (+SDK): https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk
 
 It should deploy everything into `C:\RedEdr\`.
-
-
-## Todo
-
-More consumers:
-* Kernel ETW?
-* Kernel minifilter?
-* AMSI provider
 
 
 ## Based on
