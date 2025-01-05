@@ -20,7 +20,7 @@ Try it online at [rededr.r00ted.ch](https://rededr.r00ted.ch)
 
 ## Screenshots
 
-Doing:
+The following shellcode execution:
 ```c
 	PVOID shellcodeAddr = VirtualAlloc(NULL, payloadSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	memcpy(shellcodeAddr, payload, payloadSize);
@@ -28,7 +28,8 @@ Doing:
 	HANDLE hThread = CreateThread(NULL, 0, shellcodeAddr, shellcodeAddr, 0, &threadId);
 ```
 
-We can see the RW->RWX and CreateThread.
+Can be detected in the RedEdr events by looking at
+the RW->RWX VirtualProtect and following CreateThread invocation.
 
 With ntdll.dll hooking:
 ![RedEdr Screenshot ntdll.dll hooking](https://raw.github.com/dobin/RedEdr/master/Doc/screenshot-web-rwx-dll.png)
@@ -123,12 +124,12 @@ PS > .\RedEdr.exe --all --web --hide --trace notepad.exe
 ```
 
 Be aware ETW-TI (and possibly other ETW) will record the DLL hooking events if used together
-like this.
+like this. Better use one of the following.
 
 
 ### ntdll.dll hooking
 
-KAPC DLL injection for ntdll.dll hooking: 
+KAPC DLL injection for ntdll.dll hooking. Thats what many EDR's depend on:
 ```
 PS > .\RedEdr.exe --kernel --inject --trace notepad.exe
 ```
@@ -136,29 +137,22 @@ PS > .\RedEdr.exe --kernel --inject --trace notepad.exe
 This requires self-signed kernel modules to load. 
 
 
-### ETW 
+### ETW & ETW-TI
 
-Only ETW, no kernel module:
+ETW is mostly useful for MDE and Elastic.
+
+ETW-TI requires an ELAM driver to start `RedEdrPplService`, 
+and therefore requires self signed kernel driver option.
+Make a snapshot of your VM before doing this. Currently its 
+not possible to remove the PPL service ever again. 
+
 ```
-PS > .\RedEdr.exe --etw --trace notepad.exe
+PS > .\RedEdr.exe --etw --etwti --trace notepad.exe
 ```
 
 If you want ETW Microsoft-Windows-Security-Auditing, start as SYSTEM (`psexec -i -s cmd.exe`). 
 See `gpedit.msc -> Computer Configuration -> Windows Settings -> Security Settings -> Advanced Audit Policy Configuration -> System Audit Policies - Local Group Policy object`
 for settings to log.
-
-
-### ETWI-TI
-
-ETW-TI requires an ELAM driver to start `RedEdrPplService`, 
-and therefore requires self signed kernel driver option. 
-
-Make a snapshot of your VM before doing this. Currently its 
-not possible to remove the PPL service again. 
-
-```
-PS > .\RedEdr.exe --etwti --trace notepad.exe
-```
 
 
 ## Detections
