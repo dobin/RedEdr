@@ -28,7 +28,7 @@ std::string KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sch
     std::wstring a = std::wstring(schema.task_name());
     std::wstring b = std::wstring(schema.opcode_name());
     std::wstring c = a + b;
-    std::string d = wstring_to_utf8(c);
+    std::string d = wstring2string(c);
     j["event"] = d;
 
     j["opcode_id"] = schema.event_opcode();
@@ -48,7 +48,7 @@ std::string KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sch
             if (wstring_starts_with(propertyName, L"Reserved") || wstring_starts_with(propertyName, L"Signature")) {
                 continue;
             }
-            std::string jsonKey = wstring_to_utf8((std::wstring&)propertyName);
+            std::string jsonKey = wstring2string((std::wstring&)propertyName);
 
             // Special cases
             if (propertyName == L"ProtectionMask" || propertyName == L"LastProtectionMask") {
@@ -72,7 +72,7 @@ std::string KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sch
             {
                 std::wstringstream ss;
                 ss << parser.parse<std::wstring>(propertyName);
-                std::string s = wstring_to_utf8((std::wstring&)ss.str());
+                std::string s = wstring2string((std::wstring&)ss.str());
                 j[jsonKey] = s;
             }
                 break;

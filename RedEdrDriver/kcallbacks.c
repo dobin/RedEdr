@@ -87,9 +87,9 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         }
 
         processInfo->ProcessId = pid;
-        UnicodeStringToWChar(processName, processInfo->name, PROC_NAME_LEN);
+        Unicodestring2wcharAlloc(processName, processInfo->name, PROC_NAME_LEN);
         processInfo->ppid = createInfo->ParentProcessId;
-        UnicodeStringToWChar(parent_processName, processInfo->parent_name, PROC_NAME_LEN);
+        Unicodestring2wcharAlloc(parent_processName, processInfo->parent_name, PROC_NAME_LEN);
         processInfo->observe = 0;
 
         // Search in the unicode atm
@@ -178,7 +178,7 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
     if (g_config.enable_logging) {
         PROCESS_INFO* procInfo = LookupProcessInfo(ProcessId);
         if (procInfo != NULL && procInfo->observe) {
-            UnicodeStringToWChar(FullImageName, ImageName, PATH_LEN);
+            Unicodestring2wcharAlloc(FullImageName, ImageName, PATH_LEN);
             WcharToAscii(ImageName, sizeof(ImageName), AsciiImageName, sizeof(AsciiImageName));
             JsonEscape(AsciiImageName, sizeof(AsciiImageName));
             sprintf(ImageLine, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"image_load\",\"krn_pid\":%llu,\"pid\":%llu,\"image\":\"%s\"}",

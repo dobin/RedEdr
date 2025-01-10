@@ -38,7 +38,7 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
             //if (wcscmp(buffer, L"start") == 0) {
             if (strstr(buffer, "start:") != NULL) {
                 char* token = NULL, * context = NULL;
-                LOG_W(LOG_INFO, L"Control: Received command: start");
+                LOG_A(LOG_INFO, "Control: Received command: start");
 
                 // should give "start:"
                 token = strtok_s(buffer, ":", &context);
@@ -46,8 +46,8 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                     // should give the thing after "start:"
                     token = strtok_s(NULL, ":", &context);
                     if (token != NULL) {
-                        LOG_W(LOG_INFO, L"Control: Target: %s", token);
-                        wchar_t* target_name = char2wcharAllc(token);
+                        LOG_A(LOG_INFO, "Control: Target: %s", token);
+                        wchar_t* target_name = char2wcharAlloc(token);
                         set_target_name(target_name);
                         ConnectEmitterPipe(); // Connect to the RedEdr pipe
                         enable_consumer(TRUE);
@@ -55,24 +55,24 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                 }
             }
             else if (strstr(buffer, "stop") != 0) {
-                LOG_W(LOG_INFO, L"Control: Received command: stop");
+                LOG_A(LOG_INFO, "Control: Received command: stop");
                 enable_consumer(FALSE);
                 DisconnectEmitterPipe(); // Disconnect the RedEdr pipe
             }
             else if (strstr(buffer, "shutdown") != 0) {
-                LOG_W(LOG_INFO, L"Control: Received command: shutdown");
+                LOG_A(LOG_INFO, "Control: Received command: shutdown");
                 //rededr_remove_service();  // attempt to remove service
                 StopControl(); // stop this thread
                 ShutdownEtwtiReader(); // also makes main return
                 break;
             }
             else {
-                LOG_W(LOG_INFO, L"Control: Unknown command: %s", buffer);
+                LOG_A(LOG_INFO, "Control: Unknown command: %s", buffer);
             }
         }
         pipeServer.Shutdown();
     }
-    LOG_W(LOG_INFO, L"Control: Finished");
+    LOG_A(LOG_INFO, "Control: Finished");
     return 0;
 }
 

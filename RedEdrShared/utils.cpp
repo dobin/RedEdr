@@ -19,7 +19,7 @@ void PrintWcharBufferAsHex(const wchar_t* buffer, size_t bufferSize) {
 }
 
 
-wchar_t* wstring2wchar(const std::wstring& str) {
+wchar_t* wstring2wcharAlloc(const std::wstring& str) {
     size_t length = str.length();
     wchar_t* copy = new wchar_t[length + 1];
     std::copy(str.c_str(), str.c_str() + length, copy);
@@ -36,7 +36,7 @@ PVOID uint64_to_pointer(uint64_t i) {
 	return ptr;
 }
 
-std::string wcharToString(const wchar_t* wstr) {
+std::string wchar2string(const wchar_t* wstr) {
     if (!wstr) return {};
     int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
     std::string str(size_needed - 1, '\0');
@@ -61,19 +61,6 @@ uint64_t get_time() {
 }
 
 
-std::wstring format_wstring(const wchar_t* format, ...) {
-    // +1024 needed for some reason, maybe the format string itself
-    wchar_t buffer[DATA_BUFFER_SIZE+1024];
-
-    va_list args;
-    va_start(args, format);
-    vswprintf(buffer, DATA_BUFFER_SIZE+1024, format, args);
-    va_end(args);
-
-    return std::wstring(buffer);
-}
-
-
 std::wstring to_lowercase(const std::wstring& str) {
     std::wstring lower_str = str;
     std::transform(lower_str.begin(), lower_str.end(), lower_str.begin(), ::towlower);
@@ -87,19 +74,7 @@ std::string to_lowercase2(const std::string& str) {
 }
 
 
-void remove_all_occurrences_case_insensitive(std::wstring& str, const std::wstring& to_remove) {
-    std::wstring lower_str = to_lowercase(str);
-    std::wstring lower_to_remove = to_lowercase(to_remove);
-
-    size_t pos;
-    while ((pos = lower_str.find(lower_to_remove)) != std::wstring::npos) {
-        str.erase(pos, to_remove.length());  // Erase from the original string
-        lower_str.erase(pos, lower_to_remove.length());  // Keep erasing from the lowercase copy
-    }
-}
-
-
-void remove_all_occurrences_case_insensitive2(std::string& str, const std::string& to_remove) {
+void remove_all_occurrences_case_insensitive(std::string& str, const std::string& to_remove) {
     std::string lower_str = to_lowercase2(str);
     std::string lower_to_remove = to_lowercase2(to_remove);
 
@@ -120,53 +95,16 @@ std::wstring ReplaceAll(std::wstring str, const std::wstring& from, const std::w
     return str;
 }
 
-std::string ReplaceAllA(std::string str, const std::string& from, const std::string& to) {
-    size_t start_pos = 0;
-    while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
-        str.replace(start_pos, from.length(), to);
-        start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
-    }
-    return str;
-}
 
-/*
-std::wstring replace_all(const std::wstring& str, const std::wstring& from, const std::wstring& to) {
-    std::wstring result = str;
-    if (from.empty()) return result;
-    size_t start_pos = 0;
-    while ((start_pos = result.find(from, start_pos)) != std::wstring::npos) {
-        result.replace(start_pos, from.length(), to);
-        start_pos += to.length();
-    }
-    return result;
-}
-*/
-
-
-bool contains_case_insensitive(const std::wstring& haystack, const std::wstring& needle) {
-    std::wstring haystack_lower = to_lowercase(haystack);
-    std::wstring needle_lower = to_lowercase(needle);
-    return haystack_lower.find(needle_lower) != std::wstring::npos;
-}
-
-bool contains_case_insensitive2(const std::string& haystack, const std::string& needle) {
+bool contains_case_insensitive(const std::string& haystack, const std::string& needle) {
     std::string haystack_lower = to_lowercase2(haystack);
     std::string needle_lower = to_lowercase2(needle);
     return haystack_lower.find(needle_lower) != std::string::npos;
 }
 
 
-
-wchar_t* ConvertCharToWchar(const char* arg) {
-    int len = MultiByteToWideChar(CP_ACP, 0, arg, -1, NULL, 0);
-    wchar_t* wargv = new wchar_t[len];
-    MultiByteToWideChar(CP_ACP, 0, arg, -1, wargv, len);
-    return wargv;
-}
-
-
 // Dear mother of god whats up with all these goddamn string types
-wchar_t* stringToWChar(const std::string& str) {
+wchar_t* string2wcharAlloc(const std::string& str) {
     if (str.empty()) {
         wchar_t* empty = new wchar_t[1];
         empty[0] = L'\0';
@@ -182,7 +120,7 @@ wchar_t* stringToWChar(const std::string& str) {
 }
 
 
-std::string wstring_to_utf8(std::wstring& wide_string) {
+std::string wstring2string(std::wstring& wide_string) {
     if (wide_string.empty()) {
         return "";
     }
@@ -447,26 +385,6 @@ wchar_t* JsonEscape(wchar_t* str, size_t buffer_size) {
 }
 
 
-std::wstring JsonEscape2(PCWSTR input) {
-    std::wstring result;
-
-    while (*input) {
-        if (*input == L'"') {
-            result += L"\\\"";  // Escape double quotes (")
-        }
-        else if (*input == L'\\') {
-            result += L"\\\\";  // Escape backslashes (\)
-        }
-        else {
-            result += *input;  // Add regular character
-        }
-        ++input;
-    }
-
-    return result;
-}
-
-
 DWORD StartProcessInBackground(LPCWSTR exePath, LPCWSTR commandLine) {
     STARTUPINFO si = { 0 };
     si.cb = sizeof(STARTUPINFO);
@@ -508,7 +426,8 @@ DWORD StartProcessInBackground(LPCWSTR exePath, LPCWSTR commandLine) {
     }
 }
 
-wchar_t* char2wcharAllc(char* charStr) {
+
+wchar_t* char2wcharAlloc(char* charStr) {
     size_t charStrLen = std::strlen(charStr) + 1; // Include null terminator
 
     // Allocate wchar_t buffer
@@ -524,8 +443,15 @@ wchar_t* char2wcharAllc(char* charStr) {
     }
     return wcharStr;
 }
+wchar_t* char2wcharAlloc_Backup(const char* arg) {
+    int len = MultiByteToWideChar(CP_ACP, 0, arg, -1, NULL, 0);
+    wchar_t* wargv = new wchar_t[len];
+    MultiByteToWideChar(CP_ACP, 0, arg, -1, wargv, len);
+    return wargv;
+}
 
-std::wstring utf8_to_wstring(const std::string& str) {
+
+std::wstring string2wstring(const std::string& str) {
     if (str.empty()) {
         return {};
     }

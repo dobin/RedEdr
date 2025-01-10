@@ -33,10 +33,10 @@ Process* MakeProcess(DWORD pid, std::string targetName) {
     if (g_config.debug) {
         LOG_W(LOG_INFO, L"Process: Check new process with name: %s", processName.c_str());
     }
-    process->commandline = wstring_to_utf8(processName);
+    process->commandline = wstring2string(processName);
 
     // Check if we should trace
-    if (contains_case_insensitive2(process->commandline, targetName)) {
+    if (contains_case_insensitive(process->commandline, targetName)) {
         LOG_A(LOG_INFO, "Process: observe pid %lu: %s", pid, process->commandline.c_str());
         process->observe = 1;
     }

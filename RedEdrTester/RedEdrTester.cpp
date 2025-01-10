@@ -32,13 +32,13 @@
 #include "../RedEdr/serviceutils.h"
 
 
-void SendToKernel(int enable, wchar_t* target) {
-	wprintf(L"Sending: %d %s", enable, target);
+void SendToKernel(int enable, char* target) {
+	printf("Sending: %d %s", enable, target);
 	EnableKernelDriver(enable, target);
 }
 
 
-void SendToKernelReader(wchar_t* data) {
+void SendToKernelReader(char* data) {
 	PipeClient pipeClient;
 	pipeClient.Connect(KERNEL_PIPE_NAME);
 	pipeClient.Send(data);
@@ -46,7 +46,7 @@ void SendToKernelReader(wchar_t* data) {
 }
 
 
-void SendToDllReader(wchar_t* data) {
+void SendToDllReader(char* data) {
 	PipeClient pipeClient;
 	pipeClient.Connect(DLL_PIPE_NAME);
 	pipeClient.Send(data);
@@ -142,7 +142,7 @@ void DoStuff() {
 void AnalyzeFile(wchar_t *fname) {
 	g_config.hide_full_output = 1;
 	g_config.debug = 1;
-	std::string filename = wcharToString(fname);
+	std::string filename = wchar2string(fname);
 	LOG_A(LOG_INFO, "Analyzer: Reading %s", filename.c_str());
 	std::string json_file_content = read_file(filename);
 	if (json_file_content.empty()) {

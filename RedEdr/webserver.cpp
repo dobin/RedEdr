@@ -75,7 +75,7 @@ std::string getRecordingsAsJson() {
     output << "[";
     std::vector<std::wstring> names = GetFilesInDirectory(L"C:\\RedEdr\\Data\\*.events.json");
     for (auto it = names.begin(); it != names.end(); ++it) {
-        output << "\"" << wstring_to_utf8(*it) << "\"";
+        output << "\"" << wstring2string(*it) << "\"";
         if (std::next(it) != names.end()) {
             output << ",";  // Add comma only if it's not the last element
         }
@@ -87,7 +87,7 @@ std::string getRecordingsAsJson() {
 
 bool StartWithExplorer(std::string programPath) {
     std::string fullpath = "explorer.exe " + programPath;
-    wchar_t* commandLine = stringToWChar(fullpath);
+    wchar_t* commandLine = string2wcharAlloc(fullpath);
 
     LOG_W(LOG_INFO, L"Executing malware: %s", commandLine);
     
@@ -197,7 +197,7 @@ BOOL ExecMalware(std::string filename, std::string filedata) {
         return FALSE;
     }
     //return StartWithExplorer(filepath);
-	return(DropPrivilegesAndRunAsUser(stringToWChar(filepath.c_str())));
+	return(DropPrivilegesAndRunAsUser(string2wcharAlloc(filepath.c_str())));
 }
 
 

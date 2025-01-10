@@ -104,7 +104,7 @@ void EventProcessor::InitialProcessInfo(Process *process) {
 		};
     }
 	std::string jsonStr = jDlls.dump();
-    remove_all_occurrences_case_insensitive2(jsonStr, "C:\\\\Windows\\\\system32\\\\");
+    remove_all_occurrences_case_insensitive(jsonStr, "C:\\\\Windows\\\\system32\\\\");
 	g_EventAggregator.NewEvent(jsonStr);
     
     // DB: MemStatic

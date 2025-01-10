@@ -103,7 +103,7 @@ void ReplayEvents(std::string filename) {
 	g_config.replay_events = true;
     char buffer[DATA_BUFFER_SIZE];
     while (fgets(buffer, DATA_BUFFER_SIZE, recording_file)) {
-        std::wstring bufferw = utf8_to_wstring(std::string(buffer));
+        std::wstring bufferw = string2wstring(std::string(buffer));
         g_EventAggregator.do_output(bufferw);
     }
     fclose(recording_file);

@@ -19,7 +19,7 @@ BOOL skip_nonzero_baseaddr_mapviewofsection = TRUE;
 BOOL HooksInitialized = FALSE;
 
 
-void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
+void Unicodestring2wcharAlloc(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
 {
     if (!ustr || !dest || destSize == 0) {
         return;  // Invalid arguments or destination size is zero
@@ -440,7 +440,7 @@ NTSTATUS NTAPI Catch_LdrLoadDll(
 
     if (HooksInitialized) { // dont log our own hooking
         char* searchPath = empty;   // SearchPath seems to be 8 (the number 8, not a string) BROKEN
-        //UnicodeStringToWChar(DllName, wDllName, DLL_NAME_LEN);
+        //Unicodestring2wcharAlloc(DllName, wDllName, DLL_NAME_LEN);
         ULONG dllCharacteristics = (DllCharacteristics != NULL) ? *DllCharacteristics : 0;
 
         int offset = 0;
@@ -482,7 +482,7 @@ NTSTATUS NTAPI Catch_LdrGetProcedureAddress(
     //wchar_t wideFunctionName[WIDE_FUNCTION_NAME_LEN] = "";
 
     if (HooksInitialized) { // dont log our own hooking
-        //UnicodeStringToWChar(FunctionName, wideFunctionName, WIDE_FUNCTION_NAME_LEN);
+        //Unicodestring2wcharAlloc(FunctionName, wideFunctionName, WIDE_FUNCTION_NAME_LEN);
 
         if (FunctionName && FunctionName->Buffer) {
             // Convert ANSI string to wide string
@@ -797,7 +797,7 @@ NTSTATUS NTAPI Catch_NtLoadDriver(
     wchar_t wDriverServiceName[WIDE_SERVICE_NAME_LEN];
 
     if (HooksInitialized) { // dont log our own hooking
-        UnicodeStringToWChar(DriverServiceName, wDriverServiceName, WIDE_SERVICE_NAME_LEN);
+        Unicodestring2wcharAlloc(DriverServiceName, wDriverServiceName, WIDE_SERVICE_NAME_LEN);
 
         int offset = 0;
         offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");

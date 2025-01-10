@@ -43,7 +43,7 @@ int IsSubstringInUnicodeString(PUNICODE_STRING pDestString, PCWSTR pSubString) {
 }
 
 
-void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
+void Unicodestring2wcharAlloc(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
 {
     if (!ustr || !dest) {
         return;  // Invalid arguments

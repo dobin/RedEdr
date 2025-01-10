@@ -11,7 +11,7 @@ namespace UnitTests
 	public:
 		TEST_METHOD(TestStrA) {
 			std::string str = "Hello";
-			wchar_t* wstr = stringToWChar(str);
+			wchar_t* wstr = string2wcharAlloc(str);
 			Assert::AreEqual(L"Hello", wstr);
 		}
 

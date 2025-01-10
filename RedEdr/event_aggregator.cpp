@@ -40,7 +40,7 @@ void EventAggregator::NewEvent(std::string eventStr) {
 
 void EventAggregator::do_output(std::wstring eventWstr) {
     // Add to cache
-    std::string json = wstring_to_utf8(eventWstr);
+    std::string json = wstring2string(eventWstr);
     output_mutex.lock();
     output_entries.push_back(json);
 

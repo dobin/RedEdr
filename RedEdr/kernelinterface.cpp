@@ -32,7 +32,7 @@ BOOL EnableKernelDriver(int enable, std::string target) {
         LOG_A(LOG_ERROR, "Kernel: Failed to open device. Error: %d", GetLastError());
         return FALSE;
     }
-    wchar_t* targetW = stringToWChar(target);
+    wchar_t* targetW = string2wcharAlloc(target);
     MY_DRIVER_DATA dataToSend = { 0 };
     if (enable) {
         wcscpy_s(dataToSend.filename, targetW);

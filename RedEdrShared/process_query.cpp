@@ -219,7 +219,7 @@ std::vector<ProcessLoadedDll> ProcessEnumerateModules(HANDLE hProcess) {
             break;
         }
         std::wstring filenameW = ReadMemoryAsWString(hProcess, entry.FullDllName.Buffer, entry.FullDllName.Length);
-		std::string filenameStr = wstring_to_utf8(filenameW);
+		std::string filenameStr = wstring2string(filenameW);
         processLoadedDll.dll_base = pointer_to_uint64(entry.DllBase);
         processLoadedDll.size = (ULONG)entry.Reserved3[1];
         processLoadedDll.name = filenameStr;
@@ -253,7 +253,7 @@ std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID modul
         LOG_A(LOG_WARNING, "ProcessQuery: Failed to retrieve module name. Error: %lu", GetLastError());
         return moduleSections;
     }
-    std::string moduleNameStr = wcharToString(moduleName);
+    std::string moduleNameStr = wchar2string(moduleName);
 
     // Read the DOS header
     if (!ReadProcessMemory(hProcess, moduleBase, &dosHeader, sizeof(dosHeader), NULL)) {
@@ -396,7 +396,7 @@ std::string GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
         s.assign(uni.begin(), uni.end());
     }
 
-	std::string str = wstring_to_utf8(s);
+	std::string str = wstring2string(s);
     return str;
 }
 
