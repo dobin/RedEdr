@@ -11,7 +11,7 @@
 #include "process_query.h"
 
 
-std::wstring KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema schema) {
+std::string KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema schema) {
     krabs::parser parser(schema);
 
     // To construct a JSON, we use nlohmann::json, which works in std::string
@@ -127,9 +127,5 @@ std::wstring KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sc
         }
     }
 
-    // Generate the JSON, and convert it back to wstring...
-    std::string json_ret = j.dump();
-    std::wstring json_retw = utf8_to_wstring(json_ret);
-
-    return json_retw;
+    return j.dump();
 }

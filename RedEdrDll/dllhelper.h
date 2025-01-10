@@ -5,10 +5,10 @@
 
 // Pipe
 void InitDllPipe();
-void SendDllPipe(wchar_t* buffer);
+void SendDllPipe(char* buffer);
 
 // Proc
-size_t LogMyStackTrace(wchar_t* buf, size_t buf_size);
+size_t LogMyStackTrace(char* buf, size_t buf_size);
 
 // Utils
 void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize);

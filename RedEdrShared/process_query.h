@@ -19,7 +19,7 @@ BOOL InitProcessQuery();
 DWORD FindProcessIdByName(const std::wstring& processName);
 
 struct ProcessAddrInfoRet {
-    std::wstring name;
+    std::string name;
     PVOID base_addr;
 
     // Original?
@@ -31,9 +31,9 @@ struct ProcessAddrInfoRet {
     DWORD protect;
     DWORD type;
 
-    std::wstring stateStr;
-    std::wstring protectStr;
-    std::wstring typeStr;
+    std::string stateStr;
+    std::string protectStr;
+    std::string typeStr;
 };
 ProcessAddrInfoRet ProcessAddrInfo(HANDLE hProcess, PVOID address);
 

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <Windows.h>
 //#include "ppl_runner.h"
+#include <cstdio>
 
 #include "logging.h"
 #include "../Shared/common.h"
@@ -8,6 +9,7 @@
 #include "pplmanager.h"
 #include "piping.h"
 #include "utils.h"
+
 
 
 // PplManager: Interact with the PPL service 
@@ -22,8 +24,7 @@ BOOL InstallElamCertPpl();
 
 
 BOOL EnablePplProducer(BOOL e, std::string targetName) {
-    wchar_t buffer[PPL_CONFIG_LEN] = { 0 };
-    wchar_t* target_name = stringToWChar(targetName);
+    char buffer[PPL_CONFIG_LEN] = { 0 };
 
     if (!pipeClient.Connect(PPL_SERVICE_PIPE_NAME)) {
         LOG_A(LOG_ERROR, "ETW-TI: Error connecting to RedEdrPplService pipe: error code %ld", GetLastError());
@@ -34,11 +35,7 @@ BOOL EnablePplProducer(BOOL e, std::string targetName) {
 
     // Send enable/disable via pipe to PPL aervice
     if (e) {
-        if (target_name == NULL) {
-            LOG_A(LOG_ERROR, "ETW-TI: Enable, but no target name given. Abort.");
-            return FALSE;
-        }
-        swprintf_s(buffer, PPL_CONFIG_LEN, L"start:%s", target_name);
+        sprintf_s(buffer, PPL_CONFIG_LEN, "start:%s", targetName.c_str());
         if (!pipeClient.Send(buffer)) {
             LOG_A(LOG_INFO, "ETW-TI: Error sending: %s to ppl service", buffer);
             return FALSE;
@@ -46,8 +43,7 @@ BOOL EnablePplProducer(BOOL e, std::string targetName) {
         LOG_A(LOG_INFO, "ETW-TI: ppl reader: Enabled");
     }
     else {
-        //wcscpy_s(buffer, PPL_CONFIG_LEN, L"stop");
-        swprintf_s(buffer, PPL_CONFIG_LEN, L"%s", L"stop");
+        sprintf_s(buffer, PPL_CONFIG_LEN, "%s", L"stop");
         if (!pipeClient.Send(buffer)) {
             return FALSE;
         }
@@ -86,7 +82,8 @@ BOOL ShutdownPplService() {
         LOG_A(LOG_ERROR, "ETW-TI: Error creating named pipe: %ld", GetLastError());
         return FALSE;
     }
-    if (!pipeClient.Send((wchar_t*)L"shutdown")) {
+    const char* s = "shutdown";
+    if (!pipeClient.Send((char*)s)) {
         LOG_A(LOG_ERROR, "ETW-TI: Error writing to named pipe: %ld", GetLastError());
         return FALSE;
     }

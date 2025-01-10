@@ -242,67 +242,67 @@ std::string get_time_for_file() {
 }
 
 
-wchar_t* getMemoryRegionProtect(DWORD protect) {
-    const wchar_t* memoryProtect;
+char* getMemoryRegionProtect(DWORD protect) {
+    const char* memoryProtect;
     switch (protect) {
 	case PAGE_EXECUTE:
-		memoryProtect = L"--X";
+		memoryProtect = "--X";
 		break;
 	case PAGE_EXECUTE_READ:
-		memoryProtect = L"R-X";
+		memoryProtect = "R-X";
 		break;
 	case PAGE_EXECUTE_READWRITE:
-		memoryProtect = L"RWX";
+		memoryProtect = "RWX";
 		break;
 	case PAGE_EXECUTE_WRITECOPY:
-		memoryProtect = L"EXECUTE_WRITECOPY";
+		memoryProtect = "EXECUTE_WRITECOPY";
 		break;
 	case PAGE_NOACCESS:
-		memoryProtect = L"NOACCESS";
+		memoryProtect = "NOACCESS";
 		break;
 	case PAGE_READONLY:
-		memoryProtect = L"R--";
+		memoryProtect = "R--";
 		break;
 	case PAGE_READWRITE:
-		memoryProtect = L"RW-";
+		memoryProtect = "RW-";
 		break;
 	case PAGE_WRITECOPY:
-		memoryProtect = L"WRITECOPY";
+		memoryProtect = "WRITECOPY";
 		break;
     case PAGE_GUARD:
-        memoryProtect = L"GUARD";
+        memoryProtect = "GUARD";
 		break;
     case PAGE_NOCACHE:
-		memoryProtect = L"NOCACHE";
+		memoryProtect = "NOCACHE";
         break;
 	case PAGE_WRITECOMBINE:
-        memoryProtect = L"WRITECOMBINE";
+        memoryProtect = "WRITECOMBINE";
         break;
 	default:
-		memoryProtect = L"Unknown";
+		memoryProtect = "Unknown";
 		break;
 	}
-	return (wchar_t*) memoryProtect;
+	return (char*) memoryProtect;
 }
 
 
-wchar_t* getMemoryRegionType(DWORD type) {
-    const wchar_t* memoryType;
+char* getMemoryRegionType(DWORD type) {
+    const char* memoryType;
     switch (type) {
     case MEM_IMAGE:
-        memoryType = L"IMAGE";
+        memoryType = "IMAGE";
         break;
     case MEM_MAPPED:
-        memoryType = L"MAPPED";
+        memoryType = "MAPPED";
         break;
     case MEM_PRIVATE:
-        memoryType = L"PRIVATE";
+        memoryType = "PRIVATE";
         break;
     default:
-        memoryType = L"Unknown";
+        memoryType = "Unknown";
         break;
     }
-    return (wchar_t*)memoryType;
+    return (char*)memoryType;
 }
 
 
@@ -379,23 +379,23 @@ std::string GetSectionPermissions(DWORD characteristics) {
 */
 
 
-wchar_t* getMemoryRegionState(DWORD type) {
-    const wchar_t* memoryType;
+char* getMemoryRegionState(DWORD type) {
+    const char* memoryType;
     switch (type) {
     case MEM_FREE:
-        memoryType = L"FREE";
+        memoryType = "FREE";
         break;
     case MEM_RESERVE:
-        memoryType = L"RESERVE";
+        memoryType = "RESERVE";
         break;
     case MEM_COMMIT:
-        memoryType = L"COMMIT";
+        memoryType = "COMMIT";
         break;
     default:
-        memoryType = L"Unknown";
+        memoryType = "Unknown";
         break;
     }
-    return (wchar_t*) memoryType;
+    return (char*) memoryType;
 }
 
 

@@ -23,6 +23,8 @@ void EventAggregator::NewEvent(std::string eventStr) {
     // Add to cache
     output_mutex.lock();
     output_entries.push_back(eventStr);
+    output_count++;
+    output_mutex.unlock();
 
     // Debug: Record events
     // This needs to be in the mutex, or the \r\n may not be written correctly
@@ -30,9 +32,6 @@ void EventAggregator::NewEvent(std::string eventStr) {
         fprintf(recorder_file, eventStr.c_str());
         fprintf(recorder_file, "\r\n");
     }
-
-    output_mutex.unlock();
-    output_count++;
 
     // Notify the analyzer thread
     cv.notify_one();

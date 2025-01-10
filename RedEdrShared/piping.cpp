@@ -16,21 +16,22 @@
  */
 
 
-PipeServer::PipeServer(const wchar_t *pipe_name) {
+PipeServer::PipeServer(std::string pipeName, wchar_t *pipePath) {
     hPipe = NULL;
-    name = pipe_name;
+    pipe_name = pipeName;
+    pipe_path = pipePath;
 }
 
 
-BOOL PipeServer::StartAndWaitForClient(const wchar_t* pipeName, BOOL allow_all) {
-    if (!Start(pipeName, allow_all)) {
+BOOL PipeServer::StartAndWaitForClient(BOOL allow_all) {
+    if (!Start(allow_all)) {
         return FALSE;
     }
     return WaitForClient();
 }
 
 
-BOOL PipeServer::Start(const wchar_t* pipeName, BOOL allow_all) {
+BOOL PipeServer::Start(BOOL allow_all) {
     // Permissions
     // Allow processes of all privilege levels to access this pipe
     SECURITY_ATTRIBUTES* sa_ptr = NULL;
@@ -55,7 +56,7 @@ BOOL PipeServer::Start(const wchar_t* pipeName, BOOL allow_all) {
     }
 
     hPipe = CreateNamedPipe(
-        pipeName,
+        pipe_path,
         PIPE_ACCESS_DUPLEX,
         PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, //PIPE_TYPE_MESSAGE | PIPE_WAIT,
         PIPE_UNLIMITED_INSTANCES,
@@ -88,12 +89,12 @@ BOOL PipeServer::WaitForClient() {
 }
 
 
-BOOL PipeServer::Send(wchar_t* buffer) {
+BOOL PipeServer::Send(char* buffer) {
     if (hPipe == NULL) {
         LOG_W(LOG_ERROR, L"Piping Server: Attempt to send to closed pipe");
         return FALSE;
     }
-    DWORD len = (DWORD)(wcslen(buffer) + 1) * 2; // -> include two trailing 0 bytes
+    DWORD len = strlen(buffer) + 1; // -> include two trailing 0 bytes
     if (! WriteFile(hPipe, buffer, len, NULL, NULL)) {
         // Let caller handle it
         //LOG_W(LOG_ERROR, L"Piping Server: Error when sending to pipe: %d", GetLastError());
@@ -103,9 +104,8 @@ BOOL PipeServer::Send(wchar_t* buffer) {
 }
 
 
-BOOL PipeServer::Receive(wchar_t* buffer, size_t buffer_len) {
+BOOL PipeServer::Receive(char* buffer, size_t buffer_len) {
     DWORD readLen = static_cast<DWORD>(buffer_len);
-    readLen *= 2; // Convert to bytes
     if (!ReadFile(hPipe, buffer, readLen, NULL, NULL)) {
         //LOG_W(LOG_INFO, L"Piping Server: Error when reading from pipe: %d", GetLastError());
         return FALSE;
@@ -115,28 +115,26 @@ BOOL PipeServer::Receive(wchar_t* buffer, size_t buffer_len) {
 
 
 // Empty result = error / finished
-std::vector<std::wstring> PipeServer::ReceiveBatch() {
+std::vector<std::string> PipeServer::ReceiveBatch() {
     DWORD bytesRead;
-    std::vector<std::wstring> wstrings;
+    std::vector<std::string> strings;
 
     if (ReadFile(hPipe, buf_ptr, sizeof(buffer) - rest_len, &bytesRead, NULL)) {
-        //if (pipeServer->Receive(buf_ptr, sizeof(buffer) - rest_len))
         int full_len = rest_len + bytesRead; // full len including the previous shit, if any
-        wchar_t* p = (wchar_t*)buffer; // pointer to the string we will print. points to buffer
+        char* p = (char*)buffer; // pointer to the string we will print. points to buffer
         // which always contains the beginning of a string
         int last_potential_str_start = 0;
-        for (int i = 0; i < full_len; i += 2) { // 2-byte increments because wide string
-            if (buffer[i] == 0 && buffer[i + 1] == 0) { // check manually for \x00\x00
-                //wprintf(L"DLL: %s\n", p); // found \x00\x00, print the previous string
-                //do_output(std::wstring(p));
-                wstrings.push_back(std::wstring(p));
-                i += 2; // skip \x00\x00
+        for (int i = 0; i < full_len; i++) {
+            if (buffer[i] == 0) {
+                //printf("ReceiveBatch: %s\n", p);
+                strings.push_back(std::string(p));
+                i += 1; // skip \x00
                 last_potential_str_start = i; // remember the last zero byte we found
-                p = (wchar_t*)&buffer[i]; // init p with (potential) next string
+                p = (char*)&buffer[i]; // init p with (potential) next string
             }
         }
         if (last_potential_str_start == 0) {
-            LOG_A(LOG_ERROR, "Piping: No 0x00 0x00 byte found, errornous input?");
+            LOG_A(LOG_ERROR, "Piping: No 0x00 byte found, errornous input?");
         }
 
         if (last_potential_str_start != full_len) {
@@ -154,16 +152,18 @@ std::vector<std::wstring> PipeServer::ReceiveBatch() {
     }
     else {
         if (GetLastError() == ERROR_BROKEN_PIPE) {
-            LOG_W(LOG_INFO, L"Piping: %s: disconnected", name);
+            LOG_A(LOG_INFO, "Piping: %s: disconnected", 
+                pipe_name.c_str());
             hPipe = NULL;
         }
         else {
-            LOG_W(LOG_ERROR, L"Piping: %s: Error reading from named pipe: %ld", name, GetLastError());
+            LOG_A(LOG_ERROR, "Piping: %s: Error reading from named pipe: %s", 
+                pipe_name.c_str());
             hPipe = NULL;
         }
     }
 
-    return wstrings;
+    return strings;
 }
 
 
@@ -194,8 +194,8 @@ PipeClient::PipeClient() {
 }
 
 
-BOOL PipeClient::Connect(const wchar_t *pipeName) {
-    hPipe = CreateFileW(pipeName, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
+BOOL PipeClient::Connect(const wchar_t *pipe_path) {
+    hPipe = CreateFileW(pipe_path, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (hPipe == INVALID_HANDLE_VALUE) {
         LOG_W(LOG_INFO, L"Piping Client: Could not open pipe");
         hPipe = NULL;
@@ -211,13 +211,13 @@ void PipeClient::Disconnect() {
 }
 
 
-BOOL PipeClient::Send(wchar_t* buffer) {
+BOOL PipeClient::Send(char* buffer) {
     BOOL res = 0;
     if (hPipe == NULL) {
         LOG_W(LOG_ERROR, L"Piping Client: Pipe closed");
         return FALSE;
     }
-    DWORD len = (DWORD)(wcslen(buffer) + 1) * 2; // -> include two trailing 0 bytes
+    DWORD len = (DWORD)strlen(buffer) + 1; // -> include trailing 0 bytes
     res = WriteFile(hPipe, buffer, len, NULL, NULL);
     if (res == FALSE) {
         //LOG_W(LOG_ERROR, L"Piping Client: Error when sending to pipe: %d", GetLastError());
@@ -227,9 +227,8 @@ BOOL PipeClient::Send(wchar_t* buffer) {
 }
 
 
-BOOL PipeClient::Receive(wchar_t* buffer, size_t buffer_len) {
+BOOL PipeClient::Receive(char* buffer, size_t buffer_len) {
     DWORD readLen = static_cast<DWORD>(buffer_len);
-    readLen *= 2; // Convert to bytes
     if (!ReadFile(hPipe, buffer, readLen, NULL, NULL)) {
         LOG_W(LOG_INFO, L"Piping Client: Error reading from pipe: %lu", GetLastError());
         return FALSE;

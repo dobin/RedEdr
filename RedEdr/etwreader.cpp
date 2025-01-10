@@ -46,8 +46,8 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
         return;
     }
 
-    std::wstring json_retw= KrabsEtwEventToJsonStr(record, schema);
-    g_EventAggregator.do_output(json_retw);
+    std::string json_ret = KrabsEtwEventToJsonStr(record, schema);
+    g_EventAggregator.NewEvent(json_ret);
 }
 
 

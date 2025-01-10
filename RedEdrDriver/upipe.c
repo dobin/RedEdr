@@ -24,14 +24,14 @@ int IsUserspacePipeConnected() {
 
 
 // log the event message (write to pipe)
-int LogEvent(wchar_t* message) {
+int LogEvent(char* message) {
     if (hPipe == NULL) {
         LOG_A(LOG_INFO, "uPipe: cannot log as pipe is closed");
         return 1;
     }
     NTSTATUS status;
     IO_STATUS_BLOCK io_stat_block;
-    ULONG len = (ULONG) (wcslen(message)+1) * 2; // include end \x00\x00
+    ULONG len = (ULONG) strlen(message)+1; // include end \x00
     status = ZwWriteFile(
         hPipe,
         NULL,

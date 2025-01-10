@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <fltkernel.h>
 
-int LogEvent(wchar_t*);
+int LogEvent(char*);
 int IsUserspacePipeConnected();
 void DisconnectUserspacePipe();
 int ConnectUserspacePipe();

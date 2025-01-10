@@ -24,9 +24,9 @@ PVOID uint64_to_pointer(uint64_t i);
 
 uint64_t get_time();
 std::string read_file(const std::string& path);
-wchar_t* getMemoryRegionProtect(DWORD protect);
-wchar_t* getMemoryRegionType(DWORD type);
-wchar_t* getMemoryRegionState(DWORD type);
+char* getMemoryRegionProtect(DWORD protect);
+char* getMemoryRegionType(DWORD type);
+char* getMemoryRegionState(DWORD type);
 std::string GetSectionPermissions(DWORD characteristics);
 DWORD StartProcessInBackground(LPCWSTR exePath, LPCWSTR commandLine);
 void write_file(std::string path, std::string data);

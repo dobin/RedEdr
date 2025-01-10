@@ -54,8 +54,8 @@ DWORD WINAPI DllReaderThread(LPVOID param) {
 
     // Loop which accepts new clients
     while (!DllReaderThreadStop) {
-        PipeServer* pipeServer = new PipeServer(L"DllReader");
-        if(! pipeServer->StartAndWaitForClient(DLL_PIPE_NAME, TRUE)) {
+        PipeServer* pipeServer = new PipeServer("DllReader", (wchar_t*) DLL_PIPE_NAME);
+        if(! pipeServer->StartAndWaitForClient(TRUE)) {
             LOG_A(LOG_ERROR, "WTF");
             pipeServer->Shutdown();
             delete pipeServer;
@@ -82,18 +82,18 @@ DWORD WINAPI DllReaderThread(LPVOID param) {
 void DllReaderClientThread(PipeServer* pipeServer) {
     // send config as first packet
     //   this is the only write for this pipe
-    wchar_t config[DLL_CONFIG_LEN];
-    swprintf_s(config, DLL_CONFIG_LEN, L"callstack:%d;", g_config.do_dllinjection_ucallstack);
+    char config[DLL_CONFIG_LEN];
+    sprintf_s(config, DLL_CONFIG_LEN, "callstack: % d; ", g_config.do_dllinjection_ucallstack);
     pipeServer->Send(config);
 
     // Now receive only
     while (!DllReaderThreadStop) {
-        std::vector<std::wstring> result = pipeServer->ReceiveBatch();
-        if (result.empty()) {
+        std::vector<std::string> results = pipeServer->ReceiveBatch();
+        if (results.empty()) {
             return;
         }
-        for (const auto& wstr : result) {
-            g_EventAggregator.do_output(wstr);
+        for (const auto& result : results) {
+           g_EventAggregator.NewEvent(result);
         }
     }
 
@@ -109,10 +109,11 @@ void DllReaderShutdown() {
     // Disconnect server pipe
     // Send some stuff so the ReadFile() in the reader thread returns
     PipeClient pipeClient;
-    wchar_t buf[DLL_CONFIG_LEN] = { 0 };
+    char buf[DLL_CONFIG_LEN] = { 0 };
+    const char* s = "";
     pipeClient.Connect(DLL_PIPE_NAME);
     pipeClient.Receive(buf, DLL_CONFIG_LEN);
-    pipeClient.Send((wchar_t *) L"");
+    pipeClient.Send((char *)s);
     pipeClient.Disconnect();
 }
 

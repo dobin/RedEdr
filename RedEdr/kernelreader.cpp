@@ -59,8 +59,8 @@ void KernelReaderInit(std::vector<HANDLE>& threads) {
 DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
     // Loop which accepts new clients
     while (!KernelReaderThreadStopFlag) {
-        kernelPipeServer = new PipeServer(L"KernelReader");
-        kernelPipeServer->Start(KERNEL_PIPE_NAME, TRUE);
+        kernelPipeServer = new PipeServer("KernelReader", (wchar_t*) KERNEL_PIPE_NAME);
+        kernelPipeServer->Start(TRUE);
         SetEvent(threadReadyness); // signal the event
         if (!kernelPipeServer->WaitForClient()) {
             LOG_A(LOG_ERROR, "KernelReader: WaitForClient failed");
@@ -69,12 +69,12 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
         }
 
         while (!KernelReaderThreadStopFlag) {
-            std::vector<std::wstring> events = kernelPipeServer->ReceiveBatch();
+            std::vector<std::string> events = kernelPipeServer->ReceiveBatch();
             if (events.empty()) {
                 break;
             }
             for (const auto& event : events) {
-                g_EventAggregator.do_output(event);
+                g_EventAggregator.NewEvent(event);
             }
         }
 
@@ -93,10 +93,11 @@ void KernelReaderShutdown() {
 
     if (! kernelPipeServer->IsConnected()) {
         PipeClient pipeClient;
-        wchar_t buf[DATA_BUFFER_SIZE] = { 0 }; // We may receive a full event here
+        char buf[DATA_BUFFER_SIZE] = { 0 }; // We may receive a full event here
+        const char *send = "";
         pipeClient.Connect(KERNEL_PIPE_NAME);
         pipeClient.Receive(buf, DATA_BUFFER_SIZE);
-        pipeClient.Send((wchar_t*)L"");
+        pipeClient.Send((char*) send);
         pipeClient.Disconnect();
     }
     else {

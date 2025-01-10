@@ -322,7 +322,7 @@ ProcessAddrInfoRet ProcessAddrInfo(HANDLE hProcess, PVOID address) {
     }
 
     ProcessAddrInfoRet processAddrInfoRet;
-    processAddrInfoRet.name = L"";
+    processAddrInfoRet.name = "";
     processAddrInfoRet.base_addr = mbi.BaseAddress;
     processAddrInfoRet.allocation_base = mbi.AllocationBase;
     processAddrInfoRet.region_size = mbi.RegionSize;

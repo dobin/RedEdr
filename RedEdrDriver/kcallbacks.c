@@ -15,21 +15,21 @@
 #include "../Shared/common.h"
 
 
-wchar_t* ProcessLine;
-wchar_t* ImageLine;
-wchar_t* ThreadLine;
+char* ProcessLine;
+char* ImageLine;
+char* ThreadLine;
 
 
 int InitCallbacks() {
-    ProcessLine = ExAllocatePool2(POOL_FLAG_NON_PAGED, DATA_BUFFER_SIZE * 2, 'log');
+    ProcessLine = ExAllocatePool2(POOL_FLAG_NON_PAGED, DATA_BUFFER_SIZE, 'log');
     if (ProcessLine == NULL) {
         return FALSE;
     }
-    ImageLine = ExAllocatePool2(POOL_FLAG_NON_PAGED, DATA_BUFFER_SIZE * 2, 'log');
+    ImageLine = ExAllocatePool2(POOL_FLAG_NON_PAGED, DATA_BUFFER_SIZE, 'log');
     if (ImageLine == NULL) {
         return FALSE;
     }
-    ThreadLine = ExAllocatePool2(POOL_FLAG_NON_PAGED, DATA_BUFFER_SIZE * 2, 'log');
+    ThreadLine = ExAllocatePool2(POOL_FLAG_NON_PAGED, DATA_BUFFER_SIZE, 'log');
     if (ThreadLine == NULL) {
         return FALSE;
     }
@@ -112,13 +112,13 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
     }
 
     if (g_config.enable_logging && processInfo->observe) {
-        swprintf(ProcessLine, L"{\"type\":\"kernel\",\"time\":%llu,\"func\":\"process_create\",\"krn_pid\":%llu,\"pid\":%llu,\"name\":\"%s\",\"ppid\":%llu,\"parent_name\":\"%s\",\"observe\":%d}",
+        sprintf(ProcessLine, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"process_create\",\"krn_pid\":%llu,\"pid\":%llu,\"name\":\"%s\",\"ppid\":%llu,\"parent_name\":\"%s\",\"observe\":%d}",
             systemTime,
             (unsigned __int64)PsGetCurrentProcessId(),
             (unsigned __int64)pid, 
-            JsonEscape(processInfo->name, PROC_NAME_LEN),
+            "AAA", //JsonEscape(processInfo->name, PROC_NAME_LEN),
             (unsigned __int64)createInfo->ParentProcessId, 
-            JsonEscape(processInfo->parent_name, PROC_NAME_LEN),
+            "AAA", //JsonEscape(processInfo->parent_name, PROC_NAME_LEN),
             processInfo->observe);
         LogEvent(ProcessLine);
     }
@@ -138,7 +138,7 @@ void CreateThreadNotifyRoutine(HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Create
     ULONG64 systemTime;
     KeQuerySystemTime(&systemTime);
 
-    swprintf(ThreadLine, L"{\"type\":\"kernel\",\"time\":%llu,\"func\":\"thread_create\",\"krn_pid\":%llu,\"pid\":%llu,\"threadid\":%llu,\"create\":%d}",
+    sprintf(ThreadLine, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"thread_create\",\"krn_pid\":%llu,\"pid\":%llu,\"threadid\":%llu,\"create\":%d}",
         systemTime,
         (unsigned __int64)PsGetCurrentProcessId(),
         (unsigned __int64)ProcessId,
@@ -169,11 +169,12 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
         PROCESS_INFO* procInfo = LookupProcessInfo(ProcessId);
         if (procInfo != NULL && procInfo->observe) {
             UnicodeStringToWChar(FullImageName, ImageName, PATH_LEN);
-            swprintf(ImageLine, L"{\"type\":\"kernel\",\"time\":%llu,\"func\":\"image_load\",\"krn_pid\":%llu,\"pid\":%llu,\"image\":\"%s\"}",
+            sprintf(ImageLine, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"image_load\",\"krn_pid\":%llu,\"pid\":%llu,\"image\":\"%s\"}",
                 systemTime,
                 (unsigned __int64)PsGetCurrentProcessId(),
                 (unsigned __int64)ProcessId,
-                JsonEscape(ImageName, PATH_LEN));
+                "AAA" //JsonEscape(ImageName, PATH_LEN));
+            );
             LogEvent(ImageLine);
         }
     }
@@ -366,8 +367,8 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
     );*/
 
     if (1) {
-        wchar_t line[DATA_BUFFER_SIZE] = { 0 };
-        swprintf(line, L"%p:%p;%p;%ls;%ls;%d,0x%x,0x%x,0x%x",
+        char line[DATA_BUFFER_SIZE] = { 0 };
+        sprintf(line, "%p:%p;%p;%ls;%ls;%d,0x%x,0x%x,0x%x",
             /*"ObCallbackTest: CBTdPreOperationCallback\n"
             "    Client Id:    %p:%p\n"
             "    Object:       %p\n"

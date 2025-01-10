@@ -9,20 +9,21 @@
 
 class PipeServer {
 public:
-	PipeServer(const wchar_t* pipe_name);
-	BOOL StartAndWaitForClient(const wchar_t* pipeName, BOOL allow_all);
+	PipeServer(std::string pipeName, wchar_t* pipePath);
+	BOOL StartAndWaitForClient(BOOL allow_all);
 	BOOL WaitForClient();
-	BOOL Start(const wchar_t* pipeName, BOOL allow_all);
+	BOOL Start(BOOL allow_all);
 
-	BOOL Send(wchar_t* buffer);
-	BOOL Receive(wchar_t* buffer, size_t buffer_len);
-	std::vector<std::wstring> ReceiveBatch();
+	BOOL Send(char* buffer);
+	BOOL Receive(char* buffer, size_t buffer_len);
+	std::vector<std::string> ReceiveBatch();
 	void Shutdown();
 	BOOL IsConnected();
 	
 private:
 	HANDLE hPipe;
-	const wchar_t* name;
+	wchar_t* pipe_path;
+	std::string pipe_name;
 
 	// state for ReceiveBatch
 	char buffer[DATA_BUFFER_SIZE] = { 0 };
@@ -32,15 +33,14 @@ private:
 };
 
 
-
 class PipeClient {
 public:
 	PipeClient();
 	BOOL Connect(const wchar_t* pipeName);
 	void Disconnect();
 
-	BOOL Send(wchar_t* buffer);
-	BOOL Receive(wchar_t* buffer, size_t buffer_len);
+	BOOL Send(char* buffer);
+	BOOL Receive(char* buffer, size_t buffer_len);
 
 private:
 	HANDLE hPipe;

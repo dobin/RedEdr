@@ -66,7 +66,7 @@ static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
     ULONG Protect)
 {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (!HooksInitialized) { // dont log our own hooking
         return Real_NtAllocateVirtualMemory(ProcessHandle, BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
@@ -84,24 +84,24 @@ static NTSTATUS NTAPI Catch_NtAllocateVirtualMemory(
     SIZE_T size = (RegionSize != NULL) ? *RegionSize : NULL;
 
     int offset = 0;
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtAllocateVirtualMemory\",");
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"handle\":%lld,", (long long)ProcessHandle);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"addr\":%llu,", addr);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtAllocateVirtualMemory\",");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"handle\":%lld,", (long long)ProcessHandle);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"addr\":%llu,", addr);
     if (addr_req != NULL && addr_req != addr) {
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"addr_req\":%llu,", addr_req);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"addr_req\":%llu,", addr_req);
     }
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"zero\":%llu,", ZeroBits);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"size\":%llu,", size);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"size_req\":%llu,", size_req);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"alloc_type\":%lu,", AllocationType);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"protect\":\"%s\",", getMemoryRegionProtect(Protect));
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"return\":%ld", ret);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"zero\":%llu,", ZeroBits);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"size\":%llu,", size);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"size_req\":%llu,", size_req);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"alloc_type\":%lu,", AllocationType);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"protect\":\"%s\",", getMemoryRegionProtect(Protect));
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"return\":%ld", ret);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
 
     // BROKEN for some reason. Do not attempt to enable it again.
     //offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
@@ -128,7 +128,7 @@ static NTSTATUS NTAPI Catch_NtFreeVirtualMemory(
     IN ULONG        FreeType)
 {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (!HooksInitialized) { // dont log our own hooking
         return Real_NtFreeVirtualMemory(ProcessHandle, BaseAddress, RegionSize, FreeType);
@@ -146,22 +146,22 @@ static NTSTATUS NTAPI Catch_NtFreeVirtualMemory(
     ULONG size = (RegionSize != NULL) ? *RegionSize : NULL;
 
     int offset = 0;
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtFreeVirtualMemory\",");
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"handle\":%lld,", (long long)ProcessHandle);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"addr\":%llu,", addr);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtFreeVirtualMemory\",");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"handle\":%lld,", (long long)ProcessHandle);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"addr\":%llu,", addr);
     if (addr_req != NULL && addr_req != addr) {
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"addr_req\":%llu,", addr_req);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"addr_req\":%llu,", addr_req);
     }
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"size\":%llu,", size);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"size_req\":%lu,", size_req);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"free_type\":%lx,", FreeType);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"return\":%ld", ret);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"size\":%llu,", size);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"size_req\":%lu,", size_req);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"free_type\":%lx,", FreeType);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"return\":%ld", ret);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
 
     SendDllPipe(buf);
 
@@ -188,7 +188,7 @@ static NTSTATUS NTAPI Catch_NtProtectVirtualMemory(
     PULONG OldAccessProtection
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (!HooksInitialized) { // dont log our own hooking
         return Real_NtProtectVirtualMemory(ProcessHandle, BaseAddress, NumberOfBytesToProtect, NewAccessProtection, OldAccessProtection);
@@ -204,22 +204,22 @@ static NTSTATUS NTAPI Catch_NtProtectVirtualMemory(
     PVOID addr = (BaseAddress != NULL) ? *BaseAddress : NULL;
 
     int offset = 0;
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtProtectVirtualMemory\",");
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"handle\":%lld,", (long long)ProcessHandle);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"addr\":%llu,", addr);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtProtectVirtualMemory\",");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"handle\":%lld,", (long long)ProcessHandle);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"addr\":%llu,", addr);
     if (addr_req != NULL && addr_req != addr) {
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"addr_req\":%llu,", addr);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"addr_req\":%llu,", addr);
     }
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"size\":%lu,", *NumberOfBytesToProtect);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"protect\":\"%s\",", getMemoryRegionProtect(NewAccessProtection));
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"return\":%ld,", ret);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"size\":%lu,", *NumberOfBytesToProtect);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"protect\":\"%s\",", getMemoryRegionProtect(NewAccessProtection));
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"return\":%ld,", ret);
     offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
     SendDllPipe(buf);
     return ret;
 }
@@ -259,7 +259,7 @@ NTSTATUS NTAPI Catch_NtMapViewOfSection(
     ULONG           Protect
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (!HooksInitialized) { // dont log our own hooking
         return Real_NtMapViewOfSection(SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Protect);
@@ -273,24 +273,24 @@ NTSTATUS NTAPI Catch_NtMapViewOfSection(
     NTSTATUS ret = Real_NtMapViewOfSection(SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Protect);
 
     int offset = 0;
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtMapViewOfSection\",");
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"section_handle\":%lld,", SectionHandle);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"handle\":%lld,", (long long)ProcessHandle);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"base_address\":%llu,", baseAddressValue);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"zero_bits\":%llu,", ZeroBits);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"size\":%llu,", CommitSize);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"section_offset\":%lld,", sectionOffsetValue);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"view_size\":%llu,", viewSizeValue);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"inherit_disposition\":%x,", InheritDisposition);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"alloc_type\":%x,", AllocationType);
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"protect\":\"%s\"", getMemoryRegionProtect(Protect));
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtMapViewOfSection\",");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"section_handle\":%lld,", SectionHandle);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"handle\":%lld,", (long long)ProcessHandle);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"base_address\":%llu,", baseAddressValue);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"zero_bits\":%llu,", ZeroBits);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"size\":%llu,", CommitSize);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"section_offset\":%lld,", sectionOffsetValue);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"view_size\":%llu,", viewSizeValue);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"inherit_disposition\":%x,", InheritDisposition);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"alloc_type\":%x,", AllocationType);
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"protect\":\"%s\"", getMemoryRegionProtect(Protect));
     //offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset); // makes cs410 staged crash
-    offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+    offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
 
     SendDllPipe(buf);
     return ret;
@@ -316,22 +316,22 @@ NTSTATUS NTAPI Catch_NtWriteVirtualMemory(
     PULONG              NumberOfBytesWritten
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (HooksInitialized) { // dont log our own hooking
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtWriteVirtualMemory\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"handle\":%lld,", (long long)ProcessHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"base_address\":%llu,", BaseAddress);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"buffer\":%llu,", Buffer);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"size\":%lu,", NumberOfBytesToWrite);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtWriteVirtualMemory\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"handle\":%lld,", (long long)ProcessHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"base_address\":%llu,", BaseAddress);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"buffer\":%llu,", Buffer);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"size\":%lu,", NumberOfBytesToWrite);
         offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
         
         SendDllPipe(buf);
     }
@@ -358,22 +358,22 @@ NTSTATUS NTAPI Catch_NtReadVirtualMemory(
     PULONG              NumberOfBytesRead
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (HooksInitialized) { // dont log our own hooking
         if (!skip_self_readprocess || ProcessHandle != (HANDLE)-1) {
             int offset = 0;
-            offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-            offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-            offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\"k:%llu,", time);
-            offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-            offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-            offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtReadVirtualMemory\",");
-            offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"handle\":%lld,", (long long)ProcessHandle);
-            offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"base_address\":%llu,", BaseAddress);
-            offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"buffer\":%llu,", Buffer);
-            offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"size\":%lu", NumberOfBytesToRead);
-            offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+            offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+            offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+            offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\"k:%llu,", time);
+            offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+            offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+            offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtReadVirtualMemory\",");
+            offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"handle\":%lld,", (long long)ProcessHandle);
+            offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"base_address\":%llu,", BaseAddress);
+            offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"buffer\":%llu,", Buffer);
+            offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"size\":%lu", NumberOfBytesToRead);
+            offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
             SendDllPipe(buf);
         }
 
@@ -399,16 +399,16 @@ NTSTATUS NTAPI Catch_NtSetContextThread(
     IN PCONTEXT             Context
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (HooksInitialized) { // dont log our own hooking
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll,");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:SetContextThread,");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:%llu,", ThreadHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "type:dll,");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "time:%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "pid:%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "tid:%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "func:SetContextThread,");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "thread_handle:%llu,", ThreadHandle);
 
         offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
         SendDllPipe(buf);
@@ -434,27 +434,27 @@ NTSTATUS NTAPI Catch_LdrLoadDll(
     OUT PVOID* BaseAddress
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
-    wchar_t wDllName[DLL_NAME_LEN] = L"";  // Buffer for the decoded DllName
-    wchar_t empty[32] = L"<broken>";        // Empty string in case SearchPath is NULL
+    char buf[DATA_BUFFER_SIZE] = "";
+    //wchar_t wDllName[DLL_NAME_LEN] = "";  // Buffer for the decoded DllName
+    char empty[32] = "<broken>";        // Empty string in case SearchPath is NULL
 
     if (HooksInitialized) { // dont log our own hooking
-        wchar_t* searchPath = empty;   // SearchPath seems to be 8 (the number 8, not a string) BROKEN
-        UnicodeStringToWChar(DllName, wDllName, DLL_NAME_LEN);
+        char* searchPath = empty;   // SearchPath seems to be 8 (the number 8, not a string) BROKEN
+        //UnicodeStringToWChar(DllName, wDllName, DLL_NAME_LEN);
         ULONG dllCharacteristics = (DllCharacteristics != NULL) ? *DllCharacteristics : 0;
 
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"LdrLoadDll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"search_path\":\"%ls\",", searchPath);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"dll_characteristics\":%lu,", dllCharacteristics);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"dll_name\":\"%ls\",", wDllName);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"LdrLoadDll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"search_path\":\"%ls\",", searchPath);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"dll_characteristics\":%lu,", dllCharacteristics);
+        //offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"dll_name\":\"%ls\",", wDllName);
         offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
 
         SendDllPipe(buf);
     }
@@ -478,28 +478,28 @@ NTSTATUS NTAPI Catch_LdrGetProcedureAddress(
     OUT FARPROC* FunctionAddress
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
-    wchar_t wideFunctionName[WIDE_FUNCTION_NAME_LEN] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
+    //wchar_t wideFunctionName[WIDE_FUNCTION_NAME_LEN] = "";
 
     if (HooksInitialized) { // dont log our own hooking
         //UnicodeStringToWChar(FunctionName, wideFunctionName, WIDE_FUNCTION_NAME_LEN);
 
         if (FunctionName && FunctionName->Buffer) {
             // Convert ANSI string to wide string
-            MultiByteToWideChar(CP_ACP, 0, FunctionName->Buffer, -1, wideFunctionName, WIDE_FUNCTION_NAME_LEN);
+            //MultiByteToWideChar(CP_ACP, 0, FunctionName->Buffer, -1, wideFunctionName, WIDE_FUNCTION_NAME_LEN);
         }
 
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"LdrGetProcedureAddress\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"module_handle\":%lld,", ModuleHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"function\":\"%s\",", wideFunctionName);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"ordinal\":%u", Oridinal);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"LdrGetProcedureAddress\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"module_handle\":%lld,", ModuleHandle);
+        //offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"function\":\"%s\",", wideFunctionName);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"ordinal\":%u", Oridinal);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
 
         SendDllPipe(buf);
     }
@@ -526,19 +526,19 @@ NTSTATUS NTAPI Catch_NtQueueApcThread(
     IN ULONG                ApcReserved OPTIONAL
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (HooksInitialized) { // dont log our own hooking
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtQueueApcThread\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"thread_handle\":%lld,", ThreadHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtQueueApcThread\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"thread_handle\":%lld,", ThreadHandle);
         offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
         
         SendDllPipe(buf);
     }
@@ -566,24 +566,24 @@ NTSTATUS NTAPI Catch_NtQueueApcThreadEx(
     IN PVOID                ApcArgument3
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (HooksInitialized) { // dont log our own hooking
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtQueueApcThreadEx\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"thread_handle\":%lld,", ThreadHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"apc_thread\":%llu,", ApcThreadHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"apc_routine\":%llu,", ApcRoutine);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"arg1\":%llu,", ApcArgument1);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"arg2\":%llu,", ApcArgument2);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"arg3\":%llu,", ApcArgument3);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtQueueApcThreadEx\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"thread_handle\":%lld,", ThreadHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"apc_thread\":%llu,", ApcThreadHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"apc_routine\":%llu,", ApcRoutine);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"arg1\":%llu,", ApcArgument1);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"arg2\":%llu,", ApcArgument2);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"arg3\":%llu,", ApcArgument3);
         offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
         
         SendDllPipe(buf);
     }
@@ -615,22 +615,22 @@ NTSTATUS NTAPI Catch_NtCreateProcess(
     IN HANDLE               ExceptionPort
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (HooksInitialized) { // dont log our own hooking
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtCreateProcess\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"handle\":%lld,", (long long)ProcessHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"access_mask\":%u,", DesiredAccess);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"parent_process\":%llu,", ParentProcess);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"inherit_table\":%d,", InheritObjectTable);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtCreateProcess\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"handle\":%lld,", (long long)ProcessHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"access_mask\":%u,", DesiredAccess);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"parent_process\":%llu,", ParentProcess);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"inherit_table\":%d,", InheritObjectTable);
         offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
         SendDllPipe(buf);
     }
     return Real_NtCreateProcess(ProcessHandle, DesiredAccess, ObjectAttributes, ParentProcess, InheritObjectTable, SectionHandle, DebugPort, ExceptionPort);
@@ -661,7 +661,7 @@ NTSTATUS NTAPI Catch_NtCreateThread(
     IN BOOLEAN              CreateSuspended
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     NTSTATUS ret = Real_NtCreateThread(ThreadHandle, DesiredAccess, ObjectAttributes, ProcessHandle, ClientId, ThreadContext, InitialTeb, CreateSuspended);
     if (HooksInitialized) { // dont log our own hooking
@@ -670,19 +670,19 @@ NTSTATUS NTAPI Catch_NtCreateThread(
         HANDLE rThreadHandle = (ThreadHandle != NULL) ? *ThreadHandle : NULL;
 
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtCreateThread\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"thread_handle\":%lld,", rThreadHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"handle\":%lld,", (long long)ProcessHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"suspended\":%llu,", CreateSuspended);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"unique_process\":%llu,", rUniqueProcess);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"unique_thread\":%llu,", rUniqueThread);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtCreateThread\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"thread_handle\":%lld,", rThreadHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"handle\":%lld,", (long long)ProcessHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"suspended\":%llu,", CreateSuspended);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"unique_process\":%llu,", rUniqueProcess);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"unique_thread\":%llu,", rUniqueThread);
         offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
         SendDllPipe(buf);
     }
     return ret;
@@ -719,25 +719,25 @@ NTSTATUS NTAPI Catch_NtCreateThreadEx(
     IN PVOID                AttributeList
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     NTSTATUS ret = Real_NtCreateThreadEx(ThreadHandle, DesiredAccess, ObjectAttributes, ProcessHandle, StartRoutine, Argument, CreateFlags, ZeroBits, StackSize, MaximumStackSize, AttributeList);
     if (HooksInitialized) { // dont log our own hooking
         HANDLE rThreadHandle = (ThreadHandle != NULL) ? *ThreadHandle : NULL;
 
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtCreateThreadEx\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"thread_handle\":%lld,", rThreadHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"handle\":%lld,", (long long)ProcessHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"start_routine\":%llu,", StartRoutine);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"argument\":%llu", Argument);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtCreateThreadEx\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"thread_handle\":%lld,", rThreadHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"handle\":%lld,", (long long)ProcessHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"start_routine\":%llu,", StartRoutine);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"argument\":%llu", Argument);
         //offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
         SendDllPipe(buf);
     }
     return ret;
@@ -760,22 +760,22 @@ NTSTATUS NTAPI Catch_NtOpenProcess(
     IN CLIENT_ID* ClientId
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (HooksInitialized) { // dont log our own hooking
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtOpenProcess\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"handle\":%lld,", (long long)ProcessHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"access_mask\":%lu,", DesiredAccess);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"client_id_process\":%llu,", ClientId->UniqueProcess);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"client_id_thread\":%llu,", ClientId->UniqueThread);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtOpenProcess\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"handle\":%lld,", (long long)ProcessHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"access_mask\":%lu,", DesiredAccess);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"client_id_process\":%llu,", ClientId->UniqueProcess);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"client_id_thread\":%llu,", ClientId->UniqueThread);
         offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
         SendDllPipe(buf);
     }
     return Real_NtOpenProcess(ProcessHandle, DesiredAccess, ObjectAttributes, ClientId);
@@ -793,22 +793,22 @@ NTSTATUS NTAPI Catch_NtLoadDriver(
     IN PUNICODE_STRING      DriverServiceName
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
     wchar_t wDriverServiceName[WIDE_SERVICE_NAME_LEN];
 
     if (HooksInitialized) { // dont log our own hooking
         UnicodeStringToWChar(DriverServiceName, wDriverServiceName, WIDE_SERVICE_NAME_LEN);
 
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtLoadDriver;\"");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"driver_service_name\":\"%ls\",", wDriverServiceName);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtLoadDriver;\"");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"driver_service_name\":\"%ls\",", wDriverServiceName);
         offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
         SendDllPipe(buf);
     }
     return Real_NtLoadDriver(DriverServiceName);
@@ -851,26 +851,26 @@ NTSTATUS NTAPI Catch_NtCreateNamedPipeFile(
     IN PLARGE_INTEGER       DefaultTimeout
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (HooksInitialized) { // dont log our own hooking
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtCreateNamedPipeFile\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtCreateNamedPipeFile\",");
         
-        //offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pipe_handle\":%lld,", NamedPipeFileHandle);
+        //offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pipe_handle\":%lld,", NamedPipeFileHandle);
         
         // beware of the following 4
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"access_mask\":%lu,", DesiredAccess);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"share_access\":%lu,", ShareAccess);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pipe_type\":%lu,", NamedPipeType);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"read_mode\":%lu", ReadMode);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"access_mask\":%lu,", DesiredAccess);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"share_access\":%lu,", ShareAccess);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pipe_type\":%lu,", NamedPipeType);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"read_mode\":%lu", ReadMode);
         
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
         SendDllPipe(buf);
     }
     return Real_NtCreateNamedPipeFile(NamedPipeFileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, CreateDisposition, CreateOptions, NamedPipeType, ReadMode, CompletionMode, MaximumInstances, InboundQuota, OutboundQuota, DefaultTimeout);
@@ -893,21 +893,21 @@ NTSTATUS NTAPI Catch_NtOpenThread(
     IN CLIENT_ID*           ClientId
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
     if (HooksInitialized) { // dont log our own hooking
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtOpenThread\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"thread_handle\":%lld,", ThreadHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"access_mask\":%lu,", DesiredAccess);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"client_id_process\":%llu,", ClientId->UniqueProcess);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"client_id_thread\":%llu,", ClientId->UniqueThread);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtOpenThread\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"thread_handle\":%lld,", ThreadHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"access_mask\":%lu,", DesiredAccess);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"client_id_process\":%llu,", ClientId->UniqueProcess);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"client_id_thread\":%llu,", ClientId->UniqueThread);
         offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
         SendDllPipe(buf);
     }
     return Real_NtOpenThread(ThreadHandle, DesiredAccess, ObjectAttributes, ClientId);
@@ -936,7 +936,7 @@ NTSTATUS NTAPI Catch_NtCreateSection(
     IN HANDLE               FileHandle
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     NTSTATUS ret = Real_NtCreateSection(SectionHandle, DesiredAccess, ObjectAttributes, MaximumSize, SectionPageProtection, AllocationAttributes, FileHandle);
 
@@ -944,20 +944,20 @@ NTSTATUS NTAPI Catch_NtCreateSection(
         HANDLE SectionHandleValue = (SectionHandle != NULL) ? *SectionHandle : NULL;
 
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtCreateSection\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"section_handle\":%llu,", (unsigned long long) SectionHandleValue);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"access_mask\":%lu,", DesiredAccess);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"max_size\":%llu,", MaximumSize);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"page_protection\":%lu,", SectionPageProtection);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"alloc_attributes\":%lu,", AllocationAttributes);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"file_handle\":%llu,", (unsigned long long) FileHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtCreateSection\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"section_handle\":%llu,", (unsigned long long) SectionHandleValue);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"access_mask\":%lu,", DesiredAccess);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"max_size\":%llu,", MaximumSize);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"page_protection\":%lu,", SectionPageProtection);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"alloc_attributes\":%lu,", AllocationAttributes);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"file_handle\":%llu,", (unsigned long long) FileHandle);
         offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
         SendDllPipe(buf);
     }
     return ret;
@@ -990,25 +990,25 @@ NTSTATUS NTAPI Catch_NtCreateProcessEx(
     IN BOOLEAN              InJob
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (HooksInitialized) { // dont log our own hooking
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtCreateProcessEx\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"handle\":%lld,", (long long) ProcessHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"parent_process\":%llu,", (unsigned long long) ParentProcess);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"flags\":%lu,", Flags);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"section_handle\":%llu,", (unsigned long long) SectionHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"debug_port\":%llu,", (unsigned long long) DebugPort);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"exception_port\":%llu,", (unsigned long long) ExceptionPort);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"in_job\":%d,", InJob);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtCreateProcessEx\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"handle\":%lld,", (long long) ProcessHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"parent_process\":%llu,", (unsigned long long) ParentProcess);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"flags\":%lu,", Flags);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"section_handle\":%llu,", (unsigned long long) SectionHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"debug_port\":%llu,", (unsigned long long) DebugPort);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"exception_port\":%llu,", (unsigned long long) ExceptionPort);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"in_job\":%d,", InJob);
         offset += LogMyStackTrace(&buf[offset], DATA_BUFFER_SIZE - offset);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
         SendDllPipe(buf);
     }
     return Real_NtCreateProcessEx(ProcessHandle, DesiredAccess, ObjectAttributes, ParentProcess, Flags, SectionHandle, DebugPort, ExceptionPort, InJob);
@@ -1038,20 +1038,20 @@ NTSTATUS NTAPI Catch_NtCreateEvent(
     IN BOOLEAN              InitialState
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (HooksInitialized) { // dont log our own hooking
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtCreateEvent\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"desired_access\":%lu,", DesiredAccess);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"event_type\":%d,", EventType);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"initial_state\":%d", InitialState);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtCreateEvent\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"desired_access\":%lu,", DesiredAccess);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"event_type\":%d,", EventType);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"initial_state\":%d", InitialState);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
 
         SendDllPipe(buf);
     }
@@ -1080,19 +1080,19 @@ NTSTATUS NTAPI Catch_NtCreateTimer(
     IN TIMER_TYPE           TimerType
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (HooksInitialized) { // dont log our own hooking
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtCreateTimer\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"desired_access\":%lu,", DesiredAccess);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"timer_type\":%d", TimerType);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtCreateTimer\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"desired_access\":%lu,", DesiredAccess);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"timer_type\":%d", TimerType);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
 
         SendDllPipe(buf);
     }
@@ -1118,19 +1118,19 @@ NTSTATUS NTAPI Catch_NtCreateTimer2(
     IN ACCESS_MASK          DesiredAccess
 ) {
     int64_t time = get_time();
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
 
     if (HooksInitialized) { // dont log our own hooking
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", (DWORD)GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", (DWORD)GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtCreateTimer2\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"attributes\":%lu,", Attributes);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"desired_access\":%lu", DesiredAccess);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", (DWORD)GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", (DWORD)GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtCreateTimer2\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"attributes\":%lu,", Attributes);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"desired_access\":%lu", DesiredAccess);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
 
         SendDllPipe(buf);
     }
@@ -1159,18 +1159,18 @@ NTSTATUS NTAPI Catch_NtCreateRemoteThread(
     DWORD dwCreationFlags,
     LPDWORD lpThreadId
 ) {
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
     int64_t time = get_time();
 
     if (HooksInitialized) { // Avoid logging internal operations
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll,");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu,", GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu,", GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:CreateRemoteThread,");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"handle:%llu,", hProcess);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"start_address:%lu", lpStartAddress);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "type:dll,");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "time:%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "pid:%lu,", GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "tid:%lu,", GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "func:CreateRemoteThread,");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "handle:%llu,", hProcess);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "start_address:%lu", lpStartAddress);
 
         SendDllPipe(buf);
     }
@@ -1198,17 +1198,17 @@ NTSTATUS NTAPI Hooked_NtQueryInformationThread (
     ULONG           ThreadInformationLength,
     PULONG          ReturnLength
 ) {
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
     int64_t time = get_time();
 
     if (HooksInitialized) { // Avoid logging internal operations
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll,");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu,", GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu,", GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:QueryInformationThread,");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:%llu,", ThreadHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "type:dll,");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "time:%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "pid:%lu,", GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "tid:%lu,", GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "func:QueryInformationThread,");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "thread_handle:%llu,", ThreadHandle);
 
         SendDllPipe(buf);
     }
@@ -1235,18 +1235,18 @@ NTSTATUS NTAPI Hooked_NtSetInformationThread(
     PVOID           ThreadInformation,
     ULONG           ThreadInformationLength
 ) {
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
     int64_t time = get_time();
 
     if (HooksInitialized) { // Avoid logging internal operations
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"type:dll,");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"time:%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"pid:%lu,", GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"tid:%lu,", GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"func:SetInformationThread,");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"thread_handle:%llu,", ThreadHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"ThreadInformationClass:%lu,", ThreadInformationClass);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "type:dll,");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "time:%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "pid:%lu,", GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "tid:%lu,", GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "func:SetInformationThread,");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "thread_handle:%llu,", ThreadHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "ThreadInformationClass:%lu,", ThreadInformationClass);
 
         SendDllPipe(buf);
     }
@@ -1269,19 +1269,19 @@ NTSTATUS NTAPI Catch_NtResumeThread(
     HANDLE ThreadHandle,
     PULONG SuspendCount OPTIONAL
 ) {
-    wchar_t buf[DATA_BUFFER_SIZE] = L"";
+    char buf[DATA_BUFFER_SIZE] = "";
     int64_t time = get_time();
 
     if (HooksInitialized) { // Avoid logging internal operations
         int offset = 0;
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"{");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"type\":\"dll\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"time\":%llu,", time);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"pid\":%lu,", GetCurrentProcessId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"tid\":%lu,", GetCurrentThreadId());
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"func\":\"NtResumeThread\",");
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"\"thread_handle\":%llu", (unsigned long long)ThreadHandle);
-        offset += swprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, L"}");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "{");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"type\":\"dll\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"time\":%llu,", time);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"pid\":%lu,", GetCurrentProcessId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"tid\":%lu,", GetCurrentThreadId());
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"func\":\"NtResumeThread\",");
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "\"thread_handle\":%llu", (unsigned long long)ThreadHandle);
+        offset += sprintf_s(buf + offset, DATA_BUFFER_SIZE - offset, "}");
         SendDllPipe(buf);
     }
 
@@ -1300,12 +1300,12 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     if (DetourIsHelperProcess()) {
         return TRUE;
     }
-    wchar_t start_str[STARTSTOP_LEN] = { 0 };
-    wchar_t stop_str[STARTSTOP_LEN] = { 0 };
+    char start_str[STARTSTOP_LEN] = { 0 };
+    char stop_str[STARTSTOP_LEN] = { 0 };
 
-    swprintf(start_str, STARTSTOP_LEN, L"{\"type\":\"dll\",\"func\":\"hooking_start\",\"pid\":%lu,\"tid\":%lu}",
+    snprintf(start_str, STARTSTOP_LEN, "{\"type\":\"dll\",\"func\":\"hooking_start\",\"pid\":%lu,\"tid\":%lu}",
         (DWORD)GetCurrentProcessId(), (DWORD)GetCurrentThreadId());
-    swprintf(stop_str, STARTSTOP_LEN, L"{\"type\":\"dll\",\"func\":\"hooking_finished\",\"pid\":%lu,\"tid\":%lu}",
+    snprintf(stop_str, STARTSTOP_LEN, "{\"type\":\"dll\",\"func\":\"hooking_finished\",\"pid\":%lu,\"tid\":%lu}",
         (DWORD)GetCurrentProcessId(), (DWORD)GetCurrentThreadId());
 
     LOG_A(LOG_INFO, "Injected DLL Detours Main thread started on pid %lu  threadid %lu",
@@ -1368,17 +1368,18 @@ DWORD WINAPI InitHooksThread(LPVOID param) {
     DetourAttach(&(PVOID&)Real_NtReadVirtualMemory, Catch_NtReadVirtualMemory);
     DetourAttach(&(PVOID&)Real_NtOpenThread, Catch_NtOpenThread);
     DetourAttach(&(PVOID&)Real_NtWriteVirtualMemory, Catch_NtWriteVirtualMemory);
-    DetourAttach(&(PVOID&)Real_NtMapViewOfSection, Catch_NtMapViewOfSection);
+    //DetourAttach(&(PVOID&)Real_NtMapViewOfSection, Catch_NtMapViewOfSection);
+
     DetourAttach(&(PVOID&)Real_NtAllocateVirtualMemory, Catch_NtAllocateVirtualMemory);
     DetourAttach(&(PVOID&)Real_NtProtectVirtualMemory, Catch_NtProtectVirtualMemory);
     DetourAttach(&(PVOID&)Real_NtFreeVirtualMemory, Catch_NtFreeVirtualMemory);
 
     error = DetourTransactionCommit();
     if (error == NO_ERROR) {
-        LOG_A(LOG_INFO, "simple" DETOURS_STRINGIFY(DETOURS_BITS) ".dll: Detoured OK\n");
+        LOG_A(LOG_INFO, "MS-detours: ntdll.dll hijacking success\n");
     }
     else {
-        LOG_A(LOG_ERROR, "simple" DETOURS_STRINGIFY(DETOURS_BITS) ".dll:Error detouring %ld\n", error);
+        LOG_A(LOG_ERROR, "MS-detours: Error detouring %ld\n", error);
     }
     SendDllPipe(stop_str);
     HooksInitialized = TRUE;

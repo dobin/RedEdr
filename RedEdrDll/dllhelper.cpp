@@ -44,9 +44,9 @@ void InitDllPipe() {
     // Retrieve config (first packet)
     //   this is the only time we read from this pipe
     LOG_A(LOG_INFO, "Waiting for config...");
-    wchar_t buffer[DLL_CONFIG_LEN];
+    char buffer[DLL_CONFIG_LEN];
     if (pipeClient.Receive(buffer, DLL_CONFIG_LEN)) {
-        if (wcsstr(buffer, L"callstack:1") != NULL) {
+        if (strstr(buffer, "callstack:1") != NULL) {
             Config.do_stacktrace = true;
             LOG_W(LOG_INFO, L"Config: Callstack Enabled");
         }
@@ -59,7 +59,7 @@ void InitDllPipe() {
 
 
 // Pipe send
-void SendDllPipe(wchar_t* buffer) {
+void SendDllPipe(char* buffer) {
     pipeClient.Send(buffer);
 }
 
@@ -88,7 +88,7 @@ void doInitSym(HANDLE hProcess) {
 }
 
 
-size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
+size_t LogMyStackTrace(char* buf, size_t buf_size) {
     CONTEXT context;
     STACKFRAME64 stackFrame;
     DWORD machineType;
@@ -112,11 +112,11 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
     stackFrame.AddrStack.Mode = AddrModeFlat;
 
     // FUUUUU
-    wchar_t* begin_str = (wchar_t *) L"\"callstack\":[";
-    int l = wcscat_s(buf, buf_size, begin_str);
-    buf_size -= wcslen(begin_str);
-    buf += wcslen(begin_str);
-    written += wcslen(begin_str);
+    char* begin_str = (char*) "\"callstack\":[";
+    int l = strcat_s(buf, buf_size, begin_str);
+    buf_size -= strlen(begin_str);
+    buf += strlen(begin_str);
+    written += strlen(begin_str);
 
     MEMORY_BASIC_INFORMATION mbi;
     int n = 0;
@@ -127,7 +127,6 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
     {
         DWORD64 address = stackFrame.AddrPC.Offset;
         size_t w = 0;
-        didWalk = 1;
 
         if (n > MAX_CALLSTACK_ENTRIES) {
             // dont go too deep
@@ -139,8 +138,9 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
             break;
         }*/
 
+        didWalk = 1;
         ProcessAddrInfoRet processAddrInfoRet = ProcessAddrInfo(hProcess, (PVOID) address);
-        w = swprintf_s(buf, buf_size, L"{\"idx\":%i,\"addr\":%llu,\"page_addr\":%llu,\"size\":%zu,\"state\":%lu,\"protect\":\"%s\",\"type\":\"%s\"},",
+        w = sprintf_s(buf, buf_size, "{\"idx\":%i,\"addr\":%llu,\"page_addr\":%llu,\"size\":%zu,\"state\":%lu,\"protect\":\"%s\",\"type\":\"%s\"},",
             n, 
             address, 
             processAddrInfoRet.base_addr,
@@ -160,11 +160,11 @@ size_t LogMyStackTrace(wchar_t* buf, size_t buf_size) {
 
     // remove last comma if we added at least one entry
     if (didWalk) {
-        buf[wcslen(buf) - 1] = L']';
-        buf[wcslen(buf) - 0] = L'\x00';
+        buf[strlen(buf) - 1] = ']';
+        buf[strlen(buf) - 0] = '\x00';
     }
     else {
-        wcscat_s(buf, buf_size, L"]");
+        strcat_s(buf, buf_size, "]");
         written += 1;
     }
 
