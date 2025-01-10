@@ -13,12 +13,13 @@
 #include "process_query.h"
 #include "dllinjector.h"
 #include "kernelinterface.h"
+#include "utils.h"
 
 
 // KernelInterface: Functions to interact with the kernel driver (load/unload, enable/disable)
 
 
-BOOL EnableKernelDriver(int enable, wchar_t* target) {
+BOOL EnableKernelDriver(int enable, std::string target) {
     HANDLE hDevice = CreateFile(L"\\\\.\\RedEdr",
         GENERIC_READ | GENERIC_WRITE,
         0,
@@ -31,9 +32,10 @@ BOOL EnableKernelDriver(int enable, wchar_t* target) {
         LOG_A(LOG_ERROR, "Kernel: Failed to open device. Error: %d", GetLastError());
         return FALSE;
     }
+    wchar_t* targetW = stringToWChar(target);
     MY_DRIVER_DATA dataToSend = { 0 };
     if (enable) {
-        wcscpy_s(dataToSend.filename, target);
+        wcscpy_s(dataToSend.filename, targetW);
         dataToSend.dll_inject = g_config.do_dllinjection;
         dataToSend.enable = enable;
     }

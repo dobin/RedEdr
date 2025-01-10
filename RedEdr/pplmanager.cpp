@@ -7,6 +7,7 @@
 #include "serviceutils.h"
 #include "pplmanager.h"
 #include "piping.h"
+#include "utils.h"
 
 
 // PplManager: Interact with the PPL service 
@@ -18,11 +19,11 @@ PipeClient pipeClient;
 BOOL StartPplService();
 BOOL InstallPplService();
 BOOL InstallElamCertPpl();
-BOOL EnablePplProducer(BOOL e, wchar_t* target_name);
 
 
-BOOL EnablePplProducer(BOOL e, wchar_t* target_name) {
+BOOL EnablePplProducer(BOOL e, std::string targetName) {
     wchar_t buffer[PPL_CONFIG_LEN] = { 0 };
+    wchar_t* target_name = stringToWChar(targetName);
 
     if (!pipeClient.Connect(PPL_SERVICE_PIPE_NAME)) {
         LOG_A(LOG_ERROR, "ETW-TI: Error connecting to RedEdrPplService pipe: error code %ld", GetLastError());

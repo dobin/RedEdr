@@ -175,7 +175,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (result.count("trace")) {
-        g_config.targetExeName = result["trace"].as<std::string>();;
+        g_config.targetExeName = result["trace"].as<std::string>();
     }
     else if (! result.count("test") && !result.count("replay")) {
         std::cout << options.help() << std::endl;
@@ -238,7 +238,7 @@ int main(int argc, char* argv[]) {
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
     LOG_A(LOG_INFO, "RedEdr 0.3");
-    LOG_W(LOG_INFO, L"Tracing processes with name \"%s\"", g_config.targetExeName);
+    LOG_A(LOG_INFO, "Tracing processes with name: %s", g_config.targetExeName.c_str());
 
     // SeDebug
     if (!PermissionMakeMeDebug()) {

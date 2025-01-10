@@ -5,7 +5,7 @@
 
 BOOL InstallElamCertPpl();
 BOOL InstallPplService();
-BOOL EnablePplProducer(BOOL e, wchar_t* target_name);
+BOOL EnablePplProducer(BOOL e, std::string target_name);
 BOOL InitPplService();
 BOOL ShutdownPplService();
 

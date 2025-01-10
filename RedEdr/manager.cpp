@@ -48,8 +48,8 @@ BOOL ManagerReload() {
     
     // Kernel
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
-        LOG_W(LOG_INFO, L"Manager: Tell Kernel about new target: %s", g_config.targetExeName.c_str());
-        if (!EnableKernelDriver(g_config.enabled, (wchar_t*) g_config.targetExeName.c_str())) {
+        LOG_A(LOG_INFO, "Manager: Tell Kernel about new target: %s", g_config.targetExeName.c_str());
+        if (!EnableKernelDriver(g_config.enabled,  g_config.targetExeName)) {
             LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
             return FALSE;
         }
@@ -57,8 +57,8 @@ BOOL ManagerReload() {
 
     // PPL
     if (g_config.do_etwti) {
-        LOG_W(LOG_INFO, L"Manager: Tell ETW-TI about new target: %s", g_config.targetExeName.c_str());
-        EnablePplProducer(g_config.enabled, (wchar_t*)g_config.targetExeName.c_str());
+        LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new target: %s", g_config.targetExeName.c_str());
+        EnablePplProducer(g_config.enabled, g_config.targetExeName);
     }
 
     return TRUE;
@@ -86,8 +86,8 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
         KernelReaderInit(threads);
 
         // Enable it
-        LOG_W(LOG_INFO, L"Manager: Tell Kernel to start collecting telemetry of: %s", g_config.targetExeName.c_str());
-        if (!EnableKernelDriver(1, (wchar_t*)g_config.targetExeName.c_str())) {
+        LOG_A(LOG_INFO, "Manager: Tell Kernel to start collecting telemetry of: %s", g_config.targetExeName.c_str());
+        if (!EnableKernelDriver(1, g_config.targetExeName)) {
             LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
             return FALSE;
         }
@@ -108,7 +108,7 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
         LOG_A(LOG_INFO, "Manager: Start ETW-TI reader");
         Sleep(500);
         InitPplService();
-        EnablePplProducer(TRUE, (wchar_t*)g_config.targetExeName.c_str());
+        EnablePplProducer(TRUE,g_config.targetExeName);
     }
 
     return TRUE;
@@ -139,8 +139,7 @@ void ManagerShutdown() {
     //    Disconnects KernelPipe client
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
         LOG_A(LOG_INFO, "Manager: Disable kernel driver");
-        const wchar_t* target = L"";
-        EnableKernelDriver(0, (wchar_t*)target);
+        EnableKernelDriver(0, "");
     }
 
     // The following may crash?
