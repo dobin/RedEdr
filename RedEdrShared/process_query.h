@@ -39,22 +39,22 @@ ProcessAddrInfoRet ProcessAddrInfo(HANDLE hProcess, PVOID address);
 
 
 struct ProcessPebInfoRet {
-    std::wstring image_path;
-    std::wstring commandline;
-    std::wstring working_dir;
+    std::string image_path;
+    std::string commandline;
+    std::string working_dir;
     DWORD parent_pid;
     DWORD is_debugged;
     DWORD is_protected_process;
     DWORD is_protected_process_light;
-    PVOID image_base;
+    uint64_t image_base;
 };
 ProcessPebInfoRet ProcessPebInfo(HANDLE hProcess);
 
 
 struct ProcessLoadedDll {
-    PVOID dll_base;
+    uint64_t dll_base;
     ULONG size;
-    std::wstring name;
+    std::string name;
 };
 std::vector<ProcessLoadedDll> ProcessEnumerateModules(HANDLE hProcess);
 

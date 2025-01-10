@@ -31,7 +31,7 @@
 
  // Private
 wchar_t* GetFileNameFromPath(wchar_t* path);
-std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u);
+std::string GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u);
 
 
 // Some stupid definitions (dont belong in the .h)
@@ -126,7 +126,7 @@ ProcessPebInfoRet ProcessPebInfo(HANDLE hProcess) {
     processPebInfoRet.is_debugged = peb.BeingDebugged;
     processPebInfoRet.is_protected_process = peb.IsProtectedProcess;
     processPebInfoRet.is_protected_process_light = peb.IsProtectedProcessLight;
-    processPebInfoRet.image_base = peb.ImageBaseAddress;
+    processPebInfoRet.image_base = pointer_to_uint64(peb.ImageBaseAddress);
 
     // ProcessParameters - anoying copying
     MY_RTL_USER_PROCESS_PARAMETERS procParams;
@@ -143,6 +143,34 @@ ProcessPebInfoRet ProcessPebInfo(HANDLE hProcess) {
     //std::wstring WindowTitle = my_get_str(hProcess, &procParams.WindowTitle);
 
     return processPebInfoRet;
+}
+
+
+std::wstring ReadMemoryAsWString(HANDLE hProcess, LPCVOID remoteAddress, SIZE_T byteCount) {
+    if (!hProcess || !remoteAddress || byteCount == 0) {
+        throw std::invalid_argument("Invalid arguments provided to ReadMemoryAsWString");
+    }
+
+    // Allocate buffer to hold the memory content
+    std::vector<WCHAR> buffer(byteCount / sizeof(WCHAR) + 1, L'\0'); // Extra space for null-terminator
+    SIZE_T bytesRead = 0;
+
+    // Read the memory from the target process
+    if (!ReadProcessMemory(hProcess, remoteAddress, buffer.data(), byteCount, &bytesRead)) {
+        throw std::runtime_error("ReadProcessMemory failed");
+    }
+
+    // Ensure the memory read is within bounds
+    SIZE_T wcharCount = bytesRead / sizeof(WCHAR);
+    if (wcharCount < buffer.size()) {
+        buffer[wcharCount] = L'\0'; // Null-terminate if not already
+    }
+    else {
+        buffer.back() = L'\0'; // Guarantee null-termination in case of truncation
+    }
+
+    // Return as a wstring
+    return std::wstring(buffer.data());
 }
 
 
@@ -190,17 +218,11 @@ std::vector<ProcessLoadedDll> ProcessEnumerateModules(HANDLE hProcess) {
         if (entry.DllBase == 0) { // all zero is last one for some reason
             break;
         }
-
-        WCHAR fullDllName[MAX_PATH] = { 0 };
-        if (!ReadProcessMemory(hProcess, entry.FullDllName.Buffer, fullDllName, entry.FullDllName.Length, NULL)) {
-            printf("ProcessEnumerateModules: ReadProcessMemory failed for FullDllName\n");
-            return processLoadedDlls;
-        }
-        fullDllName[entry.FullDllName.Length / sizeof(WCHAR)] = L'\0';  // Null-terminate the string
-
-        processLoadedDll.dll_base = entry.DllBase;
+        std::wstring filenameW = ReadMemoryAsWString(hProcess, entry.FullDllName.Buffer, entry.FullDllName.Length);
+		std::string filenameStr = wstring_to_utf8(filenameW);
+        processLoadedDll.dll_base = pointer_to_uint64(entry.DllBase);
         processLoadedDll.size = (ULONG)entry.Reserved3[1];
-        processLoadedDll.name = std::wstring(GetFileNameFromPath(fullDllName), MAX_PATH);
+        processLoadedDll.name = filenameStr;
         processLoadedDlls.push_back(processLoadedDll);
 
         // Move to the next module in the list
@@ -208,6 +230,12 @@ std::vector<ProcessLoadedDll> ProcessEnumerateModules(HANDLE hProcess) {
     }
 
     return processLoadedDlls;
+}
+
+
+std::string GetSectionNameFromRaw(const IMAGE_SECTION_HEADER& section) {
+    return std::string(reinterpret_cast<const char*>(section.Name),
+        strnlen(reinterpret_cast<const char*>(section.Name), 8));
 }
 
 
@@ -221,7 +249,7 @@ std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID modul
 
     // Buffer for module name
     wchar_t moduleName[MAX_PATH] = { 0 };
-    if (!GetModuleBaseName(hProcess, (HMODULE)moduleBase, moduleName, sizeof(moduleName))) {
+    if (!GetModuleBaseName(hProcess, (HMODULE)moduleBase, moduleName, MAX_PATH)) {
         LOG_A(LOG_WARNING, "ProcessQuery: Failed to retrieve module name. Error: %lu", GetLastError());
         return moduleSections;
     }
@@ -262,16 +290,15 @@ std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID modul
     // Note: PE header, but is this really true?
     uint64_t a = reinterpret_cast<uint64_t>(moduleBase);
     ModuleSection memoryRegionPe = ModuleSection(
-        moduleNameStr + ": .PE_hdr", a, 4096, "r"
+        moduleNameStr + ": .pehdr", a, 4096, "R--"
     );
     moduleSections.push_back(memoryRegionPe);
 
-    for (const auto& section : sectionHeaders) {
+    for (const auto& section: sectionHeaders) {
         LPVOID sectionAddress = (LPBYTE)moduleBase + section.VirtualAddress;
         DWORD sectionSize = section.Misc.VirtualSize;
 
-        // Super special constructor so no trailing zeros are in the string
-        std::string sectionName(reinterpret_cast<const char*>(section.Name), strnlen(reinterpret_cast<const char*>(section.Name), 8));
+		std::string sectionName = GetSectionNameFromRaw(section);
         std::string full = moduleNameStr + ":" + sectionName;
 
         ModuleSection memoryRegion = ModuleSection(
@@ -358,7 +385,7 @@ bool QueryMemoryRegions(HANDLE hProcess) {
 
 
 // Gets a UNICODE_STRING content in a remote process as wstring
-std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
+std::string GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
     std::wstring s;
     //std::vector<wchar_t> commandLine(u->Length / sizeof(wchar_t));
     std::vector<wchar_t> uni(u->Length);
@@ -368,7 +395,9 @@ std::wstring GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
     else {
         s.assign(uni.begin(), uni.end());
     }
-    return s;
+
+	std::string str = wstring_to_utf8(s);
+    return str;
 }
 
 

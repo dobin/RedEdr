@@ -18,7 +18,11 @@
 
 void PrintWcharBufferAsHex(const wchar_t* buffer, size_t bufferSize);
 
-LARGE_INTEGER get_time();
+uint64_t pointer_to_uint64(PVOID ptr);
+PVOID uint64_to_pointer(uint64_t i);
+
+
+uint64_t get_time();
 std::string read_file(const std::string& path);
 wchar_t* getMemoryRegionProtect(DWORD protect);
 wchar_t* getMemoryRegionType(DWORD type);
@@ -42,6 +46,7 @@ std::wstring ReplaceAll(std::wstring str, const std::wstring& from, const std::w
 std::string ReplaceAllA(std::string str, const std::string& from, const std::string& to);
 bool contains_case_insensitive(const std::wstring& haystack, const std::wstring& needle);
 void remove_all_occurrences_case_insensitive(std::wstring& str, const std::wstring& to_remove);
+void remove_all_occurrences_case_insensitive2(std::string& str, const std::string& to_remove);
 
 
 wchar_t* JsonEscape(wchar_t* str, size_t buffer_size);
