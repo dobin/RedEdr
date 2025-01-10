@@ -19,6 +19,26 @@
 EventAggregator g_EventAggregator;
 
 
+void EventAggregator::NewEvent(std::string eventStr) {
+    // Add to cache
+    output_mutex.lock();
+    output_entries.push_back(eventStr);
+
+    // Debug: Record events
+    // This needs to be in the mutex, or the \r\n may not be written correctly
+    if (recorder_file != NULL) {
+        fprintf(recorder_file, eventStr.c_str());
+        fprintf(recorder_file, "\r\n");
+    }
+
+    output_mutex.unlock();
+    output_count++;
+
+    // Notify the analyzer thread
+    cv.notify_one();
+}
+
+
 void EventAggregator::do_output(std::wstring eventWstr) {
     // Add to cache
     std::string json = wstring_to_utf8(eventWstr);
@@ -34,8 +54,6 @@ void EventAggregator::do_output(std::wstring eventWstr) {
 
     output_mutex.unlock();
     output_count++;
-
-    
 
     // Notify the analyzer thread
     cv.notify_one();

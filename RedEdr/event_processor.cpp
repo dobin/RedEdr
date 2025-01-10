@@ -73,44 +73,45 @@ void EventProcessor::InitialProcessInfo(Process *process) {
 
     // Log: Peb Info
     ProcessPebInfoRet processPebInfoRet = ProcessPebInfo(process->GetHandle());
-    std::wstring outPeb = format_wstring(L"{\"type\":\"proces_query\",\"func\":\"peb\",\"time\":%lld,\"id\":%lld,\"parent_pid\":%lld,\"image_path\":\"%s\",\"commandline\":\"%s\",\"working_dir\":\"%s\",\"is_debugged\":%d,\"is_protected_process\":%d,\"is_protected_process_light\":%d,\"image_base\":%llu}",
-        get_time(),
-        process->id,
-        processPebInfoRet.parent_pid,
-        JsonEscape2(processPebInfoRet.image_path.c_str()).c_str(),
-        JsonEscape2(processPebInfoRet.commandline.c_str()).c_str(),
-        JsonEscape2(processPebInfoRet.working_dir.c_str()).c_str(),
-        processPebInfoRet.is_debugged,
-        processPebInfoRet.is_protected_process,
-        processPebInfoRet.is_protected_process_light,
-        processPebInfoRet.image_base
-    );
-    g_EventAggregator.do_output(outPeb);
+	nlohmann::json j;
+	j["type"] = "process_query";
+	j["func"] = "peb";
+	j["time"] = get_time();
+	j["id"] = process->id;
+	j["parent_pid"] = processPebInfoRet.parent_pid;
+	j["image_path"] = processPebInfoRet.image_path;
+	j["commandline"] = processPebInfoRet.commandline;
+	j["working_dir"] = processPebInfoRet.working_dir;
+	j["is_debugged"] = processPebInfoRet.is_debugged;
+	j["is_protected_process"] = processPebInfoRet.is_protected_process;
+	j["is_protected_process_light"] = processPebInfoRet.is_protected_process_light;
+	j["image_base"] = processPebInfoRet.image_base;
+    g_EventAggregator.NewEvent(j.dump());
 
     // Log: Loaded Modules Info
     std::vector<ProcessLoadedDll> processLoadedDlls = ProcessEnumerateModules(process->GetHandle());
-    std::wstring outModules;
+	nlohmann::json jDlls;
+    jDlls["func"] = "loaded_dll";
+    jDlls["type"] = "process_query";
+	jDlls["time"] = get_time();
+	jDlls["pid"] = process->id;
+    jDlls["dlls"] = {};
     for (auto dllEntry : processLoadedDlls) {
-        outModules += format_wstring(L"{\"addr\":%llu,\"size\":%llu,\"name\":\"%s\"},",
-            dllEntry.dll_base,
-            dllEntry.size,
-            dllEntry.name.c_str()
-        );
+		jDlls["dlls"] += {
+			{"addr", dllEntry.dll_base},
+			{"size", dllEntry.size},
+			{"name", dllEntry.name}
+		};
     }
-    if (outModules.size() > 0) {
-        outModules.pop_back(); // remove last comma
-    }
-    std::wstring outDlls = format_wstring(L"{\"func\":\"loaded_dll\",\"type\":\"process_query\",\"time\":%lld,\"pid\":%lld,\"dlls\":[%s]}",
-        get_time(),
-        process->id,
-        outModules.c_str()
-    );
-    remove_all_occurrences_case_insensitive(outDlls, std::wstring(L"C:\\\\Windows\\\\system32\\\\"));
-    g_EventAggregator.do_output(outDlls);
-
+	std::string jsonStr = jDlls.dump();
+    remove_all_occurrences_case_insensitive2(jsonStr, "C:\\\\Windows\\\\system32\\\\");
+	g_EventAggregator.NewEvent(jsonStr);
+    
     // DB: MemStatic
     for (auto processLoadedDll : processLoadedDlls) {
-        std::vector<ModuleSection> moduleSections = EnumerateModuleSections(process->GetHandle(), processLoadedDll.dll_base);
+        std::vector<ModuleSection> moduleSections = EnumerateModuleSections(
+            process->GetHandle(), 
+            uint64_to_pointer(processLoadedDll.dll_base));
         for (auto moduleSection : moduleSections) {
             MemoryRegion* memoryRegion = new MemoryRegion(
                 moduleSection.name,
@@ -211,16 +212,16 @@ void EventProcessor::PrintEvent(nlohmann::json j) {
     if (g_config.hide_full_output) {
         if (event_count >= 100) {
             if (event_count % 100 == 0) {
-                std::wcout << L"O";
+                std::cout << "O";
             }
         }
         else if (event_count >= 10) {
             if (event_count % 10 == 0) {
-                std::wcout << L"o";
+                std::cout << "o";
             }
         }
         else {
-            std::wcout << L".";
+            std::cout << ".";
         }
     }
     else {
@@ -270,7 +271,6 @@ void EventProcessor::SaveToFile() {
 
 
 // Module functions
-
 HANDLE EventProcessor_thread;
 
 

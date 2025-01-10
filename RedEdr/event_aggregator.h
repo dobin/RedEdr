@@ -10,7 +10,8 @@
 class EventAggregator {
 public:
 	// Called by producers
-	void do_output(std::wstring str);
+	void do_output(std::wstring str);  // obsolete delete
+	void NewEvent(std::string eventStr);
 
 	// Only support one consumer, as it tracks its last used element
 	BOOL HasMoreEvents();

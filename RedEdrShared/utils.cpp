@@ -27,6 +27,15 @@ wchar_t* wstring2wchar(const std::wstring& str) {
     return copy;
 }
 
+uint64_t pointer_to_uint64(PVOID ptr) {
+    return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(ptr));
+}
+
+PVOID uint64_to_pointer(uint64_t i) {
+    PVOID ptr = reinterpret_cast<PVOID>(static_cast<uintptr_t>(i));
+	return ptr;
+}
+
 std::string wcharToString(const wchar_t* wstr) {
     if (!wstr) return {};
     int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
@@ -36,18 +45,19 @@ std::string wcharToString(const wchar_t* wstr) {
 }
 
 // FIXME copy from dll
-LARGE_INTEGER get_time() {
+uint64_t get_time() {
     FILETIME fileTime;
-    LARGE_INTEGER largeInt;
+    ULARGE_INTEGER largeInt;
 
     // Get the current system time as FILETIME
     GetSystemTimeAsFileTime(&fileTime);
 
-    // Convert FILETIME to LARGE_INTEGER
+    // Convert FILETIME to ULARGE_INTEGER
     largeInt.LowPart = fileTime.dwLowDateTime;
     largeInt.HighPart = fileTime.dwHighDateTime;
 
-    return largeInt;
+    // Return the time as a 64-bit integer
+    return largeInt.QuadPart;
 }
 
 
@@ -70,10 +80,28 @@ std::wstring to_lowercase(const std::wstring& str) {
     return lower_str;
 }
 
+std::string to_lowercase2(const std::string& str) {
+    std::string lower_str = str;
+    std::transform(lower_str.begin(), lower_str.end(), lower_str.begin(), ::towlower);
+    return lower_str;
+}
+
 
 void remove_all_occurrences_case_insensitive(std::wstring& str, const std::wstring& to_remove) {
     std::wstring lower_str = to_lowercase(str);
     std::wstring lower_to_remove = to_lowercase(to_remove);
+
+    size_t pos;
+    while ((pos = lower_str.find(lower_to_remove)) != std::wstring::npos) {
+        str.erase(pos, to_remove.length());  // Erase from the original string
+        lower_str.erase(pos, lower_to_remove.length());  // Keep erasing from the lowercase copy
+    }
+}
+
+
+void remove_all_occurrences_case_insensitive2(std::string& str, const std::string& to_remove) {
+    std::string lower_str = to_lowercase2(str);
+    std::string lower_to_remove = to_lowercase2(to_remove);
 
     size_t pos;
     while ((pos = lower_str.find(lower_to_remove)) != std::wstring::npos) {
@@ -121,6 +149,13 @@ bool contains_case_insensitive(const std::wstring& haystack, const std::wstring&
     return haystack_lower.find(needle_lower) != std::wstring::npos;
 }
 
+bool contains_case_insensitive2(const std::string& haystack, const std::string& needle) {
+    std::string haystack_lower = to_lowercase2(haystack);
+    std::string needle_lower = to_lowercase2(needle);
+    return haystack_lower.find(needle_lower) != std::string::npos;
+}
+
+
 
 wchar_t* ConvertCharToWchar(const char* arg) {
     int len = MultiByteToWideChar(CP_ACP, 0, arg, -1, NULL, 0);
@@ -149,7 +184,7 @@ wchar_t* stringToWChar(const std::string& str) {
 
 std::string wstring_to_utf8(std::wstring& wide_string) {
     if (wide_string.empty()) {
-        return {};
+        return "";
     }
 
     // Determine the size needed for the UTF-8 buffer
@@ -271,9 +306,35 @@ wchar_t* getMemoryRegionType(DWORD type) {
 }
 
 
+// For Section permissions (not page permissions)
+std::string GetSectionPermissions(DWORD characteristics) {
+    std::string permissions = "---";
 
+    // Check for readable flag
+    if (characteristics & IMAGE_SCN_MEM_READ) {
+        permissions[0] = 'R';
+    }
+
+    // Check for writable flag
+    if (characteristics & IMAGE_SCN_MEM_WRITE) {
+        permissions[1] = 'W';
+    }
+
+    // Check for executable flag
+    if (characteristics & IMAGE_SCN_MEM_EXECUTE) {
+        permissions[2] = 'X';
+    }
+
+    return permissions;
+}
+
+/*
 std::string GetSectionPermissions(DWORD characteristics) {
     std::string permissions;
+
+    // Mask upper bits
+    //characteristics = characteristics & 0x0000FFFF;
+    //characteristics = characteristics & 0xF00000FF; // Only include relevant flags
 
     switch (characteristics) {
     case PAGE_EXECUTE:
@@ -315,7 +376,7 @@ std::string GetSectionPermissions(DWORD characteristics) {
     }
     return permissions;
 }
-
+*/
 
 
 wchar_t* getMemoryRegionState(DWORD type) {

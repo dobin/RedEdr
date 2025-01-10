@@ -63,21 +63,21 @@ void processinfo(wchar_t* pidStr) {
 
 	g_config.debug = 1;
 	g_config.hide_full_output = 0;
-	g_config.targetExeName = L"otepad";
+	g_config.targetExeName = "otepad";
 
 	//Process* process = new Process(pid);
 	Process* process = g_ProcessResolver.getObject(pid);  // use the real resolver
 	
 	// PEB
 	ProcessPebInfoRet processPebInfoRet = ProcessPebInfo(process->GetHandle());
-	wprintf(L"PEB:\n");
-	wprintf(L"  Commandline: %s\n", processPebInfoRet.commandline.c_str());
+	printf("PEB:\n");
+	printf("  Commandline: %s\n", processPebInfoRet.commandline.c_str());
 
 	// DLLs
 	std::vector<ProcessLoadedDll> processLoadedDlls = ProcessEnumerateModules(process->GetHandle());
-	printf("\nLoaded DLLs (%d):\n", processLoadedDlls.size());
+	printf("\nLoaded DLLs (%llu):\n", processLoadedDlls.size());
 	for (auto loadedDll : processLoadedDlls) {
-		wprintf(L"0x%llx %lu %s\n", 
+		printf("0x%llx %lu %s\n", 
 			loadedDll.dll_base,
 			loadedDll.size,
 			loadedDll.name.c_str());
@@ -86,7 +86,8 @@ void processinfo(wchar_t* pidStr) {
 	// DLL sections
 	printf("\nLoaded DLL regions:\n");
 	for (auto processLoadedDll : processLoadedDlls) {
-		std::vector<ModuleSection> moduleSections = EnumerateModuleSections(process->GetHandle(), processLoadedDll.dll_base);
+		std::vector<ModuleSection> moduleSections = EnumerateModuleSections(
+			process->GetHandle(), uint64_to_pointer(processLoadedDll.dll_base));
 		for (auto moduleSection : moduleSections) {
 			printf("0x%llx %lu %s %s\n",
 				moduleSection.addr,

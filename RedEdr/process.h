@@ -27,9 +27,10 @@ public:
     unsigned int augmented = 0;
     BOOL initialized = FALSE;
 
-    std::wstring commandline;
+    std::string commandline;
     HANDLE hProcess;
 };
 
 
-Process* MakeProcess(DWORD pid, LPCWSTR target_name);
+Process* MakeProcess(DWORD pid, std::string targetName);
+
