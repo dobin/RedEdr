@@ -53,7 +53,7 @@ std::string KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sch
             // Special cases
             if (propertyName == L"ProtectionMask" || propertyName == L"LastProtectionMask") {
                 uint32_t protection_mask = parser.parse<uint32_t>(propertyName);
-                j[jsonKey] = GetSectionPermissions(protection_mask);
+                j[jsonKey] = getMemoryRegionProtect(protection_mask);
                 continue;
             }
 
