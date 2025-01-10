@@ -40,6 +40,7 @@ std::string wcharToString(const wchar_t* wstr);
 std::string wstring_to_utf8(std::wstring& wide_string);
 std::wstring format_wstring(const wchar_t* format, ...);
 std::wstring utf8_to_wstring(const std::string& str);
+wchar_t* char2wcharAllc(char* str);
 
 bool wstring_starts_with(const std::wstring& str, const std::wstring& prefix);
 std::wstring ReplaceAll(std::wstring str, const std::wstring& from, const std::wstring& to);

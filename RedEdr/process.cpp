@@ -37,12 +37,12 @@ Process* MakeProcess(DWORD pid, std::string targetName) {
 
     // Check if we should trace
     if (contains_case_insensitive2(process->commandline, targetName)) {
-        LOG_A(LOG_INFO, "Process: observe pid %lu: %s", pid, process->commandline);
+        LOG_A(LOG_INFO, "Process: observe pid %lu: %s", pid, process->commandline.c_str());
         process->observe = 1;
     }
     else {
         if (g_config.debug) {
-            LOG_W(LOG_INFO, L"Process: DONT observe pid %lu: %s", pid, process->commandline);
+            LOG_W(LOG_INFO, L"Process: DONT observe pid %lu: %s", pid, process->commandline.c_str());
         }
         // If we dont observe, we dont need to keep the handle open, as no further
         // queries are gonna be made

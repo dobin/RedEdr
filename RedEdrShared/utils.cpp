@@ -508,7 +508,22 @@ DWORD StartProcessInBackground(LPCWSTR exePath, LPCWSTR commandLine) {
     }
 }
 
+wchar_t* char2wcharAllc(char* charStr) {
+    size_t charStrLen = std::strlen(charStr) + 1; // Include null terminator
 
+    // Allocate wchar_t buffer
+    wchar_t* wcharStr = new wchar_t[charStrLen];
+    size_t convertedChars = 0;
+
+    // Convert using mbstowcs_s
+    errno_t result = mbstowcs_s(&convertedChars, wcharStr, charStrLen, charStr, charStrLen - 1);
+    if (result != 0) {
+        std::cerr << "Conversion failed with error code: " << result << std::endl;
+        delete[] wcharStr;
+        return NULL;
+    }
+    return wcharStr;
+}
 
 std::wstring utf8_to_wstring(const std::string& str) {
     if (str.empty()) {
