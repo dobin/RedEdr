@@ -55,19 +55,43 @@ void UnicodeStringToWChar(const UNICODE_STRING* ustr, wchar_t* dest, size_t dest
 }
 
 
-wchar_t* JsonEscape(wchar_t* str, size_t buffer_size) {
+NTSTATUS WcharToAscii(const wchar_t* wideStr, SIZE_T wideLength, char* asciiStr, SIZE_T asciiBufferSize) {
+    if (!wideStr || !asciiStr) {
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    for (SIZE_T i = 0; i < wideLength; ++i) {
+        if (i >= asciiBufferSize - 1) {  // Ensure the buffer has space for a null terminator
+            return STATUS_BUFFER_TOO_SMALL;
+        }
+
+        wchar_t wc = wideStr[i];
+        if (wc < 0x80) {
+            asciiStr[i] = (char)wc;  // Direct conversion for ASCII characters
+        }
+        else {
+            asciiStr[i] = '?';  // Replace non-ASCII characters with '?'
+        }
+    }
+
+    asciiStr[wideLength < asciiBufferSize ? wideLength : asciiBufferSize - 1] = '\0';  // Null-terminate the string
+    return STATUS_SUCCESS;
+}
+
+
+void JsonEscape(char* str, size_t buffer_size) {
     if (str == NULL || buffer_size == 0) {
-        return str;
+        return;
     }
 
     size_t length = 0;
     for (length = 0; str[length] != L'\0'; ++length);
 
     for (size_t i = 0; i < length; ++i) {
-        if (str[i] == L'\\' || str[i] == L'"') {
+        if (str[i] == '\\' || str[i] == '"') {
             // Check if there's enough space to shift and insert escape character
             if (length + 1 >= buffer_size) {
-                return str; // Stop processing to prevent overflow
+                return;
             }
 
             // Shift the remainder of the string one position to the right
@@ -76,10 +100,10 @@ wchar_t* JsonEscape(wchar_t* str, size_t buffer_size) {
             }
 
             // Insert escape character
-            str[i] = L'\\';
+            str[i] = '\\';
             ++i; // Skip over the character we just escaped
             ++length;
         }
     }
-    return str;
+    return;
 }

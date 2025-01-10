@@ -112,13 +112,22 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
     }
 
     if (g_config.enable_logging && processInfo->observe) {
+        char processName[PROC_NAME_LEN];
+        char parentName[PROC_NAME_LEN];
+
+        NTSTATUS status;
+        status = WcharToAscii(processInfo->name, wcslen(processInfo->name), processName, sizeof(processName));
+        status = WcharToAscii(processInfo->parent_name, wcslen(processInfo->parent_name), parentName, sizeof(parentName));
+        JsonEscape(processName, PROC_NAME_LEN);
+        JsonEscape(parentName, PROC_NAME_LEN);
+
         sprintf(ProcessLine, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"process_create\",\"krn_pid\":%llu,\"pid\":%llu,\"name\":\"%s\",\"ppid\":%llu,\"parent_name\":\"%s\",\"observe\":%d}",
             systemTime,
             (unsigned __int64)PsGetCurrentProcessId(),
             (unsigned __int64)pid, 
-            "AAA", //JsonEscape(processInfo->name, PROC_NAME_LEN),
+            processName,
             (unsigned __int64)createInfo->ParentProcessId, 
-            "AAA", //JsonEscape(processInfo->parent_name, PROC_NAME_LEN),
+            parentName,
             processInfo->observe);
         LogEvent(ProcessLine);
     }
@@ -163,17 +172,20 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
     ULONG64 systemTime;
     KeQuerySystemTime(&systemTime);
     wchar_t ImageName[PATH_LEN] = { 0 };
+    char AsciiImageName[PATH_LEN] = { 0 };
 
     // We may only have KAPC injection, and no logging
     if (g_config.enable_logging) {
         PROCESS_INFO* procInfo = LookupProcessInfo(ProcessId);
         if (procInfo != NULL && procInfo->observe) {
             UnicodeStringToWChar(FullImageName, ImageName, PATH_LEN);
+            WcharToAscii(ImageName, sizeof(ImageName), AsciiImageName, sizeof(AsciiImageName));
+            JsonEscape(AsciiImageName, sizeof(AsciiImageName));
             sprintf(ImageLine, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"image_load\",\"krn_pid\":%llu,\"pid\":%llu,\"image\":\"%s\"}",
                 systemTime,
                 (unsigned __int64)PsGetCurrentProcessId(),
                 (unsigned __int64)ProcessId,
-                "AAA" //JsonEscape(ImageName, PATH_LEN));
+               AsciiImageName
             );
             LogEvent(ImageLine);
         }
