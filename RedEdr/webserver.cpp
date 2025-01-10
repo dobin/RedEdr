@@ -257,7 +257,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
 
     svr.Get("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
-        json response = { {"trace", wcharToString(g_config.targetExeName) }};
+        json response = { {"trace", g_config.targetExeName }};
         res.set_content(response.dump(), "application/json");
     });
     svr.Post("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
@@ -266,7 +266,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             if (data.contains("trace")) {
                 std::string traceName = data["trace"].get<std::string>();
 				LOG_A(LOG_INFO, "Trace target: %s", traceName.c_str());
-				g_config.targetExeName = stringToWChar(traceName.c_str());
+				g_config.targetExeName = traceName;
                 json response = { {"result", "ok"} };
                 res.set_content(response.dump(), "application/json");
             }
@@ -300,7 +300,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         json response = { {"status", "ok"} };
         res.set_content(response.dump(), "application/json");
     });
-    if (g_config.do_remoteexec) {
+    if (g_config.enable_remote_exec) {
         svr.Post("/api/exec", [](const httplib::Request& req, httplib::Response& res) {
             // curl.exe -X POST http://localhost:8080/api/exec -F "file=@C:\tools\procexp64.exe"
             auto file = req.get_file_value("file");

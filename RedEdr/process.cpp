@@ -18,32 +18,31 @@
 #include "process.h"
 #include "logging.h"
 #include "process_query.h"
+#include "utils.h"
 
 
 // This should be fast
-Process* MakeProcess(DWORD pid, LPCWSTR target_name) {
+Process* MakeProcess(DWORD pid, std::string targetName) {
     Process* process;
 
     process = new Process(pid);
-    if (target_name == NULL) {
-        return process;
-    }
     process->OpenTarget();
 
+    // Process name
     std::wstring processName = GetProcessName(process->GetHandle());
     if (g_config.debug) {
-        LOG_W(LOG_INFO, L"Check new process with name: %s", processName.c_str());
+        LOG_W(LOG_INFO, L"Process: Check new process with name: %s", processName.c_str());
     }
-    process->commandline = processName;
+    process->commandline = wstring_to_utf8(processName);
 
-    wchar_t* result = wcsstr((wchar_t*) processName.c_str(), target_name);
-    if (result) {
-        LOG_W(LOG_INFO, L"Objcache: observe process %lu executable path: %s", pid, processName.c_str());
+    // Check if we should trace
+    if (contains_case_insensitive2(process->commandline, targetName)) {
+        LOG_A(LOG_INFO, "Process: observe pid %lu: %s", pid, process->commandline);
         process->observe = 1;
     }
     else {
         if (g_config.debug) {
-            LOG_W(LOG_INFO, L"Objcache: DONT observe: %s %s", pid, processName.c_str(), target_name);
+            LOG_W(LOG_INFO, L"Process: DONT observe pid %lu: %s", pid, process->commandline);
         }
         // If we dont observe, we dont need to keep the handle open, as no further
         // queries are gonna be made

@@ -48,9 +48,8 @@ BOOL ManagerReload() {
     
     // Kernel
     if (g_config.do_kernelcallback || g_config.do_dllinjection) {
-        LOG_A(LOG_INFO, "Manager: Tell Kernel about new target: %ls", g_config.targetExeName);
-        const wchar_t* target = g_config.targetExeName;
-        if (!EnableKernelDriver(g_config.enabled, (wchar_t*)target)) {
+        LOG_W(LOG_INFO, L"Manager: Tell Kernel about new target: %s", g_config.targetExeName.c_str());
+        if (!EnableKernelDriver(g_config.enabled, (wchar_t*) g_config.targetExeName.c_str())) {
             LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
             return FALSE;
         }
@@ -58,9 +57,8 @@ BOOL ManagerReload() {
 
     // PPL
     if (g_config.do_etwti) {
-        LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new target: %ls", g_config.targetExeName);
-        wchar_t* target = (wchar_t*)g_config.targetExeName;
-        EnablePplProducer(g_config.enabled, target);
+        LOG_W(LOG_INFO, L"Manager: Tell ETW-TI about new target: %s", g_config.targetExeName.c_str());
+        EnablePplProducer(g_config.enabled, (wchar_t*)g_config.targetExeName.c_str());
     }
 
     return TRUE;
@@ -88,9 +86,8 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
         KernelReaderInit(threads);
 
         // Enable it
-        LOG_A(LOG_INFO, "Manager: Tell Kernel to start collecting telemetry of: \"%ls\"", g_config.targetExeName);
-        const wchar_t* target = g_config.targetExeName;
-        if (!EnableKernelDriver(1, (wchar_t*)target)) {
+        LOG_W(LOG_INFO, L"Manager: Tell Kernel to start collecting telemetry of: %s", g_config.targetExeName.c_str());
+        if (!EnableKernelDriver(1, (wchar_t*)g_config.targetExeName.c_str())) {
             LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
             return FALSE;
         }
@@ -110,9 +107,8 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
     if (g_config.do_etwti) {
         LOG_A(LOG_INFO, "Manager: Start ETW-TI reader");
         Sleep(500);
-        wchar_t* target = (wchar_t*)g_config.targetExeName;
         InitPplService();
-        EnablePplProducer(TRUE, target);
+        EnablePplProducer(TRUE, (wchar_t*)g_config.targetExeName.c_str());
     }
 
     return TRUE;

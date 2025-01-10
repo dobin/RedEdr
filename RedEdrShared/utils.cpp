@@ -149,6 +149,13 @@ bool contains_case_insensitive(const std::wstring& haystack, const std::wstring&
     return haystack_lower.find(needle_lower) != std::wstring::npos;
 }
 
+bool contains_case_insensitive2(const std::string& haystack, const std::string& needle) {
+    std::string haystack_lower = to_lowercase2(haystack);
+    std::string needle_lower = to_lowercase2(needle);
+    return haystack_lower.find(needle_lower) != std::string::npos;
+}
+
+
 
 wchar_t* ConvertCharToWchar(const char* arg) {
     int len = MultiByteToWideChar(CP_ACP, 0, arg, -1, NULL, 0);

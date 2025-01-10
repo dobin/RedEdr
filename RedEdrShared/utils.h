@@ -45,6 +45,7 @@ bool wstring_starts_with(const std::wstring& str, const std::wstring& prefix);
 std::wstring ReplaceAll(std::wstring str, const std::wstring& from, const std::wstring& to);
 std::string ReplaceAllA(std::string str, const std::string& from, const std::string& to);
 bool contains_case_insensitive(const std::wstring& haystack, const std::wstring& needle);
+bool contains_case_insensitive2(const std::string& haystack, const std::string& needle);
 void remove_all_occurrences_case_insensitive(std::wstring& str, const std::wstring& to_remove);
 void remove_all_occurrences_case_insensitive2(std::string& str, const std::string& to_remove);
 

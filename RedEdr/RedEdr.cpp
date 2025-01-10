@@ -175,9 +175,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (result.count("trace")) {
-        std::string s = result["trace"].as<std::string>();
-        wchar_t* ss = ConvertCharToWchar(s.c_str());
-        g_config.targetExeName = ss;
+        g_config.targetExeName = result["trace"].as<std::string>();;
     }
     else if (! result.count("test") && !result.count("replay")) {
         std::cout << options.help() << std::endl;
@@ -202,7 +200,7 @@ int main(int argc, char* argv[]) {
         g_config.do_dllinjection_ucallstack = true;
     }
     else if (result.count("test")) {
-        g_config.targetExeName = L"RedEdrTester.exe";
+        g_config.targetExeName = "RedEdrTester.exe";
         std::string s = result["test"].as<std::string>();
         if (s == "etw") {
             g_config.do_etw = true;
@@ -280,7 +278,7 @@ int main(int argc, char* argv[]) {
             LOG_A(LOG_INFO, "Tester: wait 2");
             Sleep(3000); // let ETW warm up
         }
-		g_config.targetExeName = L"RedEdrTester";
+		g_config.targetExeName = "RedEdrTester";
 
         LOG_A(LOG_INFO, "Tester: process in background");
         LPCWSTR path = L"C:\\RedEdr\\RedEdrTester.exe";
