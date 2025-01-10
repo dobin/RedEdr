@@ -22,7 +22,7 @@ BOOL ConnectEmitterPipe() {
 
     // Retrieve config (first packet)
     // this is the only read for this pipe
-    wchar_t buffer[PPL_CONFIG_LEN];
+    char buffer[PPL_CONFIG_LEN];
     if (pipeClient.Receive(buffer, PPL_CONFIG_LEN)) {
         // Ignore config atm
     }
@@ -31,7 +31,7 @@ BOOL ConnectEmitterPipe() {
 }
 
 
-void SendEmitterPipe(wchar_t* buffer) {
+void SendEmitterPipe(char* buffer) {
     pipeClient.Send(buffer);
 }
 

@@ -42,6 +42,6 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
         return;
     }
 
-	std::wstring json_retw = KrabsEtwEventToJsonStr(record, schema);
-    SendEmitterPipe((wchar_t*)json_retw.c_str());
+	std::string json_retw = KrabsEtwEventToJsonStr(record, schema);
+    SendEmitterPipe((char*)json_retw.c_str());
 }

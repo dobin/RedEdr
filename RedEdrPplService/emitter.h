@@ -3,6 +3,6 @@
 #include <stdio.h>
 #include <Windows.h>
 
-void SendEmitterPipe(wchar_t* buffer);
+void SendEmitterPipe(char* buffer);
 BOOL ConnectEmitterPipe();
 void DisconnectEmitterPipe();

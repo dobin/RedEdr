@@ -8,7 +8,7 @@
 #include "objcache.h"
 #include "etwtireader.h"
 #include "piping.h"
-
+#include "utils.h"
 
 DWORD start_child_process(wchar_t* childCMD);
 
@@ -16,15 +16,15 @@ DWORD start_child_process(wchar_t* childCMD);
 HANDLE control_thread = NULL;
 BOOL keep_running = TRUE;
 
-PipeServer pipeServer(L"EtwTi");
+PipeServer pipeServer = PipeServer(std::string("EtwTi"), (wchar_t*)PPL_SERVICE_PIPE_NAME);
 
 
 DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
-    wchar_t buffer[PPL_CONFIG_LEN];
+    char buffer[PPL_CONFIG_LEN];
 
     while (keep_running) {
         LOG_W(LOG_INFO, L"Control: Waiting for client (RedEdr.exe) to connect...");
-        if (!pipeServer.StartAndWaitForClient(PPL_SERVICE_PIPE_NAME, false)) {
+        if (!pipeServer.StartAndWaitForClient(false)) {
             LOG_A(LOG_ERROR, "Error waiting for RedEdr.exe");
             continue;
         }
@@ -36,29 +36,30 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
             }
 
             //if (wcscmp(buffer, L"start") == 0) {
-            if (wcsstr(buffer, L"start:") != NULL) {
-                wchar_t* token = NULL, * context = NULL;
+            if (strstr(buffer, "start:") != NULL) {
+                char* token = NULL, * context = NULL;
                 LOG_W(LOG_INFO, L"Control: Received command: start");
 
                 // should give "start:"
-                token = wcstok_s(buffer, L":", &context);
+                token = strtok_s(buffer, ":", &context);
                 if (token != NULL) {
                     // should give the thing after "start:"
-                    token = wcstok_s(NULL, L":", &context);
+                    token = strtok_s(NULL, ":", &context);
                     if (token != NULL) {
                         LOG_W(LOG_INFO, L"Control: Target: %s", token);
-                        set_target_name(_wcsdup(token));
+                        wchar_t* target_name = char2wcharAllc(token);
+                        set_target_name(target_name);
                         ConnectEmitterPipe(); // Connect to the RedEdr pipe
                         enable_consumer(TRUE);
                     }
                 }
             }
-            else if (wcscmp(buffer, L"stop") == 0) {
+            else if (strstr(buffer, "stop") != 0) {
                 LOG_W(LOG_INFO, L"Control: Received command: stop");
                 enable_consumer(FALSE);
                 DisconnectEmitterPipe(); // Disconnect the RedEdr pipe
             }
-            else if (wcscmp(buffer, L"shutdown") == 0) {
+            else if (strstr(buffer, "shutdown") != 0) {
                 LOG_W(LOG_INFO, L"Control: Received command: shutdown");
                 //rededr_remove_service();  // attempt to remove service
                 StopControl(); // stop this thread
@@ -92,7 +93,7 @@ void StopControl() {
     keep_running = FALSE;
 
     // Send some stuff so the ReadFile() in the pipe reader thread returns
-    pipeServer.Send((wchar_t *) L"");
+    pipeServer.Send((char*) "");
 }
 
 
