@@ -23,6 +23,7 @@ typedef struct _MY_DRIVER_DATA {
     int dll_inject;
 } MY_DRIVER_DATA, * PMY_DRIVER_DATA;
 
+#define REDEDR_VERSION "0.4"
 
 #define DRIVER_KERNEL_PIPE_NAME L"\\??\\pipe\\RedEdrKrnCom"
 #define KERNEL_PIPE_NAME L"\\\\.\\pipe\\RedEdrKrnCom"

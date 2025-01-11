@@ -224,7 +224,7 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
     UNREFERENCED_PARAMETER(RegistryPath); // Prevent compiler error such as unreferenced parameter (error 4)
     NTSTATUS status;
 
-    LOG_A(LOG_INFO, "RedEdr Kernel Driver 0.3\n");
+    LOG_A(LOG_INFO, "RedEdr Kernel Driver %s\n", REDEDR_VERSION);
     InitializeHashTable();
 
     // Setting the unload routine to execute

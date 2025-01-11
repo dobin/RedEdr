@@ -126,7 +126,7 @@ DWORD ServiceEntry()
 
 int main(INT argc, CHAR** argv)
 {
-    LOG_W(LOG_INFO, L"Start RedEdr PPL Service 0.2");
+    LOG_A(LOG_INFO, "Start RedEdr PPL Service %s", REDEDR_VERSION);
     ServiceEntry();
 
     if (0) {

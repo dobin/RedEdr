@@ -237,7 +237,7 @@ int main(int argc, char* argv[]) {
 
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
-    LOG_A(LOG_INFO, "RedEdr 0.3");
+    LOG_A(LOG_INFO, "RedEdr %s", REDEDR_VERSION);
     LOG_A(LOG_INFO, "Tracing processes with name: %s", g_config.targetExeName.c_str());
 
     // SeDebug

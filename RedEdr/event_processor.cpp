@@ -10,6 +10,7 @@
 #include "event_detector.h"
 #include "utils.h"
 #include "config.h"
+#include "../Shared/common.h"
 
 
 /* event_processor.c: Gets new events from EventAggregator and processes them
@@ -43,7 +44,7 @@ void EventProcessor::init() {
 	j["type"] = "meta";
     j["func"] = "init";
 	j["date"] = get_time_for_file();
-    j["version"] = "0.3";
+    j["version"] = REDEDR_VERSION;
 	j["trace_id"] = trace_id;
 
 	j["do_etw"] = g_config.do_etw;
