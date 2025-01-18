@@ -25,11 +25,7 @@ private:
 	wchar_t* pipe_path;
 	std::string pipe_name;
 
-	// state for ReceiveBatch
 	char buffer[DATA_BUFFER_SIZE] = { 0 };
-	char* buf_ptr = buffer; // buf_ptr and rest_len are synchronized
-	int rest_len = 0;
-	
 };
 
 

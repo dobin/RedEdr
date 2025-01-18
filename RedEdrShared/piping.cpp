@@ -58,7 +58,7 @@ BOOL PipeServer::Start(BOOL allow_all) {
     hPipe = CreateNamedPipe(
         pipe_path,
         PIPE_ACCESS_DUPLEX,
-        PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, //PIPE_TYPE_MESSAGE | PIPE_WAIT,
+        PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE| PIPE_WAIT,
         PIPE_UNLIMITED_INSTANCES,
         PIPE_BUFFER_SIZE,
         PIPE_BUFFER_SIZE,
@@ -115,49 +115,22 @@ BOOL PipeServer::Receive(char* buffer, size_t buffer_len) {
 
 
 // Empty result = error / finished
+// Currently no batching
 std::vector<std::string> PipeServer::ReceiveBatch() {
     DWORD bytesRead;
     std::vector<std::string> strings;
 
-    if (ReadFile(hPipe, buf_ptr, sizeof(buffer) - rest_len, &bytesRead, NULL)) {
-        int full_len = rest_len + bytesRead; // full len including the previous shit, if any
-        char* p = (char*)buffer; // pointer to the string we will print. points to buffer
-        // which always contains the beginning of a string
-        int last_potential_str_start = 0;
-        for (int i = 0; i < full_len; i++) {
-            if (buffer[i] == 0) {
-                //printf("ReceiveBatch: %s\n", p);
-                strings.push_back(std::string(p));
-                i += 1; // skip \x00
-                last_potential_str_start = i; // remember the last zero byte we found
-                p = (char*)&buffer[i]; // init p with (potential) next string
-            }
-        }
-        if (last_potential_str_start == 0) {
-            LOG_A(LOG_ERROR, "Piping: No 0x00 byte found, errornous input?");
-        }
-
-        if (last_potential_str_start != full_len) {
-            // we didnt print until end of the buffer. so there's something left
-            rest_len = full_len - last_potential_str_start; // how much is left
-            memcpy(&buffer[0], &buffer[last_potential_str_start], rest_len); // copy that to the beginning of the buffer
-            buf_ptr = &buffer[rest_len]; // point read buffer to after our rest
-        }
-        else {
-            // printf till the end of the read data. 
-            // always reset
-            buf_ptr = &buffer[0];
-            rest_len = 0;
-        }
+    if (ReadFile(hPipe, buffer, sizeof(buffer), &bytesRead, NULL)) {
+        strings.push_back(std::string(buffer));
     }
     else {
         if (GetLastError() == ERROR_BROKEN_PIPE) {
-            LOG_A(LOG_INFO, "Piping: %s: disconnected", 
+            LOG_A(LOG_INFO, "Piping: %s: disconnected",
                 pipe_name.c_str());
             hPipe = NULL;
         }
         else {
-            LOG_A(LOG_ERROR, "Piping: %s: Error reading from named pipe: %s", 
+            LOG_A(LOG_ERROR, "Piping: %s: Error reading from named pipe: %s",
                 pipe_name.c_str());
             hPipe = NULL;
         }
