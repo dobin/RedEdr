@@ -36,7 +36,7 @@ BOOL EnableKernelDriver(int enable, std::string target) {
     MY_DRIVER_DATA dataToSend = { 0 };
     if (enable) {
         wcscpy_s(dataToSend.filename, targetW);
-        dataToSend.dll_inject = g_config.do_dllinjection;
+        dataToSend.dll_inject = g_Config.do_dllinjection;
         dataToSend.enable = enable;
     }
     else {
@@ -74,8 +74,8 @@ BOOL EnableKernelDriver(int enable, std::string target) {
 BOOL LoadKernelDriver() {
     SC_HANDLE hSCManager = NULL;
     SC_HANDLE hService = NULL;
-    LPCWSTR driverName = g_config.driverName;
-    LPCWSTR driverPath = g_config.driverPath;
+    LPCWSTR driverName = g_Config.driverName;
+    LPCWSTR driverPath = g_Config.driverPath;
     BOOL ret = FALSE;
 
     // Open the Service Control Manager
@@ -154,7 +154,7 @@ BOOL UnloadKernelDriver() {
     SC_HANDLE hSCManager = NULL;
     SC_HANDLE hService = NULL;
     SERVICE_STATUS status;
-    LPCWSTR driverName = g_config.driverName;
+    LPCWSTR driverName = g_Config.driverName;
     BOOL ret = FALSE;
 
     hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);

@@ -83,7 +83,7 @@ void DllReaderClientThread(PipeServer* pipeServer) {
     // send config as first packet
     //   this is the only write for this pipe
     char config[DLL_CONFIG_LEN];
-    sprintf_s(config, DLL_CONFIG_LEN, "callstack: % d; ", g_config.do_dllinjection_ucallstack);
+    sprintf_s(config, DLL_CONFIG_LEN, "callstack: % d; ", g_Config.do_dllinjection_ucallstack);
     pipeServer->Send(config);
 
     // Now receive only

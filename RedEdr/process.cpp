@@ -30,7 +30,7 @@ Process* MakeProcess(DWORD pid, std::string targetName) {
 
     // Process name
     std::wstring processName = GetProcessName(process->GetHandle());
-    if (g_config.debug) {
+    if (g_Config.debug) {
         LOG_W(LOG_INFO, L"Process: Check new process with name: %s", processName.c_str());
     }
     process->commandline = wstring2string(processName);
@@ -41,7 +41,7 @@ Process* MakeProcess(DWORD pid, std::string targetName) {
         process->observe = 1;
     }
     else {
-        if (g_config.debug) {
+        if (g_Config.debug) {
             LOG_W(LOG_INFO, L"Process: DONT observe pid %lu: %s", pid, process->commandline.c_str());
         }
         // If we dont observe, we dont need to keep the handle open, as no further

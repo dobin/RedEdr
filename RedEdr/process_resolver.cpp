@@ -57,7 +57,7 @@ Process* ProcessResolver::getObject(DWORD id) {
     }
 
     // Does not exist, create and add to cache
-    Process* process = MakeProcess(id, g_config.targetExeName);
+    Process* process = MakeProcess(id, g_Config.targetExeName);
 
     cache_mutex.lock();
     cache[id] = *process;

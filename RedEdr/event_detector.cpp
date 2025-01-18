@@ -52,7 +52,7 @@ void EventDetector::AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::
     detections.push_back(o);
     j["detections"] += o;
 
-    if (g_config.debug) {
+    if (g_Config.debug) {
         LOG_A(LOG_INFO, "New Detection: %s", o.c_str());
     }
     //LOG_A(LOG_INFO, "%s", o.c_str());

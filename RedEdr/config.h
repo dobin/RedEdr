@@ -45,4 +45,4 @@ public:
 	bool etw_defender = false;
 };
 
-extern Config g_config;
+extern Config g_Config;

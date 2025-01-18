@@ -46,7 +46,7 @@ void UninitCallbacks() {
 // For: PsSetCreateProcessNotifyRoutineEx()
 void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE_NOTIFY_INFO createInfo) {
     // Still execute even if we are globally disabled, but need kapc injection
-    if (!g_config.enable_logging && !g_config.enable_kapc_injection) {
+    if (!g_Config.enable_logging && !g_Config.enable_kapc_injection) {
         return;
     }
     if (createInfo == NULL) {
@@ -93,16 +93,16 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         processInfo->observe = 0;
 
         // Search in the unicode atm
-        if (wcslen(g_config.target) > 0) {
-            if (IsSubstringInUnicodeString(processName, g_config.target)) {
+        if (wcslen(g_Config.target) > 0) {
+            if (IsSubstringInUnicodeString(processName, g_Config.target)) {
                 processInfo->observe = 1;
-                g_config.trace_pid = pid;
+                g_Config.trace_pid = pid;
             }
         }
         // Check for children
         // TODO support grandchildren?
         // TODO use the other pid/ppid to make it more robust against PPID spoofing?
-        if (g_config.trace_children && processInfo->ppid == g_config.trace_pid) {
+        if (g_Config.trace_children && processInfo->ppid == g_Config.trace_pid) {
             processInfo->observe = 1;
         }
         LOG_A(LOG_INFO, "CreateProcessNotify: Process %d created, observe: %i\n", 
@@ -111,7 +111,7 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         AddProcessInfo(pid, processInfo);
     }
 
-    if (g_config.enable_logging && processInfo->observe) {
+    if (g_Config.enable_logging && processInfo->observe) {
         char processName[PROC_NAME_LEN];
         char parentName[PROC_NAME_LEN];
 
@@ -136,7 +136,7 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
 
 // For: PsSetCreateThreadNotifyRoutine()
 void CreateThreadNotifyRoutine(HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Create) {
-    if (!g_config.enable_logging) {
+    if (!g_Config.enable_logging) {
         return;
     }
     PROCESS_INFO* procInfo = LookupProcessInfo(ProcessId);
@@ -162,7 +162,7 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
     UNREFERENCED_PARAMETER(ImageInfo);
 
     // Still execute even if we are globally disabled, but need kapc injection
-    if (!g_config.enable_logging && !g_config.enable_kapc_injection) {
+    if (!g_Config.enable_logging && !g_Config.enable_kapc_injection) {
         return;
     }
     if (FullImageName == NULL) {
@@ -175,7 +175,7 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
     char AsciiImageName[PATH_LEN] = { 0 };
 
     // We may only have KAPC injection, and no logging
-    if (g_config.enable_logging) {
+    if (g_Config.enable_logging) {
         PROCESS_INFO* procInfo = LookupProcessInfo(ProcessId);
         if (procInfo != NULL && procInfo->observe) {
             Unicodestring2wcharAlloc(FullImageName, ImageName, PATH_LEN);
@@ -190,7 +190,7 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
             LogEvent(ImageLine);
         }
     }
-    if (g_config.enable_kapc_injection) {
+    if (g_Config.enable_kapc_injection) {
         PPROCESS_INFO processInfo = LookupProcessInfo(ProcessId);
         if (processInfo != NULL && processInfo->observe && !processInfo->injected) {
             processInfo->injected = KapcInjectDll(FullImageName, ProcessId, ImageInfo);
@@ -250,7 +250,7 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
 )
 {
     // https://github.com/microsoft/Windows-driver-samples/blob/main/general/obcallback/driver/callback.c
-    if (!g_config.enable_logging) {
+    if (!g_Config.enable_logging) {
         return OB_PREOP_SUCCESS;
     }
 

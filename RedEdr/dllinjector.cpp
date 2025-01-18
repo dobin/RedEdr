@@ -11,7 +11,7 @@
 
 BOOL remote_inject(DWORD target_pid) {
     char dll_full_path[MAX_PATH];
-    strcpy_s(dll_full_path, g_config.inject_dll_path);
+    strcpy_s(dll_full_path, g_Config.inject_dll_path);
 
     LOG_A(LOG_INFO, "DLL Inject into process %d (%s)", target_pid, dll_full_path);
 

@@ -61,9 +61,9 @@ void processinfo(wchar_t* pidStr) {
 	wchar_t* end;
 	long pid = wcstoul(pidStr, &end, 10);
 
-	g_config.debug = 1;
-	g_config.hide_full_output = 0;
-	g_config.targetExeName = "otepad";
+	g_Config.debug = 1;
+	g_Config.hide_full_output = 0;
+	g_Config.targetExeName = "otepad";
 
 	//Process* process = new Process(pid);
 	Process* process = g_ProcessResolver.getObject(pid);  // use the real resolver
@@ -140,8 +140,8 @@ void DoStuff() {
 
 
 void AnalyzeFile(wchar_t *fname) {
-	g_config.hide_full_output = 1;
-	g_config.debug = 1;
+	g_Config.hide_full_output = 1;
+	g_Config.debug = 1;
 	std::string filename = wchar2string(fname);
 	LOG_A(LOG_INFO, "Analyzer: Reading %s", filename.c_str());
 	std::string json_file_content = read_file(filename);

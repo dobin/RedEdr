@@ -21,7 +21,7 @@ typedef struct _config {
 
 
 // Declare a global configuration instance
-extern Config g_config;
+extern Config g_Config;
 
 void init_config();
 void print_config();

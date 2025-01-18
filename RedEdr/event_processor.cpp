@@ -47,14 +47,14 @@ void EventProcessor::init() {
     j["version"] = REDEDR_VERSION;
 	j["trace_id"] = trace_id;
 
-	j["do_etw"] = g_config.do_etw;
-	j["do_etwti"] = g_config.do_etwti;
-	j["do_mplog"] = g_config.do_mplog;
-	j["do_kernelcallback"] = g_config.do_kernelcallback;
-	j["do_dllinjection"] = g_config.do_dllinjection;
-	j["do_dllinjection_ucallstack"] = g_config.do_dllinjection_ucallstack;
+	j["do_etw"] = g_Config.do_etw;
+	j["do_etwti"] = g_Config.do_etwti;
+	j["do_mplog"] = g_Config.do_mplog;
+	j["do_kernelcallback"] = g_Config.do_kernelcallback;
+	j["do_dllinjection"] = g_Config.do_dllinjection;
+	j["do_dllinjection_ucallstack"] = g_Config.do_dllinjection_ucallstack;
 	    
-	j["target"] = g_config.targetExeName;
+	j["target"] = g_Config.targetExeName;
     json_entries.push_back(j);
 }
 
@@ -139,7 +139,7 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
     EventStats(j);
 
     // Handle if we see the pid the first time, by augmenting our internal data structures
-    if (j.contains("pid") && !g_config.replay_events) {
+    if (j.contains("pid") && !g_Config.replay_events) {
         Process* process = g_ProcessResolver.getObject(j["pid"].get<DWORD>());
 
         // Check if the process is initialized (ready to be queried by us)
@@ -210,7 +210,7 @@ void EventProcessor::AnalyzeNewEvents(std::vector<std::string> events) {
 
 void EventProcessor::PrintEvent(nlohmann::json j) {
     // Output accordingly
-    if (g_config.hide_full_output) {
+    if (g_Config.hide_full_output) {
         if (event_count >= 100) {
             if (event_count % 100 == 0) {
                 std::cout << "O";

@@ -52,7 +52,7 @@ std::vector<std::wstring> GetFilesInDirectory(const std::wstring& directory) {
 
     if (hFind == INVALID_HANDLE_VALUE) {
         // Can be empty, ignore
-        if (g_config.debug) {
+        if (g_Config.debug) {
             LOG_W(LOG_INFO, L"No files found in %s", directory.c_str());
         }
         return files;
@@ -257,7 +257,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
 
     svr.Get("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
-        json response = { {"trace", g_config.targetExeName }};
+        json response = { {"trace", g_Config.targetExeName }};
         res.set_content(response.dump(), "application/json");
     });
     svr.Post("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
@@ -266,7 +266,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             if (data.contains("trace")) {
                 std::string traceName = data["trace"].get<std::string>();
 				LOG_A(LOG_INFO, "Trace target: %s", traceName.c_str());
-				g_config.targetExeName = traceName;
+				g_Config.targetExeName = traceName;
                 json response = { {"result", "ok"} };
                 res.set_content(response.dump(), "application/json");
             }
@@ -289,13 +289,13 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         ResetEverything();
     });
     svr.Get("/api/start", [](const httplib::Request& req, httplib::Response& res) {
-        g_config.enabled = TRUE;
+        g_Config.enabled = TRUE;
         ManagerReload();
         json response = { {"status", "ok"}};
         res.set_content(response.dump(), "application/json");
     });
     svr.Get("/api/stop", [](const httplib::Request& req, httplib::Response& res) {
-        g_config.enabled = FALSE;
+        g_Config.enabled = FALSE;
         ManagerReload();
         json response = { {"status", "ok"} };
         res.set_content(response.dump(), "application/json");
@@ -304,7 +304,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         json response = GetLogs();
         res.set_content(response.dump(), "application/json");
     });
-    if (g_config.enable_remote_exec) {
+    if (g_Config.enable_remote_exec) {
         svr.Post("/api/exec", [](const httplib::Request& req, httplib::Response& res) {
             // curl.exe -X POST http://localhost:8080/api/exec -F "file=@C:\tools\procexp64.exe"
             auto file = req.get_file_value("file");

@@ -26,7 +26,7 @@ void AugmentEventWithMemAddrInfo(nlohmann::json& j) {
                 std::string symbol = g_MemStatic.ResolveStr(addr);
                 callstack_entry["addr_info"] = symbol;
 
-                if (g_config.debug) {
+                if (g_Config.debug) {
                     LOG_A(LOG_INFO, "Addr 0x%llx Symbol: %s",
                         addr,
                         symbol.c_str());
@@ -43,7 +43,7 @@ void AugmentEventWithMemAddrInfo(nlohmann::json& j) {
                 std::string symbol = g_MemStatic.ResolveStr(addr);
                 callstack_entry["addr_info"] = symbol;
 
-                if (g_config.debug) {
+                if (g_Config.debug) {
                     LOG_A(LOG_INFO, "Addr 0x%llx Symbol: %s",
                         addr,
                         symbol.c_str());

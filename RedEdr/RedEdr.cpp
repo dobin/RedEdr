@@ -100,7 +100,7 @@ void ReplayEvents(std::string filename) {
         LOG_A(LOG_ERROR, "Could not open %s for reading", filename.c_str());
     }
 
-	g_config.replay_events = true;
+	g_Config.replay_events = true;
     char buffer[DATA_BUFFER_SIZE];
     while (fgets(buffer, DATA_BUFFER_SIZE, recording_file)) {
         std::wstring bufferw = string2wstring(std::string(buffer));
@@ -175,53 +175,53 @@ int main(int argc, char* argv[]) {
     }
 
     if (result.count("trace")) {
-        g_config.targetExeName = result["trace"].as<std::string>();
+        g_Config.targetExeName = result["trace"].as<std::string>();
     }
     else if (! result.count("test") && !result.count("replay")) {
         std::cout << options.help() << std::endl;
         exit(0);
     }
 
-    g_config.do_etw = result["etw"].as<bool>();
-    g_config.do_etwti = result["etwti"].as<bool>();
-    g_config.do_mplog = result["mplog"].as<bool>();
-    g_config.do_kernelcallback = result["kernel"].as<bool>();
-    g_config.do_dllinjection = result["inject"].as<bool>();
-    g_config.debug_dllreader = result["dllreader"].as<bool>();
-    g_config.hide_full_output = result["hide"].as<bool>();
-    g_config.web_output = result["web"].as<bool>();
-    g_config.do_dllinjection_ucallstack = result["dllcallstack"].as<bool>();
+    g_Config.do_etw = result["etw"].as<bool>();
+    g_Config.do_etwti = result["etwti"].as<bool>();
+    g_Config.do_mplog = result["mplog"].as<bool>();
+    g_Config.do_kernelcallback = result["kernel"].as<bool>();
+    g_Config.do_dllinjection = result["inject"].as<bool>();
+    g_Config.debug_dllreader = result["dllreader"].as<bool>();
+    g_Config.hide_full_output = result["hide"].as<bool>();
+    g_Config.web_output = result["web"].as<bool>();
+    g_Config.do_dllinjection_ucallstack = result["dllcallstack"].as<bool>();
 
     if (result["all"].as<bool>()) {
-        g_config.do_etw = true;
-        g_config.do_etwti = true;
-        g_config.do_kernelcallback = true;
-        g_config.do_dllinjection = true;
-        g_config.do_dllinjection_ucallstack = true;
+        g_Config.do_etw = true;
+        g_Config.do_etwti = true;
+        g_Config.do_kernelcallback = true;
+        g_Config.do_dllinjection = true;
+        g_Config.do_dllinjection_ucallstack = true;
     }
     else if (result.count("test")) {
-        g_config.targetExeName = "RedEdrTester.exe";
+        g_Config.targetExeName = "RedEdrTester.exe";
         std::string s = result["test"].as<std::string>();
         if (s == "etw") {
-            g_config.do_etw = true;
-            g_config.etw_standard = true;
-            g_config.etw_kernelaudit = false;
-            g_config.etw_secaudit = false;
-            g_config.etw_defender = false;
+            g_Config.do_etw = true;
+            g_Config.etw_standard = true;
+            g_Config.etw_kernelaudit = false;
+            g_Config.etw_secaudit = false;
+            g_Config.etw_defender = false;
         }
         else if (s == "etwti") {
-            g_config.do_etwti = true;
+            g_Config.do_etwti = true;
         }
         else if (s == "kernel") {
-            g_config.do_kernelcallback = true;
+            g_Config.do_kernelcallback = true;
         }
         else if (s == "dll") {
-            g_config.debug_dllreader = true;
+            g_Config.debug_dllreader = true;
         }
     } else if (result.count("replay")) {
-        g_config.replay_events = TRUE;
-	} else if (!g_config.do_etw && !g_config.do_mplog && !g_config.do_kernelcallback 
-        && !g_config.do_dllinjection && !g_config.do_etwti && !g_config.debug_dllreader) {
+        g_Config.replay_events = TRUE;
+	} else if (!g_Config.do_etw && !g_Config.do_mplog && !g_Config.do_kernelcallback 
+        && !g_Config.do_dllinjection && !g_Config.do_etwti && !g_Config.debug_dllreader) {
         printf("Choose at least one of --etw --etwti --kernel --inject --etwti (--dllreader for testing)");
         return 1;
     }
@@ -233,12 +233,12 @@ int main(int argc, char* argv[]) {
 
     CreateRequiredFiles();
     InitProcessQuery();
-    g_EventProcessor.init(); // we also do it in constructor, but wont have g_config
+    g_EventProcessor.init(); // we also do it in constructor, but wont have g_Config
 
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
     LOG_A(LOG_INFO, "RedEdr %s", REDEDR_VERSION);
-    LOG_A(LOG_INFO, "Tracing processes with name: %s", g_config.targetExeName.c_str());
+    LOG_A(LOG_INFO, "Tracing processes with name: %s", g_Config.targetExeName.c_str());
 
     // SeDebug
     if (!PermissionMakeMeDebug()) {
@@ -256,7 +256,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Webserver
-    if (g_config.web_output) {
+    if (g_Config.web_output) {
         InitializeWebServer(threads);
     }
 
@@ -278,7 +278,7 @@ int main(int argc, char* argv[]) {
             LOG_A(LOG_INFO, "Tester: wait 2");
             Sleep(3000); // let ETW warm up
         }
-		g_config.targetExeName = "RedEdrTester";
+		g_Config.targetExeName = "RedEdrTester";
 
         LOG_A(LOG_INFO, "Tester: process in background");
         LPCWSTR path = L"C:\\RedEdr\\RedEdrTester.exe";
