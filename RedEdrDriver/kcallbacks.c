@@ -121,14 +121,13 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         JsonEscape(processName, PROC_NAME_LEN);
         JsonEscape(parentName, PROC_NAME_LEN);
 
-        sprintf(ProcessLine, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"process_create\",\"krn_pid\":%llu,\"pid\":%llu,\"name\":\"%s\",\"ppid\":%llu,\"parent_name\":\"%s\",\"observe\":%d}",
+        sprintf(ProcessLine, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"process_create\",\"krn_pid\":%llu,\"pid\":%llu,\"name\":\"%s\",\"ppid\":%llu,\"parent_name\":\"%s\"}",
             systemTime,
             (unsigned __int64)PsGetCurrentProcessId(),
             (unsigned __int64)pid, 
             processName,
             (unsigned __int64)createInfo->ParentProcessId, 
-            parentName,
-            processInfo->observe);
+            parentName);
         LogEvent(ProcessLine);
     }
 }
