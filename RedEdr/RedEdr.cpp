@@ -262,7 +262,7 @@ int main(int argc, char* argv[]) {
 
     // Functionality
     ManagerStart(threads);
-    InitKeyboardReader(threads);
+    //InitKeyboardReader(threads);
     InitializeEventProcessor(threads);
 
     // Replay
