@@ -1,11 +1,12 @@
 #pragma once
+
 #include <ntddk.h>
 #include <string.h>
 #include <stdio.h>
 
 #include "../Shared/common.h"
 
-typedef struct _config {
+typedef struct _Settings{
 	int init_processnotify;
 	int init_threadnotify;
 	int init_imagenotify;
@@ -17,11 +18,11 @@ typedef struct _config {
 	HANDLE trace_pid;
 	int trace_children;
 	WCHAR target[TARGET_WSTR_LEN];  // zero length means disabled
-} Config;
+} Settings;
 
 
 // Declare a global configuration instance
-extern Config g_Config;
+extern Settings g_Settings;
 
-void init_config();
-void print_config();
+void init_settings();
+void print_settings();

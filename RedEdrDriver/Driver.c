@@ -8,7 +8,7 @@
 // Needs to be set on the project properties as well
 #pragma comment(lib, "FltMgr.lib")
 
-#include "config.h"
+#include "settings.h"
 #include "utils.h"
 #include "upipe.h"
 #include "kcallbacks.h"
@@ -51,10 +51,10 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
         char* answer;
         if (data->enable) {
             if (data->dll_inject) {
-                g_Config.enable_kapc_injection = 1;
+                g_Settings.enable_kapc_injection = 1;
             }
-            g_Config.enable_logging = 1;
-            wcscpy_s(g_Config.target, TARGET_WSTR_LEN, data->filename);
+            g_Settings.enable_logging = 1;
+            wcscpy_s(g_Settings.target, TARGET_WSTR_LEN, data->filename);
 
             if (!IsUserspacePipeConnected()) {
                 int ret = ConnectUserspacePipe();
@@ -73,9 +73,9 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
         }
         else {
             LOG_A(LOG_INFO, "[IOCTL] Stop\n");
-            g_Config.enable_kapc_injection = 0;
-            g_Config.enable_logging = 0;
-            wcscpy_s(g_Config.target, TARGET_WSTR_LEN, data->filename); // should be zero
+            g_Settings.enable_kapc_injection = 0;
+            g_Settings.enable_logging = 0;
+            wcscpy_s(g_Settings.target, TARGET_WSTR_LEN, data->filename); // should be zero
             DisconnectUserspacePipe();
             answer = "OK";
         }
@@ -104,7 +104,7 @@ void LoadKernelCallbacks() {
     NTSTATUS ret;
 
     // Process
-    if (g_Config.init_processnotify) {
+    if (g_Settings.init_processnotify) {
         ret = PsSetCreateProcessNotifyRoutineEx(CreateProcessNotifyRoutine, FALSE);
         if (ret == STATUS_SUCCESS) {
             LOG_A(LOG_INFO, "CreateProcessNotifyRoutine launched successfully\n");
@@ -118,7 +118,7 @@ void LoadKernelCallbacks() {
     }
     
     // Thread
-    if (g_Config.init_threadnotify) {
+    if (g_Settings.init_threadnotify) {
         ret = PsSetCreateThreadNotifyRoutine(CreateThreadNotifyRoutine);
         if (ret == STATUS_SUCCESS) {
             LOG_A(LOG_INFO, "CreateThreadNotifyRoutine launched successfully\n");
@@ -132,7 +132,7 @@ void LoadKernelCallbacks() {
     }
 
     // Image
-    if (g_Config.init_imagenotify) {
+    if (g_Settings.init_imagenotify) {
         ret = PsSetLoadImageNotifyRoutine(LoadImageNotifyRoutine);
         if (ret == STATUS_SUCCESS) {
             LOG_A(LOG_INFO, "LoadImageNotifyRoutine launched successfully\n");
@@ -146,7 +146,7 @@ void LoadKernelCallbacks() {
     }
 
     // Open
-    if (g_Config.init_obnotify) {
+    if (g_Settings.init_obnotify) {
         // https://github.com/microsoft/Windows-driver-samples/blob/main/general/obcallback/driver/callback.c
         OB_CALLBACK_REGISTRATION  CBObRegistration = { 0 };
         UNICODE_STRING CBAltitude = { 0 };
@@ -262,9 +262,9 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
     }
 
     InitCallbacks();
-    init_config();
+    init_settings();
     LoadKernelCallbacks(); // always load the callbacks, based on config
-    if (g_Config.enable_logging) { // only connect when we enable this (deamon may not be ready on load)
+    if (g_Settings.enable_logging) { // only connect when we enable this (deamon may not be ready on load)
         ConnectUserspacePipe();
     }
 
