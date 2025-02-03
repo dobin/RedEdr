@@ -30,7 +30,7 @@
 bool KernelReaderThreadStopFlag = FALSE;
 HANDLE kernel_pipe = NULL;
 PipeServer* kernelPipeServer = NULL;
-HANDLE threadReadyness; // ready to accept clients
+HANDLE threadReadynessKernel; // ready to accept clients
 
 // Private functions
 DWORD WINAPI KernelReaderProcessingThread(LPVOID param);
@@ -38,8 +38,8 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param);
 
 void KernelReaderInit(std::vector<HANDLE>& threads) {
     const wchar_t* data = L"";
-    threadReadyness = CreateEvent(NULL, TRUE, FALSE, NULL);
-    if (threadReadyness == NULL) {
+    threadReadynessKernel = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (threadReadynessKernel == NULL) {
 		LOG_A(LOG_ERROR, "KernelReader: Failed to create event for thread readyness");
 		return;
 	}
@@ -51,7 +51,7 @@ void KernelReaderInit(std::vector<HANDLE>& threads) {
         return;
     }
 
-    WaitForSingleObject(threadReadyness, INFINITE);
+    WaitForSingleObject(threadReadynessKernel, INFINITE);
     threads.push_back(thread);
 }
 
@@ -59,15 +59,16 @@ void KernelReaderInit(std::vector<HANDLE>& threads) {
 DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
     // Loop which accepts new clients
     while (!KernelReaderThreadStopFlag) {
+        LOG_A(LOG_INFO, "KernelReader: Waiting for kernel");
         kernelPipeServer = new PipeServer("KernelReader", (wchar_t*) KERNEL_PIPE_NAME);
         kernelPipeServer->Start(TRUE);
-        SetEvent(threadReadyness); // signal the event
+        SetEvent(threadReadynessKernel); // signal the event
         if (!kernelPipeServer->WaitForClient()) {
             LOG_A(LOG_ERROR, "KernelReader: WaitForClient failed");
             kernelPipeServer->Shutdown();
             continue;
         }
-
+		LOG_A(LOG_INFO, "KernelReader: Kernel connected");
         while (!KernelReaderThreadStopFlag) {
             std::vector<std::string> events = kernelPipeServer->ReceiveBatch();
             if (events.empty()) {

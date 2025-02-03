@@ -66,49 +66,67 @@ BOOL ManagerReload() {
 
 
 BOOL ManagerStart(std::vector<HANDLE>& threads) {
-    // Do kernel module stuff first, as it can fail hard
-    // we can then just bail out without tearing down the other threads
+    // Load: Kernel dependencies
     if (g_Config.do_kernelcallback || g_Config.do_dllinjection) {
-        if (IsServiceRunning(g_Config.driverName)) {
-            LOG_A(LOG_INFO, "Manager: RedEdr Driver already loaded");
-        }
-        else {
-            LOG_A(LOG_INFO, "Manager: Load Kernel Driver");
+        // Kernel: Module load
+        if (! IsServiceRunning(g_Config.driverName)) {
+            LOG_A(LOG_INFO, "Manager: Kernel Driver load");
             if (!LoadKernelDriver()) {
-                LOG_A(LOG_ERROR, "RedEdr: Could not load driver");
+                LOG_A(LOG_ERROR, "Manager: Kernel driver could not be loaded");
                 return FALSE;
             }
         }
 
-        // Start the kernel server first
-        // The kernel module will connect to it
-        LOG_A(LOG_INFO, "Manager: Start kernel reader  thread");
+        // Kernel: Reader Threads start
+        LOG_A(LOG_INFO, "Manager: Kernel reader thread start");
         KernelReaderInit(threads);
+    }
 
+    // Load: DLL reader
+    //   its important for DLL AND ETW-TI to be up
+    if (g_Config.do_dllinjection || g_Config.debug_dllreader || g_Config.do_etwti) {
+        // DLL: Reader start (also for ETW-TI)
+        LOG_A(LOG_INFO, "Manager: InjectedDll reader thread start");
+        DllReaderInit(threads);
+    }
+
+    // Load: ETW-TI
+    if (g_Config.do_etwti) {
+        InitPplService();
+        // No reader, uses DLL-pipe
+    }
+
+    // ETW
+    //   if --all, this will spend some time, making the previous shit ready
+    if (g_Config.do_etw) {
+        LOG_A(LOG_INFO, "Manager: ETW reader thread start");
+        InitializeEtwReader(threads);
+    }
+
+    Sleep(1000); // For good measure
+
+    // ETW-TI: Enable
+    if (g_Config.do_etwti) {
+        EnablePplProducer(TRUE, g_Config.targetExeName);
+    }
+    // Kernel: Enable
+    if (g_Config.do_kernelcallback || g_Config.do_dllinjection) {
         // Enable it
-        LOG_A(LOG_INFO, "Manager: Tell Kernel to start collecting telemetry of: %s", g_Config.targetExeName.c_str());
+        LOG_A(LOG_INFO, "Manager: Kernel module enable collection");
+        // Even with all the other code carefully making sure that all the shit is started, it still seems to need this sleep
         if (!EnableKernelDriver(1, g_Config.targetExeName)) {
-            LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
+            LOG_A(LOG_ERROR, "Manager: Kernel module failed");
             return FALSE;
         }
     }
-    if (g_Config.do_etw) {
-        LOG_A(LOG_INFO, "Manager: Start ETW reader thread");
-        InitializeEtwReader(threads);
-    }
+
+    // Necessary? (wait for kernel and ETW-TI to connect)
+    Sleep(1000);
+
+    // Not really used
     if (g_Config.do_mplog) {
-        LOG_A(LOG_INFO, "Manager: Start MPLOG Reader");
+        LOG_A(LOG_INFO, "Manager: MPLOG Start Reader");
         InitializeLogReader(threads);
-    }
-    if (g_Config.do_dllinjection || g_Config.debug_dllreader || g_Config.do_etwti) {
-        LOG_A(LOG_INFO, "Manager: Start InjectedDll reader thread");
-        DllReaderInit(threads);
-    }
-    if (g_Config.do_etwti) {
-        LOG_A(LOG_INFO, "Manager: Start ETW-TI reader");
-        Sleep(500);
-        InitPplService();
-        EnablePplProducer(TRUE,g_Config.targetExeName);
     }
 
     return TRUE;

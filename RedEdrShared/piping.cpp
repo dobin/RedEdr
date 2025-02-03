@@ -76,13 +76,15 @@ BOOL PipeServer::Start(BOOL allow_all) {
 
 
 BOOL PipeServer::WaitForClient() {
-    //LOG_A(LOG_INFO, "DllReader: Waiting for client to connect...");
     // Wait for the client to connect
     if (! ConnectNamedPipe(hPipe, NULL)) {
-        LOG_A(LOG_ERROR, "Piping Server: Error handling client connection: %ld", GetLastError());
-        CloseHandle(hPipe);
-        hPipe = NULL;
-        return FALSE;
+		DWORD err = GetLastError();
+        if (err != ERROR_PIPE_CONNECTED) { // wtf is this
+            LOG_A(LOG_ERROR, "Piping Server: Error handling client connection: %ld", err);
+            CloseHandle(hPipe);
+            hPipe = NULL;
+            return FALSE;
+        }
     }
 
     return TRUE;

@@ -108,16 +108,16 @@ bool StartWithExplorer(std::string programPath) {
 
 
 bool DropPrivilegesAndRunAsUser(const wchar_t* programPath) {
-    HANDLE hToken = nullptr;
-    HANDLE hTokenDup = nullptr;
+    HANDLE hToken = nullptr, hTokenDup = nullptr;
     DWORD sessionId = 0;
     WTS_SESSION_INFO* pSessionInfo = nullptr;
     DWORD sessionCount = 0;
+    LPVOID env = nullptr;
 
-    // Enumerate all sessions
+    // Enumerate sessions to find the active user
     if (WTSEnumerateSessions(WTS_CURRENT_SERVER_HANDLE, 0, 1, &pSessionInfo, &sessionCount)) {
         for (DWORD i = 0; i < sessionCount; ++i) {
-            if (pSessionInfo[i].State == WTSActive) { // Look for active user session
+            if (pSessionInfo[i].State == WTSActive) {
                 sessionId = pSessionInfo[i].SessionId;
                 break;
             }
@@ -129,41 +129,42 @@ bool DropPrivilegesAndRunAsUser(const wchar_t* programPath) {
         return false;
     }
 
-    // Get the user token for the active session
+    // Get user token for the active session
     if (!WTSQueryUserToken(sessionId, &hToken)) {
         std::wcerr << L"Failed to query user token, error: " << GetLastError() << std::endl;
         return false;
     }
 
-    // Duplicate the token to create a primary token
+    // Duplicate the token
     if (!DuplicateTokenEx(hToken, TOKEN_ALL_ACCESS, nullptr, SecurityImpersonation, TokenPrimary, &hTokenDup)) {
         std::wcerr << L"Failed to duplicate token, error: " << GetLastError() << std::endl;
         CloseHandle(hToken);
         return false;
     }
 
-    // Set up environment for the new process
-    LPVOID env = nullptr;
+    // Create environment block
     if (!CreateEnvironmentBlock(&env, hTokenDup, TRUE)) {
         std::wcerr << L"Failed to create environment block, error: " << GetLastError() << std::endl;
+        env = nullptr; // Ensure it's NULL if it fails
     }
 
-    // Prepare process startup info
+    // Setup startup info
     STARTUPINFO si = { sizeof(STARTUPINFO) };
     PROCESS_INFORMATION pi = { 0 };
+    si.lpDesktop = const_cast<wchar_t*>(L"winsta0\\default"); // Required for GUI apps
 
-    // Launch the process
+    // Start process
     if (!CreateProcessAsUser(
-        hTokenDup,
-        programPath,
-        nullptr,
-        nullptr,
-        nullptr,
-        FALSE,
-        CREATE_UNICODE_ENVIRONMENT,
-        env,
-        nullptr,
-        &si,
+        hTokenDup,      // hToken
+		programPath,    // lpApplicationName
+		nullptr, 	    // lpCommandLine
+		nullptr,        // lpProcessAttributes
+		nullptr,        // lpThreadAttributes
+		FALSE,          // bInheritHandles
+        CREATE_UNICODE_ENVIRONMENT, 
+        env, 
+        nullptr, 
+        &si, 
         &pi)) {
         std::wcerr << L"Failed to create process as user, error: " << GetLastError() << std::endl;
         if (env) DestroyEnvironmentBlock(env);
@@ -174,7 +175,7 @@ bool DropPrivilegesAndRunAsUser(const wchar_t* programPath) {
 
     std::wcout << L"Process started successfully!" << std::endl;
 
-    // Clean up
+    // Cleanup
     if (env) DestroyEnvironmentBlock(env);
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);

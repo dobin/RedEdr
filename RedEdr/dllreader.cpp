@@ -27,6 +27,7 @@
 // Private Variables
 std::vector<std::thread> ConnectedDllReaderThreads; // for each connected dll
 bool DllReaderThreadStop = FALSE; // set to true to stop the server thread
+HANDLE threadReadynessDll; // ready to accept clients
 
 
 // Private Function Definitions
@@ -39,11 +40,19 @@ void DllReaderShutdown();
 // Init
 void DllReaderInit(std::vector<HANDLE>& threads) {
     const wchar_t* data = L"";
+    threadReadynessDll = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (threadReadynessDll == NULL) {
+        LOG_A(LOG_ERROR, "DllReader: Failed to create event for thread readyness");
+        return;
+    }
+
     HANDLE thread = CreateThread(NULL, 0, DllReaderThread, NULL, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "DllReader: Failed to create thread");
         return;
     }
+
+    WaitForSingleObject(threadReadynessDll, INFINITE);
     threads.push_back(thread);
 }
 
@@ -55,6 +64,7 @@ DWORD WINAPI DllReaderThread(LPVOID param) {
     // Loop which accepts new clients
     while (!DllReaderThreadStop) {
         PipeServer* pipeServer = new PipeServer("DllReader", (wchar_t*) DLL_PIPE_NAME);
+        SetEvent(threadReadynessDll);
         if(! pipeServer->StartAndWaitForClient(TRUE)) {
             LOG_A(LOG_ERROR, "WTF");
             pipeServer->Shutdown();
