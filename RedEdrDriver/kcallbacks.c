@@ -105,8 +105,8 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         if (g_Settings.trace_children && processInfo->ppid == g_Settings.trace_pid) {
             processInfo->observe = 1;
         }
-        LOG_A(LOG_INFO, "CreateProcessNotify: Process %d created, observe: %i\n", 
-            pid, processInfo->observe);
+        //LOG_A(LOG_INFO, "CreateProcessNotify: Process %d created, observe: %i\n", 
+        //    pid, processInfo->observe);
 
         AddProcessInfo(pid, processInfo);
     }
