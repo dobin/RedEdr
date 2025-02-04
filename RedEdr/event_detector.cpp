@@ -132,6 +132,7 @@ void EventDetector::ScanEventForDetections(nlohmann::json& j) {
         }
 
         // Check Injecte-DLL function callstack
+        bool non_image_callstack = false;
         if (j.contains("callstack") && j["callstack"].is_array()) {
             for (const auto& callstack_entry : j["callstack"]) {
                 // Callstack entry from RWX region
@@ -141,17 +142,12 @@ void EventDetector::ScanEventForDetections(nlohmann::json& j) {
 
                 // Callstack entry from non-image region
                 if (callstack_entry["type"] != "IMAGE") { // MEM_IMAGE
-                    if (callstack_entry["type"] == "MAPPED") { // MEM_MAPPED
-                        AnalyzerNewDetection(j, Criticality::LOW, "MEM_MAPPED");
-                    }
-                    else if (callstack_entry["type"] == "PRIVATE") { // MEM_PRIVATE, unbacked!
-                        AnalyzerNewDetection(j, Criticality::HIGH, "MEM_PRIVATE");
-                    }
-                    else {
-                        AnalyzerNewDetection(j, Criticality::MEDIUM, "MEM_UNKNOWN");
-                    }
+					non_image_callstack = true;
                 }
             }
+        }
+        if (non_image_callstack) {
+            AnalyzerNewDetection(j, Criticality::HIGH, "Non-image in callstack");
         }
     }
 }

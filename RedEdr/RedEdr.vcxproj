@@ -154,6 +154,7 @@
     <ClCompile Include="event_augmenter.cpp" />
     <ClCompile Include="event_detector.cpp" />
     <ClCompile Include="event_processor.cpp" />
+    <ClCompile Include="executor.cpp" />
     <ClCompile Include="manager.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="dllinjector.cpp" />
@@ -180,6 +181,7 @@
     <ClInclude Include="event_augmenter.h" />
     <ClInclude Include="event_detector.h" />
     <ClInclude Include="event_processor.h" />
+    <ClInclude Include="executor.h" />
     <ClInclude Include="jsonw.hpp" />
     <ClInclude Include="manager.h" />
     <ClInclude Include="config.h" />

@@ -129,6 +129,9 @@
     <ClCompile Include="..\RedEdrShared\piping.cpp">
       <Filter>Source Files\libs</Filter>
     </ClCompile>
+    <ClCompile Include="executor.cpp">
+      <Filter>Source Files\windows</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config.h">
@@ -205,6 +208,9 @@
     </ClInclude>
     <ClInclude Include="dllreader.h">
       <Filter>Header Files\input</Filter>
+    </ClInclude>
+    <ClInclude Include="executor.h">
+      <Filter>Header Files\windows</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
