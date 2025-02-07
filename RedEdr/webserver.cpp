@@ -32,7 +32,6 @@
 
 using json = nlohmann::json;
 
-Executor g_Executor;
 
 HANDLE webserver_thread;
 httplib::Server svr;
@@ -120,7 +119,6 @@ BOOL ExecMalware(std::string filename, std::string filedata) {
         LOG_A(LOG_ERROR, "Could not write file");
         return FALSE;
     }
-    //return StartWithExplorer(filepath);
 	return(g_Executor.Start(string2wcharAlloc(filepath.c_str())));
 }
 
@@ -233,7 +231,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
     if (g_Config.enable_remote_exec) {
         svr.Post("/api/exec", [](const httplib::Request& req, httplib::Response& res) {
-            // curl.exe -X POST http://localhost:8080/api/exec -F "file=@C:\tools\procexp64.exe"
+            // curl.exe -X POST http://localhost:8080/api/exec -F "file=@C:\temp\RedEdrTester.exe"
             auto file = req.get_file_value("file");
             auto filename = file.filename;
             if (file.content.empty() || filename.empty()) {
@@ -243,7 +241,13 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                 return;
             }
             BOOL ret = ExecMalware(filename, file.content);
-            json response = { {"status", "ok"} };
+			if (!ret) {
+				res.status = 500;
+				res.set_content("Failed to execute malware", "text/plain");
+				return;
+			}
+            std::string output = g_Executor.GetOutput();
+            json response = { {"status", "ok"}, {"output", output} };
             res.set_content(response.dump(), "application/json");
         });
     }
