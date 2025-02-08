@@ -139,7 +139,47 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
 	kernelnetwork_provider.add_filter(kernelnetwork_filter);
     trace_user.enable(kernelnetwork_provider);
     
-    /* Temporarily disabled as it doesnt seem to work really and has not interesting events
+    /* https://docs.google.com/spreadsheets/d/1d7hPRktxzYWmYtfLFaU_vMBKX2z98bci0fssTYyofdo/edit?gid=0#gid=0
+        4624	An account was successfully logged on.
+        4625	An account failed to log on.
+        4627	Group membership information.
+        4634	An account was logged off
+        4647	User initiated logoff.
+        4648	A logon was attempted using explicit credentials.
+        4656	A handle to an object was requested.
+        4657	A registry value was modified.
+        4660	An object was deleted.
+        4661	A handle to an object was requested.
+        4662	An operation was performed on an object.
+        4663	An attempt was made to access an object.
+        4664	An attempt was made to create a hard link.
+        4672	Special privileges assigned to new logon.
+        4673	A privileged service was called.
+        4674	An operation was attempted on a privileged object.
+        4688	A new process has been created.
+        4689	A process has exited.
+        4690	An attempt was made to duplicate a handle to an object.
+        4696	A primary token was assigned to process.
+        4697	A service was installed in the system.
+        4698	A scheduled task was created.
+        4699	A scheduled task was deleted.
+        4700	A scheduled task was enabled.
+        4701	A scheduled task was disabled.
+        4702	A scheduled task was updated.
+        4703	A user right was adjusted.
+        4741	A computer account was created.
+        4742	A computer account was changed.
+        4743	A computer account was deleted.
+        4768	A Kerberos authentication ticket (TGT) was requested.
+        4769	A Kerberos service ticket was requested.
+        4770	A Kerberos service ticket was renewed.
+        4771	Kerberos pre-authentication failed.
+        4798	A user's local group membership was enumerated.
+        5145	A network share object was checked to see whether client can be granted desired access.
+        5379	Credential Manager credentials were read.
+    */
+    // Temporarily disabled as it doesnt seem to work really and has not interesting events
+    /* 
     krabs::provider<> securityauditing_provider(L"Microsoft-Windows-Security-Auditing");
     securityauditing_provider.trace_flags(securityauditing_provider.trace_flags() | EVENT_ENABLE_PROPERTY_STACK_TRACE);
     securityauditing_provider.add_on_event_callback(event_callback);
