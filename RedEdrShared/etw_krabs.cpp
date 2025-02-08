@@ -31,8 +31,13 @@ std::string KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sch
     std::string d = wstring2string(c);
     j["event"] = d;
 
-    j["opcode_id"] = schema.event_opcode();
-    j["provider_name"] = std::to_string(record.EventHeader.ProviderId);
+    //j["opcode_id"] = schema.event_opcode();
+	j["event_id"] = schema.event_id();
+
+	// The ProviderId is just the UID of the provider, which is not very useful
+    // This is a workaround. Alternative would be to use TdhGetEventInformation()?
+    //j["provider_name"] = std::to_string(record.EventHeader.ProviderId);
+    j["provider_name"] = wchar2string(schema.provider_name());
 
     // Iterate over all properties defined in the schema
     for (const auto& property : parser.properties()) {
