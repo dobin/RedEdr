@@ -63,122 +63,155 @@ void EventProcessor::InitialProcessInfo(Process *process) {
     if (process->GetHandle() == NULL) {
         LOG_A(LOG_WARNING, "EventProcessor: Cant access Process pid %lu",
             process->id);
+        return;
     }
     DWORD exitCode;
-    GetExitCodeProcess(process->GetHandle(), &exitCode);
+    if (!GetExitCodeProcess(process->GetHandle(), &exitCode)) {
+        LOG_A(LOG_WARNING, "EventProcessor: Failed to get exit code for process pid %lu, error: %lu",
+            process->id, GetLastError());
+        return;
+    }
     if (exitCode != STILL_ACTIVE) {
-        LOG_A(LOG_WARNING, "EventProcessor: Cant access Process pid %lu",
-            process->id);
+        LOG_A(LOG_WARNING, "EventProcessor: Process pid %lu is not active (exit code: %lu)",
+            process->id, exitCode);
         return;
     }
 
     // Log: Peb Info
     ProcessPebInfoRet processPebInfoRet = ProcessPebInfo(process->GetHandle());
-	nlohmann::json j;
-	j["type"] = "process_query";
-	j["func"] = "peb";
-	j["time"] = get_time();
-	j["id"] = process->id;
-	j["parent_pid"] = processPebInfoRet.parent_pid;
-	j["image_path"] = processPebInfoRet.image_path;
-	j["commandline"] = processPebInfoRet.commandline;
-	j["working_dir"] = processPebInfoRet.working_dir;
-	j["is_debugged"] = processPebInfoRet.is_debugged;
-	j["is_protected_process"] = processPebInfoRet.is_protected_process;
-	j["is_protected_process_light"] = processPebInfoRet.is_protected_process_light;
-	j["image_base"] = processPebInfoRet.image_base;
-    g_EventAggregator.NewEvent(j.dump());
+    try {
+        nlohmann::json j;
+        j["type"] = "process_query";
+        j["func"] = "peb";
+        j["time"] = get_time();
+        j["id"] = process->id;
+        j["parent_pid"] = processPebInfoRet.parent_pid;
+        j["image_path"] = processPebInfoRet.image_path;
+        j["commandline"] = processPebInfoRet.commandline;
+        j["working_dir"] = processPebInfoRet.working_dir;
+        j["is_debugged"] = processPebInfoRet.is_debugged;
+        j["is_protected_process"] = processPebInfoRet.is_protected_process;
+        j["is_protected_process_light"] = processPebInfoRet.is_protected_process_light;
+        j["image_base"] = processPebInfoRet.image_base;
+        g_EventAggregator.NewEvent(j.dump());
+    }
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "EventProcessor: Error creating PEB info JSON: %s", e.what());
+    }
 
     // Log: Loaded Modules Info
-    std::vector<ProcessLoadedDll> processLoadedDlls = ProcessEnumerateModules(process->GetHandle());
-	nlohmann::json jDlls;
-    jDlls["func"] = "loaded_dll";
-    jDlls["type"] = "process_query";
-	jDlls["time"] = get_time();
-	jDlls["pid"] = process->id;
-    jDlls["dlls"] = {};
-    for (auto dllEntry : processLoadedDlls) {
-		jDlls["dlls"] += {
-			{"addr", dllEntry.dll_base},
-			{"size", dllEntry.size},
-			{"name", dllEntry.name}
-		};
-    }
-	std::string jsonStr = jDlls.dump();
-    remove_all_occurrences_case_insensitive(jsonStr, "C:\\\\Windows\\\\system32\\\\");
-	g_EventAggregator.NewEvent(jsonStr);
-    
-    // DB: MemStatic
-    for (auto processLoadedDll : processLoadedDlls) {
-        std::vector<ModuleSection> moduleSections = EnumerateModuleSections(
-            process->GetHandle(), 
-            uint64_to_pointer(processLoadedDll.dll_base));
-        for (auto moduleSection : moduleSections) {
-            MemoryRegion* memoryRegion = new MemoryRegion(
-                moduleSection.name,
-                moduleSection.addr, 
-                moduleSection.size, 
-                moduleSection.protection);
-            g_MemStatic.AddMemoryRegion(memoryRegion->addr, memoryRegion);
+    try {
+        std::vector<ProcessLoadedDll> processLoadedDlls = ProcessEnumerateModules(process->GetHandle());
+        nlohmann::json jDlls;
+        jDlls["func"] = "loaded_dll";
+        jDlls["type"] = "process_query";
+        jDlls["time"] = get_time();
+        jDlls["pid"] = process->id;
+        jDlls["dlls"] = {};
+        for (auto dllEntry : processLoadedDlls) {
+            jDlls["dlls"] += {
+                {"addr", dllEntry.dll_base},
+                {"size", dllEntry.size},
+                {"name", dllEntry.name}
+            };
         }
+        std::string jsonStr = jDlls.dump();
+        remove_all_occurrences_case_insensitive(jsonStr, "C:\\\\Windows\\\\system32\\\\");
+        g_EventAggregator.NewEvent(jsonStr);
+        
+        // DB: MemStatic
+        for (auto processLoadedDll : processLoadedDlls) {
+            try {
+                std::vector<ModuleSection> moduleSections = EnumerateModuleSections(
+                    process->GetHandle(), 
+                    uint64_to_pointer(processLoadedDll.dll_base));
+                for (auto moduleSection : moduleSections) {
+                    MemoryRegion* memoryRegion = new MemoryRegion(
+                        moduleSection.name,
+                        moduleSection.addr, 
+                        moduleSection.size, 
+                        moduleSection.protection);
+                    g_MemStatic.AddMemoryRegion(memoryRegion->addr, memoryRegion);
+                }
+            }
+            catch (const std::exception& e) {
+                LOG_A(LOG_ERROR, "EventProcessor: Error enumerating sections for module %s: %s", 
+                      processLoadedDll.name.c_str(), e.what());
+            }
+        }
+    }
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "EventProcessor: Error enumerating modules: %s", e.what());
     }
 }
 
 
 void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
-    j["id"] = json_entries.size();
-    j["trace_id"] = trace_id;
+    try {
+        j["id"] = json_entries.size();
+        j["trace_id"] = trace_id;
 
-    // Sanity checks
-    if (!j.contains("type")) {
-        LOG_A(LOG_WARNING, "No type? %s", j.dump().c_str());
-        return;
-    }
+        // Sanity checks
+        if (!j.contains("type")) {
+            LOG_A(LOG_WARNING, "No type? %s", j.dump().c_str());
+            return;
+        }
 
-    // Stats (for UI)
-    EventStats(j);
+        // Stats (for UI)
+        EventStats(j);
 
-    // Handle if we see the pid the first time, by augmenting our internal data structures
-    if (j.contains("pid") && !g_Config.replay_events) {
-        Process* process = g_ProcessResolver.getObject(j["pid"].get<DWORD>());
+        // Handle if we see the pid the first time, by augmenting our internal data structures
+        if (j.contains("pid") && !g_Config.replay_events) {
+            Process* process = g_ProcessResolver.getObject(j["pid"].get<DWORD>());
+            if (process == nullptr) {
+                LOG_A(LOG_WARNING, "EventProcessor: Failed to get process object for pid %lu", j["pid"].get<DWORD>());
+                return;
+            }
 
-        // Check if the process is initialized (ready to be queried by us)
-        if (!process->initialized) {
-            // If we receive on of these, its for sure initialized
-            // If we only do kernel callbacks, it will never be initialized. (But nobody uses that)
-            // Also, we just need the info we gather for ETW and DLL events anyway
-            if (j["type"] == "etw" || j["type"] == "dll") {
-                process->initialized = true;
+            // Check if the process is initialized (ready to be queried by us)
+            if (!process->initialized) {
+                // If we receive on of these, its for sure initialized
+                // If we only do kernel callbacks, it will never be initialized. (But nobody uses that)
+                // Also, we just need the info we gather for ETW and DLL events anyway
+                if (j["type"] == "etw" || j["type"] == "dll") {
+                    process->initialized = true;
+                }
+            }
+
+            // If process is ready (not early kernel events), gather information
+            if (process->augmented == 0 && process->initialized) {
+                process->augmented++;
+                InitialProcessInfo(process);
             }
         }
 
-        // If process is ready (not early kernel events), gather information
-        if (process->augmented == 0 && process->initialized) {
-            process->augmented++;
-            InitialProcessInfo(process);
+        // Augment Event with memory info
+        AugmentEventWithMemAddrInfo(j);
+
+        // Check if we should skip as its our own DLL patching
+        if (EventHasOurDllCallstack(j)) {
+            return;
         }
+
+        // Track Memory changes of Event (MemDynamic)
+        g_EventDetector.ScanEventForMemoryChanges(j);
+
+        // Perform Detections on Event
+        g_EventDetector.ScanEventForDetections(j);
+
+        // Print Event
+        PrintEvent(j);
+
+        // Has to be at the end as we dont store reference
+        json_entries.push_back(j);
+        event_count++;
     }
-
-    // Augment Event with memory info
-    AugmentEventWithMemAddrInfo(j);
-
-    // Check if we should skip as its our own DLL patching
-    if (EventHasOurDllCallstack(j)) {
-        return;
+    catch (const nlohmann::json::exception& e) {
+        LOG_A(LOG_ERROR, "JSON error in AnalyzeEventJson: %s", e.what());
     }
-
-    // Track Memory changes of Event (MemDynamic)
-    g_EventDetector.ScanEventForMemoryChanges(j);
-
-    // Perform Detections on Event
-    g_EventDetector.ScanEventForDetections(j);
-
-    // Print Event
-    PrintEvent(j);
-
-    // Has to be at the end as we dont store reference
-    json_entries.push_back(j);
-    event_count++;
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "Error in AnalyzeEventJson: %s", e.what());
+    }
 
     return;
 }
@@ -265,9 +298,15 @@ std::string EventProcessor::GetAllAsJson() {
 
 
 void EventProcessor::SaveToFile() {
-    std::string data = GetAllAsJson();
-    std::string filename = "C:\\RedEdr\\Data\\" + get_time_for_file() + ".events.json";
-    write_file(filename, data);
+    try {
+        std::string data = GetAllAsJson();
+        std::string filename = "C:\\RedEdr\\Data\\" + get_time_for_file() + ".events.json";
+        write_file(filename, data);
+        LOG_A(LOG_INFO, "EventProcessor: Saved events to %s", filename.c_str());
+    }
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "EventProcessor: Error saving events to file: %s", e.what());
+    }
 }
 
 
@@ -278,20 +317,29 @@ HANDLE EventProcessor_thread;
 // Thread which retrieves and processes events from EventAggregator
 DWORD WINAPI EventProcessorThread(LPVOID param) {
     LOG_A(LOG_INFO, "!EventProcessor: Start thread");
-    size_t arrlen = 0;
-    std::unique_lock<std::mutex> lock(g_EventAggregator.analyzer_shutdown_mtx);
+    
+    try {
+        size_t arrlen = 0;
+        std::unique_lock<std::mutex> lock(g_EventAggregator.analyzer_shutdown_mtx);
 
-    while (true) {
-        // Block for new events
-        g_EventAggregator.cv.wait(lock, [] { return g_EventAggregator.HasMoreEvents() || g_EventAggregator.done; });
-        if (g_EventAggregator.done) {
-            break;
+        while (true) {
+            // Block for new events
+            g_EventAggregator.cv.wait(lock, [] { return g_EventAggregator.HasMoreEvents() || g_EventAggregator.done; });
+            if (g_EventAggregator.done) {
+                break;
+            }
+            // get em events
+            std::vector<std::string> new_entries = g_EventAggregator.GetEvents();
+
+            // process
+            g_EventProcessor.AnalyzeNewEvents(new_entries);
         }
-        // get em events
-        std::vector<std::string> new_entries = g_EventAggregator.GetEvents();
-
-        // process
-        g_EventProcessor.AnalyzeNewEvents(new_entries);
+    }
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "EventProcessorThread: Exception in main loop: %s", e.what());
+    }
+    catch (...) {
+        LOG_A(LOG_ERROR, "EventProcessorThread: Unknown exception in main loop");
     }
 
     LOG_A(LOG_INFO, "!EventProcessor: Exit thread");
