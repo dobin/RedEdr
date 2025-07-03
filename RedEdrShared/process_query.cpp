@@ -75,11 +75,17 @@ BOOL InitProcessQuery() {
 
 
 std::wstring GetProcessName(HANDLE hProcess) {
-    WCHAR exePath[MAX_PATH];
+    if (!hProcess || hProcess == INVALID_HANDLE_VALUE) {
+        LOG_A(LOG_WARNING, "GetProcessName: Invalid process handle");
+        return std::wstring(L"");
+    }
+    
+    WCHAR exePath[MAX_PATH] = { 0 };
     if (GetModuleFileNameEx(hProcess, NULL, exePath, MAX_PATH)) {
         return std::wstring(exePath);
     }
     else {
+        LOG_A(LOG_WARNING, "GetProcessName: Failed to get module filename. Error: %lu", GetLastError());
         return std::wstring(L"");
     }
 }
@@ -87,14 +93,20 @@ std::wstring GetProcessName(HANDLE hProcess) {
 
 // Process: PEB Info
 ProcessPebInfoRet ProcessPebInfo(HANDLE hProcess) {
+    ProcessPebInfoRet processPebInfoRet = {}; // Initialize all fields to zero/empty
+    
+    if (!hProcess || hProcess == INVALID_HANDLE_VALUE) {
+        LOG_A(LOG_ERROR, "ProcessPebInfo: Invalid process handle");
+        return processPebInfoRet;
+    }
+
     PROCESS_BASIC_INFORMATION pbi;
     ULONG returnLength;
-    ProcessPebInfoRet processPebInfoRet;
 
     NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
     if (status != 0) {
-        LOG_A(LOG_ERROR, "ProcessPebInfo: Could not NtQueryInformationProcess, ret: %lu, error: %d",
-            status, GetLastError());
+        LOG_A(LOG_ERROR, "ProcessPebInfo: Could not NtQueryInformationProcess, ret: %lu, error: %lu",
+            static_cast<unsigned long>(status), GetLastError());
         return processPebInfoRet;
     }
 
@@ -103,9 +115,9 @@ ProcessPebInfoRet ProcessPebInfo(HANDLE hProcess) {
     processPebInfoRet.parent_pid = parentPid;
 
     // PEB
-    MYPEB peb;
+    MYPEB peb = {};
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        LOG_A(LOG_WARNING, "ProcessPebInfo: Error: Could not ReadProcessMemory1 error: %d",
+        LOG_A(LOG_WARNING, "ProcessPebInfo: Error: Could not ReadProcessMemory1 error: %lu",
             GetLastError());
         return processPebInfoRet;
     }
@@ -128,15 +140,26 @@ ProcessPebInfoRet ProcessPebInfo(HANDLE hProcess) {
     processPebInfoRet.is_protected_process_light = peb.IsProtectedProcessLight;
     processPebInfoRet.image_base = pointer_to_uint64(peb.ImageBaseAddress);
 
-    // ProcessParameters - anoying copying
-    MY_RTL_USER_PROCESS_PARAMETERS procParams;
-    if (!ReadProcessMemory(hProcess, peb.ProcessParameters, &procParams, sizeof(procParams), NULL)) {
-        LOG_A(LOG_ERROR, "ProcessQuery: Error: Could not ReadProcessMemory error: %d", GetLastError());
+    // ProcessParameters - annoying copying
+    if (!peb.ProcessParameters) {
+        LOG_A(LOG_WARNING, "ProcessPebInfo: ProcessParameters is NULL");
         return processPebInfoRet;
     }
-    processPebInfoRet.commandline = GetRemoteUnicodeStr(hProcess, &procParams.CommandLine);
-    processPebInfoRet.image_path = GetRemoteUnicodeStr(hProcess, &procParams.ImagePathName);
-    processPebInfoRet.working_dir = GetRemoteUnicodeStr(hProcess, &procParams.CurrentDirectory.DosPath);
+    
+    MY_RTL_USER_PROCESS_PARAMETERS procParams = {};
+    if (!ReadProcessMemory(hProcess, peb.ProcessParameters, &procParams, sizeof(procParams), NULL)) {
+        LOG_A(LOG_ERROR, "ProcessQuery: Error: Could not ReadProcessMemory error: %lu", GetLastError());
+        return processPebInfoRet;
+    }
+    
+    try {
+        processPebInfoRet.commandline = GetRemoteUnicodeStr(hProcess, &procParams.CommandLine);
+        processPebInfoRet.image_path = GetRemoteUnicodeStr(hProcess, &procParams.ImagePathName);
+        processPebInfoRet.working_dir = GetRemoteUnicodeStr(hProcess, &procParams.CurrentDirectory.DosPath);
+    }
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "ProcessPebInfo: Exception while reading unicode strings: %s", e.what());
+    }
 
     // No need for these for now
     //std::wstring DllPath = my_get_str(hProcess, &procParams.DllPath);
@@ -176,57 +199,94 @@ std::wstring ReadMemoryAsWString(HANDLE hProcess, LPCVOID remoteAddress, SIZE_T 
 
 // Enumerate all modules loaded in the process (DLL's), and their sections
 std::vector<ProcessLoadedDll> ProcessEnumerateModules(HANDLE hProcess) {
-    PROCESS_BASIC_INFORMATION pbi;
+    std::vector<ProcessLoadedDll> processLoadedDlls;
+    
+    if (!hProcess || hProcess == INVALID_HANDLE_VALUE) {
+        LOG_A(LOG_ERROR, "ProcessEnumerateModules: Invalid process handle");
+        return processLoadedDlls;
+    }
+
+    PROCESS_BASIC_INFORMATION pbi = {};
     ULONG returnLength;
-    std::vector <ProcessLoadedDll> processLoadedDlls;
 
     // PBI
     NTSTATUS status = NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &returnLength);
     if (status != 0) {
-        LOG_A(LOG_ERROR, "ProcessEnumerateModules: Error: Could not NtQueryInformationProcess for %d, error: %d", status, GetLastError());
+        LOG_A(LOG_ERROR, "ProcessEnumerateModules: Error: Could not NtQueryInformationProcess for %lu, error: %lu", 
+            static_cast<unsigned long>(status), GetLastError());
         return processLoadedDlls;
     }
 
     // PEB
-    MYPEB peb;
+    MYPEB peb = {};
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        LOG_A(LOG_WARNING, "ProcessEnumerateModules: Error: Could not ReadProcessMemory1 error: %d",
+        LOG_A(LOG_WARNING, "ProcessEnumerateModules: Error: Could not ReadProcessMemory1 error: %lu",
             GetLastError());
         return processLoadedDlls;
     }
 
+    if (!peb.Ldr) {
+        LOG_A(LOG_WARNING, "ProcessEnumerateModules: PEB.Ldr is NULL");
+        return processLoadedDlls;
+    }
+
     // PEB_LDR_DATA
-    PEB_LDR_DATA ldr;
+    PEB_LDR_DATA ldr = {};
     if (!ReadProcessMemory(hProcess, peb.Ldr, &ldr, sizeof(PEB_LDR_DATA), NULL)) {
-        printf("ProcessEnumerateModules: ReadProcessMemory failed for PEB_LDR_DATA\n");
+        LOG_A(LOG_WARNING, "ProcessEnumerateModules: ReadProcessMemory failed for PEB_LDR_DATA. Error: %lu", GetLastError());
         return processLoadedDlls;
     }
 
     // InMemoryOrderModuleList
     LIST_ENTRY* head = &ldr.InMemoryOrderModuleList;
     LIST_ENTRY* current = ldr.InMemoryOrderModuleList.Flink;
-    while (current != head) {
-        ProcessLoadedDll processLoadedDll;
+    
+    // Prevent infinite loop by limiting iterations
+    int maxIterations = 1000;
+    int iteration = 0;
+    
+    while (current != head && iteration < maxIterations) {
+        ProcessLoadedDll processLoadedDll = {};
 
-        _LDR_DATA_TABLE_ENTRY entry;
+        _LDR_DATA_TABLE_ENTRY entry = {};
         if (!ReadProcessMemory(hProcess, CONTAINING_RECORD(current, _LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks),
             &entry, sizeof(_LDR_DATA_TABLE_ENTRY), NULL))
         {
-            printf("ProcessEnumerateModules: ReadProcessMemory failed for LDR_DATA_TABLE_ENTRY\n");
-            return processLoadedDlls;
+            LOG_A(LOG_WARNING, "ProcessEnumerateModules: ReadProcessMemory failed for LDR_DATA_TABLE_ENTRY. Error: %lu", GetLastError());
+            break;
         }
+        
         if (entry.DllBase == 0) { // all zero is last one for some reason
             break;
         }
-        std::wstring filenameW = ReadMemoryAsWString(hProcess, entry.FullDllName.Buffer, entry.FullDllName.Length);
-		std::string filenameStr = wstring2string(filenameW);
-        processLoadedDll.dll_base = pointer_to_uint64(entry.DllBase);
-        processLoadedDll.size = (ULONG)entry.Reserved3[1];
-        processLoadedDll.name = filenameStr;
-        processLoadedDlls.push_back(processLoadedDll);
+        
+        // Validate pointers before using them
+        if (!entry.FullDllName.Buffer || entry.FullDllName.Length == 0 || entry.FullDllName.Length > 2048) {
+            LOG_A(LOG_WARNING, "ProcessEnumerateModules: Invalid FullDllName in LDR_DATA_TABLE_ENTRY");
+            current = entry.InMemoryOrderLinks.Flink;
+            iteration++;
+            continue;
+        }
+        
+        try {
+            std::wstring filenameW = ReadMemoryAsWString(hProcess, entry.FullDllName.Buffer, entry.FullDllName.Length);
+            std::string filenameStr = wstring2string(filenameW);
+            processLoadedDll.dll_base = pointer_to_uint64(entry.DllBase);
+            processLoadedDll.size = (ULONG)entry.Reserved3[1];
+            processLoadedDll.name = filenameStr;
+            processLoadedDlls.push_back(processLoadedDll);
+        }
+        catch (const std::exception& e) {
+            LOG_A(LOG_WARNING, "ProcessEnumerateModules: Exception reading module name: %s", e.what());
+        }
 
         // Move to the next module in the list
         current = entry.InMemoryOrderLinks.Flink;
+        iteration++;
+    }
+    
+    if (iteration >= maxIterations) {
+        LOG_A(LOG_WARNING, "ProcessEnumerateModules: Hit maximum iteration limit, possible infinite loop");
     }
 
     return processLoadedDlls;
@@ -241,6 +301,11 @@ std::string GetSectionNameFromRaw(const IMAGE_SECTION_HEADER& section) {
 
 std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID moduleBase) {
     std::vector<ModuleSection> moduleSections;
+    
+    if (!hProcess || hProcess == INVALID_HANDLE_VALUE || !moduleBase) {
+        LOG_A(LOG_ERROR, "EnumerateModuleSections: Invalid parameters");
+        return moduleSections;
+    }
 
     // Buffer for headers
     IMAGE_DOS_HEADER dosHeader = {};
@@ -265,6 +330,13 @@ std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID modul
         LOG_A(LOG_WARNING, "ProcessQuery: Invalid DOS signature. Not a valid PE file");
         return moduleSections;
     }
+    
+    // Bounds check for e_lfanew
+    if (dosHeader.e_lfanew < 0 || dosHeader.e_lfanew > 0x10000) {
+        LOG_A(LOG_WARNING, "ProcessQuery: Invalid e_lfanew value: %ld", dosHeader.e_lfanew);
+        return moduleSections;
+    }
+    
     // Read the NT header
     LPVOID ntHeaderAddress = (LPBYTE)moduleBase + dosHeader.e_lfanew;
     if (!ReadProcessMemory(hProcess, ntHeaderAddress, &ntHeaders, sizeof(ntHeaders), NULL)) {
@@ -279,6 +351,11 @@ std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID modul
 
     // Read section headers
     DWORD numberOfSections = ntHeaders.FileHeader.NumberOfSections;
+    if (numberOfSections == 0 || numberOfSections > 96) {  // Reasonable upper limit for sections
+        LOG_A(LOG_WARNING, "ProcessQuery: Invalid number of sections: %lu", numberOfSections);
+        return moduleSections;
+    }
+    
     LPVOID sectionHeaderAddress = (LPBYTE)ntHeaderAddress + sizeof(IMAGE_NT_HEADERS);
     sectionHeaders.resize(numberOfSections);
     if (!ReadProcessMemory(hProcess, sectionHeaderAddress, sectionHeaders.data(),
@@ -295,8 +372,19 @@ std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID modul
     moduleSections.push_back(memoryRegionPe);
 
     for (const auto& section: sectionHeaders) {
+        // Validate section data
+        if (section.VirtualAddress > 0x10000000) {  // Reasonable upper limit
+            LOG_A(LOG_WARNING, "ProcessQuery: Invalid section virtual address: 0x%lx", section.VirtualAddress);
+            continue;
+        }
+        
         LPVOID sectionAddress = (LPBYTE)moduleBase + section.VirtualAddress;
         DWORD sectionSize = section.Misc.VirtualSize;
+        
+        if (sectionSize > 0x10000000) {  // 256MB limit seems reasonable
+            LOG_A(LOG_WARNING, "ProcessQuery: Section size too large: %lu", sectionSize);
+            continue;
+        }
 
 		std::string sectionName = GetSectionNameFromRaw(section);
         std::string full = moduleNameStr + ":" + sectionName;
@@ -315,17 +403,28 @@ std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID modul
 
 
 ProcessAddrInfoRet ProcessAddrInfo(HANDLE hProcess, PVOID address) {
-    MEMORY_BASIC_INFORMATION mbi;
+    ProcessAddrInfoRet processAddrInfoRet = {}; // Initialize all fields
+    
+    if (!hProcess || hProcess == INVALID_HANDLE_VALUE) {
+        LOG_A(LOG_ERROR, "ProcessAddrInfo: Invalid process handle");
+        return processAddrInfoRet;
+    }
+    
+    MEMORY_BASIC_INFORMATION mbi = {};
     SIZE_T returnLength = 0;
-    if (!NtQueryVirtualMemory(hProcess, address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength) == 0) {
-        LOG_A(LOG_WARNING, "ProcessQuery: Could not query memory address 0x%llx in process 0x%x", address, hProcess);
+    
+    NTSTATUS status = NtQueryVirtualMemory(hProcess, address, MemoryBasicInformation, &mbi, sizeof(mbi), &returnLength);
+    if (status != 0) {
+        LOG_A(LOG_WARNING, "ProcessQuery: Could not query memory address %p in process %p. NTSTATUS: %lx", 
+            address, hProcess, static_cast<unsigned long>(status));
+        return processAddrInfoRet;
     }
 
-    ProcessAddrInfoRet processAddrInfoRet;
     processAddrInfoRet.name = "";
     processAddrInfoRet.base_addr = mbi.BaseAddress;
     processAddrInfoRet.allocation_base = mbi.AllocationBase;
     processAddrInfoRet.region_size = mbi.RegionSize;
+    processAddrInfoRet.allocation_protect = mbi.AllocationProtect;  // Missing field
     processAddrInfoRet.state = mbi.State;
     processAddrInfoRet.protect = mbi.Protect;
     processAddrInfoRet.type = mbi.Type;
@@ -386,14 +485,33 @@ bool QueryMemoryRegions(HANDLE hProcess) {
 
 // Gets a UNICODE_STRING content in a remote process as wstring
 std::string GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
+    if (!hProcess || hProcess == INVALID_HANDLE_VALUE || !u) {
+        LOG_A(LOG_ERROR, "GetRemoteUnicodeStr: Invalid parameters");
+        return std::string();
+    }
+    
+    if (!u->Buffer || u->Length == 0) {
+        return std::string(); // Empty string is valid
+    }
+    
+    // Sanity check for reasonable string length (64KB limit)
+    if (u->Length > 65536) {
+        LOG_A(LOG_WARNING, "GetRemoteUnicodeStr: String length too large: %u", u->Length);
+        return std::string();
+    }
+    
     std::wstring s;
     //std::vector<wchar_t> commandLine(u->Length / sizeof(wchar_t));
-    std::vector<wchar_t> uni(u->Length);
+    std::vector<wchar_t> uni(u->Length / sizeof(wchar_t) + 1, L'\0'); // Add space for null terminator
+    
     if (!ReadProcessMemory(hProcess, u->Buffer, uni.data(), u->Length, NULL)) {
-        LOG_A(LOG_ERROR, "ProcessQuery: Could not ReadProcessMemory error: %d", GetLastError());
+        LOG_A(LOG_ERROR, "ProcessQuery: Could not ReadProcessMemory error: %lu", GetLastError());
+        return std::string();
     }
     else {
-        s.assign(uni.begin(), uni.end());
+        // Ensure null termination
+        uni[u->Length / sizeof(wchar_t)] = L'\0';
+        s.assign(uni.begin(), uni.end() - 1); // Exclude the manually added null terminator
     }
 
 	std::string str = wstring2string(s);
@@ -402,19 +520,28 @@ std::string GetRemoteUnicodeStr(HANDLE hProcess, UNICODE_STRING* u) {
 
 
 wchar_t* GetFileNameFromPath(wchar_t* path) {
+    if (!path) {
+        return NULL;
+    }
     wchar_t* lastBackslash = wcsrchr(path, L'\\');
     return (lastBackslash != NULL) ? lastBackslash + 1 : path;
 }
 
 
 DWORD FindProcessIdByName(const std::wstring& processName) {
+    if (processName.empty()) {
+        LOG_A(LOG_ERROR, "FindProcessIdByName: Process name is empty");
+        return 0;
+    }
+    
     DWORD processId = 0;
     HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hSnapshot == INVALID_HANDLE_VALUE) {
+        LOG_A(LOG_ERROR, "FindProcessIdByName: CreateToolhelp32Snapshot failed. Error: %lu", GetLastError());
         return 0;
     }
 
-    PROCESSENTRY32 pe;
+    PROCESSENTRY32 pe = {};
     pe.dwSize = sizeof(PROCESSENTRY32);
     if (Process32First(hSnapshot, &pe)) {
         do {
@@ -423,6 +550,9 @@ DWORD FindProcessIdByName(const std::wstring& processName) {
                 break;
             }
         } while (Process32Next(hSnapshot, &pe));
+    }
+    else {
+        LOG_A(LOG_ERROR, "FindProcessIdByName: Process32First failed. Error: %lu", GetLastError());
     }
 
     CloseHandle(hSnapshot);
