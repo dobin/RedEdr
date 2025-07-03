@@ -36,7 +36,6 @@ using json = nlohmann::json;
 
 HANDLE webserver_thread;
 httplib::Server svr;
-std::mutex webserver_mutex;  // Protect server operations
 
 
 std::wstring StripToFirstDot(const std::wstring& input) {
@@ -143,8 +142,6 @@ BOOL ExecMalware(std::string filename, std::string filedata) {
 
 
 DWORD WINAPI WebserverThread(LPVOID param) {
-    LOG_A(LOG_INFO, "!WEB: Start Webserver thread");
-    
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
         try {
             std::string indexhtml = read_file("C:\\RedEdr\\index.html");
@@ -360,16 +357,21 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     }
 
     LOG_A(LOG_INFO, "WEB: Web Server listening on http://0.0.0.0:8080");
+    
+    bool listen_result = false;
     try {
-        std::lock_guard<std::mutex> lock(webserver_mutex);
-        svr.listen("0.0.0.0", 8080);
+        listen_result = svr.listen("0.0.0.0", 8080);
     } catch (const std::exception& e) {
         LOG_A(LOG_ERROR, "WEB: Server listen failed: %s", e.what());
     } catch (...) {
         LOG_A(LOG_ERROR, "WEB: Server listen failed with unknown exception");
     }
-    LOG_A(LOG_INFO, "!WEB: Exit Webserver thread");
-
+    
+    if (!listen_result) {
+        LOG_A(LOG_INFO, "WEB: Server listen returned false (normal during shutdown)");
+    }
+    
+    LOG_A(LOG_INFO, "!WEB: Thread finished");
     return 0;
 }
 
@@ -380,21 +382,13 @@ int InitializeWebServer(std::vector<HANDLE>& threads) {
         LOG_A(LOG_ERROR, "WEB: Failed to create thread for webserver");
         return 1;
     }
+    LOG_A(LOG_INFO, "!Web: Started Thread (handle %p)", webserver_thread);
     threads.push_back(webserver_thread);
     return 0;
 }
 
 
 void StopWebServer() {
-    try {
-        std::lock_guard<std::mutex> lock(webserver_mutex);
-        if (webserver_thread != NULL) {
-            svr.stop();
-        }
-    } catch (const std::exception& e) {
-        LOG_A(LOG_ERROR, "WEB: Error stopping server: %s", e.what());
-    } catch (...) {
-        LOG_A(LOG_ERROR, "WEB: Unknown error stopping server");
-    }
+    svr.stop();
 }
 

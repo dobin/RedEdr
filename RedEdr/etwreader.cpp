@@ -51,12 +51,12 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
 
 
 BOOL InitializeEtwReader(std::vector<HANDLE>& threads) {
-    LOG_A(LOG_INFO, "!ETW: Started Thread");
     HANDLE thread = CreateThread(NULL, 0, TraceProcessingThread, NULL, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "ETW: Could not start thread");
         return FALSE;
     }
+    LOG_A(LOG_INFO, "!ETW: Started Thread (handle %p)", thread);
 	threads.push_back(thread);
     return TRUE;
 }
@@ -205,7 +205,7 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         LOG_A(LOG_ERROR, "ETW TraceProcessingThread unknown exception");
     }
 
-    LOG_A(LOG_INFO, "!ETW: Thread Finished...");
+    LOG_A(LOG_INFO, "!ETW: Thread finished");
     return 0;
 }
 

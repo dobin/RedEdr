@@ -316,8 +316,6 @@ HANDLE EventProcessor_thread;
 
 // Thread which retrieves and processes events from EventAggregator
 DWORD WINAPI EventProcessorThread(LPVOID param) {
-    LOG_A(LOG_INFO, "!EventProcessor: Start thread");
-    
     try {
         size_t arrlen = 0;
         std::unique_lock<std::mutex> lock(g_EventAggregator.analyzer_shutdown_mtx);
@@ -342,7 +340,7 @@ DWORD WINAPI EventProcessorThread(LPVOID param) {
         LOG_A(LOG_ERROR, "EventProcessorThread: Unknown exception in main loop");
     }
 
-    LOG_A(LOG_INFO, "!EventProcessor: Exit thread");
+    LOG_A(LOG_INFO, "!EventProcessor: Thread finished");
     return 0;
 }
 
@@ -350,9 +348,11 @@ DWORD WINAPI EventProcessorThread(LPVOID param) {
 int InitializeEventProcessor(std::vector<HANDLE>& threads) {
     EventProcessor_thread = CreateThread(NULL, 0, EventProcessorThread, NULL, 0, NULL);
     if (EventProcessor_thread == NULL) {
-        LOG_A(LOG_ERROR, "WEB: Failed to create thread for EventProcessor");
+        LOG_A(LOG_ERROR, "EventProcessor: Failed to create thread for EventProcessor");
         return 1;
     }
+    LOG_A(LOG_INFO, "!EventProcessor: Started Thread (handle %p)", EventProcessor_thread);
+
     threads.push_back(EventProcessor_thread);
     return 0;
 }

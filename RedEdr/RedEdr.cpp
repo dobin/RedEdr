@@ -245,7 +245,7 @@ int main(int argc, char* argv[]) {
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
     LOG_A(LOG_INFO, "RedEdr %s", REDEDR_VERSION);
-    LOG_A(LOG_INFO, "Tracing processes with name: %s", g_Config.targetExeName.c_str());
+    LOG_A(LOG_INFO, "Config: tracing %s", g_Config.targetExeName.c_str());
 
     // SeDebug
     if (!PermissionMakeMeDebug()) {
@@ -319,12 +319,51 @@ int main(int argc, char* argv[]) {
         LOG_A(LOG_WARNING, "RedEdr: No threads to wait for");
         return 0;
     }
-    DWORD res = WaitForMultipleObjects((DWORD) threads.size(), threads.data(), TRUE, INFINITE);
-    if (res == WAIT_FAILED) {
+    
+    // Log which threads we're waiting for
+    LOG_A(LOG_INFO, "RedEdr: Thread handles being tracked:");
+    for (size_t i = 0; i < threads.size(); i++) {
+        LOG_A(LOG_INFO, "RedEdr: Thread %zu: handle 0x%p", i, threads[i]);
+    }
+    
+    // Wait with timeout to avoid hanging forever
+    const DWORD SHUTDOWN_TIMEOUT_MS = 15000; // 15 seconds
+    DWORD res = WaitForMultipleObjects((DWORD) threads.size(), threads.data(), TRUE, SHUTDOWN_TIMEOUT_MS);
+    
+    if (res == WAIT_TIMEOUT) {
+        LOG_A(LOG_WARNING, "RedEdr: Thread shutdown timeout after %lu ms, some threads may not have terminated cleanly", SHUTDOWN_TIMEOUT_MS);
+        
+        // Log which threads are still running
+        for (size_t i = 0; i < threads.size(); i++) {
+            DWORD exitCode;
+            if (GetExitCodeThread(threads[i], &exitCode)) {
+                if (exitCode == STILL_ACTIVE) {
+                    LOG_A(LOG_WARNING, "RedEdr: Thread %zu (handle 0x%p) is still active", i, threads[i]);
+                } else {
+                    LOG_A(LOG_INFO, "RedEdr: Thread %zu (handle 0x%p) has exited with code %lu", i, threads[i], exitCode);
+                }
+            } else {
+                LOG_A(LOG_ERROR, "RedEdr: Failed to get exit code for thread %zu (handle 0x%p): %lu", i, threads[i], GetLastError());
+            }
+        }
+        
+        // Force termination as last resort
+        LOG_A(LOG_WARNING, "RedEdr: Forcing termination of remaining active threads");
+        for (size_t i = 0; i < threads.size(); i++) {
+            DWORD exitCode;
+            if (GetExitCodeThread(threads[i], &exitCode) && exitCode == STILL_ACTIVE) {
+                LOG_A(LOG_WARNING, "RedEdr: Forcibly terminating thread %zu (handle 0x%p)", i, threads[i]);
+                TerminateThread(threads[i], 1);
+            }
+        }
+    }
+    else if (res == WAIT_FAILED) {
         LOG_A(LOG_ERROR, "RedEdr: Wait failed with error: %lu", GetLastError());
         return 1;
     }
-    LOG_A(LOG_INFO, "RedEdr: all %llu threads finished", threads.size());
+    else {
+        LOG_A(LOG_INFO, "RedEdr: all %llu threads finished cleanly", threads.size());
+    }
     
     // Clean up thread handles
     for (HANDLE thread : threads) {

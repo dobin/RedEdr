@@ -122,7 +122,6 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
     // ETW
     //   if --all, this will spend some time, making the previous shit ready
     if (g_Config.do_etw) {
-        LOG_A(LOG_INFO, "Manager: ETW reader thread start");
         if (!InitializeEtwReader(threads)) {
             LOG_A(LOG_ERROR, "Manager: Failed to initialize ETW reader");
             return FALSE;
@@ -199,7 +198,7 @@ void ManagerShutdown() {
         LOG_A(LOG_INFO, "Manager: Stop ETWTI reader");
         EnablePplProducer(FALSE, "");  // Use empty string instead of NULL
     }
-    // ETW
+    // ETWTracing processes with name: Shellcode
     if (g_Config.do_etw) {
         LOG_A(LOG_INFO, "Manager: Stop ETW readers");
         EtwReaderStopAll();
