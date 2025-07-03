@@ -98,15 +98,22 @@ void ReplayEvents(std::string filename) {
     errno_t err = fopen_s(&recording_file, filename.c_str(), "r");
     if (err != 0 || !recording_file) {
         LOG_A(LOG_ERROR, "Could not open %s for reading", filename.c_str());
+        return;
     }
 
-	g_Config.replay_events = true;
+    g_Config.replay_events = true;
     char buffer[DATA_BUFFER_SIZE];
     while (fgets(buffer, DATA_BUFFER_SIZE, recording_file)) {
-        std::wstring bufferw = string2wstring(std::string(buffer));
-        g_EventAggregator.do_output(bufferw);
+        try {
+            std::wstring bufferw = string2wstring(std::string(buffer));
+            g_EventAggregator.do_output(bufferw);
+        }
+        catch (const std::exception& e) {
+            LOG_A(LOG_ERROR, "ReplayEvents: Exception processing line: %s", e.what());
+        }
     }
     fclose(recording_file);
+    LOG_A(LOG_INFO, "Replay completed");
 }
 
 
@@ -219,8 +226,8 @@ int main(int argc, char* argv[]) {
             g_Config.debug_dllreader = true;
         }
     } else if (result.count("replay")) {
-        g_Config.replay_events = TRUE;
-	} else if (!g_Config.do_etw && !g_Config.do_mplog && !g_Config.do_kernelcallback 
+        g_Config.replay_events = true;
+    } else if (!g_Config.do_etw && !g_Config.do_mplog && !g_Config.do_kernelcallback 
         && !g_Config.do_dllinjection && !g_Config.do_etwti && !g_Config.debug_dllreader) {
         printf("Choose at least one of --etw --etwti --kernel --inject --etwti (--dllreader for testing)");
         return 1;
@@ -278,12 +285,18 @@ int main(int argc, char* argv[]) {
             LOG_A(LOG_INFO, "Tester: wait 2");
             Sleep(3000); // let ETW warm up
         }
-		g_Config.targetExeName = "RedEdrTester";
+        g_Config.targetExeName = "RedEdrTester.exe";
 
         LOG_A(LOG_INFO, "Tester: process in background");
         LPCWSTR path = L"C:\\RedEdr\\RedEdrTester.exe";
         LPCWSTR args = L"dostuff";
         DWORD pid = StartProcessInBackground(path, args);
+        if (pid == 0) {
+            LOG_A(LOG_ERROR, "Tester: Failed to start test process");
+            ManagerShutdown();
+            keyboard_reader_running = FALSE;
+            return 1;
+        }
         if (result["test"].as<std::string>() == "dll") {
             // do the userspace dll injection
             LOG_A(LOG_INFO, "Tester: Do DLL injection");
@@ -302,10 +315,21 @@ int main(int argc, char* argv[]) {
 
     // Wait for all threads to complete
     LOG_A(LOG_INFO, "RedEdr: All started, waiting for %llu threads to exit", threads.size());
+    if (threads.empty()) {
+        LOG_A(LOG_WARNING, "RedEdr: No threads to wait for");
+        return 0;
+    }
     DWORD res = WaitForMultipleObjects((DWORD) threads.size(), threads.data(), TRUE, INFINITE);
     if (res == WAIT_FAILED) {
-        LOG_A(LOG_INFO, "RedEdr: Wait failed");
+        LOG_A(LOG_ERROR, "RedEdr: Wait failed with error: %lu", GetLastError());
+        return 1;
     }
     LOG_A(LOG_INFO, "RedEdr: all %llu threads finished", threads.size());
+    
+    // Clean up thread handles
+    for (HANDLE thread : threads) {
+        CloseHandle(thread);
+    }
+    
     return 0;
 }
