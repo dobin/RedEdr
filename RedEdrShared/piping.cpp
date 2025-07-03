@@ -65,6 +65,12 @@ BOOL PipeServer::Start(BOOL allow_all) {
         0,
         sa_ptr
     );
+    
+    // Free the security descriptor if it was allocated
+    if (allow_all && sa_ptr && sa_ptr->lpSecurityDescriptor) {
+        LocalFree(sa_ptr->lpSecurityDescriptor);
+    }
+    
     if (hPipe == INVALID_HANDLE_VALUE) {
         LOG_A(LOG_ERROR, "Piping Server: Error creating named pipe: %ld", GetLastError());
         hPipe = NULL;
@@ -96,6 +102,10 @@ BOOL PipeServer::Send(char* buffer) {
         LOG_W(LOG_ERROR, L"Piping Server: Attempt to send to closed pipe");
         return FALSE;
     }
+    if (buffer == NULL) {
+        LOG_W(LOG_ERROR, L"Piping Server: Null buffer provided");
+        return FALSE;
+    }
     DWORD len = strlen(buffer) + 1; // -> include two trailing 0 bytes
     if (! WriteFile(hPipe, buffer, len, NULL, NULL)) {
         // Let caller handle it
@@ -107,6 +117,14 @@ BOOL PipeServer::Send(char* buffer) {
 
 
 BOOL PipeServer::Receive(char* buffer, size_t buffer_len) {
+    if (hPipe == NULL) {
+        LOG_W(LOG_ERROR, L"Piping Server: Pipe is not connected");
+        return FALSE;
+    }
+    if (buffer == NULL || buffer_len == 0) {
+        LOG_W(LOG_ERROR, L"Piping Server: Invalid buffer parameters");
+        return FALSE;
+    }
     DWORD readLen = static_cast<DWORD>(buffer_len);
     if (!ReadFile(hPipe, buffer, readLen, NULL, NULL)) {
         //LOG_W(LOG_INFO, L"Piping Server: Error when reading from pipe: %d", GetLastError());
@@ -122,7 +140,9 @@ std::vector<std::string> PipeServer::ReceiveBatch() {
     DWORD bytesRead;
     std::vector<std::string> strings;
 
-    if (ReadFile(hPipe, buffer, sizeof(buffer), &bytesRead, NULL)) {
+    if (ReadFile(hPipe, buffer, sizeof(buffer) - 1, &bytesRead, NULL)) {
+        // Ensure null termination
+        buffer[bytesRead] = '\0';
         strings.push_back(std::string(buffer));
     }
     else {
@@ -132,8 +152,8 @@ std::vector<std::string> PipeServer::ReceiveBatch() {
             hPipe = NULL;
         }
         else {
-            LOG_A(LOG_ERROR, "Piping: %s: Error reading from named pipe: %s",
-                pipe_name.c_str());
+            LOG_A(LOG_ERROR, "Piping: %s: Error reading from named pipe: %lu",
+                pipe_name.c_str(), GetLastError());
             hPipe = NULL;
         }
     }
@@ -181,7 +201,9 @@ BOOL PipeClient::Connect(const wchar_t *pipe_path) {
 
 
 void PipeClient::Disconnect() {
-    CloseHandle(hPipe);
+    if (hPipe != NULL && hPipe != INVALID_HANDLE_VALUE) {
+        CloseHandle(hPipe);
+    }
     hPipe = NULL;
 }
 
@@ -190,6 +212,10 @@ BOOL PipeClient::Send(char* buffer) {
     BOOL res = 0;
     if (hPipe == NULL) {
         LOG_W(LOG_ERROR, L"Piping Client: Pipe closed");
+        return FALSE;
+    }
+    if (buffer == NULL) {
+        LOG_W(LOG_ERROR, L"Piping Client: Null buffer provided");
         return FALSE;
     }
     DWORD len = (DWORD)strlen(buffer) + 1; // -> include trailing 0 bytes
@@ -203,6 +229,14 @@ BOOL PipeClient::Send(char* buffer) {
 
 
 BOOL PipeClient::Receive(char* buffer, size_t buffer_len) {
+    if (hPipe == NULL) {
+        LOG_W(LOG_ERROR, L"Piping Client: Pipe is not connected");
+        return FALSE;
+    }
+    if (buffer == NULL || buffer_len == 0) {
+        LOG_W(LOG_ERROR, L"Piping Client: Invalid buffer parameters");
+        return FALSE;
+    }
     DWORD readLen = static_cast<DWORD>(buffer_len);
     if (!ReadFile(hPipe, buffer, readLen, NULL, NULL)) {
         LOG_W(LOG_INFO, L"Piping Client: Error reading from pipe: %lu", GetLastError());
