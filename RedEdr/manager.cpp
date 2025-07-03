@@ -40,62 +40,82 @@ void ResetEverything() {
 
 
 BOOL ManagerReload() {
-    // DLL
-    // -> Automatic upon connect of DLL (initiated by Kernel)
+    try {
+        // DLL
+        // -> Automatic upon connect of DLL (initiated by Kernel)
 
-    // ETW
-    // -> Automatic in ProcessCache
-    
-    // Kernel
-    if (g_Config.do_kernelcallback || g_Config.do_dllinjection) {
-        LOG_A(LOG_INFO, "Manager: Tell Kernel about new target: %s", g_Config.targetExeName.c_str());
-        if (!EnableKernelDriver(g_Config.enabled, g_Config.targetExeName)) {
-            LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
-            return FALSE;
-        }
-    }
-
-    // PPL
-    if (g_Config.do_etwti) {
-        LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new target: %s", g_Config.targetExeName.c_str());
-        if (!EnablePplProducer(g_Config.enabled, g_Config.targetExeName)) {
-            LOG_A(LOG_ERROR, "Manager: Failed to enable PPL producer");
-            return FALSE;
-        }
-    }
-
-    return TRUE;
-}
-
-
-BOOL ManagerStart(std::vector<HANDLE>& threads) {
-    // Load: Kernel dependencies
-    if (g_Config.do_kernelcallback || g_Config.do_dllinjection) {
-        // Kernel: Module load
-        if (! IsServiceRunning(g_Config.driverName)) {
-            LOG_A(LOG_INFO, "Manager: Kernel Driver load");
-            if (!LoadKernelDriver()) {
-                LOG_A(LOG_ERROR, "Manager: Kernel driver could not be loaded");
+        // ETW
+        // -> Automatic in ProcessCache
+        
+        // Kernel
+        if (g_Config.do_kernelcallback || g_Config.do_dllinjection) {
+            LOG_A(LOG_INFO, "Manager: Tell Kernel about new target: %s", g_Config.targetExeName.c_str());
+            if (!EnableKernelDriver(g_Config.enabled, g_Config.targetExeName)) {
+                LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
                 return FALSE;
             }
         }
 
-        // Kernel: Reader Threads start
-        LOG_A(LOG_INFO, "Manager: Kernel reader thread start");
-        KernelReaderInit(threads);
+        // PPL
+        if (g_Config.do_etwti) {
+            LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new target: %s", g_Config.targetExeName.c_str());
+            if (!EnablePplProducer(g_Config.enabled, g_Config.targetExeName)) {
+                LOG_A(LOG_ERROR, "Manager: Failed to enable PPL producer");
+                return FALSE;
+            }
+        }
+
+        return TRUE;
     }
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "Manager: Exception in ManagerReload: %s", e.what());
+        return FALSE;
+    }
+    catch (...) {
+        LOG_A(LOG_ERROR, "Manager: Unknown exception in ManagerReload");
+        return FALSE;
+    }
+}
+
+
+BOOL ManagerStart(std::vector<HANDLE>& threads) {
+    try {
+        // Load: Kernel dependencies
+        if (g_Config.do_kernelcallback || g_Config.do_dllinjection) {
+            // Kernel: Module load
+            if (! IsServiceRunning(g_Config.driverName)) {
+                LOG_A(LOG_INFO, "Manager: Kernel Driver load");
+                if (!LoadKernelDriver()) {
+                    LOG_A(LOG_ERROR, "Manager: Kernel driver could not be loaded");
+                    return FALSE;
+                }
+            }
+
+            // Kernel: Reader Threads start
+            LOG_A(LOG_INFO, "Manager: Kernel reader thread start");
+            if (!KernelReaderInit(threads)) {
+                LOG_A(LOG_ERROR, "Manager: Failed to initialize kernel reader");
+                return FALSE;
+            }
+        }
 
     // Load: DLL reader
     //   its important for DLL AND ETW-TI to be up
     if (g_Config.do_dllinjection || g_Config.debug_dllreader || g_Config.do_etwti) {
         // DLL: Reader start (also for ETW-TI)
         LOG_A(LOG_INFO, "Manager: InjectedDll reader thread start");
-        DllReaderInit(threads);
+        if (!DllReaderInit(threads)) {
+            LOG_A(LOG_ERROR, "Manager: Failed to initialize DLL reader");
+            return FALSE;
+        }
     }
 
     // Load: ETW-TI
     if (g_Config.do_etwti) {
-        InitPplService();
+        if (!InitPplService()) {
+            LOG_A(LOG_ERROR, "Manager: Failed to initialize PPL service");
+            return FALSE;
+        }
         // No reader, uses DLL-pipe
     }
 
@@ -103,7 +123,10 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
     //   if --all, this will spend some time, making the previous shit ready
     if (g_Config.do_etw) {
         LOG_A(LOG_INFO, "Manager: ETW reader thread start");
-        InitializeEtwReader(threads);
+        if (!InitializeEtwReader(threads)) {
+            LOG_A(LOG_ERROR, "Manager: Failed to initialize ETW reader");
+            return FALSE;
+        }
     }
 
     Sleep(1000); // For good measure
@@ -112,7 +135,7 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
     if (g_Config.do_etwti) {
         if (!EnablePplProducer(TRUE, g_Config.targetExeName)) {
             LOG_A(LOG_ERROR, "Manager: Failed to enable ETW-TI");
-            // Don't return FALSE here, continue with other components
+            return FALSE;  // Make this a hard failure for consistency
         }
     }
     // Kernel: Enable
@@ -132,15 +155,28 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
     // Not really used
     if (g_Config.do_mplog) {
         LOG_A(LOG_INFO, "Manager: MPLOG Start Reader");
-        InitializeLogReader(threads);
+        if (!InitializeLogReader(threads)) {
+            LOG_A(LOG_ERROR, "Manager: Failed to initialize MPLOG reader");
+            return FALSE;
+        }
     }
 
     return TRUE;
+    }
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "Manager: Exception in ManagerStart: %s", e.what());
+        return FALSE;
+    }
+    catch (...) {
+        LOG_A(LOG_ERROR, "Manager: Unknown exception in ManagerStart");
+        return FALSE;
+    }
 }
 
 
 void ManagerShutdown() {
-    g_EventAggregator.StopRecorder();
+    try {
+        g_EventAggregator.StopRecorder();
 
     if (g_Config.do_mplog) {
         LOG_A(LOG_INFO, "Manager: Stop log reader");
@@ -151,7 +187,7 @@ void ManagerShutdown() {
     // ETW-TI
     if (g_Config.do_etwti) {
         LOG_A(LOG_INFO, "Manager: Stop ETWTI reader");
-        EnablePplProducer(FALSE, NULL);
+        EnablePplProducer(FALSE, "");  // Use empty string instead of NULL
     }
     // ETW
     if (g_Config.do_etw) {
@@ -192,4 +228,11 @@ void ManagerShutdown() {
 
     // Analyzer
     StopEventProcessor();
+    }
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "Manager: Exception in ManagerShutdown: %s", e.what());
+    }
+    catch (...) {
+        LOG_A(LOG_ERROR, "Manager: Unknown exception in ManagerShutdown");
+    }
 }
