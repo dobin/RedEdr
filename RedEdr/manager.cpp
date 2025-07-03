@@ -161,6 +161,16 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
         }
     }
 
+    // Populate process cache with all currently running processes
+    LOG_A(LOG_INFO, "Manager: Populating process cache with all running processes");
+    if (!g_ProcessResolver.PopulateAllProcesses()) {
+        LOG_A(LOG_WARNING, "Manager: Failed to populate process cache, continuing anyway");
+        // Don't return FALSE here as this is not critical for core functionality
+    } else {
+        // Log cache statistics after successful population
+        g_ProcessResolver.LogCacheStatistics();
+    }
+
     return TRUE;
     }
     catch (const std::exception& e) {

@@ -25,6 +25,9 @@ public:
     BOOL observe(DWORD id);
     void removeObject(DWORD id);
     void ResetData();
+    BOOL PopulateAllProcesses(); // Populate cache with all running processes
+    void LogCacheStatistics(); // Log statistics about the cache
+    BOOL RefreshCache(); // Refresh cache with new processes and remove dead ones
 
 private:
     std::unordered_map<DWORD, Process> cache;

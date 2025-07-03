@@ -9,6 +9,8 @@
 #include <memory>
 #include <tchar.h>
 #include <mutex>
+#include <tlhelp32.h>
+#include <set>
 
 #include "logging.h"
 #include "process_resolver.h"
@@ -16,6 +18,16 @@
 #include "process_query.h"
 #include "config.h"
 #include "event_aggregator.h"
+
+/*
+ * ProcessResolver: Maintains a cache of process information
+ * 
+ * Features:
+ * - Thread-safe caching of Process objects indexed by PID
+ * - Automatic population of all running processes on startup
+ * - Cache refresh capability to track new/terminated processes
+ * - Statistics and monitoring functions
+ */
 
 
 ProcessResolver g_ProcessResolver;
@@ -28,16 +40,14 @@ ProcessResolver::ProcessResolver() {
 
 // Add an object to the cache
 void ProcessResolver::addObject(DWORD id, const Process& obj) {
-    cache_mutex.lock();
+    std::lock_guard<std::mutex> lock(cache_mutex);
     cache[id] = obj;
-    cache_mutex.unlock();
 }
 
 
 BOOL ProcessResolver::containsObject(DWORD pid) {
-    cache_mutex.lock();
+    std::lock_guard<std::mutex> lock(cache_mutex);
     auto it = cache.find(pid);
-    cache_mutex.unlock();
     if (it != cache.end()) {
         return TRUE;
     }
@@ -49,11 +59,12 @@ BOOL ProcessResolver::containsObject(DWORD pid) {
 
 // Get an object from the cache
 Process* ProcessResolver::getObject(DWORD id) {
-    cache_mutex.lock();
-    auto it = cache.find(id);
-    cache_mutex.unlock();
-    if (it != cache.end()) {
-        return &it->second; // Return a pointer to the object
+    {
+        std::lock_guard<std::mutex> lock(cache_mutex);
+        auto it = cache.find(id);
+        if (it != cache.end()) {
+            return &it->second; // Return a pointer to the object
+        }
     }
 
     // Does not exist, create and add to cache
@@ -62,14 +73,18 @@ Process* ProcessResolver::getObject(DWORD id) {
         return nullptr;
     }
 
-    cache_mutex.lock();
-    cache[id] = *process;
-    cache_mutex.unlock();
+    {
+        std::lock_guard<std::mutex> lock(cache_mutex);
+        cache[id] = *process;
+    }
     
     // Clean up the temporary process object
     delete process;
     
-    return &cache[id];
+    {
+        std::lock_guard<std::mutex> lock(cache_mutex);
+        return &cache[id];
+    }
 }
 
 
@@ -84,20 +99,125 @@ BOOL ProcessResolver::observe(DWORD id) {
 
 // Remove an object from the cache
 void ProcessResolver::removeObject(DWORD id) {
-    cache_mutex.lock();
+    std::lock_guard<std::mutex> lock(cache_mutex);
     cache.erase(id);
-    cache_mutex.unlock();
 }
 
 
 void ProcessResolver::ResetData() {
-    cache_mutex.lock();
+    std::lock_guard<std::mutex> lock(cache_mutex);
     cache.clear();
-    cache_mutex.unlock();
 }
 
 
 size_t ProcessResolver::GetCacheCount() {
-    size_t s = cache.size();
-    return s;
+    std::lock_guard<std::mutex> lock(cache_mutex);
+    return cache.size();
 }
+
+
+// Populate cache with all currently running processes
+BOOL ProcessResolver::PopulateAllProcesses() {
+    LOG_A(LOG_INFO, "ProcessResolver: Starting to populate cache with all running processes");
+    
+    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hSnapshot == INVALID_HANDLE_VALUE) {
+        LOG_A(LOG_ERROR, "ProcessResolver: Failed to create process snapshot: %lu", GetLastError());
+        return FALSE;
+    }
+    
+    PROCESSENTRY32 pe32;
+    pe32.dwSize = sizeof(PROCESSENTRY32);
+    
+    // Get the first process
+    if (!Process32First(hSnapshot, &pe32)) {
+        LOG_A(LOG_ERROR, "ProcessResolver: Failed to get first process: %lu", GetLastError());
+        CloseHandle(hSnapshot);
+        return FALSE;
+    }
+    
+    int processCount = 0;
+    int cachedCount = 0;
+    
+    try {
+        do {
+            processCount++;
+            DWORD pid = pe32.th32ProcessID;
+            
+            // Skip system idle process (PID 0)
+            if (pid == 0) {
+                continue;
+            }
+            
+            // Check if already in cache
+            if (containsObject(pid)) {
+                continue;
+            }
+            
+            // Create process object and add to cache
+            Process* process = MakeProcess(pid, g_Config.targetExeName);
+            if (process != nullptr) {
+                {
+                    std::lock_guard<std::mutex> lock(cache_mutex);
+                    cache[pid] = *process;
+                }
+                
+                // Clean up the temporary process object
+                delete process;
+                cachedCount++;
+                
+                // Log progress for large numbers of processes
+                if (cachedCount % 50 == 0) {
+                    LOG_A(LOG_INFO, "ProcessResolver: Cached %d processes so far...", cachedCount);
+                }
+            }
+            else {
+                // MakeProcess can fail for protected/system processes, this is normal
+                LOG_A(LOG_DEBUG, "ProcessResolver: Failed to create process object for PID %lu (%ls)", 
+                      pid, pe32.szExeFile);
+            }
+            
+        } while (Process32Next(hSnapshot, &pe32));
+    }
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "ProcessResolver: Exception while populating cache: %s", e.what());
+        CloseHandle(hSnapshot);
+        return FALSE;
+    }
+    catch (...) {
+        LOG_A(LOG_ERROR, "ProcessResolver: Unknown exception while populating cache");
+        CloseHandle(hSnapshot);
+        return FALSE;
+    }
+    
+    CloseHandle(hSnapshot);
+    
+    LOG_A(LOG_INFO, "ProcessResolver: Successfully populated cache with %d processes out of %d total processes", 
+          cachedCount, processCount);
+    LOG_A(LOG_INFO, "ProcessResolver: Current cache size: %zu", GetCacheCount());
+    
+    return TRUE;
+}
+
+
+// Log statistics about the current cache state
+void ProcessResolver::LogCacheStatistics() {
+    std::lock_guard<std::mutex> lock(cache_mutex);
+    
+    LOG_A(LOG_INFO, "ProcessResolver Cache Statistics:");
+    LOG_A(LOG_INFO, "  Total cached processes: %zu", cache.size());
+    
+    if (cache.size() > 0) {
+        // Find min and max PIDs for range info
+        DWORD minPid = MAXDWORD;
+        DWORD maxPid = 0;
+        
+        for (const auto& pair : cache) {
+            minPid = min(minPid, pair.first);
+            maxPid = max(maxPid, pair.first);
+        }
+        
+        LOG_A(LOG_INFO, "  PID range: %lu - %lu", minPid, maxPid);
+    }
+}
+
