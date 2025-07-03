@@ -63,8 +63,10 @@ BOOL Process::OpenTarget() {
 
 
 BOOL Process::CloseTarget() {
-    CloseHandle(hProcess);
-    hProcess = NULL;
+    if (hProcess != NULL) {
+        CloseHandle(hProcess);
+        hProcess = NULL;
+    }
     return TRUE;
 }
 

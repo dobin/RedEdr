@@ -26,6 +26,7 @@ public:
 class MemStatic {
 public:
 	MemStatic();
+	~MemStatic();  // Destructor to clean up memory
 	void AddMemoryRegion(uint64_t addr, MemoryRegion* region);
 	BOOL ExistMemoryRegion(uint64_t addr);
 	MemoryRegion* GetMemoryRegion(uint64_t addr);

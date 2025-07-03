@@ -58,10 +58,17 @@ Process* ProcessResolver::getObject(DWORD id) {
 
     // Does not exist, create and add to cache
     Process* process = MakeProcess(id, g_Config.targetExeName);
+    if (process == nullptr) {
+        return nullptr;
+    }
 
     cache_mutex.lock();
     cache[id] = *process;
     cache_mutex.unlock();
+    
+    // Clean up the temporary process object
+    delete process;
+    
     return &cache[id];
 }
 

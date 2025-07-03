@@ -13,6 +13,14 @@ MemStatic g_MemStatic = MemStatic();
 MemStatic::MemStatic() {
 }
 
+MemStatic::~MemStatic() {
+	// Clean up all allocated MemoryRegion objects
+	for (const auto& it : memoryRegions.ranges_) {
+		MemoryRegion* r = (MemoryRegion*)it.data_;
+		delete r;
+	}
+}
+
 
 void MemStatic::AddMemoryRegion(uint64_t addr, MemoryRegion* region) {
 	memoryRegions.add(Range(addr, addr + region->size, region));
@@ -38,19 +46,24 @@ MemoryRegion* MemStatic::GetMemoryRegion(uint64_t addr) {
 void MemStatic::RemoveMemoryRegion(uint64_t addr, size_t size) {
 	for (auto it = memoryRegions.ranges_.begin(); it != memoryRegions.ranges_.end(); ) {
 		if (it->contains(addr)) {
+			// Free the memory before removing from collection
+			MemoryRegion* r = (MemoryRegion*)it->data_;
+			delete r;
 			it = memoryRegions.ranges_.erase(it);
 		}
 		else {
 			++it;
 		}
 	}
-
-	//delete memoryRegions[addr];
-	//memoryRegions.erase(addr);
 }
 
 
 void MemStatic::ResetData() {
+	// Clean up all allocated MemoryRegion objects before clearing
+	for (const auto& it : memoryRegions.ranges_) {
+		MemoryRegion* r = (MemoryRegion*)it.data_;
+		delete r;
+	}
 	memoryRegions.ResetData();
 }
 

@@ -156,8 +156,24 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
     svr.Get("/api/recordings/:id", [](const httplib::Request& req, httplib::Response& res) {
         auto user_id = req.path_params.at("id");
+        
+        // Validate the ID to prevent path traversal attacks
+        if (user_id.find("..") != std::string::npos || 
+            user_id.find("/") != std::string::npos || 
+            user_id.find("\\") != std::string::npos ||
+            user_id.empty()) {
+            res.status = 400;
+            res.set_content("{\"error\": \"Invalid ID\"}", "application/json");
+            return;
+        }
+        
         std::string path = "C:\\RedEdr\\Data\\" + user_id + ".events.json";
         std::string data = read_file(path);
+        if (data.empty()) {
+            res.status = 404;
+            res.set_content("{\"error\": \"File not found\"}", "application/json");
+            return;
+        }
         res.set_content(data.c_str(), "application/json");
     });
 

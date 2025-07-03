@@ -33,9 +33,20 @@ BOOL EnablePplProducer(BOOL e, std::string targetName) {
         return FALSE;
     }
 
-    // Send enable/disable via pipe to PPL aervice
+    // Send enable/disable via pipe to PPL service
     if (e) {
-        sprintf_s(buffer, PPL_CONFIG_LEN, "start:%s", targetName.c_str());
+        // Validate target name length to prevent buffer overflow
+        if (targetName.length() > (PPL_CONFIG_LEN - 10)) { // Reserve space for "start:" prefix
+            LOG_A(LOG_ERROR, "ETW-TI: Target name too long: %zu characters", targetName.length());
+            return FALSE;
+        }
+        
+        int result = sprintf_s(buffer, PPL_CONFIG_LEN, "start:%s", targetName.c_str());
+        if (result < 0) {
+            LOG_A(LOG_ERROR, "ETW-TI: Failed to format start command");
+            return FALSE;
+        }
+        
         if (!pipeClient.Send(buffer)) {
             LOG_A(LOG_INFO, "ETW-TI: Error sending: %s to ppl service", buffer);
             return FALSE;
@@ -43,7 +54,12 @@ BOOL EnablePplProducer(BOOL e, std::string targetName) {
         LOG_A(LOG_INFO, "ETW-TI: ppl reader: Enabled");
     }
     else {
-        sprintf_s(buffer, PPL_CONFIG_LEN, "%s", L"stop");
+        int result = sprintf_s(buffer, PPL_CONFIG_LEN, "stop");
+        if (result < 0) {
+            LOG_A(LOG_ERROR, "ETW-TI: Failed to format stop command");
+            return FALSE;
+        }
+        
         if (!pipeClient.Send(buffer)) {
             return FALSE;
         }

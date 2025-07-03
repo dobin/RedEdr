@@ -61,61 +61,72 @@ void EventDetector::AnalyzerNewDetection(nlohmann::json& j, Criticality c, std::
 
 
 void EventDetector::ScanEventForDetections(nlohmann::json& j) {
-    if (j["type"] == "etw") {
-        // ETW-TI
-        if (j["provider_name"] == "f4e1897c-bb5d-5668-f1d8-040f4d8dd344") {
-            if (j["event"] == "KERNEL_THREATINT_TASK_PROTECTVM") {
-                if (j["ProtectionMask"] == "RWX") {
-                    std::stringstream ss;
-                    ss << "ProtectMemory with RWX at addr " << j["BaseAddress"].get<std::uint64_t>();
-                    AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
+    try {
+        if (!j.contains("type") || !j["type"].is_string()) {
+            return; // Invalid event format
+        }
+        
+        if (j["type"] == "etw") {
+            // ETW-TI
+            if (j.contains("provider_name") && j["provider_name"] == "f4e1897c-bb5d-5668-f1d8-040f4d8dd344") {
+                if (j.contains("event") && j["event"] == "KERNEL_THREATINT_TASK_PROTECTVM") {
+                    if (j.contains("ProtectionMask") && j["ProtectionMask"] == "RWX") {
+                        std::stringstream ss;
+                        ss << "ProtectMemory with RWX at addr " << j["BaseAddress"].get<std::uint64_t>();
+                        AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
+                    }
                 }
-            }
 
-            // Callstack
-            if (j.contains("stack_trace") && j["stack_trace"].is_array()) {
-                for (const auto& callstack_entry : j["stack_trace"]) {
-                    if (callstack_entry["addr_info"] == "NOT_IMAGE") {
-                        AnalyzerNewDetection(j, Criticality::HIGH, "Callstack contains non-image entry");
+                // Callstack
+                if (j.contains("stack_trace") && j["stack_trace"].is_array()) {
+                    for (const auto& callstack_entry : j["stack_trace"]) {
+                        if (callstack_entry.contains("addr_info") && callstack_entry["addr_info"] == "NOT_IMAGE") {
+                            AnalyzerNewDetection(j, Criticality::HIGH, "Callstack contains non-image entry");
+                        }
                     }
                 }
             }
         }
-    }
-    if (j["type"] == "dll") {
-        if (j["func"] == "NtAllocateVirtualMemory") {
-            if (j["handle"] != -1) {
-                std::stringstream ss;
-                ss << "NtAllocateVirtualMemory in foreign process " << j["handle"].get<uint64_t>();
-                AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
-            }
-        }
-        if (j["func"] == "NtWriteVirtualMemory") {
-            if (j["handle"] != -1) {
-                std::stringstream ss;
-                ss << "NtWriteVirtualMemory in foreign process " << j["handle"].get<uint64_t>();
-                AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
-            }
-        }
-        if (j["func"] == "NtCreateRemoteThread") {
-            if (j["handle"] != -1) {
-                std::stringstream ss;
-                ss << "NtCreateRemoteThread in foreign process " << j["handle"].get<uint64_t>();
-                AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
-            }
-        }
-        if (j["func"] == "NtProtectVirtualMemory") {
-            // Check for simple RWX
-            if (j.value("protect", "") == "RWX") {
-                std::stringstream ss;
-                ss << "NtProtectVirtualMemory with RWX at addr " << j["addr"].get<uint64_t>();
-                AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
-            }
+        if (j["type"] == "dll") {
+            if (j.contains("func") && j["func"].is_string()) {
+                std::string funcName = j["func"].get<std::string>();
+                
+                if (funcName == "NtAllocateVirtualMemory") {
+                    if (j.contains("handle") && j["handle"].is_number() && j["handle"].get<int64_t>() != -1) {
+                        std::stringstream ss;
+                        ss << "NtAllocateVirtualMemory in foreign process " << j["handle"].get<uint64_t>();
+                        AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
+                    }
+                }
+                else if (funcName == "NtWriteVirtualMemory") {
+                    if (j.contains("handle") && j["handle"].is_number() && j["handle"].get<int64_t>() != -1) {
+                        std::stringstream ss;
+                        ss << "NtWriteVirtualMemory in foreign process " << j["handle"].get<uint64_t>();
+                        AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
+                    }
+                }
+                else if (funcName == "NtCreateRemoteThread") {
+                    if (j.contains("handle") && j["handle"].is_number() && j["handle"].get<int64_t>() != -1) {
+                        std::stringstream ss;
+                        ss << "NtCreateRemoteThread in foreign process " << j["handle"].get<uint64_t>();
+                        AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
+                    }
+                }
+                else if (funcName == "NtProtectVirtualMemory") {
+                    // Check for simple RWX
+                    if (j.contains("protect") && j["protect"].is_string() && j["protect"].get<std::string>() == "RWX") {
+                        if (j.contains("addr") && j["addr"].is_number()) {
+                            std::stringstream ss;
+                            ss << "NtProtectVirtualMemory with RWX at addr " << j["addr"].get<uint64_t>();
+                            AnalyzerNewDetection(j, Criticality::HIGH, ss.str());
+                        }
+                    }
 
-            // Check if the region has been suspiciously protected before (RW<->RX)
-            uint64_t addr = j["addr"].get<uint64_t>();
-            MemoryRegion* region = memDynamic.GetMemoryRegion(addr);
-            if (region != NULL) {
+                    // Check if the region has been suspiciously protected before (RW<->RX)
+                    if (j.contains("addr") && j["addr"].is_number()) {
+                        uint64_t addr = j["addr"].get<uint64_t>();
+                        MemoryRegion* region = memDynamic.GetMemoryRegion(addr);
+                        if (region != NULL) {
                 std::string sus = sus_protect(region->protection);
                 if (sus != "") {
                     AnalyzerNewDetection(j, Criticality::HIGH, sus);
@@ -149,25 +160,43 @@ void EventDetector::ScanEventForDetections(nlohmann::json& j) {
         if (non_image_callstack) {
             AnalyzerNewDetection(j, Criticality::HIGH, "Non-image in callstack");
         }
+            }
+        }
+    }
+    catch (const nlohmann::json::exception& e) {
+        LOG_A(LOG_ERROR, "JSON error in ScanEventForDetections: %s", e.what());
+    }
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "Error in ScanEventForDetections: %s", e.what());
     }
 }
 
 
 void EventDetector::ScanEventForMemoryChanges(nlohmann::json& j) {
-    // Loaded dll's
-    if (j["type"] == "loaded_dll") {
-        for (const auto& it : j["dlls"]) {
-            uint64_t addr = it["addr"].get<uint64_t>();
-            uint64_t size = it["size"].get<uint64_t>();
-            std::string protection = "???";
-            std::string name = "loaded_dll:" + it["name"].get<std::string>();
-
-            addr = AlignToPage(addr);
-            // always add, as its early in the process without collisions hopefully
-            MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
-            memDynamic.AddMemoryRegion(addr, region);
+    try {
+        if (!j.contains("type") || !j["type"].is_string()) {
+            return; // Invalid event format
         }
-    }
+        
+        // Loaded dll's
+        if (j["type"] == "loaded_dll") {
+            if (j.contains("dlls") && j["dlls"].is_array()) {
+                for (const auto& it : j["dlls"]) {
+                    if (it.contains("addr") && it.contains("size") && it.contains("name") &&
+                        it["addr"].is_number() && it["size"].is_number() && it["name"].is_string()) {
+                        uint64_t addr = it["addr"].get<uint64_t>();
+                        uint64_t size = it["size"].get<uint64_t>();
+                        std::string protection = "???";
+                        std::string name = "loaded_dll:" + it["name"].get<std::string>();
+
+                        addr = AlignToPage(addr);
+                        // always add, as its early in the process without collisions hopefully
+                        MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
+                        memDynamic.AddMemoryRegion(addr, region);
+                    }
+                }
+            }
+        }
 
     // From injected dll
     if (j["type"] == "dll") {
@@ -237,6 +266,12 @@ void EventDetector::ScanEventForMemoryChanges(nlohmann::json& j) {
                 //	name.c_str(), addr, size, protection.c_str());
             }
         }
+    }
+    catch (const nlohmann::json::exception& e) {
+        LOG_A(LOG_ERROR, "JSON error in ScanEventForMemoryChanges: %s", e.what());
+    }
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "Error in ScanEventForMemoryChanges: %s", e.what());
     }
 }
 
