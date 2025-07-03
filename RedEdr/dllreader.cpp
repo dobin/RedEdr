@@ -32,29 +32,30 @@ HANDLE threadReadynessDll; // ready to accept clients
 
 
 // Private Function Definitions
-void DllReaderInit(std::vector<HANDLE>& threads);
 void DllReaderClientThread(PipeServer* pipeServer);
 DWORD WINAPI DllReaderThread(LPVOID param);
 void DllReaderShutdown();
 
 
 // Init
-void DllReaderInit(std::vector<HANDLE>& threads) {
+bool DllReaderInit(std::vector<HANDLE>& threads) {
     const wchar_t* data = L"";
     threadReadynessDll = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (threadReadynessDll == NULL) {
         LOG_A(LOG_ERROR, "DllReader: Failed to create event for thread readyness");
-        return;
+        return false;
     }
 
     HANDLE thread = CreateThread(NULL, 0, DllReaderThread, NULL, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "DllReader: Failed to create thread");
-        return;
+        return false;
     }
 
     WaitForSingleObject(threadReadynessDll, INFINITE);
     threads.push_back(thread);
+
+    return true;
 }
 
 
@@ -151,7 +152,6 @@ void DllReaderClientThread(PipeServer* pipeServer) {
 
     server->Shutdown();
     // server automatically deleted when unique_ptr goes out of scope
-}
 }
 
 

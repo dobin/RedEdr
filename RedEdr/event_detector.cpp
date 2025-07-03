@@ -127,9 +127,12 @@ void EventDetector::ScanEventForDetections(nlohmann::json& j) {
                         uint64_t addr = j["addr"].get<uint64_t>();
                         MemoryRegion* region = memDynamic.GetMemoryRegion(addr);
                         if (region != NULL) {
-                std::string sus = sus_protect(region->protection);
-                if (sus != "") {
-                    AnalyzerNewDetection(j, Criticality::HIGH, sus);
+                            std::string sus = sus_protect(region->protection);
+                            if (sus != "") {
+                                AnalyzerNewDetection(j, Criticality::HIGH, sus);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -160,8 +163,6 @@ void EventDetector::ScanEventForDetections(nlohmann::json& j) {
         if (non_image_callstack) {
             AnalyzerNewDetection(j, Criticality::HIGH, "Non-image in callstack");
         }
-            }
-        }
     }
     catch (const nlohmann::json::exception& e) {
         LOG_A(LOG_ERROR, "JSON error in ScanEventForDetections: %s", e.what());
@@ -177,7 +178,7 @@ void EventDetector::ScanEventForMemoryChanges(nlohmann::json& j) {
         if (!j.contains("type") || !j["type"].is_string()) {
             return; // Invalid event format
         }
-        
+
         // Loaded dll's
         if (j["type"] == "loaded_dll") {
             if (j.contains("dlls") && j["dlls"].is_array()) {
@@ -198,72 +199,73 @@ void EventDetector::ScanEventForMemoryChanges(nlohmann::json& j) {
             }
         }
 
-    // From injected dll
-    if (j["type"] == "dll") {
-        if (j["func"] == "NtAllocateVirtualMemory") {
-            uint64_t addr = j["addr"].get<uint64_t>();
-            uint64_t size = j["size"].get<uint64_t>();
-            std::string protection = j["protect"];
-
-            //std::string jsonString = j.dump();
-            //std::cout << "Compact JSON: " << jsonString << std::endl;
-
-            addr = AlignToPage(addr);
-            MemoryRegion* memoryRegion = memDynamic.GetMemoryRegion(addr);
-            if (memoryRegion != NULL) {
-                //LOG_A(LOG_WARNING, "Allocate Memory ALREADY FOUND??! 0x%llx %llu end:0x%llx",
-                //   addr, size, addr+size);
-                //LOG_A(LOG_INFO, "              : %s 0x%llx %llu end:0x%llx %s",
-                //    region->name.c_str(), region->addr, region->size,
-                //    region->addr + region->size,
-                //    region->protection.c_str());*/
-                memoryRegion->protection += ";Alloc:" + protection;
-            }
-            else {
-                //LOG_A(LOG_WARNING, "Allocate Memory new: 0x%llx %llu",
-                //    addr, size);
-                memoryRegion = new MemoryRegion("Allocated", addr, size, protection);
-                memDynamic.AddMemoryRegion(addr, memoryRegion);
-            }
-
-            if (j["func"] == "NtFreeVirtualMemory") {
+        // From injected dll
+        if (j["type"] == "dll") {
+            if (j["func"] == "NtAllocateVirtualMemory") {
                 uint64_t addr = j["addr"].get<uint64_t>();
                 uint64_t size = j["size"].get<uint64_t>();
+                std::string protection = j["protect"];
 
+                //std::string jsonString = j.dump();
+                //std::cout << "Compact JSON: " << jsonString << std::endl;
+
+                addr = AlignToPage(addr);
                 MemoryRegion* memoryRegion = memDynamic.GetMemoryRegion(addr);
                 if (memoryRegion != NULL) {
-                    // do not remove, but indicate it has been freed
-                    //memDynamic.RemoveMemoryRegion(addr, size);
-                    memoryRegion->protection += ";freed";
+                    //LOG_A(LOG_WARNING, "Allocate Memory ALREADY FOUND??! 0x%llx %llu end:0x%llx",
+                    //   addr, size, addr+size);
+                    //LOG_A(LOG_INFO, "              : %s 0x%llx %llu end:0x%llx %s",
+                    //    region->name.c_str(), region->addr, region->size,
+                    //    region->addr + region->size,
+                    //    region->protection.c_str());*/
+                    memoryRegion->protection += ";Alloc:" + protection;
                 }
                 else {
-                    //LOG_A(LOG_WARNING, "Free a non-allocated");
-                    // No add as its free anyway?
+                    //LOG_A(LOG_WARNING, "Allocate Memory new: 0x%llx %llu",
+                    //    addr, size);
+                    memoryRegion = new MemoryRegion("Allocated", addr, size, protection);
+                    memDynamic.AddMemoryRegion(addr, memoryRegion);
+                }
+
+                if (j["func"] == "NtFreeVirtualMemory") {
+                    uint64_t addr = j["addr"].get<uint64_t>();
+                    uint64_t size = j["size"].get<uint64_t>();
+
+                    MemoryRegion* memoryRegion = memDynamic.GetMemoryRegion(addr);
+                    if (memoryRegion != NULL) {
+                        // do not remove, but indicate it has been freed
+                        //memDynamic.RemoveMemoryRegion(addr, size);
+                        memoryRegion->protection += ";freed";
+                    }
+                    else {
+                        //LOG_A(LOG_WARNING, "Free a non-allocated");
+                        // No add as its free anyway?
+                    }
                 }
             }
-        }
 
-        if (j["func"] == "NtProtectVirtualMemory") {
-            uint64_t addr = j["addr"].get<uint64_t>();
-            uint64_t size = j["size"].get<uint64_t>();
-            std::string protection = j["protect"];
-            std::string name = "Protected";
+            if (j["func"] == "NtProtectVirtualMemory") {
+                uint64_t addr = j["addr"].get<uint64_t>();
+                uint64_t size = j["size"].get<uint64_t>();
+                std::string protection = j["protect"];
+                std::string name = "Protected";
 
-            addr = AlignToPage(addr);
-            // Check if exists
-            MemoryRegion* memoryRegion = memDynamic.GetMemoryRegion(addr);
-            if (memoryRegion == NULL) {
-                //LOG_A(LOG_WARNING, "ProtectVirtualMemory region 0x%llx not found. Adding.",
-                //    addr);
-                MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
-                memDynamic.AddMemoryRegion(addr, region);
-            }
-            else {
-                // Update protection
-                MemoryRegion* region = memDynamic.GetMemoryRegion(addr);
-                region->protection += ";" + protection;
-                //LOG_A(LOG_INFO, "ProtectVirtualMemory: %s 0x%llx 0x%llx %s",
-                //	name.c_str(), addr, size, protection.c_str());
+                addr = AlignToPage(addr);
+                // Check if exists
+                MemoryRegion* memoryRegion = memDynamic.GetMemoryRegion(addr);
+                if (memoryRegion == NULL) {
+                    //LOG_A(LOG_WARNING, "ProtectVirtualMemory region 0x%llx not found. Adding.",
+                    //    addr);
+                    MemoryRegion* region = new MemoryRegion(name, addr, size, protection);
+                    memDynamic.AddMemoryRegion(addr, region);
+                }
+                else {
+                    // Update protection
+                    MemoryRegion* region = memDynamic.GetMemoryRegion(addr);
+                    region->protection += ";" + protection;
+                    //LOG_A(LOG_INFO, "ProtectVirtualMemory: %s 0x%llx 0x%llx %s",
+                    //	name.c_str(), addr, size, protection.c_str());
+                }
             }
         }
     }

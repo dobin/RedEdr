@@ -42,6 +42,7 @@ bool Executor::Stop() {
 		return false;
 	}
     TerminateProcess(pihProcess, 1);
+    return true;
 }
 
 
@@ -88,6 +89,7 @@ bool Executor::Capture() {
     }
 
     LOG_A(LOG_INFO, "CapturedOutput: finish");
+    return true;
 }
 
 

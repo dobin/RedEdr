@@ -125,24 +125,7 @@ wchar_t* string2wcharAlloc(const std::string& str) {
 }
 
 
-// Dear mother of god whats up with all these goddamn string types
-wchar_t* string2wcharAlloc(const std::string& str) {
-    if (str.empty()) {
-        wchar_t* wideString = new wchar_t[1];
-        wideString[0] = L'\0';
-        return wideString;
-    }
-    int sizeNeeded = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, nullptr, 0);
-    if (sizeNeeded <= 0) {
-        return nullptr;
-    }
-    wchar_t* wideString = new wchar_t[sizeNeeded];
-    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, wideString, sizeNeeded);
-    return wideString;
-}
-
-
-std::string wstring2string(const std::wstring& wide_string) {
+std::string wstring2string(std::wstring& wide_string) {
     if (wide_string.empty()) {
         return "";
     }

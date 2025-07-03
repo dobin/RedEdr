@@ -18,13 +18,13 @@ namespace UnitTests
 		
 		TEST_METHOD(TestTranslate)
 		{
-			Assert::AreEqual(L"--X", getMemoryRegionProtect(0x10));
-			Assert::AreEqual(L"RWX", getMemoryRegionProtect(0x40));
-			Assert::AreEqual(L"EXECUTE_WRITECOPY", getMemoryRegionProtect(0x80));
+			Assert::AreEqual("--X", getMemoryRegionProtect(0x10));
+			Assert::AreEqual("RWX", getMemoryRegionProtect(0x40));
+			Assert::AreEqual("EXECUTE_WRITECOPY", getMemoryRegionProtect(0x80));
 
-			Assert::AreEqual(L"IMAGE", getMemoryRegionType(0x1000000));
-			Assert::AreEqual(L"MAPPED", getMemoryRegionType(0x40000));
-			Assert::AreEqual(L"PRIVATE", getMemoryRegionType(0x20000));
+			Assert::AreEqual("IMAGE", getMemoryRegionType(0x1000000));
+			Assert::AreEqual("MAPPED", getMemoryRegionType(0x40000));
+			Assert::AreEqual("PRIVATE", getMemoryRegionType(0x20000));
 		}
 	};
 }

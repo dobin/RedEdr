@@ -36,23 +36,25 @@ HANDLE threadReadynessKernel; // ready to accept clients
 DWORD WINAPI KernelReaderProcessingThread(LPVOID param);
 
 
-void KernelReaderInit(std::vector<HANDLE>& threads) {
+bool KernelReaderInit(std::vector<HANDLE>& threads) {
     const wchar_t* data = L"";
     threadReadynessKernel = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (threadReadynessKernel == NULL) {
 		LOG_A(LOG_ERROR, "KernelReader: Failed to create event for thread readyness");
-		return;
+		return false;
 	}
 
     LOG_A(LOG_INFO, "!KernelReader: Start thread");
     HANDLE thread = CreateThread(NULL, 0, KernelReaderProcessingThread, (LPVOID)data, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "KernelReader: Failed to create thread for trace session logreader");
-        return;
+        return false;
     }
 
     WaitForSingleObject(threadReadynessKernel, INFINITE);
     threads.push_back(thread);
+
+    return true;
 }
 
 

@@ -7,5 +7,5 @@
 #include <sstream>
 
 
-void DllReaderInit(std::vector<HANDLE>& threads);
+bool DllReaderInit(std::vector<HANDLE>& threads);
 void DllReaderShutdown();
