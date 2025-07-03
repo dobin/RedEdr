@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <wtsapi32.h>
 #include <UserEnv.h>
+#include <mutex>
 
 #include "httplib.h" // Needs to be on top?
 
@@ -35,6 +36,7 @@ using json = nlohmann::json;
 
 HANDLE webserver_thread;
 httplib::Server svr;
+std::mutex webserver_mutex;  // Protect server operations
 
 
 std::wstring StripToFirstDot(const std::wstring& input) {
@@ -72,17 +74,23 @@ std::vector<std::wstring> GetFilesInDirectory(const std::wstring& directory) {
 
 
 std::string getRecordingsAsJson() {
-    std::stringstream output;
-    output << "[";
-    std::vector<std::wstring> names = GetFilesInDirectory(L"C:\\RedEdr\\Data\\*.events.json");
-    for (auto it = names.begin(); it != names.end(); ++it) {
-        output << "\"" << wstring2string(*it) << "\"";
-        if (std::next(it) != names.end()) {
-            output << ",";  // Add comma only if it's not the last element
+    try {
+        std::stringstream output;
+        output << "[";
+        std::vector<std::wstring> names = GetFilesInDirectory(L"C:\\RedEdr\\Data\\*.events.json");
+        for (auto it = names.begin(); it != names.end(); ++it) {
+            std::wstring name = *it;  // Create a proper lvalue for wstring2string
+            output << "\"" << wstring2string(name) << "\"";
+            if (std::next(it) != names.end()) {
+                output << ",";  // Add comma only if it's not the last element
+            }
         }
+        output << "]";
+        return output.str();
+    } catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "Error in getRecordingsAsJson: %s", e.what());
+        return "[]";  // Return empty array on error
     }
-    output << "]";
-    return output.str();
 }
 
 
@@ -95,9 +103,14 @@ bool StartWithExplorer(std::string programPath) {
     // Start the process
     STARTUPINFO si = { sizeof(STARTUPINFO) };
     PROCESS_INFORMATION pi = { 0 };
-    if (!CreateProcessW(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+    BOOL result = CreateProcessW(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+    
+    // Clean up allocated memory
+    delete[] commandLine;
+    
+    if (!result) {
         wprintf(L"Failed to start %s with explorer.exe. Error: %d\n", 
-            commandLine, GetLastError());
+            L"process", GetLastError());
         return false;
     }
 
@@ -119,7 +132,13 @@ BOOL ExecMalware(std::string filename, std::string filedata) {
         LOG_A(LOG_ERROR, "Could not write file");
         return FALSE;
     }
-	return(g_Executor.Start(string2wcharAlloc(filepath.c_str())));
+    
+    // Fix memory leak by storing pointer and cleaning up
+    wchar_t* wideFilepath = string2wcharAlloc(filepath.c_str());
+    BOOL result = g_Executor.Start(wideFilepath);
+    delete[] wideFilepath;
+    
+    return result;
 }
 
 
@@ -127,32 +146,94 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     LOG_A(LOG_INFO, "!WEB: Start Webserver thread");
     
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
-        std::string indexhtml = read_file("C:\\RedEdr\\index.html");
-        res.set_content(indexhtml, "text/html");
+        try {
+            std::string indexhtml = read_file("C:\\RedEdr\\index.html");
+            if (indexhtml.empty()) {
+                res.status = 404;
+                res.set_content("File not found", "text/plain");
+                return;
+            }
+            res.set_content(indexhtml, "text/html");
+        } catch (const std::exception& e) {
+            LOG_A(LOG_ERROR, "Error serving index.html: %s", e.what());
+            res.status = 500;
+            res.set_content("Internal server error", "text/plain");
+        }
     });
     svr.Get("/recordings", [](const httplib::Request&, httplib::Response& res) {
-        std::string indexhtml = read_file("C:\\RedEdr\\recording.html");
-        res.set_content(indexhtml, "text/html");
+        try {
+            std::string indexhtml = read_file("C:\\RedEdr\\recording.html");
+            if (indexhtml.empty()) {
+                res.status = 404;
+                res.set_content("File not found", "text/plain");
+                return;
+            }
+            res.set_content(indexhtml, "text/html");
+        } catch (const std::exception& e) {
+            LOG_A(LOG_ERROR, "Error serving recording.html: %s", e.what());
+            res.status = 500;
+            res.set_content("Internal server error", "text/plain");
+        }
     });
     svr.Get("/static/design.css", [](const httplib::Request&, httplib::Response& res) {
-        std::string indexhtml = read_file("C:\\RedEdr\\design.css");
-        res.set_content(indexhtml, "text/css");
+        try {
+            std::string indexhtml = read_file("C:\\RedEdr\\design.css");
+            if (indexhtml.empty()) {
+                res.status = 404;
+                res.set_content("File not found", "text/plain");
+                return;
+            }
+            res.set_content(indexhtml, "text/css");
+        } catch (const std::exception& e) {
+            LOG_A(LOG_ERROR, "Error serving design.css: %s", e.what());
+            res.status = 500;
+            res.set_content("Internal server error", "text/plain");
+        }
     });
     svr.Get("/static/shared.js", [](const httplib::Request&, httplib::Response& res) {
-        std::string indexhtml = read_file("C:\\RedEdr\\shared.js");
-        res.set_content(indexhtml, "text/javascript");
+        try {
+            std::string indexhtml = read_file("C:\\RedEdr\\shared.js");
+            if (indexhtml.empty()) {
+                res.status = 404;
+                res.set_content("File not found", "text/plain");
+                return;
+            }
+            res.set_content(indexhtml, "text/javascript");
+        } catch (const std::exception& e) {
+            LOG_A(LOG_ERROR, "Error serving shared.js: %s", e.what());
+            res.status = 500;
+            res.set_content("Internal server error", "text/plain");
+        }
     });
 
     svr.Get("/api/events", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content(g_EventProcessor.GetAllAsJson(), "application/json; charset=UTF-8");
+        try {
+            res.set_content(g_EventProcessor.GetAllAsJson(), "application/json; charset=UTF-8");
+        } catch (const std::exception& e) {
+            LOG_A(LOG_ERROR, "Error getting events: %s", e.what());
+            res.status = 500;
+            res.set_content("{\"error\":\"Internal server error\"}", "application/json");
+        }
     });
 
     svr.Get("/api/detections", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content(g_EventDetector.GetAllDetectionsAsJson(), "application/json; charset=UTF-8");
+        try {
+            res.set_content(g_EventDetector.GetAllDetectionsAsJson(), "application/json; charset=UTF-8");
+        } catch (const std::exception& e) {
+            LOG_A(LOG_ERROR, "Error getting detections: %s", e.what());
+            res.status = 500;
+            res.set_content("{\"error\":\"Internal server error\"}", "application/json");
+        }
     });
 
     svr.Get("/api/recordings", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content(getRecordingsAsJson(), "application/json; charset=UTF-8");
+        try {
+            res.set_content(getRecordingsAsJson(), "application/json; charset=UTF-8");
+        } catch (const std::exception& e) {
+            LOG_A(LOG_ERROR, "Error getting recordings: %s", e.what());
+            res.status = 500;
+            res.set_content("{\"error\":\"Internal server error\"}", "application/json");
+        }
     });
     svr.Get("/api/recordings/:id", [](const httplib::Request& req, httplib::Response& res) {
         auto user_id = req.path_params.at("id");
@@ -247,29 +328,46 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
     if (g_Config.enable_remote_exec) {
         svr.Post("/api/exec", [](const httplib::Request& req, httplib::Response& res) {
-            // curl.exe -X POST http://localhost:8080/api/exec -F "file=@C:\temp\RedEdrTester.exe"
-            auto file = req.get_file_value("file");
-            auto filename = file.filename;
-            if (file.content.empty() || filename.empty()) {
-                LOG_A(LOG_WARNING, "Webserver: Data error: %d %d", file.content.size(), filename.size());
-                res.status = 400;
-                res.set_content("Invalid request: filename or file data is missing.", "text/plain");
-                return;
+            try {
+                // curl.exe -X POST http://localhost:8080/api/exec -F "file=@C:\temp\RedEdrTester.exe"
+                auto file = req.get_file_value("file");
+                auto filename = file.filename;
+                if (file.content.empty() || filename.empty()) {
+                    LOG_A(LOG_WARNING, "Webserver: Data error: %d %d", file.content.size(), filename.size());
+                    res.status = 400;
+                    res.set_content("Invalid request: filename or file data is missing.", "text/plain");
+                    return;
+                }
+                BOOL ret = ExecMalware(filename, file.content);
+                if (!ret) {
+                    res.status = 500;
+                    res.set_content("Failed to execute malware", "text/plain");
+                    return;
+                }
+                std::string output = g_Executor.GetOutput();
+                json response = { {"status", "ok"}, {"output", output} };
+                res.set_content(response.dump(), "application/json");
+            } catch (const std::exception& e) {
+                LOG_A(LOG_ERROR, "Error in /api/exec: %s", e.what());
+                res.status = 500;
+                res.set_content("{\"error\":\"Internal server error\"}", "application/json");
+            } catch (...) {
+                LOG_A(LOG_ERROR, "Unknown error in /api/exec");
+                res.status = 500;
+                res.set_content("{\"error\":\"Unknown error\"}", "application/json");
             }
-            BOOL ret = ExecMalware(filename, file.content);
-			if (!ret) {
-				res.status = 500;
-				res.set_content("Failed to execute malware", "text/plain");
-				return;
-			}
-            std::string output = g_Executor.GetOutput();
-            json response = { {"status", "ok"}, {"output", output} };
-            res.set_content(response.dump(), "application/json");
         });
     }
 
     LOG_A(LOG_INFO, "WEB: Web Server listening on http://0.0.0.0:8080");
-    svr.listen("0.0.0.0", 8080);
+    try {
+        std::lock_guard<std::mutex> lock(webserver_mutex);
+        svr.listen("0.0.0.0", 8080);
+    } catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "WEB: Server listen failed: %s", e.what());
+    } catch (...) {
+        LOG_A(LOG_ERROR, "WEB: Server listen failed with unknown exception");
+    }
     LOG_A(LOG_INFO, "!WEB: Exit Webserver thread");
 
     return 0;
@@ -288,8 +386,15 @@ int InitializeWebServer(std::vector<HANDLE>& threads) {
 
 
 void StopWebServer() {
-    if (webserver_thread != NULL) {
-        svr.stop();
+    try {
+        std::lock_guard<std::mutex> lock(webserver_mutex);
+        if (webserver_thread != NULL) {
+            svr.stop();
+        }
+    } catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "WEB: Error stopping server: %s", e.what());
+    } catch (...) {
+        LOG_A(LOG_ERROR, "WEB: Unknown error stopping server");
     }
 }
 
