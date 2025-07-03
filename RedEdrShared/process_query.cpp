@@ -76,7 +76,8 @@ BOOL InitProcessQuery() {
 
 std::wstring GetProcessName(HANDLE hProcess) {
     if (!hProcess || hProcess == INVALID_HANDLE_VALUE) {
-        LOG_A(LOG_WARNING, "GetProcessName: Invalid process handle");
+        // Happens often
+        //LOG_A(LOG_WARNING, "GetProcessName: Invalid process handle");
         return std::wstring(L"");
     }
     
@@ -85,7 +86,8 @@ std::wstring GetProcessName(HANDLE hProcess) {
         return std::wstring(exePath);
     }
     else {
-        LOG_A(LOG_WARNING, "GetProcessName: Failed to get module filename. Error: %lu", GetLastError());
+        // Happens often
+        //LOG_A(LOG_WARNING, "GetProcessName: Failed to get module filename. Error: %lu", GetLastError());
         return std::wstring(L"");
     }
 }
