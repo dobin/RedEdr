@@ -11,6 +11,7 @@
 #include <thread>
 #include <vector>
 #include <stdio.h>
+#include <memory>
 
 #include "../Shared/common.h"
 #include "logging.h"
@@ -63,8 +64,8 @@ DWORD WINAPI DllReaderThread(LPVOID param) {
 
     // Loop which accepts new clients
     while (!DllReaderThreadStop) {
-        PipeServer* pipeServer = new PipeServer("DllReader", (wchar_t*) DLL_PIPE_NAME);
-        if (pipeServer == nullptr) {
+        std::unique_ptr<PipeServer> pipeServer = std::make_unique<PipeServer>("DllReader", (wchar_t*) DLL_PIPE_NAME);
+        if (!pipeServer) {
             LOG_A(LOG_ERROR, "DllReader: Failed to create PipeServer");
             Sleep(1000); // Brief delay before retry
             continue;
@@ -75,19 +76,19 @@ DWORD WINAPI DllReaderThread(LPVOID param) {
         if (!pipeServer->StartAndWaitForClient(TRUE)) {
             LOG_A(LOG_ERROR, "DllReader: Failed to start pipe server or wait for client");
             pipeServer->Shutdown();
-            delete pipeServer;
             Sleep(1000); // Brief delay before retry
             continue;
         }
 
         LOG_A(LOG_INFO, "DllReader: Client connected (handle in new thread)");
         try {
-            ConnectedDllReaderThreads.push_back(std::thread(DllReaderClientThread, pipeServer));
+            // Transfer ownership to the thread
+            PipeServer* rawPtr = pipeServer.release();
+            ConnectedDllReaderThreads.push_back(std::thread(DllReaderClientThread, rawPtr));
         }
         catch (const std::exception& e) {
             LOG_A(LOG_ERROR, "DllReader: Failed to create client thread: %s", e.what());
             pipeServer->Shutdown();
-            delete pipeServer;
         }
     }
     
@@ -105,33 +106,32 @@ DWORD WINAPI DllReaderThread(LPVOID param) {
 
 // Pipe Reader Thread: Process Client
 void DllReaderClientThread(PipeServer* pipeServer) {
-    if (pipeServer == nullptr) {
+    // Use RAII to ensure cleanup
+    std::unique_ptr<PipeServer> server(pipeServer);
+    
+    if (!server) {
         LOG_A(LOG_ERROR, "DllReaderClientThread: pipeServer is null");
         return;
     }
     
-    // send config as first packet
-    //   this is the only write for this pipe
-    char config[DLL_CONFIG_LEN];
-    int result = sprintf_s(config, DLL_CONFIG_LEN, "callstack: %d; ", g_Config.do_dllinjection_ucallstack ? 1 : 0);
-    if (result < 0) {
-        LOG_A(LOG_ERROR, "DllReaderClientThread: Failed to format config string");
-        pipeServer->Shutdown();
-        delete pipeServer;
-        return;
-    }
-    
-    if (!pipeServer->Send(config)) {
-        LOG_A(LOG_ERROR, "DllReaderClientThread: Failed to send config");
-        pipeServer->Shutdown();
-        delete pipeServer;
-        return;
-    }
+    try {
+        // send config as first packet
+        //   this is the only write for this pipe
+        char config[DLL_CONFIG_LEN];
+        int result = sprintf_s(config, DLL_CONFIG_LEN, "callstack: %d; ", g_Config.do_dllinjection_ucallstack ? 1 : 0);
+        if (result < 0) {
+            LOG_A(LOG_ERROR, "DllReaderClientThread: Failed to format config string");
+            return;
+        }
+        
+        if (!server->Send(config)) {
+            LOG_A(LOG_ERROR, "DllReaderClientThread: Failed to send config");
+            return;
+        }
 
-    // Now receive only
-    while (!DllReaderThreadStop) {
-        try {
-            std::vector<std::string> results = pipeServer->ReceiveBatch();
+        // Now receive only
+        while (!DllReaderThreadStop) {
+            std::vector<std::string> results = server->ReceiveBatch();
             if (results.empty()) {
                 break; // Client disconnected or error
             }
@@ -141,14 +141,17 @@ void DllReaderClientThread(PipeServer* pipeServer) {
                 }
             }
         }
-        catch (...) {
-            LOG_A(LOG_ERROR, "DllReaderClientThread: Exception in receive loop");
-            break;
-        }
+    }
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "DllReaderClientThread: Exception in client processing: %s", e.what());
+    }
+    catch (...) {
+        LOG_A(LOG_ERROR, "DllReaderClientThread: Unknown exception in client processing");
     }
 
-    pipeServer->Shutdown();
-    delete pipeServer;
+    server->Shutdown();
+    // server automatically deleted when unique_ptr goes out of scope
+}
 }
 
 
@@ -169,8 +172,11 @@ void DllReaderShutdown() {
             pipeClient.Disconnect();
         }
     }
+    catch (const std::exception& e) {
+        LOG_A(LOG_WARNING, "DllReaderShutdown: Exception during pipe cleanup: %s", e.what());
+    }
     catch (...) {
-        LOG_A(LOG_WARNING, "DllReaderShutdown: Exception during pipe cleanup");
+        LOG_A(LOG_WARNING, "DllReaderShutdown: Unknown exception during pipe cleanup");
     }
     
     // Close event handle
