@@ -135,6 +135,7 @@ bool Executor::Start(const wchar_t* programPath) {
     // Enable required privileges
     EnablePrivilege(hProcessToken, SE_INCREASE_QUOTA_NAME);
     EnablePrivilege(hProcessToken, SE_ASSIGNPRIMARYTOKEN_NAME);
+    EnablePrivilege(hProcessToken, SE_TCB_NAME);  // Required for WTSQueryUserToken
     CloseHandle(hProcessToken);
 
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hProcessToken)) {
@@ -143,12 +144,13 @@ bool Executor::Start(const wchar_t* programPath) {
     }
     else {
         bool quota = CheckPrivilege(hProcessToken, SE_INCREASE_QUOTA_NAME);
-		bool token = CheckPrivilege(hProcessToken, SE_ASSIGNPRIMARYTOKEN_NAME);
-		if (!quota || !token) {
-			LOG_A(LOG_ERROR, "Failed to enable required privileges");
-            LOG_A(LOG_ERROR, "Probably not started as system (psexec -s -i rededr.exe ...");
-			return false;
-		}
+        bool token = CheckPrivilege(hProcessToken, SE_ASSIGNPRIMARYTOKEN_NAME);
+        bool tcb = CheckPrivilege(hProcessToken, SE_TCB_NAME);
+        if (!quota || !token || !tcb) {
+            LOG_A(LOG_ERROR, "Failed to enable required privileges (quota:%d, token:%d, tcb:%d)", quota, token, tcb);
+            LOG_A(LOG_ERROR, "Must be started as SYSTEM user (psexec -s -i rededr.exe)");
+            return false;
+        }
         CloseHandle(hProcessToken);
     }
 
@@ -169,7 +171,12 @@ bool Executor::Start(const wchar_t* programPath) {
 
     // Get user token for the active session
     if (!WTSQueryUserToken(sessionId, &hToken)) {
-        std::wcerr << L"Failed to query user token, error: " << GetLastError() << std::endl;
+        DWORD error = GetLastError();
+        std::wcerr << L"Failed to query user token for session " << sessionId << L", error: " << error << std::endl;
+        if (error == ERROR_PRIVILEGE_NOT_HELD) {
+            std::wcerr << L"ERROR_PRIVILEGE_NOT_HELD: This process must be running as SYSTEM to access user tokens." << std::endl;
+            std::wcerr << L"Use 'psexec -s -i rededr.exe' or run as a Windows service." << std::endl;
+        }
         return false;
     }
 
@@ -226,4 +233,6 @@ bool Executor::Start(const wchar_t* programPath) {
     CloseHandle(pi.hThread);
     CloseHandle(hTokenDup);
     CloseHandle(hToken);
+
+    return true;
 }
