@@ -321,9 +321,9 @@ int main(int argc, char* argv[]) {
     }
     
     // Log which threads we're waiting for
-    LOG_A(LOG_INFO, "RedEdr: Thread handles being tracked:");
+    //LOG_A(LOG_INFO, "RedEdr: Thread handles being tracked:");
     for (size_t i = 0; i < threads.size(); i++) {
-        LOG_A(LOG_INFO, "RedEdr: Thread %zu: handle 0x%p", i, threads[i]);
+        LOG_A(LOG_INFO, "Track Thread %zu (handle 0x%p)", i, threads[i]);
     }
     
     // Wait with timeout to avoid hanging forever

@@ -168,7 +168,7 @@ BOOL ProcessResolver::PopulateAllProcesses() {
                 
                 // Log progress for large numbers of processes
                 if (cachedCount % 50 == 0) {
-                    LOG_A(LOG_INFO, "ProcessResolver: Cached %d processes so far...", cachedCount);
+                    LOG_A(LOG_DEBUG, "ProcessResolver: Cached %d processes so far...", cachedCount);
                 }
             }
             else {
@@ -203,21 +203,6 @@ BOOL ProcessResolver::PopulateAllProcesses() {
 // Log statistics about the current cache state
 void ProcessResolver::LogCacheStatistics() {
     std::lock_guard<std::mutex> lock(cache_mutex);
-    
-    LOG_A(LOG_INFO, "ProcessResolver Cache Statistics:");
-    LOG_A(LOG_INFO, "  Total cached processes: %zu", cache.size());
-    
-    if (cache.size() > 0) {
-        // Find min and max PIDs for range info
-        DWORD minPid = MAXDWORD;
-        DWORD maxPid = 0;
-        
-        for (const auto& pair : cache) {
-            minPid = min(minPid, pair.first);
-            maxPid = max(maxPid, pair.first);
-        }
-        
-        LOG_A(LOG_INFO, "  PID range: %lu - %lu", minPid, maxPid);
-    }
+    LOG_A(LOG_INFO, "ProcessResolver: Total cached processes: %zu", cache.size());
 }
 

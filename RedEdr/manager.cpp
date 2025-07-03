@@ -184,8 +184,7 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
 
 
 void ManagerShutdown() {
-    try {
-        g_EventAggregator.StopRecorder();
+    g_EventAggregator.StopRecorder();
 
     if (g_Config.do_mplog) {
         LOG_A(LOG_INFO, "Manager: Stop log reader");
@@ -236,12 +235,6 @@ void ManagerShutdown() {
     }
 
     // Analyzer
+    LOG_A(LOG_INFO, "Manager: Stop EventProcessor");
     StopEventProcessor();
-    }
-    catch (const std::exception& e) {
-        LOG_A(LOG_ERROR, "Manager: Exception in ManagerShutdown: %s", e.what());
-    }
-    catch (...) {
-        LOG_A(LOG_ERROR, "Manager: Unknown exception in ManagerShutdown");
-    }
 }
