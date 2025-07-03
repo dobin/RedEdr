@@ -20,52 +20,85 @@
 
 
 BOOL EnableKernelDriver(int enable, std::string target) {
-    HANDLE hDevice = CreateFile(L"\\\\.\\RedEdr",
-        GENERIC_READ | GENERIC_WRITE,
-        0,
-        NULL,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        NULL);
+    HANDLE hDevice = INVALID_HANDLE_VALUE;
+    wchar_t* targetW = nullptr;
+    
+    try {
+        hDevice = CreateFile(L"\\\\.\\RedEdr",
+            GENERIC_READ | GENERIC_WRITE,
+            0,
+            NULL,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            NULL);
 
-    if (hDevice == INVALID_HANDLE_VALUE) {
-        LOG_A(LOG_ERROR, "Kernel: Failed to open device. Error: %d", GetLastError());
-        return FALSE;
-    }
-    wchar_t* targetW = string2wcharAlloc(target);
+        if (hDevice == INVALID_HANDLE_VALUE) {
+            LOG_A(LOG_ERROR, "Kernel: Failed to open device. Error: %d", GetLastError());
+            return FALSE;
+        }
+        
+        targetW = string2wcharAlloc(target);
+        if (targetW == nullptr) {
+            LOG_A(LOG_ERROR, "Kernel: Failed to convert target string to wchar_t");
+            CloseHandle(hDevice);
+            return FALSE;
+        }
     MY_DRIVER_DATA dataToSend = { 0 };
     if (enable) {
-        wcscpy_s(dataToSend.filename, targetW);
+        size_t targetLen = wcslen(targetW);
+        if (targetLen >= sizeof(dataToSend.filename) / sizeof(wchar_t)) {
+            LOG_A(LOG_ERROR, "Kernel: Target filename too long");
+            delete[] targetW;
+            CloseHandle(hDevice);
+            return FALSE;
+        }
+        wcscpy_s(dataToSend.filename, sizeof(dataToSend.filename) / sizeof(wchar_t), targetW);
         dataToSend.dll_inject = g_Config.do_dllinjection;
         dataToSend.enable = enable;
     }
     else {
-        dataToSend.enable = 0;
-    }
-    char buffer_incoming[KRN_CONFIG_LEN] = { 0 }; // Answer will be "OK" or "FAIL" so this is enough
-    DWORD bytesReturned = 0;
-    BOOL success = DeviceIoControl(hDevice,
-        IOCTL_MY_IOCTL_CODE,
-        (LPVOID)&dataToSend,
-        (DWORD)sizeof(dataToSend),
-        buffer_incoming,
-        sizeof(buffer_incoming), // this should get the correct size
-        &bytesReturned,
-        NULL);
-    if (!success) {
-        LOG_A(LOG_ERROR, "Kernel: DeviceIoControl failed. Error: %d", GetLastError());
-        CloseHandle(hDevice);
-        return FALSE;
-    }
+        dataToSend.enable = 0;        }
+        delete[] targetW;  // Free allocated memory
+        char buffer_incoming[KRN_CONFIG_LEN] = { 0 }; // Answer will be "OK" or "FAIL" so this is enough
+        DWORD bytesReturned = 0;
+        BOOL success = DeviceIoControl(hDevice,
+            IOCTL_MY_IOCTL_CODE,
+            (LPVOID)&dataToSend,
+            (DWORD)sizeof(dataToSend),
+            buffer_incoming,
+            sizeof(buffer_incoming), // this should get the correct size
+            &bytesReturned,
+            NULL);
+        if (!success) {
+            LOG_A(LOG_ERROR, "Kernel: DeviceIoControl failed. Error: %d", GetLastError());
+            CloseHandle(hDevice);
+            return FALSE;
+        }
 
-    if (strcmp(buffer_incoming, "OK") == NULL) {
-        LOG_A(LOG_INFO, "Kernel: Kernel Driver enabling/disabling (%d) ok", enable);
-        CloseHandle(hDevice);
-        return TRUE;
+        if (bytesReturned == 0) {
+            LOG_A(LOG_ERROR, "Kernel: DeviceIoControl returned no data");
+            CloseHandle(hDevice);
+            return FALSE;
+        }
+
+        // Ensure null termination
+        buffer_incoming[min(bytesReturned, sizeof(buffer_incoming) - 1)] = '\0';
+
+        if (strcmp(buffer_incoming, "OK") == 0) {
+            LOG_A(LOG_INFO, "Kernel: Kernel Driver enabling/disabling (%d) ok", enable);
+            CloseHandle(hDevice);
+            return TRUE;
+        }
+        else {
+            LOG_A(LOG_ERROR, "Kernel: Kernel Driver enabling/disabling (%d) failed. Response: %s", enable, buffer_incoming);
+            CloseHandle(hDevice);
+            return FALSE;
+        }
     }
-    else {
-        LOG_A(LOG_ERROR, "Kernel: Kernel Driver enabling/disabling (%d) failed", enable);
-        CloseHandle(hDevice);
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "Kernel: Exception in EnableKernelDriver: %s", e.what());
+        if (targetW) delete[] targetW;
+        if (hDevice != INVALID_HANDLE_VALUE) CloseHandle(hDevice);
         return FALSE;
     }
 }
@@ -124,22 +157,24 @@ BOOL LoadKernelDriver() {
         if (GetLastError() != ERROR_SERVICE_ALREADY_RUNNING) {
             LOG_A(LOG_ERROR, "Kernel: StartService failed. Error: %lu", GetLastError());
             ret = FALSE;
-
             goto cleanup;
         }
         else {
-            ret = FALSE;
-            LOG_A(LOG_INFO, "Kernel: Servicealready running.");
+            ret = TRUE;  // Service already running should be success
+            LOG_A(LOG_INFO, "Kernel: Service already running.");
         }
     }
     else {
         ret = TRUE;
-        LOG_A(LOG_INFO, "Kernel: Servicestarted successfully.");
+        LOG_A(LOG_INFO, "Kernel: Service started successfully.");
     }
 
 cleanup:
     if (hService) {
-        DeleteService(hService);
+        if (!ret) {
+            // Only delete service if we failed to start it
+            DeleteService(hService);
+        }
         CloseServiceHandle(hService);
     }
     if (hSCManager) {
@@ -171,11 +206,11 @@ BOOL UnloadKernelDriver() {
     }
 
     if (ControlService(hService, SERVICE_CONTROL_STOP, &status)) {
-        LOG_A(LOG_INFO, "Kernel: Servicestopped successfully.");
+        LOG_A(LOG_INFO, "Kernel: Service stopped successfully.");
         ret = TRUE;
     }
     else if (GetLastError() == ERROR_SERVICE_NOT_ACTIVE) {
-        LOG_A(LOG_INFO, "Kernel: Serviceis not running.");
+        LOG_A(LOG_INFO, "Kernel: Service is not running.");
         ret = TRUE;
     }
     else {
@@ -190,7 +225,7 @@ BOOL UnloadKernelDriver() {
         goto cleanup;
     }
     else {
-        LOG_A(LOG_INFO, "Kernel: Servicedeleted successfully.");
+        LOG_A(LOG_INFO, "Kernel: Service deleted successfully.");
     }
 
 cleanup:
