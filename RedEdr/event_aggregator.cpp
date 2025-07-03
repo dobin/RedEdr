@@ -24,14 +24,15 @@ void EventAggregator::NewEvent(std::string eventStr) {
     output_mutex.lock();
     output_entries.push_back(eventStr);
     output_count++;
-    output_mutex.unlock();
-
+    
     // Debug: Record events
     // This needs to be in the mutex, or the \r\n may not be written correctly
     if (recorder_file != NULL) {
         fprintf(recorder_file, eventStr.c_str());
         fprintf(recorder_file, "\r\n");
     }
+    
+    output_mutex.unlock();
 
     // Notify the analyzer thread
     cv.notify_one();
@@ -39,23 +40,28 @@ void EventAggregator::NewEvent(std::string eventStr) {
 
 
 void EventAggregator::do_output(std::wstring eventWstr) {
-    // Add to cache
-    std::string json = wstring2string(eventWstr);
-    output_mutex.lock();
-    output_entries.push_back(json);
+    try {
+        // Add to cache
+        std::string json = wstring2string(eventWstr);
+        output_mutex.lock();
+        output_entries.push_back(json);
+        output_count++;
 
-    // Debug: Record events
-    // This needs to be in the mutex, or the \r\n may not be written correctly
-    if (recorder_file != NULL) {
-        fprintf(recorder_file, json.c_str());
-        fprintf(recorder_file, "\r\n");
+        // Debug: Record events
+        // This needs to be in the mutex, or the \r\n may not be written correctly
+        if (recorder_file != NULL) {
+            fprintf(recorder_file, json.c_str());
+            fprintf(recorder_file, "\r\n");
+        }
+
+        output_mutex.unlock();
+
+        // Notify the analyzer thread
+        cv.notify_one();
     }
-
-    output_mutex.unlock();
-    output_count++;
-
-    // Notify the analyzer thread
-    cv.notify_one();
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "EventAggregator::do_output: String conversion failed: %s", e.what());
+    }
 }
 
 
@@ -79,7 +85,7 @@ BOOL EventAggregator::HasMoreEvents() {
         return TRUE;
     }
     else {
-        return false;
+        return FALSE;
     }
 }
 
@@ -93,11 +99,13 @@ void EventAggregator::Stop() {
 void EventAggregator::ResetData() {
     output_mutex.lock();
     output_entries.clear();
+    output_count = 0;  // Reset count as well
     output_mutex.unlock();
 }
 
 
 unsigned int EventAggregator::GetCount() {
+    std::lock_guard<std::mutex> lock(output_mutex);
     return output_count;
 }
 
@@ -111,7 +119,10 @@ void EventAggregator::InitRecorder(std::string filename) {
 }
 
 void EventAggregator::StopRecorder() {
+    std::lock_guard<std::mutex> lock(output_mutex);
     if (recorder_file != NULL) {
         fclose(recorder_file);
+        recorder_file = NULL;
+        LOG_A(LOG_INFO, "EventAggregator: Stopped recording");
     }
 }
