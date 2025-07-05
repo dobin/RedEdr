@@ -24,7 +24,6 @@
 #include "../RedEdr/config.h"
 #include "../RedEdr/process_resolver.h"
 #include "../RedEdr/event_processor.h"
-#include "../RedEdr/event_detector.h"
 #include "../RedEdr/mem_static.h"
 #include "../RedEdr/dllinjector.h"
 #include "../RedEdr/webserver.h"
@@ -161,14 +160,6 @@ void AnalyzeFile(char *fname) {
 		std::cerr << "JSON data is not an array." << std::endl;
 		return;
 	}
-	for (auto& event : json_data) {
-		g_EventDetector.ScanEventForDetections(event);
-	}
-	std::cout << g_EventDetector.GetAllDetectionsAsJson() << std::endl;
-
-	// Parse the JSON string into a nlohmann::json object
-	std::string j = g_EventDetector.GetTargetMemoryChanges()->ToJson().dump(4);
-	std::cout << j << std::endl;
 }
 
 

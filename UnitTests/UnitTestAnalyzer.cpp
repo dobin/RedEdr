@@ -1,7 +1,6 @@
 //#include "pch.h"
 #include "CppUnitTest.h"
 
-#include "event_detector.h"
 #include "utils.h"
 #include "json.hpp"
 #include "logging.h"

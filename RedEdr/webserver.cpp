@@ -17,7 +17,6 @@
 #include "webserver.h"
 #include "process_resolver.h"
 #include "manager.h"
-#include "event_detector.h"
 #include "event_processor.h"
 #include "executor.h"
 #include "edr_reader.h"
@@ -80,7 +79,7 @@ std::string getRecordingsAsJson() {
         std::vector<std::wstring> names = GetFilesInDirectory(L"C:\\RedEdr\\Data\\*.events.json");
         for (auto it = names.begin(); it != names.end(); ++it) {
             std::wstring name = *it;  // Create a proper lvalue for wstring2string
-            output << "\"" << wstring2string(name) << "\"";
+            output << "\"" << wstring2string(name) << ".events.json" << "\"";
             if (std::next(it) != names.end()) {
                 output << ",";  // Add comma only if it's not the last element
             }
@@ -159,21 +158,6 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             res.set_content("Internal server error", "text/plain");
         }
     });
-    svr.Get("/recordings", [](const httplib::Request&, httplib::Response& res) {
-        try {
-            std::string indexhtml = read_file("C:\\RedEdr\\recording.html");
-            if (indexhtml.empty()) {
-                res.status = 404;
-                res.set_content("File not found", "text/plain");
-                return;
-            }
-            res.set_content(indexhtml, "text/html");
-        } catch (const std::exception& e) {
-            LOG_A(LOG_ERROR, "Error serving recording.html: %s", e.what());
-            res.status = 500;
-            res.set_content("Internal server error", "text/plain");
-        }
-    });
     svr.Get("/static/design.css", [](const httplib::Request&, httplib::Response& res) {
         try {
             std::string indexhtml = read_file("C:\\RedEdr\\design.css");
@@ -215,16 +199,6 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         }
     });
 
-    svr.Get("/api/detections", [](const httplib::Request&, httplib::Response& res) {
-        try {
-            res.set_content(g_EventDetector.GetAllDetectionsAsJson(), "application/json; charset=UTF-8");
-        } catch (const std::exception& e) {
-            LOG_A(LOG_ERROR, "Error getting detections: %s", e.what());
-            res.status = 500;
-            res.set_content("{\"error\":\"Internal server error\"}", "application/json");
-        }
-    });
-
     svr.Get("/api/recordings", [](const httplib::Request&, httplib::Response& res) {
         try {
             res.set_content(getRecordingsAsJson(), "application/json; charset=UTF-8");
@@ -234,20 +208,21 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             res.set_content("{\"error\":\"Internal server error\"}", "application/json");
         }
     });
+
     svr.Get("/api/recordings/:id", [](const httplib::Request& req, httplib::Response& res) {
-        auto user_id = req.path_params.at("id");
+        auto filename = req.path_params.at("id");
         
         // Validate the ID to prevent path traversal attacks
-        if (user_id.find("..") != std::string::npos || 
-            user_id.find("/") != std::string::npos || 
-            user_id.find("\\") != std::string::npos ||
-            user_id.empty()) {
+        if (filename.find("..") != std::string::npos || 
+            filename.find("/") != std::string::npos || 
+            filename.find("\\") != std::string::npos ||
+            filename.empty()) {
             res.status = 400;
             res.set_content("{\"error\": \"Invalid ID\"}", "application/json");
             return;
         }
         
-        std::string path = "C:\\RedEdr\\Data\\" + user_id + ".events.json";
+        std::string path = "C:\\RedEdr\\Data\\" + filename;
         std::string data = read_file(path);
         if (data.empty()) {
             res.status = 404;
@@ -260,7 +235,6 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     svr.Get("/api/stats", [](const httplib::Request&, httplib::Response& res) {
         nlohmann::json stats = {
             {"events_count", g_EventAggregator.GetCount()},
-            {"detections_count", g_EventDetector.GetDetectionsCount()},
             {"num_kernel", g_EventProcessor.num_kernel},
             {"num_etw", g_EventProcessor.num_etw},
             {"num_etwti", g_EventProcessor.num_etwti},
@@ -268,10 +242,6 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             {"num_process_cache", g_ProcessResolver.GetCacheCount()}
         };
         res.set_content(stats.dump(), "application/json; charset=UTF-8");
-    });
-    svr.Get("/api/meminfo", [](const httplib::Request&, httplib::Response& res) {
-        nlohmann::json info = g_EventDetector.GetTargetMemoryChanges()->ToJson();
-        res.set_content(info.dump(), "application/json; charset=UTF-8");
     });
 
     svr.Get("/api/trace", [](const httplib::Request& req, httplib::Response& res) {

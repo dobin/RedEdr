@@ -153,7 +153,6 @@
     <ClCompile Include="edr_reader.cpp" />
     <ClCompile Include="event_aggregator.cpp" />
     <ClCompile Include="event_augmenter.cpp" />
-    <ClCompile Include="event_detector.cpp" />
     <ClCompile Include="event_processor.cpp" />
     <ClCompile Include="executor.cpp" />
     <ClCompile Include="manager.cpp" />
@@ -181,7 +180,6 @@
     <ClInclude Include="edr_reader.h" />
     <ClInclude Include="event_aggregator.h" />
     <ClInclude Include="event_augmenter.h" />
-    <ClInclude Include="event_detector.h" />
     <ClInclude Include="event_processor.h" />
     <ClInclude Include="executor.h" />
     <ClInclude Include="jsonw.hpp" />
@@ -214,9 +212,6 @@
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
     </None>
     <None Include="packages.config" />
-    <None Include="recording.html">
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
-    </None>
     <None Include="shared.js">
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
     </None>

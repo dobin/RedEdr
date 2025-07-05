@@ -164,7 +164,6 @@
     <ClCompile Include="..\RedEdr\config.cpp" />
     <ClCompile Include="..\RedEdr\event_aggregator.cpp" />
     <ClCompile Include="..\RedEdr\event_augmenter.cpp" />
-    <ClCompile Include="..\RedEdr\event_detector.cpp" />
     <ClCompile Include="..\RedEdr\event_processor.cpp" />
     <ClCompile Include="..\RedEdr\mem_dynamic.cpp" />
     <ClCompile Include="..\RedEdr\mem_static.cpp" />

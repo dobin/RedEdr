@@ -13,16 +13,11 @@
         <div class="container">
             <div class="item">
                 <div id="stats-counter"></div>
-                <div id="detections-counter"></div>
             </div>
 
             <div class="item">
-                <div>UI</div>
-                <div><button onclick="BtnRefresh()">Refresh</button></div>
-            </div>
-
-            <div class="item">
-                <div>Server</div>
+                <div>Events</div>
+                <div><button onclick="BtnOpenEvents()">Open Events</button></div>
                 <div><button onclick="BtnSave()">Save Events</button></div>
                 <div><button onclick="BtnReset()">Clear Events</button></div>
             </div>
@@ -34,11 +29,7 @@
                 <div>Collection</div>
                 <div><button onclick="BtnStart()">Start</button></div>
                 <div><button onclick="BtnStop()">Stop</button></div>
-            </div>
-            <div class="item">
-                <div>Tabs</div>
-                <div><button onclick="BtnOpenEvents()">Open Events</button></div>
-                <div><button onclick="BtnOpenDetections()">Open Detections</button></div>
+                <div><button onclick="BtnRefresh()">Refresh</button></div>
             </div>
             <div class="item" id="response">
                 <div>Kernel: <span id="num_kernel">0</span></div>
@@ -60,9 +51,6 @@
         <div id="tab1" class="tab-content">
             <div id="eventContainer"></div>
         </div>
-        <div id="tab2" class="tab-content" style="display: none;">
-            <div id="detectionContainer"></div>
-        </div>
         <div id="tab3" class="tab-content" style="display: none;">
             <div id="recordingsContainer"></div>
         </div>
@@ -72,10 +60,8 @@
         MyData = {
             "stats": {
                 "events_count": 0,
-                "detections_count": 0,
             },
             "events": [],
-            "detections": []
         }
 
         function showContent(tabId, tabElement) {
@@ -120,15 +106,6 @@
             displayEvents(data);
         }
 
-        async function fetchDetections() {
-            const response = await fetch('/api/detections');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const data = await response.json();
-            displayDetections(data);
-        }
-
         async function fetchStats() {
             const response = await fetch('/api/stats');
             if (!response.ok) {
@@ -139,14 +116,12 @@
             // Check if we need to update something
             if (data.events_count > MyData.stats.events_count) {
                 fetchEvents();
-                fetchDetections();
 
                 // Store new stats
                 MyData.stats = data;
 
                 // Update UI
                 document.getElementById('stats-counter').textContent = `Events: ${data.events_count}`;
-                document.getElementById('detections-counter').textContent = `Detections: ${data.detections_count}`;
 
                 document.getElementById('num_kernel').textContent = `${data.num_kernel}`;
                 document.getElementById('num_etw').textContent = `${data.num_etw}`;
@@ -196,7 +171,6 @@
 
         function BtnRefresh() {
             fetchEvents();
-            fetchDetections();
         }
         function BtnSave() {
             sendSave();
@@ -206,9 +180,6 @@
         }
         function BtnOpenEvents() {
             window.open('/api/events', '_blank');
-        }
-        function BtnOpenDetections() {
-            window.open('/api/detections', '_blank');
         }
         function BtnStart() {
             fetch('/api/start');

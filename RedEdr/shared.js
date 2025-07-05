@@ -13,7 +13,6 @@ function displayEvents(events) {
         let eventDetails = '';
         let eventLong = '';
         let eventCallstack = '';
-        let detections = '';
         let etwti_startaddr = 0;
         for ([key, value] of Object.entries(event)) {
             if (typeof value === "number") {
@@ -28,10 +27,6 @@ function displayEvents(events) {
                 eventHeader += `<span class="highlight_a">${key}:${value}</span> `;
             } else if (key === 'type' || key === 'func' || key === 'event' || key === 'task') {
                 eventTitle += `<span class="highlight_b"><b>${value}</b></span> `;
-
-            // detection
-            } else if (key === 'detections') {
-                detections = `<span class="highlight_e">detections:<br>${JSON.stringify(value, null, 0)}</span>`;
 
             // special for func == loaded_dll
             } else if (key == 'dlls') {
@@ -81,24 +76,8 @@ function displayEvents(events) {
         eventDiv.innerHTML = eventTitle + eventHeader + "<br>"
             + eventDetails + (eventDetails.length != 0 ? "<br>" : "")
             + eventLong + eventCallstack
-        if (detections.length != 0) {
-            eventDiv.innerHTML += "<br>" + detections;
-        }
 
         eventContainer.appendChild(eventDiv);
-    });
-}
-
-// Function to display events in Tab 1
-function displayDetections(detections) {
-    const container = document.getElementById('detectionContainer');
-    container.innerHTML = '';
-
-    detections.forEach((detection, index) => {
-        // Create a div for each detection
-        const detectionDiv = document.createElement('div');
-        detectionDiv.textContent = `${index}: ${detection}`;
-        container.appendChild(detectionDiv);
     });
 }
 

@@ -48,9 +48,6 @@
     <ClCompile Include="..\RedEdr\event_augmenter.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdr\event_detector.cpp">
-      <Filter>Source Files\existing</Filter>
-    </ClCompile>
     <ClCompile Include="..\RedEdr\event_processor.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>

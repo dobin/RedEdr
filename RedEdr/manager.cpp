@@ -16,7 +16,6 @@
 #include "logging.h"
 #include "event_processor.h"
 #include "event_aggregator.h"
-#include "event_detector.h"
 #include "process_resolver.h"
 #include "mem_static.h"
 #include "mem_dynamic.h"
@@ -32,7 +31,6 @@
 void ResetEverything() {
     g_EventAggregator.ResetData();
     g_EventProcessor.ResetData();
-    g_EventDetector.ResetData();
     g_ProcessResolver.ResetData();
     //g_MemStatic.ResetData();
     //g_MemDynamic.ResetData();

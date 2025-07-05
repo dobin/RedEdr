@@ -7,17 +7,15 @@
 #include "event_processor.h"
 #include "event_aggregator.h"
 #include "event_augmenter.h"
-#include "event_detector.h"
 #include "utils.h"
 #include "config.h"
 #include "../Shared/common.h"
-
+#include "mem_static.h"
 
 /* event_processor.c: Gets new events from EventAggregator and processes them
  *   Keeps stats
  *   Keeps copy of all events
  *   Augments events with additional information
- *   Perform the detections
  *   Query process for more information
  */
 
@@ -192,12 +190,6 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
         if (EventHasOurDllCallstack(j)) {
             return;
         }
-
-        // Track Memory changes of Event (MemDynamic)
-        g_EventDetector.ScanEventForMemoryChanges(j);
-
-        // Perform Detections on Event
-        g_EventDetector.ScanEventForDetections(j);
 
         // Print Event
         PrintEvent(j);

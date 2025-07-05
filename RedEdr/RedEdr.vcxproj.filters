@@ -102,9 +102,6 @@
     <ClCompile Include="event_augmenter.cpp">
       <Filter>Source Files\process</Filter>
     </ClCompile>
-    <ClCompile Include="event_detector.cpp">
-      <Filter>Source Files\process</Filter>
-    </ClCompile>
     <ClCompile Include="process_resolver.cpp">
       <Filter>Source Files\windows</Filter>
     </ClCompile>
@@ -188,9 +185,6 @@
     <ClInclude Include="event_augmenter.h">
       <Filter>Header Files\process</Filter>
     </ClInclude>
-    <ClInclude Include="event_detector.h">
-      <Filter>Header Files\process</Filter>
-    </ClInclude>
     <ClInclude Include="event_processor.h">
       <Filter>Header Files\process</Filter>
     </ClInclude>
@@ -226,9 +220,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="design.css">
-      <Filter>Source Files\web</Filter>
-    </None>
-    <None Include="recording.html">
       <Filter>Source Files\web</Filter>
     </None>
     <None Include="shared.js">
