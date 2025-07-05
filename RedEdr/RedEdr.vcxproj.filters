@@ -132,6 +132,9 @@
     <ClCompile Include="executor.cpp">
       <Filter>Source Files\windows</Filter>
     </ClCompile>
+    <ClCompile Include="edr_reader.cpp">
+      <Filter>Source Files\input</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config.h">
@@ -211,6 +214,9 @@
     </ClInclude>
     <ClInclude Include="executor.h">
       <Filter>Header Files\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="edr_reader.h">
+      <Filter>Header Files\input</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

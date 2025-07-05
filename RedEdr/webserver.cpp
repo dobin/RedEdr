@@ -20,6 +20,7 @@
 #include "event_detector.h"
 #include "event_processor.h"
 #include "executor.h"
+#include "edr_reader.h"
 
 #pragma comment(lib, "wtsapi32.lib")
 #pragma comment(lib, "userenv.lib")
@@ -134,6 +135,7 @@ BOOL ExecMalware(std::string filename, std::string filedata) {
     
     // Fix memory leak by storing pointer and cleaning up
     wchar_t* wideFilepath = string2wcharAlloc(filepath.c_str());
+    g_EdrReader.Start();
     BOOL result = g_Executor.Start(wideFilepath);
     delete[] wideFilepath;
     
@@ -321,6 +323,13 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             { "log", GetLogs() },
             { "output", g_Executor.GetOutput() }
 		};
+        res.set_content(response.dump(), "application/json");
+    });
+    svr.Get("/api/edr_result", [](const httplib::Request& req, httplib::Response& res) {
+        g_EdrReader.Stop(); // Stop reading on this first call
+        json response = {
+            { "xml_events", g_EdrReader.Get() }
+        };
         res.set_content(response.dump(), "application/json");
     });
     if (g_Config.enable_remote_exec) {

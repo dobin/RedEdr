@@ -90,6 +90,8 @@ If you use Hyper-V, uncheck "Security -> Enable Secure Boot".
 
 Extract release.zip into `C:\RedEdr`. **No other directories are supported.**
 
+Whitelist `C:\RedEdr\RedEdr.exe` in your AV (Defender).
+
 Start terminal as local admin.
 
 Change into `C:\RedEdr` and run `.\RedEdr.exe`:

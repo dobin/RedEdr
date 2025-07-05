@@ -150,6 +150,7 @@
     <ClCompile Include="..\RedEdrShared\piping.cpp" />
     <ClCompile Include="..\RedEdrShared\process_query.cpp" />
     <ClCompile Include="..\RedEdrShared\utils.cpp" />
+    <ClCompile Include="edr_reader.cpp" />
     <ClCompile Include="event_aggregator.cpp" />
     <ClCompile Include="event_augmenter.cpp" />
     <ClCompile Include="event_detector.cpp" />
@@ -177,6 +178,7 @@
   <ItemGroup>
     <ClInclude Include="..\RedEdrShared\logging.h" />
     <ClInclude Include="..\RedEdrShared\loguru.hpp" />
+    <ClInclude Include="edr_reader.h" />
     <ClInclude Include="event_aggregator.h" />
     <ClInclude Include="event_augmenter.h" />
     <ClInclude Include="event_detector.h" />
