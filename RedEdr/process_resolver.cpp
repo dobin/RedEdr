@@ -167,9 +167,9 @@ BOOL ProcessResolver::PopulateAllProcesses() {
                 cachedCount++;
                 
                 // Log progress for large numbers of processes
-                if (cachedCount % 50 == 0) {
-                    LOG_A(LOG_DEBUG, "ProcessResolver: Cached %d processes so far...", cachedCount);
-                }
+                //if (cachedCount % 50 == 0) {
+                //    LOG_A(LOG_DEBUG, "ProcessResolver: Cached %d processes so far...", cachedCount);
+                //}
             }
             else {
                 // MakeProcess can fail for protected/system processes, this is normal
@@ -194,7 +194,7 @@ BOOL ProcessResolver::PopulateAllProcesses() {
     
     LOG_A(LOG_INFO, "ProcessResolver: Successfully populated cache with %d processes out of %d total processes", 
           cachedCount, processCount);
-    LOG_A(LOG_INFO, "ProcessResolver: Current cache size: %zu", GetCacheCount());
+    //LOG_A(LOG_INFO, "ProcessResolver: Current cache size: %zu", GetCacheCount());
     
     return TRUE;
 }
