@@ -133,6 +133,7 @@ int main(int argc, char* argv[]) {
 
         // Output
         ("w,web", "Output: Web server", cxxopts::value<bool>()->default_value("false"))
+		("p,port", "Output: Web server port", cxxopts::value<int>()->default_value("8080"))
         ("u,hide", "Output: Hide messages (performance. use with --web)", cxxopts::value<bool>()->default_value("false"))
 
         // Kernel
@@ -144,9 +145,9 @@ int main(int argc, char* argv[]) {
         ("5,pplstop", "PPL service: stop", cxxopts::value<bool>()->default_value("false"))
 
         // Debug
-        ("r,record", "Debug: Record all events to file", cxxopts::value<std::string>())
-        ("p,replay", "Debug: Replay all events from file", cxxopts::value<std::string>())
-        ("x,test", "Debug: start parts of RedEdr for testing", cxxopts::value<std::string>())
+        //("r,record", "Debug: Record all events to file", cxxopts::value<std::string>())
+        //("p,replay", "Debug: Replay all events from file", cxxopts::value<std::string>())
+        //("x,test", "Debug: start parts of RedEdr for testing", cxxopts::value<std::string>())
         ("l,dllreader", "Debug: DLL reader but no injection (for manual injection tests)", cxxopts::value<bool>()->default_value("false"))
         ("d,debug", "Debug: Enable debug output", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print usage")
@@ -189,6 +190,7 @@ int main(int argc, char* argv[]) {
         exit(0);
     }
 
+	int port = result["port"].as<int>();
     g_Config.do_etw = result["etw"].as<bool>();
     g_Config.do_etwti = result["etwti"].as<bool>();
     g_Config.do_mplog = result["mplog"].as<bool>();
@@ -264,7 +266,7 @@ int main(int argc, char* argv[]) {
 
     // Webserver
     if (g_Config.web_output) {
-        InitializeWebServer(threads);
+        InitializeWebServer(threads, port);
     }
 
     // Functionality

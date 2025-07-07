@@ -36,6 +36,7 @@ using json = nlohmann::json;
 
 HANDLE webserver_thread;
 httplib::Server svr;
+int webserver_port;
 
 
 std::wstring StripToFirstDot(const std::wstring& input) {
@@ -335,11 +336,11 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         });
     }
 
-    LOG_A(LOG_INFO, "WEB: Web Server listening on http://0.0.0.0:8080");
+    LOG_A(LOG_INFO, "WEB: Web Server listening on http://0.0.0.0:%i", webserver_port);
     
     bool listen_result = false;
     try {
-        listen_result = svr.listen("0.0.0.0", 8080);
+        listen_result = svr.listen("0.0.0.0", webserver_port);
     } catch (const std::exception& e) {
         LOG_A(LOG_ERROR, "WEB: Server listen failed: %s", e.what());
     } catch (...) {
@@ -355,7 +356,8 @@ DWORD WINAPI WebserverThread(LPVOID param) {
 }
 
 
-int InitializeWebServer(std::vector<HANDLE>& threads) {
+int InitializeWebServer(std::vector<HANDLE>& threads, int port) {
+    webserver_port = port;
     webserver_thread = CreateThread(NULL, 0, WebserverThread, NULL, 0, NULL);
     if (webserver_thread == NULL) {
         LOG_A(LOG_ERROR, "WEB: Failed to create thread for webserver");
