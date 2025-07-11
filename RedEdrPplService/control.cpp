@@ -14,7 +14,7 @@ DWORD start_child_process(wchar_t* childCMD);
 
 
 HANDLE control_thread = NULL;
-BOOL keep_running = TRUE;
+volatile BOOL keep_running = TRUE; // Made volatile for thread safety
 
 PipeServer pipeServer = PipeServer(std::string("EtwTi"), (wchar_t*)PPL_SERVICE_PIPE_NAME);
 
@@ -48,21 +48,26 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                     if (token != NULL) {
                         LOG_A(LOG_INFO, "Control: Target: %s", token);
                         wchar_t* target_name = char2wcharAlloc(token);
-                        set_target_name(target_name);
-                        ConnectEmitterPipe(); // Connect to the RedEdr pipe
-                        enable_consumer(TRUE);
+                        if (target_name != NULL) {
+                            set_target_name(target_name);
+                            ConnectEmitterPipe(); // Connect to the RedEdr pipe
+                            enable_consumer(TRUE);
+                            free(target_name); // Free allocated memory
+                        } else {
+                            LOG_A(LOG_ERROR, "Control: Failed to allocate memory for target name");
+                        }
                     }
                 }
             }
-            else if (strstr(buffer, "stop") != 0) {
+            else if (strstr(buffer, "stop") != NULL) {
                 LOG_A(LOG_INFO, "Control: Received command: stop");
                 enable_consumer(FALSE);
                 DisconnectEmitterPipe(); // Disconnect the RedEdr pipe
             }
-            else if (strstr(buffer, "shutdown") != 0) {
+            else if (strstr(buffer, "shutdown") != NULL) {
                 LOG_A(LOG_INFO, "Control: Received command: shutdown");
                 //rededr_remove_service();  // attempt to remove service
-                StopControl(); // stop this thread
+                keep_running = FALSE; // Signal thread to stop
                 ShutdownEtwtiReader(); // also makes main return
                 break;
             }
@@ -79,9 +84,16 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
 
 void StartControl() {
     LOG_W(LOG_INFO, L"Control: Start Thread");
+    
+    // Reset the running flag
+    keep_running = TRUE;
+    
     control_thread = CreateThread(NULL, 0, ServiceControlPipeThread, NULL, 0, NULL);
     if (control_thread == NULL) {
-        LOG_W(LOG_INFO, L"Control: Failed to create thread");
+        DWORD error = GetLastError();
+        LOG_W(LOG_ERROR, L"Control: Failed to create thread, error: %d", error);
+    } else {
+        LOG_W(LOG_INFO, L"Control: Thread created successfully");
     }
 }
 
@@ -89,11 +101,22 @@ void StartControl() {
 void StopControl() {
     LOG_W(LOG_INFO, L"Control: Stop Thread");
 
-    // Disable the loops
+    // Signal the thread to stop
     keep_running = FALSE;
 
-    // Send some stuff so the ReadFile() in the pipe reader thread returns
-    pipeServer.Send((char*) "");
+    // Send empty data to unblock any pending pipe operations
+    pipeServer.Send((char*)"");
+
+    // Wait for the thread to finish (with timeout)
+    if (control_thread != NULL) {
+        DWORD waitResult = WaitForSingleObject(control_thread, 5000); // 5 second timeout
+        if (waitResult == WAIT_TIMEOUT) {
+            LOG_W(LOG_ERROR, L"Control: Thread did not stop gracefully, terminating");
+            TerminateThread(control_thread, 1);
+        }
+        CloseHandle(control_thread);
+        control_thread = NULL;
+    }
 }
 
 
@@ -114,29 +137,45 @@ void rededr_remove_service() {
 DWORD start_child_process(wchar_t* childCMD)
 {
     DWORD retval = 0;
+    LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList = NULL;
+    PROCESS_INFORMATION ProcessInformation = { 0 };
+    
+    if (childCMD == NULL) {
+        LOG_W(LOG_ERROR, L"start_child_process: Invalid command parameter");
+        return ERROR_INVALID_PARAMETER;
+    }
+    
     LOG_W(LOG_INFO, L"start_child_process: Starting");
 
     // Create Attribute List
     STARTUPINFOEXW StartupInfoEx = { 0 };
     SIZE_T AttributeListSize = 0;
     StartupInfoEx.StartupInfo.cb = sizeof(StartupInfoEx);
+    
     InitializeProcThreadAttributeList(NULL, 1, 0, &AttributeListSize);
     if (AttributeListSize == 0) {
         retval = GetLastError();
-        LOG_W(LOG_INFO, L"start_child_process: InitializeProcThreadAttributeList1 Error: %d\n", retval);
+        LOG_W(LOG_ERROR, L"start_child_process: InitializeProcThreadAttributeList1 Error: %d", retval);
         return retval;
     }
-    StartupInfoEx.lpAttributeList =
-        (LPPROC_THREAD_ATTRIBUTE_LIST)HeapAlloc(GetProcessHeap(), 0, AttributeListSize);
-    if (InitializeProcThreadAttributeList(StartupInfoEx.lpAttributeList, 1, 0, &AttributeListSize) == FALSE) {
+    
+    lpAttributeList = (LPPROC_THREAD_ATTRIBUTE_LIST)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, AttributeListSize);
+    if (lpAttributeList == NULL) {
+        LOG_W(LOG_ERROR, L"start_child_process: HeapAlloc failed");
+        return ERROR_NOT_ENOUGH_MEMORY;
+    }
+    
+    StartupInfoEx.lpAttributeList = lpAttributeList;
+    
+    if (InitializeProcThreadAttributeList(lpAttributeList, 1, 0, &AttributeListSize) == FALSE) {
         retval = GetLastError();
-        LOG_W(LOG_INFO, L"start_child_process: InitializeProcThreadAttributeList2 Error: %d\n", retval);
-        return retval;
+        LOG_W(LOG_ERROR, L"start_child_process: InitializeProcThreadAttributeList2 Error: %d", retval);
+        goto cleanup;
     }
 
     // Set ProtectionLevel to be the same, i.e. PPL
     DWORD ProtectionLevel = PROTECTION_LEVEL_SAME;
-    if (UpdateProcThreadAttribute(StartupInfoEx.lpAttributeList,
+    if (UpdateProcThreadAttribute(lpAttributeList,
         0,
         PROC_THREAD_ATTRIBUTE_PROTECTION_LEVEL,
         &ProtectionLevel,
@@ -145,13 +184,12 @@ DWORD start_child_process(wchar_t* childCMD)
         NULL) == FALSE)
     {
         retval = GetLastError();
-        LOG_W(LOG_INFO, L"start_child_process: UpdateProcThreadAttribute Error: %d\n", retval);
-        return retval;
+        LOG_W(LOG_ERROR, L"start_child_process: UpdateProcThreadAttribute Error: %d", retval);
+        goto cleanup;
     }
 
     // Start Process (hopefully)
-    PROCESS_INFORMATION ProcessInformation = { 0 };
-    LOG_W(LOG_INFO, L"start_child_process: Creating Process: '%s'\n", childCMD);
+    LOG_W(LOG_INFO, L"start_child_process: Creating Process: '%s'", childCMD);
     if (CreateProcess(NULL,
         childCMD,
         NULL,
@@ -165,17 +203,27 @@ DWORD start_child_process(wchar_t* childCMD)
     {
         retval = GetLastError();
         if (retval == ERROR_INVALID_IMAGE_HASH) {
-            LOG_W(LOG_INFO, L"start_child_process: CreateProcess Error: Invalid Certificate\n");
+            LOG_W(LOG_ERROR, L"start_child_process: CreateProcess Error: Invalid Certificate");
         }
         else {
-            LOG_W(LOG_INFO, L"start_child_process: CreateProcess Error: %d\n", retval);
+            LOG_W(LOG_ERROR, L"start_child_process: CreateProcess Error: %d", retval);
         }
-        return retval;
+        goto cleanup;
     }
 
-    // Don't wait on process handle, we're setting our child free into the wild
-    // This is to prevent any possible deadlocks
+    // Close handles immediately as we don't need to wait for the process
+    CloseHandle(ProcessInformation.hProcess);
+    CloseHandle(ProcessInformation.hThread);
+    
+    LOG_W(LOG_INFO, L"start_child_process: Process created successfully");
 
-    LOG_W(LOG_INFO, L"start_child_process: finished");
+cleanup:
+    // Clean up attribute list
+    if (lpAttributeList != NULL) {
+        DeleteProcThreadAttributeList(lpAttributeList);
+        HeapFree(GetProcessHeap(), 0, lpAttributeList);
+    }
+    
+    LOG_W(LOG_INFO, L"start_child_process: finished with return code %d", retval);
     return retval;
 }

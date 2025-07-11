@@ -10,43 +10,52 @@
 
 SERVICE_STATUS        g_ServiceStatus = { 0 };
 SERVICE_STATUS_HANDLE g_StatusHandle = NULL;
-
-LPWSTR lServiceName = (wchar_t*) SERVICE_NAME;
+BOOL                  g_ServiceStopping = FALSE;
 
 
 void ShutdownService() {
-    LOG_W(LOG_INFO, L"Shutdown");
+    LOG_W(LOG_INFO, L"Shutdown initiated");
+    
+    g_ServiceStopping = TRUE;
 
     // Stopping
     g_ServiceStatus.dwControlsAccepted = 0;
     g_ServiceStatus.dwCurrentState = SERVICE_STOP_PENDING;
     g_ServiceStatus.dwWin32ExitCode = 0;
-    g_ServiceStatus.dwWaitHint = 0;
+    g_ServiceStatus.dwWaitHint = 5000; // Give 5 seconds for cleanup
     SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
 
     // Perform necessary cleanup before stopping
+    StopControl();
+    ShutdownEtwtiReader();
+    // Note: objcache doesn't have cleanup function, but that's okay for service shutdown
 
     // Stopped
     g_ServiceStatus.dwCurrentState = SERVICE_STOPPED;
     SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
-
-    // Exit the process
-    ExitProcess(0);
+    
+    LOG_W(LOG_INFO, L"Service shutdown complete");
 }
 
 
 VOID WINAPI ServiceCtrlHandler(DWORD ctrlCode)
 {
-    // As we are PPL, this cannot be invoked really?
     switch (ctrlCode)
     {
     case SERVICE_CONTROL_STOP:
         if (g_ServiceStatus.dwCurrentState != SERVICE_RUNNING)
             break;
+        LOG_W(LOG_INFO, L"Service stop requested");
         ShutdownService();
         break;
 
+    case SERVICE_CONTROL_INTERROGATE:
+        // Return current status
+        SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
+        break;
+
     default:
+        LOG_W(LOG_INFO, L"Unhandled service control code: %d", ctrlCode);
         break;
     }
 }
@@ -63,7 +72,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
     if (g_StatusHandle == NULL)
     {
         retval = GetLastError();
-        LOG_W(LOG_INFO, L"ServiceMain: Registerservice_ctrl_handler Error: %d", retval);
+        LOG_W(LOG_ERROR, L"ServiceMain: RegisterServiceCtrlHandler Error: %d", retval);
         return;
     }
 
@@ -75,7 +84,14 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
     g_ServiceStatus.dwServiceSpecificExitCode = 0;
     g_ServiceStatus.dwCheckPoint = 0;
     g_ServiceStatus.dwWaitHint = 3000;  // Wait hint of 3 seconds
-    SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
+    
+    if (!SetServiceStatus(g_StatusHandle, &g_ServiceStatus)) {
+        LOG_W(LOG_ERROR, L"ServiceMain: Failed to set service status");
+        return;
+    }
+
+    // Initialize object cache
+    objcache_init();
 
     // Start Control thread which will listen on a pipe for commands
     StartControl();
@@ -85,19 +101,32 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
     g_ServiceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
     g_ServiceStatus.dwCheckPoint = 0;
     g_ServiceStatus.dwWaitHint = 0;
-    SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
-
-    // Service loop or logic here
-    while (g_ServiceStatus.dwCurrentState == SERVICE_RUNNING) {
-        // Start collecting
-        StartEtwtiReader(); // BLOCKS atm
-        break;
+    
+    if (!SetServiceStatus(g_StatusHandle, &g_ServiceStatus)) {
+        LOG_W(LOG_ERROR, L"ServiceMain: Failed to set running status");
+        ShutdownService();
+        return;
     }
 
-    LOG_W(LOG_INFO, L"ServiceMain: Finished");
-    ShutdownService();
+    LOG_W(LOG_INFO, L"Service is now running");
 
-    return;
+    // Service main loop
+    while (g_ServiceStatus.dwCurrentState == SERVICE_RUNNING && !g_ServiceStopping) {
+        // Start collecting - this may block
+        StartEtwtiReader();
+        
+        // If we get here, ETW reader has stopped, check if we should continue
+        if (!g_ServiceStopping) {
+            LOG_W(LOG_INFO, L"ServiceMain: ETW reader stopped, waiting before restart...");
+            Sleep(5000); // Wait before retry to avoid rapid restart loop
+        }
+    }
+
+    LOG_W(LOG_INFO, L"ServiceMain: Exiting main loop");
+    
+    if (!g_ServiceStopping) {
+        ShutdownService();
+    }
 }
 
 
@@ -107,16 +136,14 @@ DWORD ServiceEntry()
     DWORD retval = 0;
     SERVICE_TABLE_ENTRY serviceTable[] =
     {
-        {lServiceName, (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+        {const_cast<LPWSTR>(SERVICE_NAME), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
         {NULL, NULL}
     };
-
-    objcache_init();
 
     if (StartServiceCtrlDispatcher(serviceTable) == FALSE)
     {
         retval = GetLastError();
-        LOG_W(LOG_INFO, L"service_entry: StartServiceCtrlDispatcher error: %d", retval);
+        LOG_W(LOG_ERROR, L"ServiceEntry: StartServiceCtrlDispatcher error: %d", retval);
         return retval;
     }
 
@@ -126,15 +153,13 @@ DWORD ServiceEntry()
 
 int main(INT argc, CHAR** argv)
 {
-    LOG_A(LOG_INFO, "Start RedEdr PPL Service %s", REDEDR_VERSION);
-    ServiceEntry();
-
-    if (0) {
-        objcache_init();
-        StartControl();
-        StartEtwtiReader(); // BLOCKS atm
-        ShutdownService();
+    LOG_A(LOG_INFO, "Starting RedEdr PPL Service %s", REDEDR_VERSION);
+    
+    DWORD result = ServiceEntry();
+    if (result != 0) {
+        LOG_A(LOG_ERROR, "Service failed to start, error: %d", result);
     }
-
-    return 0;
+    
+    LOG_A(LOG_INFO, "RedEdr PPL Service terminated");
+    return result;
 }
