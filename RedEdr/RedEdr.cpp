@@ -19,6 +19,7 @@
 #include "utils.h"
 #include "process_query.h"
 #include "serviceutils.h"
+#include "privileges.h"
 
 #include "../Shared/common.h"
 
@@ -32,9 +33,6 @@
  */
 
 
-BOOL keyboard_reader_running = TRUE;
-
-
 BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     switch (ctrlType) {
     case CTRL_C_EVENT:
@@ -44,37 +42,10 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     case CTRL_SHUTDOWN_EVENT:
         LOG_A(LOG_WARNING, "\nRedEdr: Ctrl-c detected, performing shutdown");
         ManagerShutdown();
-        keyboard_reader_running = FALSE;
         return TRUE; // Indicate that we handled the signal
     default:
         return FALSE; // Let the next handler handle the signal
     }
-}
-
-
-DWORD WINAPI KeyboardReaderThread(LPVOID param) {
-    while (keyboard_reader_running) {
-        if (_kbhit()) {  // Check if a key was pressed
-            char ch = _getch();  // Get the character
-            if (ch == 'r') {
-                LOG_A(LOG_WARNING, "Resetting data...");
-                ResetEverything();
-            }
-        }
-        Sleep(200);
-    }
-    return 0;
-}
-
-
-BOOL InitKeyboardReader(std::vector<HANDLE>& threads) {
-    HANDLE thread = CreateThread(NULL, 0, KeyboardReaderThread, NULL, 0, NULL);
-    if (thread == NULL) {
-        LOG_A(LOG_ERROR, "Failed to create thread");
-        return FALSE;
-    }
-    threads.push_back(thread);
-    return TRUE;
 }
 
 
@@ -90,46 +61,14 @@ void CreateRequiredFiles() {
 }
 
 
-// Pushes all events to the EventAggregator (like normal operation)
-// Just have to make sure the process query aint happening
-void ReplayEvents(std::string filename) {
-    LOG_A(LOG_INFO, "Replaying file: %s", filename.c_str());
-    FILE* recording_file = NULL;
-    errno_t err = fopen_s(&recording_file, filename.c_str(), "r");
-    if (err != 0 || !recording_file) {
-        LOG_A(LOG_ERROR, "Could not open %s for reading", filename.c_str());
-        return;
-    }
-
-    g_Config.replay_events = true;
-    char buffer[DATA_BUFFER_SIZE];
-    while (fgets(buffer, DATA_BUFFER_SIZE, recording_file)) {
-        try {
-            std::wstring bufferw = string2wstring(std::string(buffer));
-            g_EventAggregator.do_output(bufferw);
-        }
-        catch (const std::exception& e) {
-            LOG_A(LOG_ERROR, "ReplayEvents: Exception processing line: %s", e.what());
-        }
-    }
-    fclose(recording_file);
-    LOG_A(LOG_INFO, "Replay completed");
-}
-
-
 int main(int argc, char* argv[]) {
     cxxopts::Options options("RedEdr", "Maldev event recorder");
     options.add_options()
         // Input
         ("t,trace", "Process name to trace", cxxopts::value<std::string>())
-        ("a,all", "Input: All", cxxopts::value<bool>())
-
         ("e,etw", "Input: Consume ETW Events", cxxopts::value<bool>()->default_value("false"))
         ("g,etwti", "Input: Consume ETW-TI Events", cxxopts::value<bool>()->default_value("false"))
-        ("m,mplog", "Input: Consume Defender mplog file", cxxopts::value<bool>()->default_value("false"))
-        ("k,kernel", "Input: Consume kernel callback events", cxxopts::value<bool>()->default_value("false"))
-        ("i,inject", "Input: Consume DLL injection", cxxopts::value<bool>()->default_value("false"))
-        ("c,dllcallstack", "Input: Enable DLL injection hook callstacks", cxxopts::value<bool>()->default_value("false"))
+        ("k,hook", "Input: Kernel and ntdll hooks", cxxopts::value<bool>()->default_value("false"))
 
         // Output
         ("w,web", "Output: Web server", cxxopts::value<bool>()->default_value("false"))
@@ -145,9 +84,6 @@ int main(int argc, char* argv[]) {
         ("5,pplstop", "PPL service: stop", cxxopts::value<bool>()->default_value("false"))
 
         // Debug
-        //("r,record", "Debug: Record all events to file", cxxopts::value<std::string>())
-        //("p,replay", "Debug: Replay all events from file", cxxopts::value<std::string>())
-        //("x,test", "Debug: start parts of RedEdr for testing", cxxopts::value<std::string>())
         ("l,dllreader", "Debug: DLL reader but no injection (for manual injection tests)", cxxopts::value<bool>()->default_value("false"))
         ("d,debug", "Debug: Enable debug output", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print usage")
@@ -174,10 +110,8 @@ int main(int argc, char* argv[]) {
         exit(0);
     }
     else if (result.count("pplstop")) {
-        // remove_ppl_service();  // Needs to be started as PPL to work
-
-        // Instruct service to exit itself
-        // We can replace the exe and start it again
+        // Instruct PPL service to exit itself (cant do it otherwise)
+        // Note: we can replace the exe and start it again
         ShutdownPplService();
         exit(0);
     }
@@ -193,52 +127,18 @@ int main(int argc, char* argv[]) {
 	int port = result["port"].as<int>();
     g_Config.do_etw = result["etw"].as<bool>();
     g_Config.do_etwti = result["etwti"].as<bool>();
-    g_Config.do_mplog = result["mplog"].as<bool>();
-    g_Config.do_kernelcallback = result["kernel"].as<bool>();
-    g_Config.do_dllinjection = result["inject"].as<bool>();
+	g_Config.do_hook = result["hook"].as<bool>();
     g_Config.debug_dllreader = result["dllreader"].as<bool>();
     g_Config.hide_full_output = result["hide"].as<bool>();
     g_Config.web_output = result["web"].as<bool>();
-    g_Config.do_dllinjection_ucallstack = result["dllcallstack"].as<bool>();
+    //g_Config.do_dllinjection_ucallstack = result["dllcallstack"].as<bool>();
 
-    if (result["all"].as<bool>()) {
-        g_Config.do_etw = true;
-        g_Config.do_etwti = true;
-        g_Config.do_kernelcallback = true;
-        g_Config.do_dllinjection = true;
-        g_Config.do_dllinjection_ucallstack = true;
-    }
-    else if (result.count("test")) {
-        g_Config.targetExeName = "RedEdrTester.exe";
-        std::string s = result["test"].as<std::string>();
-        if (s == "etw") {
-            g_Config.do_etw = true;
-            g_Config.etw_standard = true;
-            g_Config.etw_kernelaudit = false;
-            g_Config.etw_secaudit = false;
-            g_Config.etw_defender = false;
-        }
-        else if (s == "etwti") {
-            g_Config.do_etwti = true;
-        }
-        else if (s == "kernel") {
-            g_Config.do_kernelcallback = true;
-        }
-        else if (s == "dll") {
-            g_Config.debug_dllreader = true;
-        }
-    } else if (result.count("replay")) {
-        g_Config.replay_events = true;
-    } else if (!g_Config.do_etw && !g_Config.do_mplog && !g_Config.do_kernelcallback 
+    /*
+    if (!g_Config.do_etw && !g_Config.do_mplog && !g_Config.do_kernelcallback 
         && !g_Config.do_dllinjection && !g_Config.do_etwti && !g_Config.debug_dllreader) {
         printf("Choose at least one of --etw --etwti --kernel --inject --etwti (--dllreader for testing)");
         return 1;
-    }
-
-    // Event Record
-    if (result.count("record")) {
-        g_EventAggregator.InitRecorder(result["record"].as<std::string>());
-    }
+    }*/
 
     CreateRequiredFiles();
     InitProcessQuery();
@@ -252,9 +152,9 @@ int main(int argc, char* argv[]) {
     // SeDebug
     if (!PermissionMakeMeDebug()) {
         LOG_A(LOG_ERROR, "RedEdr: Permission error - Did you start with local admin?");
-        return 1;
+        //return 1;
     }
-    if (!IsRunningAsSystem()) {
+    if (!RunsAsSystem()) {
         LOG_A(LOG_WARNING, "RedEdr: Permission error - Not running as SYSTEM, some ETW data is not available");
     }
 
@@ -271,49 +171,7 @@ int main(int argc, char* argv[]) {
 
     // Functionality
     ManagerStart(threads);
-    //InitKeyboardReader(threads);
     InitializeEventProcessor(threads);
-
-    // Replay
-    if (result.count("replay")) {
-        ReplayEvents(result["replay"].as<std::string>());
-    }
-
-    // Test
-    if(result.count("test")) {
-        LOG_A(LOG_INFO, "Tester: wait 1");
-        Sleep(1000);
-        if (result["test"].as<std::string>() == "etw") {
-            LOG_A(LOG_INFO, "Tester: wait 2");
-            Sleep(3000); // let ETW warm up
-        }
-        g_Config.targetExeName = "RedEdrTester.exe";
-
-        LOG_A(LOG_INFO, "Tester: process in background");
-        LPCWSTR path = L"C:\\RedEdr\\RedEdrTester.exe";
-        LPCWSTR args = L"dostuff";
-        DWORD pid = StartProcessInBackground(path, args);
-        if (pid == 0) {
-            LOG_A(LOG_ERROR, "Tester: Failed to start test process");
-            ManagerShutdown();
-            keyboard_reader_running = FALSE;
-            return 1;
-        }
-        if (result["test"].as<std::string>() == "dll") {
-            // do the userspace dll injection
-            LOG_A(LOG_INFO, "Tester: Do DLL injection");
-            remote_inject(pid);
-        }
-        LOG_A(LOG_INFO, "Tester: wait");
-        for (int n = 0; n < 3; n++) {
-            Sleep(1000); // give it time to do its thing
-
-        }
-        LOG_A(LOG_INFO, "Tester: Shutdown");
-        ManagerShutdown();
-        keyboard_reader_running = FALSE;
-        Sleep(1000); // For log output
-    }
 
     // Wait for all threads to complete
     LOG_A(LOG_INFO, "RedEdr: All started, waiting for %llu threads to exit", threads.size());

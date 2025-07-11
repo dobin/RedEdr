@@ -47,10 +47,8 @@ void EventProcessor::init() {
 
 	j["do_etw"] = g_Config.do_etw;
 	j["do_etwti"] = g_Config.do_etwti;
-	j["do_mplog"] = g_Config.do_mplog;
-	j["do_kernelcallback"] = g_Config.do_kernelcallback;
-	j["do_dllinjection"] = g_Config.do_dllinjection;
-	j["do_dllinjection_ucallstack"] = g_Config.do_dllinjection_ucallstack;
+	j["do_hook"] = g_Config.do_hook;
+	j["do_hook_callstack"] = g_Config.do_dllinjection_ucallstack;
 	    
 	j["target"] = g_Config.targetExeName;
     json_entries.push_back(j);
@@ -159,7 +157,7 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
         EventStats(j);
 
         // Handle if we see the pid the first time, by augmenting our internal data structures
-        if (j.contains("pid") && !g_Config.replay_events) {
+        if (j.contains("pid")) {
             Process* process = g_ProcessResolver.getObject(j["pid"].get<DWORD>());
             if (process == nullptr) {
                 LOG_A(LOG_WARNING, "EventProcessor: Failed to get process object for pid %lu", j["pid"].get<DWORD>());

@@ -46,7 +46,7 @@ BOOL ManagerReload() {
         // -> Automatic in ProcessCache
         
         // Kernel
-        if (g_Config.do_kernelcallback || g_Config.do_dllinjection) {
+        if (g_Config.do_hook) {
             LOG_A(LOG_INFO, "Manager: Tell Kernel about new target: %s", g_Config.targetExeName.c_str());
             if (!EnableKernelDriver(g_Config.enabled, g_Config.targetExeName)) {
                 LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
@@ -78,9 +78,9 @@ BOOL ManagerReload() {
 
 BOOL ManagerStart(std::vector<HANDLE>& threads) {
     try {
-        // Load: Kernel dependencies
-        if (g_Config.do_kernelcallback || g_Config.do_dllinjection) {
-            // Kernel: Module load
+        // Hook
+        if (g_Config.do_hook) {
+            // Kernel: Driver load
             if (! IsServiceRunning(g_Config.driverName)) {
                 LOG_A(LOG_INFO, "Manager: Kernel Driver load");
                 if (!LoadKernelDriver()) {
@@ -89,87 +89,72 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
                 }
             }
 
-            // Kernel: Reader Threads start
+            // Kernel: Start Reader Thread
             LOG_A(LOG_INFO, "Manager: Kernel reader thread start");
             if (!KernelReaderInit(threads)) {
                 LOG_A(LOG_ERROR, "Manager: Failed to initialize kernel reader");
                 return FALSE;
             }
         }
-
-    // Load: DLL reader
-    //   its important for DLL AND ETW-TI to be up
-    if (g_Config.do_dllinjection || g_Config.debug_dllreader || g_Config.do_etwti) {
-        // DLL: Reader start (also for ETW-TI)
-        LOG_A(LOG_INFO, "Manager: InjectedDll reader thread start");
-        if (!DllReaderInit(threads)) {
-            LOG_A(LOG_ERROR, "Manager: Failed to initialize DLL reader");
-            return FALSE;
+        if (g_Config.do_hook || g_Config.debug_dllreader || g_Config.do_etwti) {
+            // Hook: Start DLL Reader Thread
+            LOG_A(LOG_INFO, "Manager: InjectedDll reader thread start");
+            if (!DllReaderInit(threads)) {
+                LOG_A(LOG_ERROR, "Manager: Failed to initialize DLL reader");
+                return FALSE;
+            }
         }
-    }
 
-    // Load: ETW-TI
-    if (g_Config.do_etwti) {
-        if (!InitPplService()) {
-            LOG_A(LOG_ERROR, "Manager: Failed to initialize PPL service");
-            return FALSE;
+        // Load: ETW-TI
+        if (g_Config.do_etwti) {
+            if (!InitPplService()) {
+                LOG_A(LOG_ERROR, "Manager: Failed to initialize PPL service");
+                return FALSE;
+            }
+            // No reader, uses DLL-pipe
         }
-        // No reader, uses DLL-pipe
-    }
 
-    // ETW
-    //   if --all, this will spend some time, making the previous shit ready
-    if (g_Config.do_etw) {
-        if (!InitializeEtwReader(threads)) {
-            LOG_A(LOG_ERROR, "Manager: Failed to initialize ETW reader");
-            return FALSE;
+        // ETW
+        if (g_Config.do_etw) {
+            if (!InitializeEtwReader(threads)) {
+                LOG_A(LOG_ERROR, "Manager: Failed to initialize ETW reader");
+                return FALSE;
+            }
         }
-    }
 
-    Sleep(1000); // For good measure
+        Sleep(1000); // For good measure
 
-    // ETW-TI: Enable
-    if (g_Config.do_etwti) {
-        if (!EnablePplProducer(TRUE, g_Config.targetExeName)) {
-            LOG_A(LOG_ERROR, "Manager: Failed to enable ETW-TI");
-            return FALSE;  // Make this a hard failure for consistency
+        // ETW-TI: Enable
+        if (g_Config.do_etwti) {
+            if (!EnablePplProducer(TRUE, g_Config.targetExeName)) {
+                LOG_A(LOG_ERROR, "Manager: Failed to enable ETW-TI");
+                return FALSE;  // Make this a hard failure for consistency
+            }
         }
-    }
-    // Kernel: Enable
-    if (g_Config.do_kernelcallback || g_Config.do_dllinjection) {
-        // Enable it
-        LOG_A(LOG_INFO, "Manager: Kernel module enable collection");
-        // Even with all the other code carefully making sure that all the shit is started, it still seems to need this sleep
-        if (!EnableKernelDriver(1, g_Config.targetExeName)) {
-            LOG_A(LOG_ERROR, "Manager: Kernel module failed");
-            return FALSE;
+        // Kernel: Enable
+        if (g_Config.do_hook) {
+            LOG_A(LOG_INFO, "Manager: Kernel module enable collection");
+            if (!EnableKernelDriver(1, g_Config.targetExeName)) {
+                LOG_A(LOG_ERROR, "Manager: Kernel module failed");
+                return FALSE;
+            }
         }
-    }
 
-    // Necessary? (wait for kernel and ETW-TI to connect)
-    Sleep(1000);
+        // Necessary? (wait for kernel and ETW-TI to connect)
+        Sleep(1000);
 
-    // Not really used
-    if (g_Config.do_mplog) {
-        LOG_A(LOG_INFO, "Manager: MPLOG Start Reader");
-        if (!InitializeLogReader(threads)) {
-            LOG_A(LOG_ERROR, "Manager: Failed to initialize MPLOG reader");
-            return FALSE;
+        // Populate process cache with all currently running processes
+        LOG_A(LOG_INFO, "Manager: Populating process cache with all running processes");
+        if (!g_ProcessResolver.PopulateAllProcesses()) {
+            LOG_A(LOG_WARNING, "Manager: Failed to populate process cache, continuing anyway");
+            // Don't return FALSE here as this is not critical for core functionality
+        } else {
+            // Log cache statistics after successful population
+            g_ProcessResolver.LogCacheStatistics();
         }
-    }
 
-    // Populate process cache with all currently running processes
-    LOG_A(LOG_INFO, "Manager: Populating process cache with all running processes");
-    if (!g_ProcessResolver.PopulateAllProcesses()) {
-        LOG_A(LOG_WARNING, "Manager: Failed to populate process cache, continuing anyway");
-        // Don't return FALSE here as this is not critical for core functionality
-    } else {
-        // Log cache statistics after successful population
-        g_ProcessResolver.LogCacheStatistics();
-    }
-
-    return TRUE;
-    }
+        return TRUE;
+        }
     catch (const std::exception& e) {
         LOG_A(LOG_ERROR, "Manager: Exception in ManagerStart: %s", e.what());
         return FALSE;
@@ -182,45 +167,29 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
 
 
 void ManagerShutdown() {
-    g_EventAggregator.StopRecorder();
-
-    if (g_Config.do_mplog) {
-        LOG_A(LOG_INFO, "Manager: Stop log reader");
-        LogReaderStopAll();
-    }
-
-    // Lets shut down ETW stuff first, its more important
     // ETW-TI
     if (g_Config.do_etwti) {
         LOG_A(LOG_INFO, "Manager: Stop ETWTI reader");
-        EnablePplProducer(FALSE, "");  // Use empty string instead of NULL
+        EnablePplProducer(FALSE, "");
     }
-    // ETWTracing processes with name: Shellcode
+    // ETW
     if (g_Config.do_etw) {
         LOG_A(LOG_INFO, "Manager: Stop ETW readers");
         EtwReaderStopAll();
     }
 
-    // Make kernel module stop emitting events
-    //    Disconnects KernelPipe client
-    if (g_Config.do_kernelcallback || g_Config.do_dllinjection) {
+    // Hook
+    if (g_Config.do_hook) {
         LOG_A(LOG_INFO, "Manager: Disable kernel driver");
         EnableKernelDriver(0, "");
-    }
 
-    // The following may crash?
-    // Shutdown kernel reader
-    if (g_Config.do_kernelcallback) {
         LOG_A(LOG_INFO, "Manager: Stop kernel reader");
         KernelReaderShutdown();
-    }
-    // Shutdown dll reader
-    if (g_Config.do_dllinjection || g_Config.do_etwti) {
+
         LOG_A(LOG_INFO, "Manager: Stop DLL reader");
         DllReaderShutdown();
     }
-
-    // Special case
+    // Debug: DLL Reader
     if (g_Config.debug_dllreader) {
         LOG_A(LOG_INFO, "Manager: Stop DLL reader");
         DllReaderShutdown();

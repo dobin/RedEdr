@@ -26,16 +26,13 @@ public:
 	bool web_output = false;
 	bool log_unload = false;
 	bool do_udllinjection = false;
-	bool replay_events = false;
 	bool debug_dllreader = false;
 	bool enable_remote_exec = true;
 
 	// Input selection
 	bool do_etw = false;
 	bool do_etwti = false;
-	bool do_mplog = false;
-	bool do_kernelcallback = false;
-	bool do_dllinjection = false;
+	bool do_hook = false;
 	bool do_dllinjection_ucallstack = true;
 
 	// ETW input selection

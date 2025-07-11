@@ -54,7 +54,7 @@ void SendToDllReader(char* data) {
 
 
 void processinfo(char* pidStr) {
-	PermissionMakeMeDebug();
+	//PermissionMakeMeDebug();
 	InitProcessQuery();
 
 	long pid = strtol(pidStr, nullptr, 10);

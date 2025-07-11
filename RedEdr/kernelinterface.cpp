@@ -53,7 +53,7 @@ BOOL EnableKernelDriver(int enable, std::string target) {
             return FALSE;
         }
         wcscpy_s(dataToSend.filename, sizeof(dataToSend.filename) / sizeof(wchar_t), targetW);
-        dataToSend.dll_inject = g_Config.do_dllinjection;
+        dataToSend.dll_inject = g_Config.do_hook;
         dataToSend.enable = enable;
     }
     else {

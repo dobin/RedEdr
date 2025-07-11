@@ -22,10 +22,6 @@ public:
 	void Stop();
 	unsigned int GetCount();
 
-	// Recorder
-	void InitRecorder(std::string filename);
-	void StopRecorder();
-
 	// These is all just so a consumer can get a copy of all new
 	// events (Analyzer)
 	std::condition_variable cv; // Will be called upon each insert
@@ -37,9 +33,6 @@ private:
 	std::vector<std::string> output_entries;
 	std::mutex output_mutex;
 	unsigned int output_count = 0;
-
-	// Record/Replay
-	FILE* recorder_file = NULL;
 };
 
 extern EventAggregator g_EventAggregator;

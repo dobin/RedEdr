@@ -24,14 +24,6 @@ void EventAggregator::NewEvent(std::string eventStr) {
     output_mutex.lock();
     output_entries.push_back(eventStr);
     output_count++;
-    
-    // Debug: Record events
-    // This needs to be in the mutex, or the \r\n may not be written correctly
-    if (recorder_file != NULL) {
-        fprintf(recorder_file, eventStr.c_str());
-        fprintf(recorder_file, "\r\n");
-    }
-    
     output_mutex.unlock();
 
     // Notify the analyzer thread
@@ -46,14 +38,6 @@ void EventAggregator::do_output(std::wstring eventWstr) {
         output_mutex.lock();
         output_entries.push_back(json);
         output_count++;
-
-        // Debug: Record events
-        // This needs to be in the mutex, or the \r\n may not be written correctly
-        if (recorder_file != NULL) {
-            fprintf(recorder_file, json.c_str());
-            fprintf(recorder_file, "\r\n");
-        }
-
         output_mutex.unlock();
 
         // Notify the analyzer thread
@@ -107,22 +91,4 @@ void EventAggregator::ResetData() {
 unsigned int EventAggregator::GetCount() {
     std::lock_guard<std::mutex> lock(output_mutex);
     return output_count;
-}
-
-
-void EventAggregator::InitRecorder(std::string filename) {
-    LOG_A(LOG_INFO, "EventAggregator: Recording all events into %s", filename.c_str());
-    errno_t err = fopen_s(&recorder_file, filename.c_str(), "w");
-    if (err != 0 || !recorder_file) {
-        LOG_A(LOG_ERROR, "EventAggregator: Could not open %s for writing", filename.c_str());
-    }
-}
-
-void EventAggregator::StopRecorder() {
-    std::lock_guard<std::mutex> lock(output_mutex);
-    if (recorder_file != NULL) {
-        fclose(recorder_file);
-        recorder_file = NULL;
-        LOG_A(LOG_INFO, "EventAggregator: Stopped recording");
-    }
 }
