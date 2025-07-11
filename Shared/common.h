@@ -30,6 +30,7 @@ typedef struct _MY_DRIVER_DATA {
 #define DLL_PIPE_NAME L"\\\\.\\pipe\\RedEdrDllCom"
 
 #define PPL_SERVICE_PIPE_NAME L"\\\\.\\pipe\\RedEdrPplService"
+#define PPL_DATA_PIPE_NAME L"\\\\.\\pipe\\RedEdrPplData"
 #define SERVICE_NAME  L"RedEdrPplService"
 
 #define DRIVER_NAME L"c:\\RedEdr\\elam_driver.sys"

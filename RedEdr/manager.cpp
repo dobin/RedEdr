@@ -11,6 +11,7 @@
 #include "kernelreader.h"
 #include "webserver.h"
 #include "dllreader.h"
+#include "pplreader.h"
 #include "kernelinterface.h"
 #include "pplmanager.h"
 #include "logging.h"
@@ -111,7 +112,13 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
                 LOG_A(LOG_ERROR, "Manager: Failed to initialize PPL service");
                 return FALSE;
             }
-            // No reader, uses DLL-pipe
+            
+            // Start PPL Reader Thread for dedicated data pipe
+            LOG_A(LOG_INFO, "Manager: PPL reader thread start");
+            if (!PplReaderInit(threads)) {
+                LOG_A(LOG_ERROR, "Manager: Failed to initialize PPL reader");
+                return FALSE;
+            }
         }
 
         // ETW
@@ -171,6 +178,9 @@ void ManagerShutdown() {
     if (g_Config.do_etwti) {
         LOG_A(LOG_INFO, "Manager: Stop ETWTI reader");
         EnablePplProducer(FALSE, "");
+        
+        LOG_A(LOG_INFO, "Manager: Stop PPL reader");
+        PplReaderShutdown();
     }
     // ETW
     if (g_Config.do_etw) {

@@ -13,10 +13,10 @@ PipeClient pipeClient;
 
 
 BOOL ConnectEmitterPipe() {
-    LOG_W(LOG_INFO, L"Emitter: Connect pipe %s to RedEdr", DLL_PIPE_NAME);
-    if (!pipeClient.Connect(DLL_PIPE_NAME)) {
+    LOG_W(LOG_INFO, L"Emitter: Connect pipe %s to RedEdr", PPL_DATA_PIPE_NAME);
+    if (!pipeClient.Connect(PPL_DATA_PIPE_NAME)) {
         LOG_W(LOG_ERROR, L"Emitter not connect to RedEdr.exe at %s because %ld", 
-            DLL_PIPE_NAME, GetLastError());
+            PPL_DATA_PIPE_NAME, GetLastError());
         return FALSE;
     }
 
@@ -24,7 +24,7 @@ BOOL ConnectEmitterPipe() {
     // this is the only read for this pipe
     char buffer[PPL_CONFIG_LEN];
     if (pipeClient.Receive(buffer, PPL_CONFIG_LEN)) {
-        // Ignore config atm
+        LOG_W(LOG_INFO, L"Emitter: Received config from RedEdr: %hs", buffer);
     }
 
     return TRUE;
@@ -37,6 +37,6 @@ void SendEmitterPipe(char* buffer) {
 
 
 void DisconnectEmitterPipe() {
-    LOG_W(LOG_INFO, L"Emitter: Disconnect pipe %s to RedEdr", DLL_PIPE_NAME);
+    LOG_W(LOG_INFO, L"Emitter: Disconnect pipe %s to RedEdr", PPL_DATA_PIPE_NAME);
     pipeClient.Disconnect();
 }
