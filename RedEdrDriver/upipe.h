@@ -4,9 +4,11 @@
 #include <ntddk.h>
 #include <wdf.h>
 #include <string.h>
-#include <stdio.h>
 #include <fltkernel.h>
 
+// Function declarations
+void InitializePipe();
+void CleanupPipe();
 int LogEvent(char*);
 int IsUserspacePipeConnected();
 void DisconnectUserspacePipe();

@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <Ntifs.h>
 #include <ntstrsafe.h>  // Required for RtlStringCbVPrintfA
 
@@ -28,16 +27,21 @@ void LOG_A(int severity, const char* format, ...)
 
 // TODO SLOW
 int IsSubstringInUnicodeString(PUNICODE_STRING pDestString, PCWSTR pSubString) {
-    if (pDestString->Length == 0 || pDestString->Buffer == NULL) {
+    if (pDestString->Length == 0 || pDestString->Buffer == NULL || pSubString == NULL) {
         return FALSE;
     }
     size_t lengthInWchars = pDestString->Length / sizeof(WCHAR);
     WCHAR tempBuffer[KRN_LOG_LEN];
+    
+    // Ensure we don't overflow the temp buffer
     if (lengthInWchars >= sizeof(tempBuffer) / sizeof(WCHAR)) {
         return FALSE;
     }
-    memcpy(tempBuffer, pDestString->Buffer, pDestString->Length);
+    
+    // Safely copy and null-terminate
+    RtlCopyMemory(tempBuffer, pDestString->Buffer, pDestString->Length);
     tempBuffer[lengthInWchars] = L'\0';
+    
     int result = wcsstr(tempBuffer, pSubString) != NULL;
     return result;
 }
@@ -45,26 +49,27 @@ int IsSubstringInUnicodeString(PUNICODE_STRING pDestString, PCWSTR pSubString) {
 
 void Unicodestring2wcharAlloc(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize)
 {
-    if (!ustr || !dest) {
+    if (!ustr || !dest || destSize == 0) {
         return;  // Invalid arguments
     }
+    
     size_t numChars = ustr->Length / sizeof(WCHAR);
     size_t copyLength = numChars < destSize - 1 ? numChars : destSize - 1;
-    wcsncpy(dest, ustr->Buffer, copyLength);
+    
+    // Use safer kernel function
+    RtlCopyMemory(dest, ustr->Buffer, copyLength * sizeof(WCHAR));
     dest[copyLength] = L'\0';
 }
 
 
 NTSTATUS WcharToAscii(const wchar_t* wideStr, SIZE_T wideLength, char* asciiStr, SIZE_T asciiBufferSize) {
-    if (!wideStr || !asciiStr) {
+    if (!wideStr || !asciiStr || asciiBufferSize == 0) {
         return STATUS_INVALID_PARAMETER;
     }
 
-    for (SIZE_T i = 0; i < wideLength; ++i) {
-        if (i >= asciiBufferSize - 1) {  // Ensure the buffer has space for a null terminator
-            return STATUS_BUFFER_TOO_SMALL;
-        }
-
+    SIZE_T copyLength = wideLength < asciiBufferSize - 1 ? wideLength : asciiBufferSize - 1;
+    
+    for (SIZE_T i = 0; i < copyLength; ++i) {
         wchar_t wc = wideStr[i];
         if (wc < 0x80) {
             asciiStr[i] = (char)wc;  // Direct conversion for ASCII characters
@@ -74,7 +79,7 @@ NTSTATUS WcharToAscii(const wchar_t* wideStr, SIZE_T wideLength, char* asciiStr,
         }
     }
 
-    asciiStr[wideLength < asciiBufferSize ? wideLength : asciiBufferSize - 1] = '\0';  // Null-terminate the string
+    asciiStr[copyLength] = '\0';  // Null-terminate the string
     return STATUS_SUCCESS;
 }
 
@@ -85,7 +90,8 @@ void JsonEscape(char* str, size_t buffer_size) {
     }
 
     size_t length = 0;
-    for (length = 0; str[length] != L'\0'; ++length);
+    // Find string length safely
+    for (length = 0; length < buffer_size - 1 && str[length] != '\0'; ++length);
 
     for (size_t i = 0; i < length; ++i) {
         if (str[i] == '\\' || str[i] == '"') {

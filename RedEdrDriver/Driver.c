@@ -2,7 +2,6 @@
 #include <ntddk.h>
 #include <wdf.h>
 #include <string.h>
-#include <stdio.h>
 #include <fltkernel.h>
 
 // Needs to be set on the project properties as well
@@ -33,18 +32,37 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
 
     UNREFERENCED_PARAMETER(DeviceObject);
 
+    // Ensure we're at correct IRQL level for operations
+    if (KeGetCurrentIrql() > PASSIVE_LEVEL) {
+        LOG_A(LOG_INFO, "[IOCTL] Invalid IRQL level for operation\n");
+        status = STATUS_INVALID_DEVICE_STATE;
+        Irp->IoStatus.Status = status;
+        Irp->IoStatus.Information = 0;
+        IoCompleteRequest(Irp, IO_NO_INCREMENT);
+        return status;
+    }
+
     switch (controlCode) {
     case IOCTL_MY_IOCTL_CODE: {
         LOG_A(LOG_INFO, "[IOCTL] Handling IOCTL\n");
 
+        // Validate input buffer
+        size_t inputBufferLength = stack->Parameters.DeviceIoControl.InputBufferLength;
+        
+        if (inputBufferLength < sizeof(MY_DRIVER_DATA) || 
+            Irp->AssociatedIrp.SystemBuffer == NULL) {
+            LOG_A(LOG_INFO, "[IOCTL] Invalid input buffer: size=%zu, expected=%zu\n", 
+                inputBufferLength, sizeof(MY_DRIVER_DATA));
+            status = STATUS_INVALID_PARAMETER;
+            Irp->IoStatus.Information = 0;
+            break;
+        }
+
         // read IOCTL
         PMY_DRIVER_DATA data = (PMY_DRIVER_DATA)Irp->AssociatedIrp.SystemBuffer;
-        /*size_t inputBufferLength = stack->Parameters.DeviceIoControl.InputBufferLength;
-
-        if (inputBufferLength != sizeof(MY_DRIVER_DATA)) {
-            LOG_A(LOG_INFO, "[IOCTL] Size error: %i %i\n", 
-                inputBufferLength, sizeof(data));
-        }*/
+        
+        // Ensure filename is null-terminated
+        data->filename[TARGET_WSTR_LEN - 1] = L'\0';
 
         LOG_A(LOG_INFO, "[IOCTL] Received from user-space: enabled: %i/%i  filename: %ls\n", 
             data->enable, data->dll_inject, data->filename);
@@ -80,8 +98,18 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
             answer = "OK";
         }
 
-        // Answer IOCTL
+        // Answer IOCTL - Validate output buffer size
         size_t messageLen = strlen(answer) + 1;
+        size_t outputBufferLength = stack->Parameters.DeviceIoControl.OutputBufferLength;
+        
+        if (outputBufferLength < messageLen) {
+            LOG_A(LOG_INFO, "[IOCTL] Output buffer too small: %zu < %zu\n", 
+                outputBufferLength, messageLen);
+            status = STATUS_BUFFER_TOO_SMALL;
+            Irp->IoStatus.Information = messageLen;
+            break;
+        }
+        
         RtlCopyMemory(Irp->AssociatedIrp.SystemBuffer, answer, messageLen);
         Irp->IoStatus.Information = (ULONG) messageLen;
         break;
@@ -188,14 +216,21 @@ void LoadKernelCallbacks() {
 void RedEdrUnload(_In_ PDRIVER_OBJECT DriverObject) {
     DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "Unloading routine called\n");
 
-    DisconnectUserspacePipe();
+    CleanupPipe();
 
-    // Unset the callback
-    PsSetCreateProcessNotifyRoutineEx(CreateProcessNotifyRoutine, TRUE);
-    PsRemoveCreateThreadNotifyRoutine(CreateThreadNotifyRoutine);
-    PsRemoveLoadImageNotifyRoutine(LoadImageNotifyRoutine);
+    // Unset the callbacks only if they were set
+    if (g_Settings.init_processnotify) {
+        PsSetCreateProcessNotifyRoutineEx(CreateProcessNotifyRoutine, TRUE);
+    }
+    if (g_Settings.init_threadnotify) {
+        PsRemoveCreateThreadNotifyRoutine(CreateThreadNotifyRoutine);
+    }
+    if (g_Settings.init_imagenotify) {
+        PsRemoveLoadImageNotifyRoutine(LoadImageNotifyRoutine);
+    }
     if (pCBRegistrationHandle != NULL) {
         ObUnRegisterCallbacks(pCBRegistrationHandle);
+        pCBRegistrationHandle = NULL;
     }
 
     // Remove all data
@@ -226,6 +261,7 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
 
     LOG_A(LOG_INFO, "RedEdr Kernel Driver %s\n", REDEDR_VERSION);
     InitializeHashTable();
+    InitializePipe();
 
     // Setting the unload routine to execute
     DriverObject->DriverUnload = RedEdrUnload;
@@ -244,7 +280,7 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
         0,					   // no need for extra bytes,
         &deviceName,           // the device name,
         FILE_DEVICE_UNKNOWN,   // device type,
-        0,					   // characteristics flags,
+        FILE_DEVICE_SECURE_OPEN,   // characteristics flags - require admin access,
         FALSE,				   // not exclusive,
         &DeviceObject		   // the resulting pointer
     );
@@ -265,9 +301,12 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
     init_settings();
     LoadKernelCallbacks(); // always load the callbacks, based on config
     if (g_Settings.enable_logging) { // only connect when we enable this (deamon may not be ready on load)
-        ConnectUserspacePipe();
+        if (!ConnectUserspacePipe()) {
+            LOG_A(LOG_INFO, "Warning: Failed to connect userspace pipe during driver load\n");
+        }
     }
 
+    LOG_A(LOG_INFO, "RedEdr driver loaded successfully\n");
     return STATUS_SUCCESS;
 }
 
