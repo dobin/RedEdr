@@ -6,6 +6,7 @@
 
 #include "../Shared/common.h"
 #include "utils.h"
+#include "upipe.h"
 
 
 // Handle that we will use to communicate with the named pipe to userspace

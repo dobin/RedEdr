@@ -34,7 +34,7 @@ std::string get_time_for_file();
 // Fuck them strings
 wchar_t* string2wcharAlloc(const std::string& str); // 16
 wchar_t* wstring2wcharAlloc(const std::wstring& str); // 3
-wchar_t* char2wcharAlloc(char* str); // 3 for PPL, set target
+wchar_t* char2wcharAlloc(const char* str); // 3 for PPL, set target
 
 std::string wstring2string(std::wstring& wide_string); // 12
 std::string wchar2string(const wchar_t* wstr); // 4

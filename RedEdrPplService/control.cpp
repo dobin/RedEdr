@@ -139,7 +139,9 @@ DWORD start_child_process(wchar_t* childCMD)
     DWORD retval = 0;
     LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList = NULL;
     PROCESS_INFORMATION ProcessInformation = { 0 };
-    
+    DWORD ProtectionLevel = PROTECTION_LEVEL_SAME;
+
+
     if (childCMD == NULL) {
         LOG_W(LOG_ERROR, L"start_child_process: Invalid command parameter");
         return ERROR_INVALID_PARAMETER;
@@ -174,7 +176,6 @@ DWORD start_child_process(wchar_t* childCMD)
     }
 
     // Set ProtectionLevel to be the same, i.e. PPL
-    DWORD ProtectionLevel = PROTECTION_LEVEL_SAME;
     if (UpdateProcThreadAttribute(lpAttributeList,
         0,
         PROC_THREAD_ATTRIBUTE_PROTECTION_LEVEL,
