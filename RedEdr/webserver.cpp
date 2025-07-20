@@ -144,6 +144,7 @@ BOOL ExecMalware(std::string filename, std::string filedata) {
 
 
 DWORD WINAPI WebserverThread(LPVOID param) {
+    // Static
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
         try {
             std::string indexhtml = read_file("C:\\RedEdr\\index.html");
@@ -190,16 +191,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         }
     });
 
-    svr.Get("/api/events", [](const httplib::Request&, httplib::Response& res) {
-        try {
-            res.set_content(g_EventProcessor.GetAllAsJson(), "application/json; charset=UTF-8");
-        } catch (const std::exception& e) {
-            LOG_A(LOG_ERROR, "Error getting events: %s", e.what());
-            res.status = 500;
-            res.set_content("{\"error\":\"Internal server error\"}", "application/json");
-        }
-    });
-
+    // Recordings
     svr.Get("/api/recordings", [](const httplib::Request&, httplib::Response& res) {
         try {
             res.set_content(getRecordingsAsJson(), "application/json; charset=UTF-8");
@@ -209,7 +201,6 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             res.set_content("{\"error\":\"Internal server error\"}", "application/json");
         }
     });
-
     svr.Get("/api/recordings/:id", [](const httplib::Request& req, httplib::Response& res) {
         auto filename = req.path_params.at("id");
         
@@ -233,6 +224,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         res.set_content(data.c_str(), "application/json");
     });
 
+    // UI
     svr.Get("/api/stats", [](const httplib::Request&, httplib::Response& res) {
         nlohmann::json stats = {
             {"events_count", g_EventAggregator.GetCount()},
@@ -244,7 +236,6 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         };
         res.set_content(stats.dump(), "application/json; charset=UTF-8");
     });
-
     svr.Get("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
         json response = { {"trace", g_Config.targetExeName }};
         res.set_content(response.dump(), "application/json");
@@ -260,15 +251,15 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                 res.set_content(response.dump(), "application/json");
             }
             else {
-                json error = { {"error", "No 'trace' key provided"} };
+                json error_response = { {"error", "No 'trace' key provided"} };
                 res.status = 400;
-                res.set_content(error.dump(), "application/json");
+                res.set_content(error_response.dump(), "application/json");
             }
         }
         catch (const json::parse_error& e) {
-            json error = { {"error", "Invalid JSON data: " + std::string(e.what())}};
+            json error_response = { {"error", "Invalid JSON data: " + std::string(e.what())}};
             res.status = 400;
-            res.set_content(error.dump(), "application/json");
+            res.set_content(error_response.dump(), "application/json");
         }
     });
     svr.Get("/api/save", [](const httplib::Request&, httplib::Response& res) {
@@ -289,20 +280,88 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         json response = { {"status", "ok"} };
         res.set_content(response.dump(), "application/json");
     });
-    svr.Get("/api/log", [](const httplib::Request& req, httplib::Response& res) {
-        json response = {
-            { "log", GetLogs() },
-            { "output", g_Executor.GetOutput() }
-		};
+
+    // Logs
+    svr.Get("/api/logs/rededr", [](const httplib::Request&, httplib::Response& res) {
+        // Arry of Dicts
+        // Like:
+        /*
+            [
+                { "date":"2025-07-20-10-36-24",
+                  "do_etw":false,
+                  "do_etwti":false,
+                  "do_hook":false,
+                  "do_hook_callstack": true,
+                  "func":"init",
+                  "target":"otepad",
+                  "trace_id":41,
+                  "type":"meta",
+                  "version":"0.4"
+                }, 
+                ...
+            ]
+        */
+        try {
+
+            res.set_content(g_EventProcessor.GetAllAsJson(), "application/json");
+        } catch (const std::exception& e) {
+            LOG_A(LOG_ERROR, "Error getting events: %s", e.what());
+            res.status = 500;
+            json error_response = {
+                { "status", "error" },
+                { "message", "Internal server error" }
+            };
+            res.set_content(error_response.dump(), "application/json");
+        }
+    });
+    svr.Get("/api/logs/agent", [](const httplib::Request& req, httplib::Response& res) {
+        // Array of Strings
+        // Like. 
+        /* 
+           [ 
+            "RedEdr 0.4",
+            "Config: tracing otepad",
+            "Permissions: Enabled PRIVILEGED & DEBUG",
+            ]
+        */
+        json response = GetLogs(); // List of srings
         res.set_content(response.dump(), "application/json");
     });
-    svr.Get("/api/edr_result", [](const httplib::Request& req, httplib::Response& res) {
-        g_EdrReader.Stop(); // Stop reading on this first call
+    svr.Get("/api/logs/execution", [](const httplib::Request& req, httplib::Response& res) {
+        // Like: 
+        /* 
+           {
+                "pid": 0,
+                "stderr": "",
+                "stdout": ""
+            }
+        */
+        json response = { 
+            { "stdout", g_Executor.GetOutput() },  // String
+            { "stderr", g_Executor.GetOutput() },  // String
+            { "pid", 0 },
+         };
+        res.set_content(response.dump(), "application/json");
+    });
+    svr.Get("/api/logs/edr", [](const httplib::Request& req, httplib::Response& res) {
+        g_EdrReader.Stop(); // Stop reading on this first call FIXME
+        // Like: 
+        /*
+           {
+               "logs":"<Events>\n</Events>",
+               "edr_version":"1.0",
+               "plugin_version":"1.0",
+            }
+        */
         json response = {
-            { "xml_events", g_EdrReader.Get() }
+            { "logs", g_EdrReader.Get() },
+            { "edr_version", "1.0" },
+            { "plugin_version", "1.0" },
         };
         res.set_content(response.dump(), "application/json");
     });
+
+    // Execute
     if (g_Config.enable_remote_exec) {
         svr.Post("/api/exec", [](const httplib::Request& req, httplib::Response& res) {
             try {
@@ -312,26 +371,44 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                 if (file.content.empty() || filename.empty()) {
                     LOG_A(LOG_WARNING, "Webserver: Data error: %d %d", file.content.size(), filename.size());
                     res.status = 400;
-                    res.set_content("Invalid request: filename or file data is missing.", "text/plain");
+                    json error_response = {
+                        { "status", "error" },
+                        { "message", "Invalid request: filename or file data is missing" },
+                    };
+                    res.set_content(error_response.dump(), "application/json");
                     return;
                 }
                 BOOL ret = ExecMalware(filename, file.content);
                 if (!ret) {
                     res.status = 500;
-                    res.set_content("Failed to execute malware", "text/plain");
+                    json error_response = {
+                        { "status", "error" },
+                        { "message", "Failed to execute malware: "}  // TODO print exception
+                    };
+                    res.set_content(error_response.dump(), "application/json");
                     return;
                 }
-                std::string output = g_Executor.GetOutput();
-                json response = { {"status", "ok"}, {"output", output} };
+                json response = { 
+                    { "status", "ok" },
+                    { "pid", 0 },
+                };
                 res.set_content(response.dump(), "application/json");
             } catch (const std::exception& e) {
                 LOG_A(LOG_ERROR, "Error in /api/exec: %s", e.what());
                 res.status = 500;
-                res.set_content("{\"error\":\"Internal server error\"}", "application/json");
+                json error_response = { 
+                    { "status", "error" }, 
+                    { "message", "Internal server error" } 
+                };
+                res.set_content(error_response.dump(), "application/json");
             } catch (...) {
                 LOG_A(LOG_ERROR, "Unknown error in /api/exec");
                 res.status = 500;
-                res.set_content("{\"error\":\"Unknown error\"}", "application/json");
+                json error_response = {
+                    { "status", "error" }, 
+                    { "message", "Unknown server error" }
+                };
+                res.set_content(error_response.dump(), "application/json");
             }
         });
     }
