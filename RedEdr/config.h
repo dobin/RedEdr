@@ -13,7 +13,6 @@
 class Config {
 public:
 	std::string targetExeName = "powershell.exe";
-	BOOL enabled = TRUE;
 	bool debug = false;
 
 	// Constants

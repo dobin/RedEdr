@@ -268,18 +268,6 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     svr.Get("/api/reset", [](const httplib::Request&, httplib::Response& res) {
         ResetEverything();
     });
-    svr.Get("/api/start", [](const httplib::Request& req, httplib::Response& res) {
-        g_Config.enabled = TRUE;
-        ManagerReload();
-        json response = { {"status", "ok"}};
-        res.set_content(response.dump(), "application/json");
-    });
-    svr.Get("/api/stop", [](const httplib::Request& req, httplib::Response& res) {
-        g_Config.enabled = FALSE;
-        ManagerReload();
-        json response = { {"status", "ok"} };
-        res.set_content(response.dump(), "application/json");
-    });
 
     // Logs
     svr.Get("/api/logs/rededr", [](const httplib::Request&, httplib::Response& res) {

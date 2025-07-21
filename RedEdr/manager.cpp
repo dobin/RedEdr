@@ -49,7 +49,7 @@ BOOL ManagerReload() {
         // Kernel
         if (g_Config.do_hook) {
             LOG_A(LOG_INFO, "Manager: Tell Kernel about new target: %s", g_Config.targetExeName.c_str());
-            if (!EnableKernelDriver(g_Config.enabled, g_Config.targetExeName)) {
+            if (!EnableKernelDriver(true, g_Config.targetExeName)) {
                 LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
                 return FALSE;
             }
@@ -58,7 +58,7 @@ BOOL ManagerReload() {
         // PPL
         if (g_Config.do_etwti) {
             LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new target: %s", g_Config.targetExeName.c_str());
-            if (!EnablePplProducer(g_Config.enabled, g_Config.targetExeName)) {
+            if (!EnablePplProducer(true, g_Config.targetExeName)) {
                 LOG_A(LOG_ERROR, "Manager: Failed to enable PPL producer");
                 return FALSE;
             }
