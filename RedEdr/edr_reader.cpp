@@ -102,8 +102,6 @@ std::string EdrReader::GetDefenderEventsSince(const std::wstring& isoTime)
     EvtClose(hResults);
 
     allEvents += "</Events>";
-
-	printf("%s", allEvents.c_str());
     return allEvents;
 }
 
