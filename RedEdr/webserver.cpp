@@ -121,8 +121,12 @@ bool StartWithExplorer(std::string programPath) {
 }
 
 
-BOOL ExecMalware(std::string filename, std::string filedata) {
-    std::string filepath = "C:\\RedEdr\\data\\" + filename;
+BOOL ExecMalware(std::string filename, std::string filedata, std::string path) {
+    // make sure it ends in a backslash
+    if (!path.empty() && path.back() != '\\') {
+        path += '\\';
+    }
+    std::string filepath = path + filename;
     std::ofstream ofs(filepath, std::ios::binary);
     if (ofs) {
         ofs.write(filedata.data(), filedata.size());
@@ -367,7 +371,20 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                     res.set_content(error_response.dump(), "application/json");
                     return;
                 }
-                BOOL ret = ExecMalware(filename, file.content);
+
+                // path
+                std::string path;
+                if (req.has_file("path")) {
+                    auto path_field = req.get_file_value("path");
+                    path = path_field.content;
+                }
+                // Default path if not provided
+                else {
+                    path = "C:\\RedEdr\\data\\";
+                }
+				LOG_A(LOG_INFO, "Webserver: Executing malware: %s in path %s", filename.c_str(), path.c_str());
+
+                BOOL ret = ExecMalware(filename, file.content, path);
                 if (!ret) {
                     res.status = 500;
                     json error_response = {
