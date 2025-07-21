@@ -29,6 +29,7 @@
  */
 
 
+// Unused atm
 void ResetEverything() {
     g_EventAggregator.ResetData();
     g_EventProcessor.ResetData();

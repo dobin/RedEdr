@@ -8,6 +8,7 @@ public:
 	std::string GetOutput();
 	bool Capture();
 	void StartReaderThread();
+	bool KillLastExec();
 
 private:
 	HANDLE hStdOutRead = nullptr;

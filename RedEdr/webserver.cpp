@@ -192,6 +192,9 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
 
     // Recordings
+    svr.Get("/api/save", [](const httplib::Request&, httplib::Response& res) {
+        g_EventProcessor.SaveToFile();
+    });
     svr.Get("/api/recordings", [](const httplib::Request&, httplib::Response& res) {
         try {
             res.set_content(getRecordingsAsJson(), "application/json; charset=UTF-8");
@@ -235,38 +238,6 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             {"num_process_cache", g_ProcessResolver.GetCacheCount()}
         };
         res.set_content(stats.dump(), "application/json; charset=UTF-8");
-    });
-    svr.Get("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
-        json response = { {"trace", g_Config.targetExeName }};
-        res.set_content(response.dump(), "application/json");
-    });
-    svr.Post("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
-        try {
-            auto data = json::parse(req.body);
-            if (data.contains("trace")) {
-                std::string traceName = data["trace"].get<std::string>();
-				LOG_A(LOG_INFO, "Trace target: %s", traceName.c_str());
-				g_Config.targetExeName = traceName;
-                json response = { {"result", "ok"} };
-                res.set_content(response.dump(), "application/json");
-            }
-            else {
-                json error_response = { {"error", "No 'trace' key provided"} };
-                res.status = 400;
-                res.set_content(error_response.dump(), "application/json");
-            }
-        }
-        catch (const json::parse_error& e) {
-            json error_response = { {"error", "Invalid JSON data: " + std::string(e.what())}};
-            res.status = 400;
-            res.set_content(error_response.dump(), "application/json");
-        }
-    });
-    svr.Get("/api/save", [](const httplib::Request&, httplib::Response& res) {
-        g_EventProcessor.SaveToFile();
-    });
-    svr.Get("/api/reset", [](const httplib::Request&, httplib::Response& res) {
-        ResetEverything();
     });
 
     // Logs
@@ -349,7 +320,37 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         res.set_content(response.dump(), "application/json");
     });
 
-    // Execute
+    // Functions
+    svr.Get("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
+        json response = { {"trace", g_Config.targetExeName } };
+        res.set_content(response.dump(), "application/json");
+    });
+    svr.Post("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
+        try {
+            auto data = json::parse(req.body);
+            if (data.contains("trace")) {
+                std::string traceName = data["trace"].get<std::string>();
+                LOG_A(LOG_INFO, "Trace target: %s", traceName.c_str());
+                g_Config.targetExeName = traceName;
+                json response = { {"result", "ok"} };
+                res.set_content(response.dump(), "application/json");
+            }
+            else {
+                json error_response = { {"error", "No 'trace' key provided"} };
+                res.status = 400;
+                res.set_content(error_response.dump(), "application/json");
+            }
+        }
+        catch (const json::parse_error& e) {
+            json error_response = { {"error", "Invalid JSON data: " + std::string(e.what())} };
+            res.status = 400;
+            res.set_content(error_response.dump(), "application/json");
+        }
+    });
+    svr.Post("/api/reset", [](const httplib::Request&, httplib::Response& res) {
+        g_EventAggregator.ResetData();
+        g_EventProcessor.ResetData();
+    });
     if (g_Config.enable_remote_exec) {
         svr.Post("/api/exec", [](const httplib::Request& req, httplib::Response& res) {
             try {
@@ -397,6 +398,19 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                     { "message", "Unknown server error" }
                 };
                 res.set_content(error_response.dump(), "application/json");
+            }
+        });
+
+        svr.Post("/api/kill", [](const httplib::Request&, httplib::Response& res) {
+            bool ret = g_Executor.KillLastExec();
+            if (!ret) {
+                res.status = 500;
+                json error_response = {
+                    { "status", "error" },
+                    { "message", "Failed to kill last execution" }
+                };
+                res.set_content(error_response.dump(), "application/json");
+                return;
             }
         });
     }

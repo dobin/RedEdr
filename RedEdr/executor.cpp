@@ -206,3 +206,19 @@ bool Executor::Start(const wchar_t* programPath) {
         return StartAsUser(programPath);
     }
 }
+
+
+bool Executor::KillLastExec() {
+    if (pihProcess == nullptr) {
+        LOG_A(LOG_WARNING, "No process to kill, pihProcess is NULL");
+        return false;
+    }
+    if (!TerminateProcess(pihProcess, 1)) {
+        LOG_A(LOG_ERROR, "Failed to terminate process, error: %d", GetLastError());
+        return false;
+    }
+    CloseHandle(pihProcess);
+    pihProcess = nullptr;
+    capturedOutput.clear();
+    return true;
+}
