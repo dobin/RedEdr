@@ -38,6 +38,8 @@ HANDLE webserver_thread;
 httplib::Server svr;
 int webserver_port;
 
+bool in_use = false;
+
 
 std::wstring StripToFirstDot(const std::wstring& input) {
     size_t dot_position = input.find(L'.');
@@ -355,6 +357,36 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         g_EventAggregator.ResetData();
         g_EventProcessor.ResetData();
     });
+
+    // Lock management endpoints
+    svr.Post("/api/lock/acquire", [](const httplib::Request&, httplib::Response& res) {
+        if (in_use) {
+            res.status = 409; // Conflict
+            json error_response = {
+                { "status", "error" },
+                { "message", "Resource is already in use" },
+            };
+            res.set_content(error_response.dump(), "application/json");
+        } else {
+            in_use = true;
+            // Returns 200 OK
+        }
+    });
+    svr.Post("/api/lock/release", [](const httplib::Request&, httplib::Response& res) {
+        if (! in_use) {
+            // We dont really care
+            LOG_A(LOG_INFO, "Release lock even tho it was not aquired");
+        }
+        in_use = false;
+        // Returns 200 OK
+    });
+    svr.Get("/api/lock/status", [](const httplib::Request&, httplib::Response& res) {
+        json response = {
+            { "in_use", in_use }
+        };
+        res.set_content(response.dump(), "application/json");
+    });
+
     if (g_Config.enable_remote_exec) {
         svr.Post("/api/exec", [](const httplib::Request& req, httplib::Response& res) {
             try {
