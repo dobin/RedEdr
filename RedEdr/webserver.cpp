@@ -122,29 +122,26 @@ bool StartWithExplorer(std::string programPath) {
     return true;
 }
 
+BOOL WriteMalware(std::string filepath, std::string filedata) {
+	std::ofstream ofs(filepath, std::ios::binary);
+	if (ofs) {
+		ofs.write(filedata.data(), filedata.size());
+		ofs.close();
+		return TRUE;
+	}
+	else {
+		LOG_A(LOG_ERROR, "Could not write file %s", filepath.c_str());
+		return FALSE;
+	}
+}
 
-BOOL ExecMalware(std::string filename, std::string filedata, std::string path) {
-    // make sure it ends in a backslash
-    if (!path.empty() && path.back() != '\\') {
-        path += '\\';
-    }
-    std::string filepath = path + filename;
-    std::ofstream ofs(filepath, std::ios::binary);
-    if (ofs) {
-        ofs.write(filedata.data(), filedata.size());
-        ofs.close();
-    }
-    else {
-        LOG_A(LOG_ERROR, "Could not write file");
-        return FALSE;
-    }
-    
+
+BOOL ExecMalware(std::string filepath) {
     // Fix memory leak by storing pointer and cleaning up
     wchar_t* wideFilepath = string2wcharAlloc(filepath.c_str());
     g_EdrReader.Start();
     BOOL result = g_Executor.Start(wideFilepath);
     delete[] wideFilepath;
-    
     return result;
 }
 
@@ -414,10 +411,33 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                 else {
                     path = "C:\\RedEdr\\data\\";
                 }
+                if (!path.empty() && path.back() != '\\') {
+                    path += '\\';
+                }
+				std::string filepath = path + filename;
 				LOG_A(LOG_INFO, "Webserver: Executing malware: %s in path %s", filename.c_str(), path.c_str());
-
-                BOOL ret = ExecMalware(filename, file.content, path);
+                if (! WriteMalware(filepath, file.content)) {
+					LOG_A(LOG_ERROR, "Webserver: Failed to write malware to %s", filepath.c_str());
+					res.status = 500;
+					json error_response = {
+						{ "status", "error" },
+						{ "message", "Failed to write malware file" }
+					};
+					res.set_content(error_response.dump(), "application/json");
+					return;
+                }
+                BOOL ret = ExecMalware(filepath);
                 if (!ret) {
+					if (GetLastError() == ERROR_VIRUS_INFECTED) {
+						LOG_A(LOG_INFO, "Webserver: Malware execution blocked by antivirus");
+						json response = {
+                            { "status", "virus" },
+                            { "pid", 0, },
+						};
+						res.set_content(response.dump(), "application/json");
+						return;
+					}
+
                     res.status = 500;
                     json error_response = {
                         { "status", "error" },
@@ -428,7 +448,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                 }
                 json response = { 
                     { "status", "ok" },
-                    { "pid", 0 },
+                    { "pid", 0, },
                 };
                 res.set_content(response.dump(), "application/json");
             } catch (const std::exception& e) {
