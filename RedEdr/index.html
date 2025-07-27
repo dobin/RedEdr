@@ -149,7 +149,9 @@
         }
 
         async function sendReset() {
-            const response = await fetch('/api/reset');
+            const response = await fetch('/api/reset', {
+                method: 'POST'
+            });
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
