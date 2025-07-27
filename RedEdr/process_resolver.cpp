@@ -35,6 +35,7 @@ std::mutex cache_mutex;
 
 
 ProcessResolver::ProcessResolver() {
+	cache.reserve(2000); // Preallocate space for 1000 processes
 }
 
 
