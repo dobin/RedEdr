@@ -6,8 +6,6 @@ class Executor {
 public:
 	bool WriteMalware(std::string filepath, std::string filedata);
 	bool Start(std::string filepath);
-
-	bool Start(std::string filepath);
 	bool StartAsSystem(const wchar_t* programPath);
 	bool StartAsUser(const wchar_t* programPath);
 	bool Stop();
