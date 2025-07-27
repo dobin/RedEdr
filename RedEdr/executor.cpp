@@ -10,6 +10,7 @@
 #include "logging.h"
 #include "executor.h"
 #include "privileges.h"
+#include "utils.h"
 
 Executor g_Executor;
 
@@ -42,7 +43,7 @@ bool Executor::Capture() {
 
     LOG_A(LOG_INFO, "CapturedOutput: start");
 
-    while (true) {
+    while (!stopReading.load()) {
         // Check if there's data to read
         if (!PeekNamedPipe(hStdOutRead, nullptr, 0, nullptr, &availableBytes, nullptr)) {
             //LOG_A(LOG_ERROR, "PeekNamedPipe failed, error: %d", GetLastError());
@@ -81,10 +82,18 @@ bool Executor::Capture() {
 
 
 void Executor::StartReaderThread() {
-    std::thread readerThread([this]() {
+    stopReading.store(false);
+    readerThread = std::thread([this]() {
         Capture();
         });
-    readerThread.detach();
+}
+
+
+void Executor::StopReaderThread() {
+    stopReading.store(true);
+    if (readerThread.joinable()) {
+        readerThread.join();
+    }
 }
 
 
@@ -198,17 +207,55 @@ bool Executor::StartAsUser(const wchar_t* programPath) {
 }
 
 
-bool Executor::Start(const wchar_t* programPath) {
-    if (RunsAsSystem()) {
-		return StartAsSystem(programPath);
+bool Executor::WriteMalware(std::string filepath, std::string filedata) {
+    std::ofstream ofs(filepath, std::ios::binary);
+    if (ofs) {
+        ofs.write(filedata.data(), filedata.size());
+        ofs.close();
+        malwareFilePath = filepath; // Store the filepath for later deletion
+        return true;
     }
     else {
-        return StartAsUser(programPath);
+        LOG_A(LOG_ERROR, "Could not write file %s", filepath.c_str());
+        return false;
     }
 }
 
 
+bool Executor::Start(std::string filepath) {
+    wchar_t* programPath = string2wcharAlloc(filepath.c_str());
+    bool ret = false;
+
+    if (RunsAsSystem()) {
+		ret = StartAsSystem(programPath);
+    }
+    else {
+        ret = StartAsUser(programPath);
+    }
+
+    delete[] programPath;
+    return ret;
+}
+
+
+DWORD Executor::getLastPid() {
+    if (pihProcess == nullptr) {
+        LOG_A(LOG_WARNING, "No process is currently running, pihProcess is NULL");
+        return 0;
+    }
+    DWORD pid = GetProcessId(pihProcess);
+    if (pid == 0) {
+        LOG_A(LOG_ERROR, "Failed to get process ID, error: %d", GetLastError());
+    }
+    return pid;
+}
+
+
 bool Executor::KillLastExec() {
+    // Stop reader thread
+    StopReaderThread();
+
+    // Kill process
     if (pihProcess == nullptr) {
         LOG_A(LOG_WARNING, "No process to kill, pihProcess is NULL");
         return false;
@@ -220,5 +267,20 @@ bool Executor::KillLastExec() {
     CloseHandle(pihProcess);
     pihProcess = nullptr;
     capturedOutput.clear();
+
+    // Delete the malware file if it exists
+    if (!malwareFilePath.empty()) {
+        if (std::filesystem::exists(malwareFilePath)) {
+            try {
+                std::filesystem::remove(malwareFilePath);
+                LOG_A(LOG_INFO, "Successfully deleted malware file: %s", malwareFilePath.c_str());
+            }
+            catch (const std::filesystem::filesystem_error& ex) {
+                LOG_A(LOG_ERROR, "Failed to delete malware file %s: %s", malwareFilePath.c_str(), ex.what());
+            }
+        }
+        malwareFilePath.clear();
+    }
+
     return true;
 }

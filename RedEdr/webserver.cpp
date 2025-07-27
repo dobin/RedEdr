@@ -95,57 +95,6 @@ std::string getRecordingsAsJson() {
     }
 }
 
-
-bool StartWithExplorer(std::string programPath) {
-    std::string fullpath = "explorer.exe " + programPath;
-    wchar_t* commandLine = string2wcharAlloc(fullpath);
-
-    LOG_W(LOG_INFO, L"Executing malware: %s", commandLine);
-    
-    // Start the process
-    STARTUPINFO si = { sizeof(STARTUPINFO) };
-    PROCESS_INFORMATION pi = { 0 };
-    BOOL result = CreateProcessW(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
-    
-    // Clean up allocated memory
-    delete[] commandLine;
-    
-    if (!result) {
-        wprintf(L"Failed to start %s with explorer.exe. Error: %d\n", 
-            L"process", GetLastError());
-        return false;
-    }
-
-    // Clean up
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-    return true;
-}
-
-BOOL WriteMalware(std::string filepath, std::string filedata) {
-	std::ofstream ofs(filepath, std::ios::binary);
-	if (ofs) {
-		ofs.write(filedata.data(), filedata.size());
-		ofs.close();
-		return TRUE;
-	}
-	else {
-		LOG_A(LOG_ERROR, "Could not write file %s", filepath.c_str());
-		return FALSE;
-	}
-}
-
-
-BOOL ExecMalware(std::string filepath) {
-    // Fix memory leak by storing pointer and cleaning up
-    wchar_t* wideFilepath = string2wcharAlloc(filepath.c_str());
-    g_EdrReader.Start();
-    BOOL result = g_Executor.Start(wideFilepath);
-    delete[] wideFilepath;
-    return result;
-}
-
-
 DWORD WINAPI WebserverThread(LPVOID param) {
     // Static
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
@@ -415,8 +364,10 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                     path += '\\';
                 }
 				std::string filepath = path + filename;
-				LOG_A(LOG_INFO, "Webserver: Executing malware: %s in path %s", filename.c_str(), path.c_str());
-                if (! WriteMalware(filepath, file.content)) {
+
+                // Write the malware
+				LOG_A(LOG_INFO, "Webserver: writing malware: %s in path %s", filename.c_str(), path.c_str());
+                if (! g_Executor.WriteMalware(filepath, file.content)) {
 					LOG_A(LOG_ERROR, "Webserver: Failed to write malware to %s", filepath.c_str());
 					res.status = 500;
 					json error_response = {
@@ -426,13 +377,20 @@ DWORD WINAPI WebserverThread(LPVOID param) {
 					res.set_content(error_response.dump(), "application/json");
 					return;
                 }
-                BOOL ret = ExecMalware(filepath);
+
+                // Activate EDR WindowsEvent reader
+                g_EdrReader.Start();
+
+                // Start the malware
+                LOG_A(LOG_INFO, "Webserver: Executing malware: %s in path %s", filename.c_str(), path.c_str());
+                BOOL ret = g_Executor.Start(filepath);
+                DWORD pid = g_Executor.getLastPid();
                 if (!ret) {
 					if (GetLastError() == ERROR_VIRUS_INFECTED) {
 						LOG_A(LOG_INFO, "Webserver: Malware execution blocked by antivirus");
 						json response = {
                             { "status", "virus" },
-                            { "pid", 0, },
+                            { "pid", pid, },
 						};
 						res.set_content(response.dump(), "application/json");
 						return;
@@ -448,7 +406,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                 }
                 json response = { 
                     { "status", "ok" },
-                    { "pid", 0, },
+                    { "pid", pid, },
                 };
                 res.set_content(response.dump(), "application/json");
             } catch (const std::exception& e) {
