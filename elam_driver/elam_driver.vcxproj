@@ -87,7 +87,8 @@ copy "$(TargetDir)$(TargetFileName)" C:\RedEdr</Command>
       <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
     </DriverSign>
     <PostBuildEvent>
-      <Command>powershell -ep bypass -f "$(SolutionDir)sign_file.ps1" "$(SolutionDir)rededr_ppl.pfx" "$(TargetDir)$(TargetFileName)"</Command>
+      <Command>powershell -ep bypass -f "$(SolutionDir)sign_file.ps1" "$(SolutionDir)rededr_ppl.pfx" "$(TargetDir)$(TargetFileName)"
+copy "$(TargetDir)$(TargetFileName)" C:\RedEdr</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Sign</Message>
