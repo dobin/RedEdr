@@ -29,12 +29,12 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
             continue;
         }
         while (keep_running) {
+			LOG_A(LOG_INFO, "Control: Client connected, waiting for commands...");
             memset(buffer, 0, sizeof(buffer));
             if (!pipeServer.Receive(buffer, PPL_CONFIG_LEN)) {
                 //LOG_A(LOG_ERROR, "Error waiting for RedEdr.exe config");
                 break;
             }
-
             //if (wcscmp(buffer, L"start") == 0) {
             if (strstr(buffer, "start:") != NULL) {
                 char* token = NULL, * context = NULL;

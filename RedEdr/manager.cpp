@@ -98,7 +98,7 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
                 return FALSE;
             }
         }
-        if (g_Config.do_hook || g_Config.debug_dllreader || g_Config.do_etwti) {
+        if (g_Config.do_hook || g_Config.debug_dllreader) {
             // Hook: Start DLL Reader Thread
             LOG_A(LOG_INFO, "Manager: InjectedDll reader thread start");
             if (!DllReaderInit(threads)) {

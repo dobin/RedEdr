@@ -28,7 +28,7 @@ void ShutdownService() {
     // Perform necessary cleanup before stopping
     StopControl();
     ShutdownEtwtiReader();
-    // Note: objcache doesn't have cleanup function, but that's okay for service shutdown
+    clean_obj(); // Clean up object cache, target name, and mutex
 
     // Stopped
     g_ServiceStatus.dwCurrentState = SERVICE_STOPPED;

@@ -376,7 +376,8 @@ std::vector<ModuleSection> EnumerateModuleSections(HANDLE hProcess, LPVOID modul
     for (const auto& section: sectionHeaders) {
         // Validate section data
         if (section.VirtualAddress > 0x10000000) {  // Reasonable upper limit
-            LOG_A(LOG_WARNING, "ProcessQuery: Invalid section virtual address: 0x%lx", section.VirtualAddress);
+            // Happens often
+            //LOG_A(LOG_WARNING, "ProcessQuery: Invalid section virtual address: 0x%lx", section.VirtualAddress);
             continue;
         }
         

@@ -140,7 +140,7 @@ void PplReaderClientThread(PipeServer* pipeServer) {
             }
             for (const auto& result : results) {
                 if (!result.empty()) {
-                    LOG_A(LOG_DEBUG, "PplReader: Received PPL event: %s", result.c_str());
+                    //LOG_A(LOG_DEBUG, "PplReader: Received PPL event: %s", result.c_str());
                     g_EventAggregator.NewEvent(result);
                 }
             }

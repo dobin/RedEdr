@@ -15,3 +15,4 @@ struct my_hashmap* get_obj(int pid);
 struct my_hashmap* add_obj(int pid, int observe);
 void objcache_init();
 struct my_hashmap* has_obj(int key);
+void clean_obj();
