@@ -284,6 +284,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                 std::string traceName = data["trace"].get<std::string>();
                 LOG_A(LOG_INFO, "Trace target: %s", traceName.c_str());
                 g_Config.targetExeName = traceName;
+                ManagerReload();
                 json response = { {"result", "ok"} };
                 res.set_content(response.dump(), "application/json");
             }

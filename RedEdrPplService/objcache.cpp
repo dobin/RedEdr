@@ -83,7 +83,8 @@ struct my_hashmap* get_obj(int pid) {
                 }
             }
             else {
-                LOG_W(LOG_INFO, L"Objcache: Failed to get executable path: %lu\n", GetLastError());
+                // Can happen often
+                //LOG_W(LOG_INFO, L"Objcache: Failed to get executable path: %lu\n", GetLastError());
             }
         }
         CloseHandle(hProcess);
