@@ -217,21 +217,16 @@ static void InitializeFileLogging() {
     std::lock_guard<std::mutex> lock(g_logMutex);
     if (g_logInitialized) return; // Double-check after acquiring lock
     
-    // Open log file for append
+    // Open log file for write (this will create new or truncate existing)
     g_logFile = CreateFileA(
         "C:\\rededr\\pplservice.log",
         GENERIC_WRITE,
         FILE_SHARE_READ,
         NULL,
-        OPEN_ALWAYS,
+        CREATE_ALWAYS,  // This will create new file or truncate existing
         FILE_ATTRIBUTE_NORMAL,
         NULL
     );
-    
-    if (g_logFile != INVALID_HANDLE_VALUE) {
-        // Move to end of file for append
-        SetFilePointer(g_logFile, 0, NULL, FILE_END);
-    }
     
     g_logInitialized = true;
 }
