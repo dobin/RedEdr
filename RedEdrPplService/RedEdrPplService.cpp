@@ -126,9 +126,8 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 
     LOG_W(LOG_INFO, L"ServiceMain: Exiting main loop");
     
-    if (!g_ServiceStopping) {
-        ShutdownService();
-    }
+    // Always call ShutdownService to properly clean up and set service status
+    ShutdownService();
 }
 
 
