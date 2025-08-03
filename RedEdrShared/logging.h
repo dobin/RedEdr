@@ -16,6 +16,10 @@
 std::vector <std::string> GetLogs();
 #endif
 
+#if defined OUTPUT_PPL
+void CleanupFileLogging();
+#endif
+
 void LOG_W(int verbosity, const wchar_t* format, ...);
 void LOG_A(int verbosity, const char* format, ...);
 

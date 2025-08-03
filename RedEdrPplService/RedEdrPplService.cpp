@@ -30,6 +30,8 @@ void ShutdownService() {
     ShutdownEtwtiReader();
     clean_obj(); // Clean up object cache, target name, and mutex
 
+    CleanupFileLogging(); // Clean up log file handle
+
     // Stopped
     g_ServiceStatus.dwCurrentState = SERVICE_STOPPED;
     SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
@@ -117,7 +119,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
         
         // If we get here, ETW reader has stopped, check if we should continue
         if (!g_ServiceStopping) {
-            LOG_W(LOG_INFO, L"ServiceMain: ETW reader stopped, waiting before restart...");
+            LOG_W(LOG_INFO, L"ServiceMain: ETWTI reader stopped, waiting before restart...");
             Sleep(5000); // Wait before retry to avoid rapid restart loop
         }
     }
