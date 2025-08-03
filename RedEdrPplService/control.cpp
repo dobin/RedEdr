@@ -68,6 +68,7 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                 LOG_A(LOG_INFO, "Control: Received command: shutdown");
                 //rededr_remove_service();  // attempt to remove service
                 keep_running = FALSE; // Signal thread to stop
+                g_ServiceStopping = TRUE; // Signal main service loop to stop
                 ShutdownEtwtiReader(); // also makes main return
                 break;
             }
