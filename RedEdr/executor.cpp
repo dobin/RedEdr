@@ -56,7 +56,7 @@ bool Executor::Capture() {
             if (!GetExitCodeProcess(pihProcess, &exitCode) || exitCode != STILL_ACTIVE) {
                 break; // Process has exited
             }
-            Sleep(50); // Wait a bit before checking again
+            Sleep(100); // Wait a bit before checking again
             continue;
         }
 
@@ -267,6 +267,8 @@ bool Executor::KillLastExec() {
     CloseHandle(pihProcess);
     pihProcess = nullptr;
     capturedOutput.clear();
+
+	Sleep(1000); // Give some time for the process to terminate
 
     // Delete the malware file if it exists
     if (!malwareFilePath.empty()) {

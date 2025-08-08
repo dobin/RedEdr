@@ -40,7 +40,7 @@ std::vector<std::string> error_messages;
 std::mutex error_mutex;
 
 
-std::vector <std::string> GetLogs() {
+std::vector <std::string> GetAgentLogs() {
     return error_messages;
 }
 

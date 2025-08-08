@@ -18,9 +18,12 @@
 
 BOOL enabled_consumer = FALSE;
 
+unsigned int events_all = 0;
+unsigned int events_processed = 0;
+
 
 void enable_consumer(BOOL e) {
-    LOG_W(LOG_INFO, L"Consumer: Enable: %d", e);
+    LOG_W(LOG_INFO, L"Handler: Enable: %d", e);
     enabled_consumer = e;
 }
 
@@ -30,6 +33,10 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
     krabs::parser parser(schema);
 
     // This function should be high performance, or we lose events.
+    events_all++;
+    if (events_all == 10) {
+        LOG_W(LOG_INFO, L"Handler: Processed %u ETW-TI events so far", events_processed);
+    }
 
     if (!enabled_consumer) {
         return;
@@ -40,6 +47,11 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
     struct my_hashmap* obj = get_obj(processId);
     if (!obj->value) {
         return;
+    }
+
+    events_processed++;
+    if (events_processed == 10) {
+        LOG_W(LOG_INFO, L"Handler: Processed %u accepted ETW-TI events so far", events_processed);
     }
 
 	std::string json_retw = KrabsEtwEventToJsonStr(record, schema);

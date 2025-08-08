@@ -109,15 +109,18 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
 
         // Load: ETW-TI
         if (g_Config.do_etwti) {
-            if (!InitPplService()) {
-                LOG_A(LOG_ERROR, "Manager: Failed to initialize PPL service");
-                return FALSE;
-            }
-            
             // Start PPL Reader Thread for dedicated data pipe
             LOG_A(LOG_INFO, "Manager: PPL reader thread start");
             if (!PplReaderInit(threads)) {
                 LOG_A(LOG_ERROR, "Manager: Failed to initialize PPL reader");
+                return FALSE;
+            }
+
+            // Wait till so the ppl reader pipe is ready
+            Sleep(1000);
+
+            if (!InitPplService()) {
+                LOG_A(LOG_ERROR, "Manager: Failed to initialize PPL service");
                 return FALSE;
             }
         }
@@ -130,15 +133,6 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
             }
         }
 
-        Sleep(1000); // For good measure
-
-        // ETW-TI: Enable
-        if (g_Config.do_etwti) {
-            if (!EnablePplProducer(TRUE, g_Config.targetExeName)) {
-                LOG_A(LOG_ERROR, "Manager: Failed to enable ETW-TI");
-                return FALSE;  // Make this a hard failure for consistency
-            }
-        }
         // Kernel: Enable
         if (g_Config.do_hook) {
             LOG_A(LOG_INFO, "Manager: Kernel module enable collection");
@@ -149,7 +143,7 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
         }
 
         // Necessary? (wait for kernel and ETW-TI to connect)
-        Sleep(1000);
+        //Sleep(1000);
 
         // Populate process cache with all currently running processes
         LOG_A(LOG_INFO, "Manager: Populating process cache with all running processes");

@@ -95,6 +95,23 @@ std::string getRecordingsAsJson() {
     }
 }
 
+
+std::vector<std::string> GetPplLogs() {
+    std::vector<std::string> logs;
+    std::ifstream file("C:\\RedEdr\\pplservice.log");
+    if (!file.is_open()) {
+        return logs;
+    }
+    std::string line;
+    while (std::getline(file, line)) {
+        if (!line.empty()) {
+            logs.push_back(line);
+        }
+    }
+    file.close();
+    return logs;
+}
+
 DWORD WINAPI WebserverThread(LPVOID param) {
     // Static
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
@@ -235,7 +252,17 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             "Permissions: Enabled PRIVILEGED & DEBUG",
             ]
         */
-        json response = GetLogs(); // List of srings
+        std::vector agentLogs = GetAgentLogs(); // List of srings
+        std::vector pplLogs = GetPplLogs();
+
+		// return both logs in a single array
+		json response = json::array();
+		for (const auto& log : agentLogs) {
+			response.push_back(log);
+		}
+		for (const auto& log : pplLogs) {
+			response.push_back(log);
+		}
         res.set_content(response.dump(), "application/json");
     });
     svr.Get("/api/logs/execution", [](const httplib::Request& req, httplib::Response& res) {

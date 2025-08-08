@@ -23,50 +23,39 @@ BOOL InstallPplService();
 BOOL InstallElamCertPpl();
 
 
-BOOL EnablePplProducer(BOOL e, std::string targetName) {
-    char buffer[PPL_CONFIG_LEN] = { 0 };
-
+BOOL ConnectPplService() {
     if (!pipeClient.Connect(PPL_SERVICE_PIPE_NAME)) {
         LOG_A(LOG_ERROR, "ETW-TI: Error connecting to RedEdrPplService pipe: error code %ld", GetLastError());
         LOG_A(LOG_ERROR, "ETW-TI: Is RedEdrPplService running?");
         LOG_A(LOG_ERROR, "ETW-TI:   (requires self-signed kernel and elam driver for ppl)");
         return FALSE;
     }
+	return TRUE;
+}
+
+
+BOOL EnablePplProducer(BOOL e, std::string targetName) {
+    char buffer[PPL_CONFIG_LEN] = { 0 };
+
+    // Validate target name length to prevent buffer overflow
+    if (targetName.length() > (PPL_CONFIG_LEN - 10)) { // Reserve space for "start:" prefix
+        LOG_A(LOG_ERROR, "ETW-TI: Target name too long: %zu characters", targetName.length());
+        return FALSE;
+    }
+        
+    int result = sprintf_s(buffer, PPL_CONFIG_LEN, "start:%s", targetName.c_str());
+    if (result < 0) {
+        LOG_A(LOG_ERROR, "ETW-TI: Failed to format start command");
+        return FALSE;
+    }
 
     // Send enable/disable via pipe to PPL service
-    if (e) {
-        // Validate target name length to prevent buffer overflow
-        if (targetName.length() > (PPL_CONFIG_LEN - 10)) { // Reserve space for "start:" prefix
-            LOG_A(LOG_ERROR, "ETW-TI: Target name too long: %zu characters", targetName.length());
-            return FALSE;
-        }
-        
-        int result = sprintf_s(buffer, PPL_CONFIG_LEN, "start:%s", targetName.c_str());
-        if (result < 0) {
-            LOG_A(LOG_ERROR, "ETW-TI: Failed to format start command");
-            return FALSE;
-        }
-        
-        if (!pipeClient.Send(buffer)) {
-            LOG_A(LOG_INFO, "ETW-TI: Error sending: %s to ppl service", buffer);
-            return FALSE;
-        }
-        LOG_A(LOG_INFO, "ETW-TI: ppl reader: Enabled");
+    if (!pipeClient.Send(buffer)) {
+        LOG_A(LOG_INFO, "ETW-TI: Error sending: %s to ppl service", buffer);
+        return FALSE;
     }
-    else {
-        int result = sprintf_s(buffer, PPL_CONFIG_LEN, "stop");
-        if (result < 0) {
-            LOG_A(LOG_ERROR, "ETW-TI: Failed to format stop command");
-            return FALSE;
-        }
-        
-        if (!pipeClient.Send(buffer)) {
-            return FALSE;
-        }
-        LOG_A(LOG_INFO, "ETW-TI: ppl reader: Disabled");
-    }
+    LOG_A(LOG_INFO, "ETW-TI: ppl reader: Enabled");
 
-    pipeClient.Disconnect();
     return TRUE;
 }
 
@@ -86,18 +75,17 @@ BOOL InitPplService() {
         LOG_A(LOG_WARNING, "ETW-TI: Attempting to start ppl service");
         InstallElamCertPpl(); // have to do this upon reboot
         StartPplService();
-        Sleep(500);  // wait for it to start
+        Sleep(1000);  // wait for it to start
     }
+	if (!ConnectPplService()) {
+		LOG_A(LOG_ERROR, "ETW-TI: Failed to connect to PPL service pipe");
+		return FALSE;
+	}
     return TRUE;
 }
 
 
 BOOL ShutdownPplService() {
-    PipeClient pipeClient;
-    if (!pipeClient.Connect(PPL_SERVICE_PIPE_NAME)) {
-        LOG_A(LOG_ERROR, "ETW-TI: Error creating named pipe: %ld", GetLastError());
-        return FALSE;
-    }
     const char* s = "shutdown";
     if (!pipeClient.Send((char*)s)) {
         LOG_A(LOG_ERROR, "ETW-TI: Error writing to named pipe: %ld", GetLastError());

@@ -19,14 +19,6 @@ BOOL ConnectEmitterPipe() {
             PPL_DATA_PIPE_NAME, GetLastError());
         return FALSE;
     }
-
-    // Retrieve config (first packet)
-    // this is the only read for this pipe
-    char buffer[PPL_CONFIG_LEN];
-    if (pipeClient.Receive(buffer, PPL_CONFIG_LEN)) {
-        LOG_W(LOG_INFO, L"Emitter: Received config from RedEdr: %hs", buffer);
-    }
-
     return TRUE;
 }
 

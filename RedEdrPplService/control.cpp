@@ -28,17 +28,25 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
             LOG_A(LOG_ERROR, "Error waiting for RedEdr.exe");
             continue;
         }
+        LOG_A(LOG_INFO, "Control: Client connected");
+        LOG_A(LOG_INFO, "Control: Connect us back to RedEdr");
+        if (!ConnectEmitterPipe()) { // Connect to the RedEdr pipe
+            LOG_A(LOG_ERROR, "Control: Failed to connect to RedEdr pipe");
+            //break; // Exit the loop if connection fails
+        }
+
         while (keep_running) {
-			LOG_A(LOG_INFO, "Control: Client connected, waiting for commands...");
+            LOG_A(LOG_INFO, "Control: Wait for command");
             memset(buffer, 0, sizeof(buffer));
             if (!pipeServer.Receive(buffer, PPL_CONFIG_LEN)) {
                 //LOG_A(LOG_ERROR, "Error waiting for RedEdr.exe config");
                 break;
             }
+
+            LOG_A(LOG_INFO, "Control: Received command: %s", buffer);
             //if (wcscmp(buffer, L"start") == 0) {
             if (strstr(buffer, "start:") != NULL) {
                 char* token = NULL, * context = NULL;
-                LOG_A(LOG_INFO, "Control: Received command: start");
 
                 // should give "start:"
                 token = strtok_s(buffer, ":", &context);
@@ -50,7 +58,6 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                         wchar_t* target_name = char2wcharAlloc(token);
                         if (target_name != NULL) {
                             set_target_name(target_name);
-                            ConnectEmitterPipe(); // Connect to the RedEdr pipe
                             enable_consumer(TRUE);
                             free(target_name); // Free allocated memory
                         } else {
@@ -59,11 +66,11 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                     }
                 }
             }
-            else if (strstr(buffer, "stop") != NULL) {
-                LOG_A(LOG_INFO, "Control: Received command: stop");
-                enable_consumer(FALSE);
-                DisconnectEmitterPipe(); // Disconnect the RedEdr pipe
-            }
+            //else if (strstr(buffer, "stop") != NULL) {
+            //    LOG_A(LOG_INFO, "Control: Received command: stop");
+            //    enable_consumer(FALSE);
+            //    DisconnectEmitterPipe(); // Disconnect the RedEdr pipe
+            //}
             else if (strstr(buffer, "shutdown") != NULL) {
                 LOG_A(LOG_INFO, "Control: Received command: shutdown");
                 //rededr_remove_service();  // attempt to remove service

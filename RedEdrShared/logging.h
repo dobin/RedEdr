@@ -13,7 +13,7 @@
 #include <vector>
 #include <string>
 
-std::vector <std::string> GetLogs();
+std::vector <std::string> GetAgentLogs();
 #endif
 
 #if defined OUTPUT_PPL
