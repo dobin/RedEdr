@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <vector>
 #include <string>
+#include <mutex>
 
 #include "../Shared/common.h"
 
@@ -10,6 +11,12 @@
 class PipeServer {
 public:
 	PipeServer(std::string pipeName, wchar_t* pipePath);
+	~PipeServer(); // Add destructor for proper cleanup
+	
+	// Disable copy constructor and assignment operator to prevent resource issues
+	PipeServer(const PipeServer&) = delete;
+	PipeServer& operator=(const PipeServer&) = delete;
+	
 	BOOL StartAndWaitForClient(BOOL allow_all);
 	BOOL WaitForClient();
 	BOOL Start(BOOL allow_all);
@@ -24,6 +31,7 @@ private:
 	HANDLE hPipe;
 	wchar_t* pipe_path;
 	std::string pipe_name;
+	std::mutex pipe_mutex; // Add mutex for thread safety
 
 	char buffer[DATA_BUFFER_SIZE] = { 0 };
 };
@@ -32,6 +40,12 @@ private:
 class PipeClient {
 public:
 	PipeClient();
+	~PipeClient(); // Add destructor for proper cleanup
+	
+	// Disable copy constructor and assignment operator to prevent resource issues
+	PipeClient(const PipeClient&) = delete;
+	PipeClient& operator=(const PipeClient&) = delete;
+	
 	BOOL Connect(const wchar_t* pipeName);
 	void Disconnect();
 
@@ -40,5 +54,6 @@ public:
 
 private:
 	HANDLE hPipe;
+	std::mutex pipe_mutex; // Add mutex for thread safety
 };
 
