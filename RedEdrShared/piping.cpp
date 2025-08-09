@@ -127,7 +127,7 @@ BOOL PipeServer::Receive(char* buffer, size_t buffer_len) {
     }
     DWORD readLen = static_cast<DWORD>(buffer_len);
     if (!ReadFile(hPipe, buffer, readLen, NULL, NULL)) {
-        //LOG_W(LOG_INFO, L"Piping Server: Error when reading from pipe: %d", GetLastError());
+        LOG_W(LOG_INFO, L"Piping Server: Error when reading from pipe: %d", GetLastError());
         return FALSE;
     }
     return TRUE;

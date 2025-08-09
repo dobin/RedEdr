@@ -39,7 +39,7 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
             LOG_A(LOG_INFO, "Control: Wait for command");
             memset(buffer, 0, sizeof(buffer));
             if (!pipeServer.Receive(buffer, PPL_CONFIG_LEN)) {
-                //LOG_A(LOG_ERROR, "Error waiting for RedEdr.exe config");
+                LOG_A(LOG_ERROR, "Error waiting for RedEdr.exe command");
                 break;
             }
 
@@ -83,6 +83,8 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                 LOG_A(LOG_INFO, "Control: Unknown command: %s", buffer);
             }
         }
+
+		LOG_A(LOG_INFO, "Control: Client disconnected, shutting down pipe");
         pipeServer.Shutdown();
     }
     LOG_A(LOG_INFO, "Control: Finished");

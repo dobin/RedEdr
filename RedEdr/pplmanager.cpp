@@ -86,6 +86,7 @@ BOOL InitPplService() {
 
 
 BOOL ShutdownPplService() {
+	LOG_A(LOG_INFO, "ETW-TI: ShutdownPplService()");
     const char* s = "shutdown";
     if (!pipeClient.Send((char*)s)) {
         LOG_A(LOG_ERROR, "ETW-TI: Error writing to named pipe: %ld", GetLastError());
