@@ -24,7 +24,7 @@ config Config;
 // The pipe to RedEdr.exe
 // Read first message as config,
 // then send all the data
-PipeClient pipeClient;
+PipeClient pipeClient("RedEdrDll Emitter");
 
 typedef enum _MEMORY_INFORMATION_CLASS {
     MemoryBasicInformation

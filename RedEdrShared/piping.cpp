@@ -20,9 +20,9 @@ void LOG_A(int verbosity, const char* format, ...);
  */
 
 
-PipeServer::PipeServer(std::string pipeName, wchar_t *pipePath) {
+PipeServer::PipeServer(std::string pipe_name, wchar_t *pipePath) {
     hPipe = NULL;
-    pipe_name = pipeName;
+    pipe_name = pipe_name;
     pipe_path = pipePath;
 }
 
@@ -41,7 +41,7 @@ BOOL PipeServer::StartAndWaitForClient(BOOL allow_all) {
 
 BOOL PipeServer::Start(BOOL allow_all) {
     if (hPipe != NULL) {
-        LOG_A(LOG_WARNING, "Piping Server: Pipe already started");
+        LOG_A(LOG_WARNING, "PipingSrv %s: Pipe already started", pipe_name.c_str());
         return FALSE;
     }
 
@@ -61,7 +61,9 @@ BOOL PipeServer::Start(BOOL allow_all) {
             &pSD,
             NULL))
         {
-            LOG_A(LOG_ERROR, "Piping Server: Failed to create security descriptor. Error: %lu", GetLastError());
+            LOG_A(LOG_ERROR, "PipingSrv %s: Failed to create security descriptor. Error: %lu", 
+                pipe_name.c_str(),
+                GetLastError());
             return FALSE;
         }
         sa.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -87,7 +89,9 @@ BOOL PipeServer::Start(BOOL allow_all) {
     }
     
     if (hPipe == INVALID_HANDLE_VALUE) {
-        LOG_A(LOG_ERROR, "Piping Server: Error creating named pipe: %ld", GetLastError());
+        LOG_A(LOG_ERROR, "PipingSrv %s: Error creating named pipe: %ld", 
+            pipe_name.c_str(),
+            GetLastError());
         hPipe = NULL;
         return FALSE;
     }
@@ -98,7 +102,8 @@ BOOL PipeServer::Start(BOOL allow_all) {
 
 BOOL PipeServer::WaitForClient() {
     if (hPipe == NULL || hPipe == INVALID_HANDLE_VALUE) {
-        LOG_A(LOG_ERROR, "Piping Server: Invalid pipe handle in WaitForClient");
+        LOG_A(LOG_ERROR, "PipingSrv %s: Invalid pipe handle in WaitForClient",
+            pipe_name.c_str());
         return FALSE;
     }
 
@@ -106,7 +111,9 @@ BOOL PipeServer::WaitForClient() {
     if (! ConnectNamedPipe(hPipe, NULL)) {
 		DWORD err = GetLastError();
         if (err != ERROR_PIPE_CONNECTED) {
-            LOG_A(LOG_ERROR, "Piping Server: Error handling client connection: %ld", err);
+            LOG_A(LOG_ERROR, "PipingSrv %s: Error handling client connection: %ld", 
+                pipe_name.c_str(),
+                err);
             CloseHandle(hPipe);
             hPipe = NULL;
             return FALSE;
@@ -121,23 +128,27 @@ BOOL PipeServer::Send(char* buffer) {
     std::lock_guard<std::mutex> lock(pipe_mutex);
     
     if (hPipe == NULL || hPipe == INVALID_HANDLE_VALUE) {
-        LOG_W(LOG_ERROR, L"Piping Server: Attempt to send to closed pipe");
+        LOG_A(LOG_ERROR, "PipingSrv %s: Attempt to send to closed pipe",
+            pipe_name.c_str());
         return FALSE;
     }
     if (buffer == NULL) {
-        LOG_W(LOG_ERROR, L"Piping Server: Null buffer provided");
+        LOG_A(LOG_ERROR, "PipingSrv %s: Null buffer provided",
+            pipe_name.c_str());
         return FALSE;
     }
     
     size_t buffer_len = strlen(buffer);
     if (buffer_len == 0) {
-        LOG_W(LOG_ERROR, L"Piping Server: Empty buffer provided");
+        LOG_A(LOG_ERROR, "PipingSrv %s: Empty buffer provided",
+            pipe_name.c_str());
         return FALSE;
     }
     
     // Check for potential overflow
     if (buffer_len >= PIPE_BUFFER_SIZE) {
-        LOG_W(LOG_ERROR, L"Piping Server: Buffer too large for pipe");
+        LOG_A(LOG_ERROR, "PipingSrv %s: Buffer too large for pipe",
+            pipe_name.c_str());
         return FALSE;
     }
     
@@ -151,7 +162,8 @@ BOOL PipeServer::Send(char* buffer) {
     
     // Verify all bytes were written
     if (bytesWritten != len) {
-        LOG_W(LOG_ERROR, L"Piping Server: Incomplete write to pipe");
+        LOG_A(LOG_ERROR, "PipingSrv %s: Incomplete write to pipe",
+            pipe_name.c_str());
         return FALSE;
     }
     
@@ -163,17 +175,20 @@ BOOL PipeServer::Receive(char* buffer, size_t buffer_len) {
     std::lock_guard<std::mutex> lock(pipe_mutex);
     
     if (hPipe == NULL || hPipe == INVALID_HANDLE_VALUE) {
-        LOG_W(LOG_ERROR, L"Piping Server: Pipe is not connected");
+        LOG_A(LOG_ERROR, "PipingSrv %s: Pipe is not connected", 
+            pipe_name.c_str());
         return FALSE;
     }
     if (buffer == NULL || buffer_len == 0) {
-        LOG_W(LOG_ERROR, L"Piping Server: Invalid buffer parameters");
+        LOG_A(LOG_ERROR, "PipingSrv %s: Invalid buffer parameters",
+            pipe_name.c_str());
         return FALSE;
     }
     
     // Ensure we don't exceed DWORD limits
     if (buffer_len > MAXDWORD) {
-        LOG_W(LOG_ERROR, L"Piping Server: Buffer size too large");
+        LOG_A(LOG_ERROR, "PipingSrv %s: Buffer size too large",
+            pipe_name.c_str());
         return FALSE;
     }
     
@@ -181,7 +196,9 @@ BOOL PipeServer::Receive(char* buffer, size_t buffer_len) {
     DWORD bytesRead = 0;
     
     if (!ReadFile(hPipe, buffer, readLen, &bytesRead, NULL)) {
-        LOG_W(LOG_INFO, L"Piping Server: Error when reading from pipe: %lu", GetLastError());
+        LOG_A(LOG_INFO, "PipingSrv %s: Error when reading from pipe: %lu", 
+            pipe_name.c_str(),
+            GetLastError());
         return FALSE;
     }
     
@@ -205,7 +222,8 @@ std::vector<std::string> PipeServer::ReceiveBatch() {
     std::vector<std::string> strings;
 
     if (hPipe == NULL || hPipe == INVALID_HANDLE_VALUE) {
-        LOG_A(LOG_ERROR, "Piping: %s: Pipe not connected in ReceiveBatch", pipe_name.c_str());
+        LOG_A(LOG_ERROR, "PipingSrv %s: Pipe not connected in ReceiveBatch", 
+            pipe_name.c_str());
         return strings;
     }
 
@@ -221,10 +239,13 @@ std::vector<std::string> PipeServer::ReceiveBatch() {
     else {
         DWORD error = GetLastError();
         if (error == ERROR_BROKEN_PIPE) {
-            LOG_A(LOG_INFO, "Piping: %s: disconnected", pipe_name.c_str());
+            LOG_A(LOG_INFO, "PipingSrv: %s: disconnected", 
+                pipe_name.c_str());
         }
         else {
-            LOG_A(LOG_ERROR, "Piping: %s: Error reading from named pipe: %lu", pipe_name.c_str(), error);
+            LOG_A(LOG_ERROR, "PipingSrv: %s: Error reading from named pipe: %lu", 
+                pipe_name.c_str(), 
+                error);
         }
         // Close the pipe on any error to prevent further use
         CloseHandle(hPipe);
@@ -237,6 +258,9 @@ std::vector<std::string> PipeServer::ReceiveBatch() {
 
 void PipeServer::Shutdown() {
     std::lock_guard<std::mutex> lock(pipe_mutex);
+
+    LOG_A(LOG_INFO, "PipingSrv %s: Shutdown",
+        pipe_name.c_str());
     
     if (hPipe != NULL && hPipe != INVALID_HANDLE_VALUE) {
         DisconnectNamedPipe(hPipe);
@@ -253,8 +277,9 @@ BOOL PipeServer::IsConnected() {
 
 /* Client */
 
-PipeClient::PipeClient() {
+PipeClient::PipeClient(std::string pipeName) {
     hPipe = NULL;
+    pipe_name = pipeName;
 }
 
 PipeClient::~PipeClient() {
@@ -266,7 +291,8 @@ BOOL PipeClient::Connect(const wchar_t *pipe_path) {
     std::lock_guard<std::mutex> lock(pipe_mutex);
     
     if (pipe_path == NULL) {
-        LOG_W(LOG_ERROR, L"Piping Client: Null pipe path provided");
+        LOG_A(LOG_ERROR, "PipingCli %s: Null pipe path provided",
+            pipe_name.c_str());
         return FALSE;
     }
     
@@ -277,7 +303,9 @@ BOOL PipeClient::Connect(const wchar_t *pipe_path) {
     
     hPipe = CreateFileW(pipe_path, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (hPipe == INVALID_HANDLE_VALUE) {
-        LOG_W(LOG_INFO, L"Piping Client: Could not open pipe. Error: %lu", GetLastError());
+        LOG_A(LOG_INFO, "PipingCli %s: Could not open pipe. Error: %lu", 
+            pipe_name.c_str(),
+            GetLastError());
         hPipe = NULL;
         return FALSE;
     }
@@ -286,6 +314,8 @@ BOOL PipeClient::Connect(const wchar_t *pipe_path) {
 
 
 void PipeClient::Disconnect() {
+    LOG_A(LOG_INFO, "PipingCli %s: Disconnect",
+        pipe_name.c_str());
     std::lock_guard<std::mutex> lock(pipe_mutex);
     
     if (hPipe != NULL && hPipe != INVALID_HANDLE_VALUE) {
@@ -299,23 +329,27 @@ BOOL PipeClient::Send(char* buffer) {
     std::lock_guard<std::mutex> lock(pipe_mutex);
     
     if (hPipe == NULL || hPipe == INVALID_HANDLE_VALUE) {
-        LOG_W(LOG_ERROR, L"Piping Client: Pipe closed");
+        LOG_A(LOG_ERROR, "PipingCli %s: Pipe closed",
+            pipe_name.c_str());
         return FALSE;
     }
     if (buffer == NULL) {
-        LOG_W(LOG_ERROR, L"Piping Client: Null buffer provided");
+        LOG_A(LOG_ERROR, "PipingCli %s: Null buffer provided",
+            pipe_name.c_str());
         return FALSE;
     }
     
     size_t buffer_len = strlen(buffer);
     if (buffer_len == 0) {
-        LOG_W(LOG_ERROR, L"Piping Client: Empty buffer provided");
+        LOG_A(LOG_ERROR, "PipingCli %s: Empty buffer provided",
+            pipe_name.c_str());
         return FALSE;
     }
     
     // Check for potential overflow
     if (buffer_len >= PIPE_BUFFER_SIZE) {
-        LOG_W(LOG_ERROR, L"Piping Client: Buffer too large for pipe");
+        LOG_A(LOG_ERROR, "PipingCli %s: Buffer too large for pipe",
+            pipe_name.c_str());
         return FALSE;
     }
     
@@ -329,7 +363,8 @@ BOOL PipeClient::Send(char* buffer) {
     
     // Verify all bytes were written
     if (bytesWritten != len) {
-        LOG_W(LOG_ERROR, L"Piping Client: Incomplete write to pipe");
+        LOG_A(LOG_ERROR, "PipingCli %s: Incomplete write to pipe",
+            pipe_name.c_str());
         return FALSE;
     }
     
@@ -341,17 +376,20 @@ BOOL PipeClient::Receive(char* buffer, size_t buffer_len) {
     std::lock_guard<std::mutex> lock(pipe_mutex);
     
     if (hPipe == NULL || hPipe == INVALID_HANDLE_VALUE) {
-        LOG_W(LOG_ERROR, L"Piping Client: Pipe is not connected");
+        LOG_A(LOG_ERROR, "PipingCli %s: Pipe is not connected",
+            pipe_name.c_str());
         return FALSE;
     }
     if (buffer == NULL || buffer_len == 0) {
-        LOG_W(LOG_ERROR, L"Piping Client: Invalid buffer parameters");
+        LOG_A(LOG_ERROR, "PipingCli %s: Invalid buffer parameters",
+            pipe_name.c_str());
         return FALSE;
     }
     
     // Ensure we don't exceed DWORD limits
     if (buffer_len > MAXDWORD) {
-        LOG_W(LOG_ERROR, L"Piping Client: Buffer size too large");
+        LOG_A(LOG_ERROR, "PipingCli %s: Buffer size too large",
+            pipe_name.c_str());
         return FALSE;
     }
     
@@ -359,7 +397,9 @@ BOOL PipeClient::Receive(char* buffer, size_t buffer_len) {
     DWORD bytesRead = 0;
     
     if (!ReadFile(hPipe, buffer, readLen, &bytesRead, NULL)) {
-        LOG_W(LOG_INFO, L"Piping Client: Error reading from pipe: %lu", GetLastError());
+        LOG_A(LOG_INFO, "PipingCli %s: Error reading from pipe: %lu", 
+            pipe_name.c_str(),
+            GetLastError());
         return FALSE;
     }
     

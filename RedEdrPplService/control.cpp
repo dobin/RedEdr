@@ -16,7 +16,7 @@ DWORD start_child_process(wchar_t* childCMD);
 HANDLE control_thread = NULL;
 volatile BOOL keep_running = TRUE; // Made volatile for thread safety
 
-PipeServer pipeServer = PipeServer(std::string("EtwTi"), (wchar_t*)PPL_SERVICE_PIPE_NAME);
+PipeServer pipeServer = PipeServer("RedEdrPPL Server", (wchar_t*)PPL_SERVICE_PIPE_NAME);
 
 
 DWORD WINAPI ServiceControlPipeThread(LPVOID param) {

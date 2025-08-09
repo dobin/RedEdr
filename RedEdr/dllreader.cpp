@@ -162,7 +162,7 @@ void DllReaderShutdown() {
     // Disconnect server pipe
     // Send some stuff so the ReadFile() in the reader thread returns
     try {
-        PipeClient pipeClient;
+        PipeClient pipeClient("RedEdr DllReaderShutdown");
         char buf[DLL_CONFIG_LEN] = { 0 };
         const char* s = "";
         

@@ -62,7 +62,7 @@ DWORD WINAPI PplReaderThread(LPVOID param) {
 
     // Loop which accepts new clients
     while (!PplReaderThreadStop) {
-        PipeServer* pipeServer = new PipeServer("PplReader", (wchar_t*) PPL_DATA_PIPE_NAME);
+        PipeServer* pipeServer = new PipeServer("RedEdr PplReader", (wchar_t*) PPL_DATA_PIPE_NAME);
         if (pipeServer == nullptr) {
             LOG_A(LOG_ERROR, "PplReaderThread: Failed to create PipeServer");
             Sleep(1000); // Brief delay before retry

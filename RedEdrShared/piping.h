@@ -39,7 +39,7 @@ private:
 
 class PipeClient {
 public:
-	PipeClient();
+	PipeClient(std::string pipeName);
 	~PipeClient(); // Add destructor for proper cleanup
 	
 	// Disable copy constructor and assignment operator to prevent resource issues
@@ -55,5 +55,6 @@ public:
 private:
 	HANDLE hPipe;
 	std::mutex pipe_mutex; // Add mutex for thread safety
+	std::string pipe_name;
 };
 

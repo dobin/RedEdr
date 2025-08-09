@@ -6,7 +6,7 @@
 #include "logging.h"
 
 
-PipeClient pipeClient;
+PipeClient pipeClient("RedEdrPpl Emitter");
 
 
 BOOL ConnectEmitterPipe() {

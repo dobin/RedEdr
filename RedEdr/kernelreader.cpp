@@ -62,7 +62,7 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
     // Loop which accepts new clients
     while (!KernelReaderThreadStopFlag) {
         LOG_A(LOG_INFO, "KernelReader: Waiting for kernel");
-        kernelPipeServer = new PipeServer("KernelReader", (wchar_t*) KERNEL_PIPE_NAME);
+        kernelPipeServer = new PipeServer("RedEdr KernelReader", (wchar_t*) KERNEL_PIPE_NAME);
         kernelPipeServer->Start(TRUE);
         SetEvent(threadReadynessKernel); // signal the event
         if (!kernelPipeServer->WaitForClient()) {
@@ -95,7 +95,7 @@ void KernelReaderShutdown() {
     KernelReaderThreadStopFlag = TRUE;
 
     if (! kernelPipeServer->IsConnected()) {
-        PipeClient pipeClient;
+        PipeClient pipeClient("RedEdr KernelReaderShutdown");
         char buf[DATA_BUFFER_SIZE] = { 0 }; // We may receive a full event here
         const char *send = "";
         pipeClient.Connect(KERNEL_PIPE_NAME);

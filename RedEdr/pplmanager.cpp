@@ -16,7 +16,7 @@
 //   load elam driver, install/enable/disable service
 
 
-PipeClient pipeClient;
+PipeClient pipeClient("RedEdr PplManager");
 
 BOOL StartPplService();
 BOOL InstallPplService();
