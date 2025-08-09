@@ -7,7 +7,7 @@
 #include <iomanip>
 #include <sstream>
 
-#include "logging.h"
+#include "log_ppl.h"
 #include "etwtihandler.h"
 #include "objcache.h"
 #include "emitter.h"
@@ -35,7 +35,7 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
     // This function should be high performance, or we lose events.
     events_all++;
     if (events_all == 10) {
-        LOG_W(LOG_INFO, L"Handler: Processed %u ETW-TI events so far", events_processed);
+        LOG_W(LOG_INFO, L"Handler: Processed %u ETW-TI events so far. Seems to work. ", events_all);
     }
 
     if (!enabled_consumer) {
@@ -51,7 +51,7 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
 
     events_processed++;
     if (events_processed == 10) {
-        LOG_W(LOG_INFO, L"Handler: Processed %u accepted ETW-TI events so far", events_processed);
+        LOG_W(LOG_INFO, L"Handler: Processed %u accepted ETW-TI events so far. Seems to work. ", events_processed);
     }
 
 	std::string json_retw = KrabsEtwEventToJsonStr(record, schema);

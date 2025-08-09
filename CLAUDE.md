@@ -16,6 +16,8 @@ It consists of different components:
 * RedEdrDriver: Records kernel events, and performs DLL injection
 * RedEdrTester: Debug project to test some parts of RedEdr
 * elam_driver: An empty driver signed with a certificate. Required to load RedEdrPplService
+* Shared: C defines usable by all components
+* RedEdrShared: Some code shared by some components
 
 The communication between components is implemented using Windows pipes. 
 

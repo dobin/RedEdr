@@ -1,9 +1,6 @@
 #pragma once
 
-#define LOG_ERROR 0
-#define LOG_WARNING 1
-#define LOG_INFO 2
-#define LOG_DEBUG 3
+#include "../Shared/common.h"
 
 // LOG_A(LOG_ERROR, "FUCKME2 A: %s", "ARG1");
 // LOG_W(LOG_ERROR, L"FUCKME2 W: %s", L"ARG2");

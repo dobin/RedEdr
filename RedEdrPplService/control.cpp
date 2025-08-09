@@ -4,7 +4,7 @@
 #include "control.h"
 #include "emitter.h"
 #include "../Shared/common.h"
-#include "logging.h"
+#include "log_ppl.h"
 #include "objcache.h"
 #include "etwtireader.h"
 #include "piping.h"
@@ -66,11 +66,11 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                     }
                 }
             }
-            //else if (strstr(buffer, "stop") != NULL) {
-            //    LOG_A(LOG_INFO, "Control: Received command: stop");
-            //    enable_consumer(FALSE);
-            //    DisconnectEmitterPipe(); // Disconnect the RedEdr pipe
-            //}
+            else if (strstr(buffer, "stop") != NULL) {
+                LOG_A(LOG_INFO, "Control: Received command: stop");
+                enable_consumer(FALSE);
+                DisconnectEmitterPipe(); // Disconnect the RedEdr pipe
+            }
             else if (strstr(buffer, "shutdown") != NULL) {
                 LOG_A(LOG_INFO, "Control: Received command: shutdown");
                 //rededr_remove_service();  // attempt to remove service

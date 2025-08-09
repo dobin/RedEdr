@@ -193,8 +193,8 @@ BOOL ProcessResolver::PopulateAllProcesses() {
     
     CloseHandle(hSnapshot);
     
-    LOG_A(LOG_INFO, "ProcessResolver: Successfully populated cache with %d processes out of %d total processes", 
-          cachedCount, processCount);
+    LOG_A(LOG_INFO, "ProcessResolver: Successfully populated cache with %d processes", 
+          cachedCount);
     //LOG_A(LOG_INFO, "ProcessResolver: Current cache size: %zu", GetCacheCount());
     
     return TRUE;

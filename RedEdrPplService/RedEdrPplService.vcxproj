@@ -148,22 +148,22 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\RedEdrShared\etw_krabs.cpp" />
-    <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\piping.cpp" />
     <ClCompile Include="..\RedEdrShared\utils.cpp" />
     <ClCompile Include="etwtihandler.cpp" />
     <ClCompile Include="etwtireader.cpp" />
     <ClCompile Include="control.cpp" />
     <ClCompile Include="emitter.cpp" />
+    <ClCompile Include="log_ppl.cpp" />
     <ClCompile Include="objcache.cpp" />
     <ClCompile Include="RedEdrPplService.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\RedEdrShared\logging.h" />
     <ClInclude Include="etwtihandler.h" />
     <ClInclude Include="etwtireader.h" />
     <ClInclude Include="control.h" />
     <ClInclude Include="emitter.h" />
+    <ClInclude Include="log_ppl.h" />
     <ClInclude Include="objcache.h" />
     <ClInclude Include="uthash.h" />
   </ItemGroup>

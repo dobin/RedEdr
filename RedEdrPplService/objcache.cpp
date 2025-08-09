@@ -4,7 +4,7 @@
 #include <psapi.h>
 
 #include "objcache.h"
-#include "logging.h"
+#include "log_ppl.h"
 
 struct my_hashmap* map = NULL;
 HANDLE mutex;
@@ -43,10 +43,10 @@ void objcache_init() {
                 add_obj(processes[i], 0);
             }
         }
-        LOG_W(LOG_INFO, L"Objcache: Objcache initialized with %lu existing processes\n", processCount);
+        LOG_W(LOG_INFO, L"Objcache: Objcache initialized with %lu existing processes", processCount);
     }
     else {
-        LOG_W(LOG_INFO, L"Objcache: Failed to enumerate processes during init: %lu\n", GetLastError());
+        LOG_W(LOG_INFO, L"Objcache: Failed to enumerate processes during init: %lu", GetLastError());
     }
 }
 
@@ -73,7 +73,7 @@ struct my_hashmap* get_obj(int pid) {
             if (GetModuleFileNameEx(hProcess, NULL, exePath, MAX_PATH)) {
                 wchar_t* result = wcsstr(exePath, target_name);
                 if (result) {
-                    LOG_W(LOG_INFO, L"Objcache: observe process %lu executable path: %s\n", pid, exePath);
+                    LOG_W(LOG_INFO, L"Objcache: observe process %lu executable path: %s", pid, exePath);
                     //LOG_W(LOG_INFO, L"Substring found in: %s\n", exePath);
                     observe = 1;
                 }

@@ -60,6 +60,17 @@ BOOL EnablePplProducer(BOOL e, std::string targetName) {
 }
 
 
+BOOL DisablePplProducer() {
+    const char* s = "stop";
+    if (!pipeClient.Send((char*)s)) {
+        LOG_A(LOG_ERROR, "ETW-TI: Error writing to named pipe: %ld", GetLastError());
+        return FALSE;
+    }
+    LOG_A(LOG_INFO, "ETW-TI: ppl reader: Disabled");
+    return TRUE;
+}
+
+
 BOOL InitPplService() {
     if (!DoesServiceExist(SERVICE_NAME)) {
         LOG_A(LOG_WARNING, "ETW-TI: service %ls not found", SERVICE_NAME);

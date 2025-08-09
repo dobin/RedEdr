@@ -112,6 +112,7 @@ int main(int argc, char* argv[]) {
     else if (result.count("pplstop")) {
         // Instruct PPL service to exit itself (cant do it otherwise)
         // Note: we can replace the exe and start it again
+        ConnectPplService();
         ShutdownPplService();
         exit(0);
     }

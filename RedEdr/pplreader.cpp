@@ -26,13 +26,12 @@
 
 
 // Private Variables
-std::vector<std::thread> ConnectedPplReaderThreads; // for each connected ppl service
 bool PplReaderThreadStop = FALSE; // set to true to stop the server thread
 HANDLE threadReadynessPpl; // ready to accept clients
 
 
 // Private Function Definitions
-void PplReaderClientThread(PipeServer* pipeServer);
+void PplReaderClient(PipeServer* pipeServer);
 DWORD WINAPI PplReaderThread(LPVOID param);
 
 
@@ -59,13 +58,13 @@ bool PplReaderInit(std::vector<HANDLE>& threads) {
 
 // Pipe Reader Thread: Server
 DWORD WINAPI PplReaderThread(LPVOID param) {
-    LOG_A(LOG_INFO, "!PplReader Server Thread: begin");
+    LOG_A(LOG_INFO, "!PplReaderThread: begin");
 
     // Loop which accepts new clients
     while (!PplReaderThreadStop) {
         PipeServer* pipeServer = new PipeServer("PplReader", (wchar_t*) PPL_DATA_PIPE_NAME);
         if (pipeServer == nullptr) {
-            LOG_A(LOG_ERROR, "PplReader: Failed to create PipeServer");
+            LOG_A(LOG_ERROR, "PplReaderThread: Failed to create PipeServer");
             Sleep(1000); // Brief delay before retry
             continue;
         }
@@ -73,69 +72,40 @@ DWORD WINAPI PplReaderThread(LPVOID param) {
         SetEvent(threadReadynessPpl);
         
         if (!pipeServer->StartAndWaitForClient(TRUE)) {
-            LOG_A(LOG_ERROR, "PplReader: Failed to start pipe server or wait for client");
+            LOG_A(LOG_ERROR, "PplReaderThread: Failed to start pipe server or wait for client");
             pipeServer->Shutdown();
             delete pipeServer;
             Sleep(1000); // Brief delay before retry
             continue;
         }
 
-        LOG_A(LOG_INFO, "PplReader: PPL Service connected (handle in new thread)");
-        try {
-            ConnectedPplReaderThreads.push_back(std::thread(PplReaderClientThread, pipeServer));
-        }
-        catch (const std::exception& e) {
-            LOG_A(LOG_ERROR, "PplReader: Failed to create client thread: %s", e.what());
-            pipeServer->Shutdown();
-            delete pipeServer;
-        }
+        // Handle it here
+        PplReaderClient(pipeServer);
+
+        // We finished
+        LOG_A(LOG_INFO, "PplReaderThread: Client disconnected, shutting down this pipe");
+        pipeServer->Shutdown();
+        delete pipeServer;
     }
     
-    // Wait for all client threads to exit
-    for (auto& t : ConnectedPplReaderThreads) {
-        if (t.joinable()) {
-            t.join();
-        }
-    }
-
-    LOG_A(LOG_INFO, "!PplReader Server Thread: end");
+    LOG_A(LOG_INFO, "!PplReaderThreadd: end");
     return 0;
 }
 
 
 // Pipe Reader Thread: Process Client
-void PplReaderClientThread(PipeServer* pipeServer) {
+void PplReaderClient(PipeServer* pipeServer) {
     if (pipeServer == nullptr) {
-        LOG_A(LOG_ERROR, "PplReaderClientThread: pipeServer is null");
+        LOG_A(LOG_ERROR, "PplReaderClient: pipeServer is null");
         return;
     }
-    
-    // Send config as first packet
-    // This is the only write for this pipe
-    char config[PPL_CONFIG_LEN];
-    int result = sprintf_s(config, PPL_CONFIG_LEN, "ppl_events: 1; ");
-    if (result < 0) {
-        LOG_A(LOG_ERROR, "PplReaderClientThread: Failed to format config string");
-        pipeServer->Shutdown();
-        delete pipeServer;
-        return;
-    }
-    
-    if (!pipeServer->Send(config)) {
-        LOG_A(LOG_ERROR, "PplReaderClientThread: Failed to send config");
-        pipeServer->Shutdown();
-        delete pipeServer;
-        return;
-    }
+    LOG_A(LOG_INFO, "PplReaderClient: RedEdrPplService connected successful, starting event reception");
 
-    LOG_A(LOG_INFO, "PplReader: Config sent to PPL service, starting event reception");
-
-    // Now receive only
     while (!PplReaderThreadStop) {
         try {
             std::vector<std::string> results = pipeServer->ReceiveBatch();
             if (results.empty()) {
-                LOG_A(LOG_INFO, "PplReader: PPL service disconnected");
+                LOG_A(LOG_INFO, "PplReaderClient: PPL service disconnected");
                 break; // Client disconnected or error
             }
             for (const auto& result : results) {
@@ -146,36 +116,17 @@ void PplReaderClientThread(PipeServer* pipeServer) {
             }
         }
         catch (...) {
-            LOG_A(LOG_ERROR, "PplReaderClientThread: Exception in receive loop");
+            LOG_A(LOG_ERROR, "PplReaderClient: Exception in receive loop");
             break;
         }
     }
-
-    pipeServer->Shutdown();
-    delete pipeServer;
 }
 
 
 // Shutdown
 void PplReaderShutdown() {
+    LOG_A(LOG_INFO, "PPLReader: Shutdown");
     PplReaderThreadStop = TRUE;
-
-    // Disconnect server pipe
-    // Send some stuff so the ReadFile() in the reader thread returns
-    try {
-        PipeClient pipeClient;
-        char buf[PPL_CONFIG_LEN] = { 0 };
-        const char* s = "";
-        
-        if (pipeClient.Connect(PPL_DATA_PIPE_NAME)) {
-            pipeClient.Receive(buf, PPL_CONFIG_LEN);
-            pipeClient.Send((char *)s);
-            pipeClient.Disconnect();
-        }
-    }
-    catch (...) {
-        LOG_A(LOG_WARNING, "PplReaderShutdown: Exception during pipe cleanup");
-    }
     
     // Close event handle
     if (threadReadynessPpl != NULL) {

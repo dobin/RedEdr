@@ -3,12 +3,9 @@
 
 #include "../Shared/common.h"
 #include "piping.h"
-#include "logging.h"
+#include "log_ppl.h"
 
 
-// The pipe to RedEdr.exe
-// Read first message as config,
-// then send all the data
 PipeClient pipeClient;
 
 

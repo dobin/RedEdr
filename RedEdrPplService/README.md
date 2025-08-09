@@ -1,38 +1,34 @@
 # RedEdr PPL Service
 
 * Used to consume ETW-TI
-* Requires to be started as PPL
-* As a service
-
+* Will send it via pipe to main RedEdr
+* Requires to be started as PPL service
 
 References: 
 * https://blog.tofile.dev/2020/12/16/elam.html
-* 
 
 
-## Startup
+## Communication
 
-* main() -> service_entry() -> ServiceMain()
-* ServiceMain(): Start Control (Pipe Server with commands, in `control.c`)
-* ServiceMain(): Start Consumer (ETW-TI Consumer, in `consumer.c`)
+RedEdrPplService provides a pipe to interact with it: 
 
-* Control: 
-  * As Thread
-  * Enable, Disable ETW consumption and forwarding to RedEdr (via `consumer.c`)
-  * Shutdown: Shutdown all modules and the service, putting it into STOPPED (can be started again from non-PPL)
+```
+#define PPL_SERVICE_PIPE_NAME L"\\\\.\\pipe\\RedEdrPplService"
+```
 
-* Consumer: 
-  * Callback for ETW-TI
-  * will block from ServiceMain() upon ProcessTrace()
+Which is the `pipeServer` in `control.cpp`. It only receives
+ASCII commands. Like: 
+* `start:<processname>`: Observes <processname>
+* `stop`: Indicate RedEdr.exe is being shutdown - disconnect `PPL_DATA_PIPE_NAME`
+* `shutdown`: Shutdown the service (so the exe can be updated)
 
-* Emitter:
-  * Pipe connection to RedEdr.exe
-  * Connect/Disconnect on Control commands "start", "stop"
+If RedEdr connects to this pipe, RedEdrPplService will 
+automatically attempt to connect back to RedEdr's pipe: 
+
+```
+#define PPL_DATA_PIPE_NAME L"\\\\.\\pipe\\RedEdrPplData"
+```
+
+It will only send the matching events to this pipe. 
 
 
-## Shutdown
-
-* From: RedEdr.exe, via Control pipe, command "shutdown"
-* Shutdown: Control (Pipe, and with it it's thread)
-* Shutdown: ETW reader (ControlTrace, CloseTrace)
-  * And with it ServiceMain()

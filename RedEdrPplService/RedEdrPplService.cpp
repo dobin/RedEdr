@@ -5,7 +5,7 @@
 #include "etwtireader.h"
 #include "emitter.h"
 #include "control.h"
-#include "logging.h"
+#include "log_ppl.h"
 #include "objcache.h"
 
 SERVICE_STATUS        g_ServiceStatus = { 0 };

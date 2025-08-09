@@ -23,7 +23,7 @@ typedef struct _MY_DRIVER_DATA {
     int dll_inject;
 } MY_DRIVER_DATA, * PMY_DRIVER_DATA;
 
-#define REDEDR_VERSION "0.5.1"
+#define REDEDR_VERSION "0.5.2"
 
 #define DRIVER_KERNEL_PIPE_NAME L"\\??\\pipe\\RedEdrKrnCom"
 #define KERNEL_PIPE_NAME L"\\\\.\\pipe\\RedEdrKrnCom"
@@ -36,5 +36,11 @@ typedef struct _MY_DRIVER_DATA {
 #define DRIVER_NAME L"c:\\RedEdr\\elam_driver.sys"
 
 #define MAX_CALLSTACK_ENTRIES 8
+
+
+#define LOG_ERROR 0
+#define LOG_WARNING 1
+#define LOG_INFO 2
+#define LOG_DEBUG 3
 
 #endif

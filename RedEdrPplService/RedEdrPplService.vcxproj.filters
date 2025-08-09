@@ -36,9 +36,6 @@
     <ClCompile Include="etwtihandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdrShared\logging.cpp">
-      <Filter>Source Files\existing</Filter>
-    </ClCompile>
     <ClCompile Include="..\RedEdrShared\piping.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
@@ -47,6 +44,9 @@
     </ClCompile>
     <ClCompile Include="..\RedEdrShared\etw_krabs.cpp">
       <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="log_ppl.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -65,10 +65,10 @@
     <ClInclude Include="objcache.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\RedEdrShared\logging.h">
+    <ClInclude Include="etwtihandler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="etwtihandler.h">
+    <ClInclude Include="log_ppl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

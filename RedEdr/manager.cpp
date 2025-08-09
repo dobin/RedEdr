@@ -171,12 +171,10 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
 void ManagerShutdown() {
     // ETW-TI
     if (g_Config.do_etwti) {
-        LOG_A(LOG_INFO, "Manager: Stop ETWTI reader");
-        EnablePplProducer(FALSE, "");
-        
-        LOG_A(LOG_INFO, "Manager: Stop PPL reader");
-        PplReaderShutdown();
+        PplReaderShutdown(); // needs to be first
+        DisablePplProducer();
     }
+
     // ETW
     if (g_Config.do_etw) {
         LOG_A(LOG_INFO, "Manager: Stop ETW readers");
