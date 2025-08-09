@@ -6,8 +6,6 @@
 #include <vector>
 #include <utility>
 
-#include "logging.h"
-
 
 class Range {
 public:
@@ -34,11 +32,13 @@ public:
         //return { std::min(start_, other.start_), std::max(end_, other.end_), NULL };
     }
 
+    /*
     void print() const {
         //std::cout << "[" << start_ << ", " << end_ << ")";
         LOG_A(LOG_INFO, "  Start: %d  End: %d",
             start_, end_);
     }
+    */
 
     uint64_t start_;
     uint64_t end_;
@@ -87,11 +87,13 @@ public:
         return result;
     }
 
+    /*
     void print() const {
         for (const auto& range : ranges_) {
             range.print();
         }
     }
+    */
 
     
     void ResetData() {

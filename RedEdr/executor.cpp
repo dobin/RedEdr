@@ -61,7 +61,7 @@ bool Executor::Capture() {
         }
 
         // Read the available output
-        if (!ReadFile(hStdOutRead, buffer.data(), buffer.size() - 1, &bytesRead, nullptr) || bytesRead == 0) {
+        if (!ReadFile(hStdOutRead, buffer.data(), static_cast<DWORD>(buffer.size() - 1), &bytesRead, nullptr) || bytesRead == 0) {
             DWORD error = GetLastError();
             if (error == ERROR_BROKEN_PIPE || error == ERROR_HANDLE_EOF) {
                 break; // Pipe closed, process exited

@@ -12,7 +12,7 @@
 
 #include "emitter.h"
 #include "objcache.h"
-#include "log_ppl.h"
+#include "logging.h"
 #include "etwtireader.h"
 #include "etwtihandler.h"
 #include "piping.h"

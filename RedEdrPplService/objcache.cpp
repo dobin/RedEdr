@@ -4,7 +4,7 @@
 #include <psapi.h>
 
 #include "objcache.h"
-#include "log_ppl.h"
+#include "logging.h"
 
 struct my_hashmap* map = NULL;
 HANDLE mutex;

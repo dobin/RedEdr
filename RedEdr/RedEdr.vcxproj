@@ -146,7 +146,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\RedEdrShared\etw_krabs.cpp" />
-    <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\loguru.cpp" />
     <ClCompile Include="..\RedEdrShared\piping.cpp" />
     <ClCompile Include="..\RedEdrShared\process_query.cpp" />
@@ -156,6 +155,7 @@
     <ClCompile Include="event_augmenter.cpp" />
     <ClCompile Include="event_processor.cpp" />
     <ClCompile Include="executor.cpp" />
+    <ClCompile Include="logging.cpp" />
     <ClCompile Include="manager.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="dllinjector.cpp" />
@@ -164,7 +164,6 @@
     <ClCompile Include="dllreader.cpp" />
     <ClCompile Include="kernelreader.cpp" />
     <ClCompile Include="logreader.cpp" />
-    <ClCompile Include="mem_dynamic.cpp" />
     <ClCompile Include="mem_static.cpp" />
     <ClCompile Include="pplmanager.cpp" />
     <ClCompile Include="pplreader.cpp" />
@@ -177,7 +176,6 @@
     <ClCompile Include="webserver.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\RedEdrShared\logging.h" />
     <ClInclude Include="..\RedEdrShared\loguru.hpp" />
     <ClInclude Include="edr_reader.h" />
     <ClInclude Include="event_aggregator.h" />
@@ -185,6 +183,7 @@
     <ClInclude Include="event_processor.h" />
     <ClInclude Include="executor.h" />
     <ClInclude Include="jsonw.hpp" />
+    <ClInclude Include="logging.h" />
     <ClInclude Include="manager.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="cxxops.hpp" />
@@ -195,7 +194,6 @@
     <ClInclude Include="dllreader.h" />
     <ClInclude Include="kernelreader.h" />
     <ClInclude Include="logreader.h" />
-    <ClInclude Include="mem_dynamic.h" />
     <ClInclude Include="mem_static.h" />
     <ClInclude Include="pplmanager.h" />
     <ClInclude Include="pplreader.h" />

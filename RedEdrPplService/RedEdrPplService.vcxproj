@@ -154,7 +154,7 @@
     <ClCompile Include="etwtireader.cpp" />
     <ClCompile Include="control.cpp" />
     <ClCompile Include="emitter.cpp" />
-    <ClCompile Include="log_ppl.cpp" />
+    <ClCompile Include="logging.cpp" />
     <ClCompile Include="objcache.cpp" />
     <ClCompile Include="RedEdrPplService.cpp" />
   </ItemGroup>
@@ -163,7 +163,7 @@
     <ClInclude Include="etwtireader.h" />
     <ClInclude Include="control.h" />
     <ClInclude Include="emitter.h" />
-    <ClInclude Include="log_ppl.h" />
+    <ClInclude Include="logging.h" />
     <ClInclude Include="objcache.h" />
     <ClInclude Include="uthash.h" />
   </ItemGroup>

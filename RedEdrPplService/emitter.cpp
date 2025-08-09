@@ -3,7 +3,7 @@
 
 #include "../Shared/common.h"
 #include "piping.h"
-#include "log_ppl.h"
+#include "logging.h"
 
 
 PipeClient pipeClient;

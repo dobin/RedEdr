@@ -7,11 +7,10 @@
 #include <iomanip>
 #include <sstream>
 
-#include "log_ppl.h"
+#include "logging.h"
 #include "etwtihandler.h"
 #include "objcache.h"
 #include "emitter.h"
-#include "utils.h"
 #include "json.hpp"
 #include "etw_krabs.h"
 

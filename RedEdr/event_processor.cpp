@@ -11,6 +11,7 @@
 #include "config.h"
 #include "../Shared/common.h"
 #include "mem_static.h"
+#include "logging.h"
 
 /* event_processor.c: Gets new events from EventAggregator and processes them
  *   Keeps stats

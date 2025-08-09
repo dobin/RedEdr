@@ -37,10 +37,7 @@
     <Filter Include="Source Files\windows">
       <UniqueIdentifier>{df7f6388-9e99-46c4-89bf-2a931b922311}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\libs">
-      <UniqueIdentifier>{cd33c796-a003-4a9a-a6fc-102aba77837d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\existing">
+    <Filter Include="Source Files\existing">
       <UniqueIdentifier>{aac45432-501a-4c40-8440-16c4e8725eb9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -87,9 +84,6 @@
     <ClCompile Include="processinfo.cpp">
       <Filter>Source Files\windows</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdrShared\loguru.cpp">
-      <Filter>Source Files\libs</Filter>
-    </ClCompile>
     <ClCompile Include="dllinjector.cpp">
       <Filter>Source Files\windows</Filter>
     </ClCompile>
@@ -111,20 +105,11 @@
     <ClCompile Include="mem_static.cpp">
       <Filter>Source Files\windows</Filter>
     </ClCompile>
-    <ClCompile Include="mem_dynamic.cpp">
-      <Filter>Source Files\windows</Filter>
-    </ClCompile>
     <ClCompile Include="..\RedEdrShared\etw_krabs.cpp">
-      <Filter>Header Files\existing</Filter>
+      <Filter>Source Files\existing</Filter>
     </ClCompile>
     <ClCompile Include="..\RedEdrShared\process_query.cpp">
-      <Filter>Header Files\existing</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdrShared\logging.cpp">
-      <Filter>Source Files\libs</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdrShared\piping.cpp">
-      <Filter>Source Files\libs</Filter>
+      <Filter>Source Files\existing</Filter>
     </ClCompile>
     <ClCompile Include="executor.cpp">
       <Filter>Source Files\windows</Filter>
@@ -135,15 +120,21 @@
     <ClCompile Include="privileges.cpp">
       <Filter>Source Files\windows</Filter>
     </ClCompile>
+    <ClCompile Include="logging.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\loguru.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\piping.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="serviceutils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\RedEdrShared\logging.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="webserver.h">
@@ -203,9 +194,6 @@
     <ClInclude Include="mem_static.h">
       <Filter>Header Files\windows</Filter>
     </ClInclude>
-    <ClInclude Include="mem_dynamic.h">
-      <Filter>Header Files\windows</Filter>
-    </ClInclude>
     <ClInclude Include="dllreader.h">
       <Filter>Header Files\input</Filter>
     </ClInclude>
@@ -217,6 +205,9 @@
     </ClInclude>
     <ClInclude Include="privileges.h">
       <Filter>Header Files\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="logging.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

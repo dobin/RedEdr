@@ -19,7 +19,6 @@
 #include "event_aggregator.h"
 #include "process_resolver.h"
 #include "mem_static.h"
-#include "mem_dynamic.h"
 
 
 /* manager.cpp: Knows and manages all subsystems (Input's)

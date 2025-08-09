@@ -4,7 +4,7 @@
 #include "control.h"
 #include "emitter.h"
 #include "../Shared/common.h"
-#include "log_ppl.h"
+#include "logging.h"
 #include "objcache.h"
 #include "etwtireader.h"
 #include "piping.h"

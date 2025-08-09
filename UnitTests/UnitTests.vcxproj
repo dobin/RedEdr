@@ -158,22 +158,24 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\process_query.cpp" />
     <ClCompile Include="..\RedEdrShared\utils.cpp" />
     <ClCompile Include="..\RedEdr\config.cpp" />
     <ClCompile Include="..\RedEdr\event_aggregator.cpp" />
     <ClCompile Include="..\RedEdr\event_augmenter.cpp" />
     <ClCompile Include="..\RedEdr\event_processor.cpp" />
-    <ClCompile Include="..\RedEdr\mem_dynamic.cpp" />
     <ClCompile Include="..\RedEdr\mem_static.cpp" />
     <ClCompile Include="..\RedEdr\process.cpp" />
     <ClCompile Include="..\RedEdr\process_resolver.cpp" />
+    <ClCompile Include="logging.cpp" />
     <ClCompile Include="UnitTestAnalyzer.cpp" />
     <ClCompile Include="UnitTestProcessInfo.cpp" />
     <ClCompile Include="UnitTestEventProducer.cpp" />
     <ClCompile Include="UnitTestRanges.cpp" />
     <ClCompile Include="UnitTests.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="logging.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

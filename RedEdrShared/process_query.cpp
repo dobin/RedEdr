@@ -15,13 +15,15 @@
 #include <tlhelp32.h>
 
 #include "process_query.h"
-#include "logging.h"
 #include "utils.h"
 #include "mypeb.h"
-
 #include "../Shared/common.h"
 
 #pragma comment(lib, "ntdll.lib")
+
+// The implementation is in each solution
+void LOG_W(int verbosity, const wchar_t* format, ...);
+void LOG_A(int verbosity, const char* format, ...);
 
 /* Process Query
  * Provides functions to query a process for more information
@@ -113,7 +115,8 @@ ProcessPebInfoRet ProcessPebInfo(HANDLE hProcess) {
     }
 
     // PPID
-    DWORD parentPid = reinterpret_cast<DWORD>(pbi.Reserved3); // InheritedFromUniqueProcessId lol
+    // Fix: Use ULONG_PTR to safely store the pointer value before casting to DWORD
+    DWORD parentPid = static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(pbi.Reserved3)); // InheritedFromUniqueProcessId lol
     processPebInfoRet.parent_pid = parentPid;
 
     // PEB
@@ -273,8 +276,8 @@ std::vector<ProcessLoadedDll> ProcessEnumerateModules(HANDLE hProcess) {
         try {
             std::wstring filenameW = ReadMemoryAsWString(hProcess, entry.FullDllName.Buffer, entry.FullDllName.Length);
             std::string filenameStr = wstring2string(filenameW);
-            processLoadedDll.dll_base = pointer_to_uint64(entry.DllBase);
-            processLoadedDll.size = (ULONG)entry.Reserved3[1];
+            processLoadedDll.dll_base = reinterpret_cast<uint64_t>(entry.DllBase);
+            processLoadedDll.size = static_cast<ULONG>(reinterpret_cast<ULONG_PTR>(entry.Reserved3[1]));
             processLoadedDll.name = filenameStr;
             processLoadedDlls.push_back(processLoadedDll);
         }

@@ -3,9 +3,6 @@
   <ItemGroup>
     <ClCompile Include="dllhelper.cpp" />
     <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="..\RedEdrShared\logging.cpp">
-      <Filter>existing</Filter>
-    </ClCompile>
     <ClCompile Include="..\RedEdrShared\piping.cpp">
       <Filter>existing</Filter>
     </ClCompile>
@@ -15,11 +12,13 @@
     <ClCompile Include="..\RedEdrShared\process_query.cpp">
       <Filter>existing</Filter>
     </ClCompile>
+    <ClCompile Include="logging.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="detours.h" />
     <ClInclude Include="dllhelper.h" />
     <ClInclude Include="framework.h" />
+    <ClInclude Include="logging.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="existing">

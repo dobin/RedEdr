@@ -39,14 +39,14 @@
     <ClCompile Include="..\RedEdrShared\piping.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdrShared\utils.cpp">
-      <Filter>Source Files\existing</Filter>
-    </ClCompile>
     <ClCompile Include="..\RedEdrShared\etw_krabs.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="log_ppl.cpp">
+    <ClCompile Include="logging.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\utils.cpp">
+      <Filter>Source Files\existing</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -68,7 +68,7 @@
     <ClInclude Include="etwtihandler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="log_ppl.h">
+    <ClInclude Include="logging.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
