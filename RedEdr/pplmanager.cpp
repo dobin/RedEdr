@@ -9,6 +9,7 @@
 #include "pplmanager.h"
 #include "piping.h"
 #include "utils.h"
+#include "json.hpp"
 
 
 
@@ -34,40 +35,72 @@ BOOL ConnectPplService() {
 }
 
 
-BOOL EnablePplProducer(BOOL e, std::string targetName) {
+BOOL EnablePplProducer(BOOL e, std::vector<std::string> targetNames) {
     char buffer[PPL_CONFIG_LEN] = { 0 };
 
-    // Validate target name length to prevent buffer overflow
-    if (targetName.length() > (PPL_CONFIG_LEN - 10)) { // Reserve space for "start:" prefix
-        LOG_A(LOG_ERROR, "ETW-TI: Target name too long: %zu characters", targetName.length());
-        return FALSE;
-    }
+    try {
+        // Create JSON object with target names
+        nlohmann::json j;
+        j["command"] = "start";
+        j["targets"] = targetNames;
         
-    int result = sprintf_s(buffer, PPL_CONFIG_LEN, "start:%s", targetName.c_str());
-    if (result < 0) {
-        LOG_A(LOG_ERROR, "ETW-TI: Failed to format start command");
+        std::string json_str = j.dump();
+        
+        // Validate JSON string length to prevent buffer overflow
+        if (json_str.length() >= (PPL_CONFIG_LEN - 1)) {
+            LOG_A(LOG_ERROR, "ETW-TI: JSON payload too long: %zu characters", json_str.length());
+            return FALSE;
+        }
+        
+        // Copy JSON string to buffer
+        strncpy_s(buffer, PPL_CONFIG_LEN, json_str.c_str(), _TRUNCATE);
+
+        // Send JSON via pipe to PPL service
+        if (!pipeClient.Send(buffer)) {
+            LOG_A(LOG_INFO, "ETW-TI: Error sending JSON to ppl service: %s", buffer);
+            return FALSE;
+        }
+        LOG_A(LOG_INFO, "ETW-TI: ppl reader: Enabled with targets JSON");
+        
+        return TRUE;
+    }
+    catch (const std::exception& ex) {
+        LOG_A(LOG_ERROR, "ETW-TI: JSON serialization error: %s", ex.what());
         return FALSE;
     }
-
-    // Send enable/disable via pipe to PPL service
-    if (!pipeClient.Send(buffer)) {
-        LOG_A(LOG_INFO, "ETW-TI: Error sending: %s to ppl service", buffer);
-        return FALSE;
-    }
-    LOG_A(LOG_INFO, "ETW-TI: ppl reader: Enabled");
-
-    return TRUE;
 }
 
 
 BOOL DisablePplProducer() {
-    const char* s = "stop";
-    if (!pipeClient.Send((char*)s)) {
-        LOG_A(LOG_ERROR, "ETW-TI: Error writing to named pipe: %ld", GetLastError());
+    char buffer[PPL_CONFIG_LEN] = { 0 };
+    
+    try {
+        // Create JSON object for stop command
+        nlohmann::json j;
+        j["command"] = "stop";
+        
+        std::string json_str = j.dump();
+        
+        // Validate JSON string length
+        if (json_str.length() >= (PPL_CONFIG_LEN - 1)) {
+            LOG_A(LOG_ERROR, "ETW-TI: Stop JSON payload too long: %zu characters", json_str.length());
+            return FALSE;
+        }
+        
+        // Copy JSON string to buffer
+        strncpy_s(buffer, PPL_CONFIG_LEN, json_str.c_str(), _TRUNCATE);
+        
+        if (!pipeClient.Send(buffer)) {
+            LOG_A(LOG_ERROR, "ETW-TI: Error writing stop JSON to named pipe: %ld", GetLastError());
+            return FALSE;
+        }
+        LOG_A(LOG_INFO, "ETW-TI: ppl reader: Disabled");
+        return TRUE;
+    }
+    catch (const std::exception& ex) {
+        LOG_A(LOG_ERROR, "ETW-TI: JSON serialization error for stop: %s", ex.what());
         return FALSE;
     }
-    LOG_A(LOG_INFO, "ETW-TI: ppl reader: Disabled");
-    return TRUE;
 }
 
 
@@ -98,13 +131,35 @@ BOOL InitPplService() {
 
 BOOL ShutdownPplService() {
 	LOG_A(LOG_INFO, "ETW-TI: ShutdownPplService()");
-    const char* s = "shutdown";
-    if (!pipeClient.Send((char*)s)) {
-        LOG_A(LOG_ERROR, "ETW-TI: Error writing to named pipe: %ld", GetLastError());
+    char buffer[PPL_CONFIG_LEN] = { 0 };
+    
+    try {
+        // Create JSON object for shutdown command
+        nlohmann::json j;
+        j["command"] = "shutdown";
+        
+        std::string json_str = j.dump();
+        
+        // Validate JSON string length
+        if (json_str.length() >= (PPL_CONFIG_LEN - 1)) {
+            LOG_A(LOG_ERROR, "ETW-TI: Shutdown JSON payload too long: %zu characters", json_str.length());
+            return FALSE;
+        }
+        
+        // Copy JSON string to buffer
+        strncpy_s(buffer, PPL_CONFIG_LEN, json_str.c_str(), _TRUNCATE);
+        
+        if (!pipeClient.Send(buffer)) {
+            LOG_A(LOG_ERROR, "ETW-TI: Error writing shutdown JSON to named pipe: %ld", GetLastError());
+            return FALSE;
+        }
+        pipeClient.Disconnect();
+        return TRUE;
+    }
+    catch (const std::exception& ex) {
+        LOG_A(LOG_ERROR, "ETW-TI: JSON serialization error for shutdown: %s", ex.what());
         return FALSE;
     }
-    pipeClient.Disconnect();
-    return TRUE;
 }
 
 

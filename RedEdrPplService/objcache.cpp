@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include "uthash.h"
 #include <psapi.h>
+#include <vector>
+#include <string>
 
 #include "objcache.h"
 #include "logging.h"
@@ -9,6 +11,33 @@
 struct my_hashmap* map = NULL;
 HANDLE mutex;
 wchar_t* target_name = NULL;
+std::vector<std::string> target_names;
+
+
+void set_target_names(const std::vector<std::string>& targets) {
+    // Clear existing target names
+    target_names.clear();
+    
+    // Free existing target_name (for backward compatibility)
+    if (target_name != NULL) {
+        free(target_name);
+        target_name = NULL;
+    }
+    
+    // Store new target names
+    target_names = targets;
+    
+    // For backward compatibility, set the first target as target_name
+    if (!targets.empty()) {
+        size_t len = targets[0].length() + 1;
+        target_name = (wchar_t*)malloc(len * sizeof(wchar_t));
+        if (target_name != NULL) {
+            mbstowcs_s(NULL, target_name, len, targets[0].c_str(), _TRUNCATE);
+        }
+    }
+    
+    LOG_W(LOG_INFO, L"Objcache: Set %zu target names", targets.size());
+}
 
 
 void set_target_name(wchar_t* t) {
@@ -18,12 +47,20 @@ void set_target_name(wchar_t* t) {
         target_name = NULL;
     }
     
+    // Clear target names vector
+    target_names.clear();
+    
     // Make a copy of the string instead of just storing the pointer
     if (t != NULL) {
         size_t len = wcslen(t) + 1;
         target_name = (wchar_t*)malloc(len * sizeof(wchar_t));
         if (target_name != NULL) {
             wcscpy_s(target_name, len, t);
+            
+            // Convert to string and add to vector for consistency
+            char buffer[MAX_PATH];
+            wcstombs_s(NULL, buffer, MAX_PATH, t, _TRUNCATE);
+            target_names.push_back(std::string(buffer));
         }
     }
 }
@@ -69,17 +106,23 @@ struct my_hashmap* get_obj(int pid) {
         //LOG_W(LOG_INFO, L"Could not open process %lu error %lu\n", pid, GetLastError());
     }
     else {
-        if (target_name != NULL) {
+        if (!target_names.empty()) {
             if (GetModuleFileNameEx(hProcess, NULL, exePath, MAX_PATH)) {
-                wchar_t* result = wcsstr(exePath, target_name);
-                if (result) {
-                    LOG_W(LOG_INFO, L"Objcache: observe process %lu executable path: %s", pid, exePath);
-                    //LOG_W(LOG_INFO, L"Substring found in: %s\n", exePath);
-                    observe = 1;
+                // Check against all target names
+                for (const auto& target : target_names) {
+                    wchar_t target_wide[MAX_PATH];
+                    mbstowcs_s(NULL, target_wide, MAX_PATH, target.c_str(), _TRUNCATE);
+                    
+                    wchar_t* result = wcsstr(exePath, target_wide);
+                    if (result) {
+                        LOG_W(LOG_INFO, L"Objcache: observe process %lu executable path: %s (matched target: %S)", pid, exePath, target.c_str());
+                        observe = 1;
+                        break; // Found a match, no need to check other targets
+                    }
                 }
-                else {
-                    //LOG_W(LOG_INFO, L"Objcache: Substring \"%s\" not found %lu: %s\n", target_name, pid, exePath);
-                    observe = 0;
+                
+                if (observe == 0) {
+                    //LOG_W(LOG_INFO, L"Objcache: No target match for %lu: %s\n", pid, exePath);
                 }
             }
             else {
@@ -123,6 +166,9 @@ void clean_obj() {
         HASH_DEL(map, entry);
         free(entry);
     }
+    
+    // Clear target names vector
+    target_names.clear();
     
     // Free target name
     if (target_name != NULL) {

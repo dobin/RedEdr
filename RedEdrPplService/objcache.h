@@ -2,6 +2,8 @@
 
 #include "uthash.h"
 #include <psapi.h>
+#include <vector>
+#include <string>
 
 // Define a struct for the hashmap
 struct my_hashmap {
@@ -11,6 +13,7 @@ struct my_hashmap {
 };
 
 void set_target_name(wchar_t* t);
+void set_target_names(const std::vector<std::string>& targets);
 struct my_hashmap* get_obj(int pid);
 struct my_hashmap* add_obj(int pid, int observe);
 void objcache_init();

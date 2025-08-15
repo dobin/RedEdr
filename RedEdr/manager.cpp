@@ -62,15 +62,15 @@ BOOL ManagerReload() {
 
         // PPL
         if (g_Config.do_etwti) {
-            // PPL service only supports one target at a time, use the first one
+            // PPL service supports multiple target names now
             if (!g_Config.targetExeName.empty()) {
-                LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new target: %s", g_Config.targetExeName[0].c_str());
-                if (!EnablePplProducer(true, g_Config.targetExeName[0])) {
+                LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new targets: %zu names", g_Config.targetExeName.size());
+                if (!EnablePplProducer(true, g_Config.targetExeName)) {
                     LOG_A(LOG_ERROR, "Manager: Failed to enable PPL producer");
                     return FALSE;
                 }
             } else {
-                LOG_A(LOG_WARNING, "Manager: No target names configured, skipPPL service");
+                LOG_A(LOG_WARNING, "Manager: No target names configured, skip PPL service");
             }
         }
 

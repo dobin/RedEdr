@@ -9,6 +9,7 @@
 #include "etwtireader.h"
 #include "piping.h"
 #include "utils.h"
+#include "json.hpp"
 
 DWORD start_child_process(wchar_t* childCMD);
 
@@ -44,43 +45,48 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
             }
 
             LOG_A(LOG_INFO, "Control: Received command: %s", buffer);
-            //if (wcscmp(buffer, L"start") == 0) {
-            if (strstr(buffer, "start:") != NULL) {
-                char* token = NULL, * context = NULL;
-
-                // should give "start:"
-                token = strtok_s(buffer, ":", &context);
-                if (token != NULL) {
-                    // should give the thing after "start:"
-                    token = strtok_s(NULL, ":", &context);
-                    if (token != NULL) {
-                        LOG_A(LOG_INFO, "Control: Target: %s", token);
-                        wchar_t* target_name = char2wcharAlloc(token);
-                        if (target_name != NULL) {
-                            set_target_name(target_name);
+            
+            try {
+                // Try to parse as JSON first
+                nlohmann::json j = nlohmann::json::parse(buffer);
+                
+                if (j.contains("command")) {
+                    std::string command = j["command"];
+                    
+                    if (command == "start") {
+                        if (j.contains("targets") && j["targets"].is_array()) {
+                            LOG_A(LOG_INFO, "Control: Processing start command with %zu targets", j["targets"].size());
+                            
+                            // Set multiple target names in objcache
+                            std::vector<std::string> targets = j["targets"];
+                            set_target_names(targets);
                             enable_consumer(TRUE);
-                            free(target_name); // Free allocated memory
                         } else {
-                            LOG_A(LOG_ERROR, "Control: Failed to allocate memory for target name");
+                            LOG_A(LOG_ERROR, "Control: Start command missing 'targets' array");
                         }
                     }
+                    else if (command == "stop") {
+                        LOG_A(LOG_INFO, "Control: Received JSON command: stop");
+                        enable_consumer(FALSE);
+                        DisconnectEmitterPipe(); // Disconnect the RedEdr pipe
+                    }
+                    else if (command == "shutdown") {
+                        LOG_A(LOG_INFO, "Control: Received JSON command: shutdown");
+                        keep_running = FALSE; // Signal thread to stop
+                        g_ServiceStopping = TRUE; // Signal main service loop to stop
+                        ShutdownEtwtiReader(); // also makes main return
+                        break;
+                    }
+                    else {
+                        LOG_A(LOG_INFO, "Control: Unknown JSON command: %s", command.c_str());
+                    }
+                } else {
+                    LOG_A(LOG_ERROR, "Control: JSON missing 'command' field");
                 }
             }
-            else if (strstr(buffer, "stop") != NULL) {
-                LOG_A(LOG_INFO, "Control: Received command: stop");
-                enable_consumer(FALSE);
-                DisconnectEmitterPipe(); // Disconnect the RedEdr pipe
-            }
-            else if (strstr(buffer, "shutdown") != NULL) {
-                LOG_A(LOG_INFO, "Control: Received command: shutdown");
-                //rededr_remove_service();  // attempt to remove service
-                keep_running = FALSE; // Signal thread to stop
-                g_ServiceStopping = TRUE; // Signal main service loop to stop
-                ShutdownEtwtiReader(); // also makes main return
-                break;
-            }
-            else {
-                LOG_A(LOG_INFO, "Control: Unknown command: %s", buffer);
+            catch (const nlohmann::json::parse_error& e) {
+                // Fallback to legacy string-based parsing for backward compatibility
+                LOG_A(LOG_WARNING, "Control: JSON parse failed %s", e.what());
             }
         }
 
