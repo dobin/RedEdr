@@ -12,7 +12,7 @@
 
 class Config {
 public:
-	std::string targetExeName = "powershell.exe";
+	std::vector<std::string> targetExeName = {"malware"};
 	bool debug = false;
 
 	// Constants

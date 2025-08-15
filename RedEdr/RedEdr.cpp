@@ -118,7 +118,8 @@ int main(int argc, char* argv[]) {
     }
 
     if (result.count("trace")) {
-        g_Config.targetExeName = result["trace"].as<std::string>();
+        std::string traceTarget = result["trace"].as<std::string>();
+        g_Config.targetExeName = {traceTarget};
     }
     else if (! result.count("test") && !result.count("replay")) {
         std::cout << options.help() << std::endl;
@@ -148,7 +149,16 @@ int main(int argc, char* argv[]) {
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
     LOG_A(LOG_INFO, "RedEdr %s", REDEDR_VERSION);
-    LOG_A(LOG_INFO, "Config: tracing %s", g_Config.targetExeName.c_str());
+    if (!g_Config.targetExeName.empty()) {
+        std::string targets = "";
+        for (size_t i = 0; i < g_Config.targetExeName.size(); ++i) {
+            if (i > 0) targets += ", ";
+            targets += g_Config.targetExeName[i];
+        }
+        LOG_A(LOG_INFO, "Config: tracing %s", targets.c_str());
+    } else {
+        LOG_A(LOG_INFO, "Config: no targets configured");
+    }
 
     // SeDebug
     if (!PermissionMakeMeDebug()) {

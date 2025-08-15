@@ -93,7 +93,7 @@ namespace UnitTests
 			std::wstring processNameW = L"explorer.exe";
             std::string processName = "explorer.exe";
 
-            g_Config.targetExeName = processName;
+            g_Config.targetExeName = {processName};
             
             DWORD pid = FindProcessIdByName(processNameW);
             Assert::IsTrue(pid > 0);
@@ -108,7 +108,7 @@ namespace UnitTests
             std::wstring processNameW = L"explorer.exe";
             std::string processName = "explorer.exe";
 
-            g_Config.targetExeName = processName;
+            g_Config.targetExeName = {processName};
             DWORD pid = FindProcessIdByName(processNameW);
             Process* p = MakeProcess(pid, processName);
             
@@ -124,7 +124,7 @@ namespace UnitTests
             std::wstring processNameW = L"explorer2.exe";
             std::string processName = "explorer2.exe";
 
-            g_Config.targetExeName = processName;
+            g_Config.targetExeName = {processName};
             DWORD pid = FindProcessIdByName(L"explorer.exe");
             Process* p = MakeProcess(pid, processName);
             
@@ -137,7 +137,7 @@ namespace UnitTests
         {
             std::wstring processNameW = L"explorer2.exe";
             std::string processName = "explorer2.exe";
-            g_Config.targetExeName = processName.c_str();
+            g_Config.targetExeName = {processName};
             DWORD pid = FindProcessIdByName(L"explorer3.exe");
             Process* p = MakeProcess(pid, processName);
 

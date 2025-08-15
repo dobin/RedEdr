@@ -31,6 +31,6 @@ public:
     HANDLE hProcess;
 };
 
-
-Process* MakeProcess(DWORD pid, std::string targetName);
+bool ProcessMatchesAnyTarget(const std::string& processName, const std::vector<std::string>& targetNames);
+Process* MakeProcess(DWORD pid, std::vector<std::string> targetNames);
 

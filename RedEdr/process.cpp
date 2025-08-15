@@ -21,8 +21,18 @@
 #include "utils.h"
 
 
+// Helper function to check if process name matches any target
+bool ProcessMatchesAnyTarget(const std::string& processName, const std::vector<std::string>& targetNames) {
+    for (const auto& target : targetNames) {
+        if (contains_case_insensitive(processName, target)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // This should be fast
-Process* MakeProcess(DWORD pid, std::string targetName) {
+Process* MakeProcess(DWORD pid, std::vector<std::string> targetNames) {
     Process* process;
 
     process = new Process(pid);
@@ -36,7 +46,8 @@ Process* MakeProcess(DWORD pid, std::string targetName) {
     process->commandline = wstring2string(processName);
 
     // Check if we should trace
-    if (contains_case_insensitive(process->commandline, targetName)) {
+    bool shouldObserve = ProcessMatchesAnyTarget(process->commandline, targetNames);
+    if (shouldObserve) {
         LOG_A(LOG_INFO, "Process: observe pid %lu: %s", pid, process->commandline.c_str());
         process->observe = 1;
     }

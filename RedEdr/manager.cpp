@@ -48,19 +48,29 @@ BOOL ManagerReload() {
         
         // Kernel
         if (g_Config.do_hook) {
-            LOG_A(LOG_INFO, "Manager: Tell Kernel about new target: %s", g_Config.targetExeName.c_str());
-            if (!EnableKernelDriver(true, g_Config.targetExeName)) {
-                LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
-                return FALSE;
+            // Kernel driver only supports one target at a time, use the first one
+            if (!g_Config.targetExeName.empty()) {
+                LOG_A(LOG_INFO, "Manager: Tell Kernel about new target: %s", g_Config.targetExeName[0].c_str());
+                if (!EnableKernelDriver(true, g_Config.targetExeName[0])) {
+                    LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
+                    return FALSE;
+                }
+            } else {
+                LOG_A(LOG_WARNING, "Manager: No target names configured, skip kernel driver");
             }
         }
 
         // PPL
         if (g_Config.do_etwti) {
-            LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new target: %s", g_Config.targetExeName.c_str());
-            if (!EnablePplProducer(true, g_Config.targetExeName)) {
-                LOG_A(LOG_ERROR, "Manager: Failed to enable PPL producer");
-                return FALSE;
+            // PPL service only supports one target at a time, use the first one
+            if (!g_Config.targetExeName.empty()) {
+                LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new target: %s", g_Config.targetExeName[0].c_str());
+                if (!EnablePplProducer(true, g_Config.targetExeName[0])) {
+                    LOG_A(LOG_ERROR, "Manager: Failed to enable PPL producer");
+                    return FALSE;
+                }
+            } else {
+                LOG_A(LOG_WARNING, "Manager: No target names configured, skipPPL service");
             }
         }
 
@@ -135,9 +145,13 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
         // Kernel: Enable
         if (g_Config.do_hook) {
             LOG_A(LOG_INFO, "Manager: Kernel module enable collection");
-            if (!EnableKernelDriver(1, g_Config.targetExeName)) {
-                LOG_A(LOG_ERROR, "Manager: Kernel module failed");
-                return FALSE;
+            if (!g_Config.targetExeName.empty()) {
+                if (!EnableKernelDriver(1, g_Config.targetExeName[0])) {
+                    LOG_A(LOG_ERROR, "Manager: Kernel module failed");
+                    return FALSE;
+                }
+            } else {
+                LOG_A(LOG_WARNING, "Manager: No target names configured for kernel driver");
             }
         }
 

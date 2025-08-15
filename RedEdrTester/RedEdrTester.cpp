@@ -61,7 +61,7 @@ void processinfo(char* pidStr) {
 
 	g_Config.debug = 1;
 	g_Config.hide_full_output = 0;
-	g_Config.targetExeName = "otepad";
+	g_Config.targetExeName = {"otepad"};
 
 	//Process* process = new Process(pid);
 	Process* process = g_ProcessResolver.getObject(pid);  // use the real resolver

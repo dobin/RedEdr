@@ -308,9 +308,19 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         try {
             auto data = json::parse(req.body);
             if (data.contains("trace")) {
-                std::string traceName = data["trace"].get<std::string>();
-                LOG_A(LOG_INFO, "Trace target: %s", traceName.c_str());
-                g_Config.targetExeName = traceName;
+                if (data["trace"].is_array()) {
+                    std::vector<std::string> traceNames = data["trace"].get<std::vector<std::string>>();
+                    LOG_A(LOG_INFO, "Trace targets: %zu targets", traceNames.size());
+                    for (const auto& target : traceNames) {
+                        LOG_A(LOG_INFO, "  - %s", target.c_str());
+                    }
+                    g_Config.targetExeName = traceNames;
+                } else {
+                    // Handle single string for backward compatibility
+                    std::string traceName = data["trace"].get<std::string>();
+                    LOG_A(LOG_INFO, "Trace target: %s", traceName.c_str());
+                    g_Config.targetExeName = {traceName};
+                }
                 ManagerReload();
                 json response = { {"result", "ok"} };
                 res.set_content(response.dump(), "application/json");
