@@ -28,6 +28,7 @@ public:
     BOOL PopulateAllProcesses(); // Populate cache with all running processes
     void LogCacheStatistics(); // Log statistics about the cache
     BOOL RefreshCache(); // Refresh cache with new processes and remove dead ones
+    BOOL RefreshTargetMatching(); // Re-evaluate all cached processes with current target names
 
 private:
     std::unordered_map<DWORD, Process> cache;

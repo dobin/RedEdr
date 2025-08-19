@@ -78,18 +78,18 @@ BOOL InitProcessQuery() {
 
 std::wstring GetProcessName(HANDLE hProcess) {
     if (!hProcess || hProcess == INVALID_HANDLE_VALUE) {
-        // Happens often
-        //LOG_A(LOG_WARNING, "GetProcessName: Invalid process handle");
+        LOG_A(LOG_WARNING, "GetProcessName: Invalid process handle");
         return std::wstring(L"");
     }
     
     WCHAR exePath[MAX_PATH] = { 0 };
     if (GetModuleFileNameEx(hProcess, NULL, exePath, MAX_PATH)) {
+		//LOG_W(LOG_INFO, L"GetProcessName: Process name: %s", exePath);
         return std::wstring(exePath);
     }
     else {
         // Happens often
-        //LOG_A(LOG_WARNING, "GetProcessName: Failed to get module filename. Error: %lu", GetLastError());
+        LOG_A(LOG_WARNING, "GetProcessName: Failed to get module filename. Error: %lu", GetLastError());
         return std::wstring(L"");
     }
 }

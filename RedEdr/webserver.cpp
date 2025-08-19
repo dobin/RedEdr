@@ -321,7 +321,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                     LOG_A(LOG_INFO, "Trace target: %s", traceName.c_str());
                     g_Config.targetExeName = {traceName};
                 }
-                ManagerReload();
+                ManagerApplyNewTargets();
                 json response = { {"result", "ok"} };
                 res.set_content(response.dump(), "application/json");
             }

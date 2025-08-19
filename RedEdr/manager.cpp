@@ -38,52 +38,45 @@ void ResetEverything() {
 }
 
 
-BOOL ManagerReload() {
-    try {
-        // DLL
-        // -> Automatic upon connect of DLL (initiated by Kernel)
+BOOL ManagerApplyNewTargets() {
+    // DLL
+    // -> Automatic upon connect of DLL (initiated by Kernel)
 
-        // ETW
-        // -> Automatic in ProcessCache
-        
-        // Kernel
-        if (g_Config.do_hook) {
-            // Kernel driver only supports one target at a time, use the first one
-            if (!g_Config.targetExeName.empty()) {
-                LOG_A(LOG_INFO, "Manager: Tell Kernel about new target: %s", g_Config.targetExeName[0].c_str());
-                if (!EnableKernelDriver(true, g_Config.targetExeName[0])) {
-                    LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
-                    return FALSE;
-                }
-            } else {
-                LOG_A(LOG_WARNING, "Manager: No target names configured, skip kernel driver");
+    // ETW
+    if (g_Config.do_etw) {
+        // Re-evaluate all cached processes with the new target names
+        g_ProcessResolver.RefreshTargetMatching();
+    }
+    
+    // Kernel
+    if (g_Config.do_hook) {
+        // Kernel driver only supports one target at a time, use the first one
+        if (!g_Config.targetExeName.empty()) {
+            LOG_A(LOG_INFO, "Manager: Tell Kernel about new target: %s", g_Config.targetExeName[0].c_str());
+            if (!EnableKernelDriver(true, g_Config.targetExeName[0])) {
+                LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
+                return FALSE;
             }
+        } else {
+            LOG_A(LOG_WARNING, "Manager: No target names configured, skip kernel driver");
         }
+    }
 
-        // PPL
-        if (g_Config.do_etwti) {
-            // PPL service supports multiple target names now
-            if (!g_Config.targetExeName.empty()) {
-                LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new targets: %zu names", g_Config.targetExeName.size());
-                if (!EnablePplProducer(true, g_Config.targetExeName)) {
-                    LOG_A(LOG_ERROR, "Manager: Failed to enable PPL producer");
-                    return FALSE;
-                }
-            } else {
-                LOG_A(LOG_WARNING, "Manager: No target names configured, skip PPL service");
+    // PPL
+    if (g_Config.do_etwti) {
+        // PPL service supports multiple target names now
+        if (!g_Config.targetExeName.empty()) {
+            LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new targets: %zu names", g_Config.targetExeName.size());
+            if (!EnablePplProducer(true, g_Config.targetExeName)) {
+                LOG_A(LOG_ERROR, "Manager: Failed to enable PPL producer");
+                return FALSE;
             }
+        } else {
+            LOG_A(LOG_WARNING, "Manager: No target names configured, skip PPL service");
         }
+    }
 
-        return TRUE;
-    }
-    catch (const std::exception& e) {
-        LOG_A(LOG_ERROR, "Manager: Exception in ManagerReload: %s", e.what());
-        return FALSE;
-    }
-    catch (...) {
-        LOG_A(LOG_ERROR, "Manager: Unknown exception in ManagerReload");
-        return FALSE;
-    }
+    return TRUE;
 }
 
 

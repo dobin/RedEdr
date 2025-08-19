@@ -56,19 +56,11 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                     if (command == "start") {
                         if (j.contains("targets") && j["targets"].is_array()) {
                             LOG_A(LOG_INFO, "Control: Processing start command with %zu targets", j["targets"].size());
-                            
-                            // Set multiple target names in objcache
                             std::vector<std::string> targets = j["targets"];
                             set_target_names(targets);
-                            enable_consumer(TRUE);
                         } else {
                             LOG_A(LOG_ERROR, "Control: Start command missing 'targets' array");
                         }
-                    }
-                    else if (command == "stop") {
-                        LOG_A(LOG_INFO, "Control: Received JSON command: stop");
-                        enable_consumer(FALSE);
-                        DisconnectEmitterPipe(); // Disconnect the RedEdr pipe
                     }
                     else if (command == "shutdown") {
                         LOG_A(LOG_INFO, "Control: Received JSON command: shutdown");

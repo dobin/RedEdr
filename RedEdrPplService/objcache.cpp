@@ -4,65 +4,91 @@
 #include <psapi.h>
 #include <vector>
 #include <string>
+#include <tlhelp32.h>
 
 #include "objcache.h"
 #include "logging.h"
 
 struct my_hashmap* map = NULL;
 HANDLE mutex;
-wchar_t* target_name = NULL;
 std::vector<std::string> target_names;
 
 
-void set_target_names(const std::vector<std::string>& targets) {
-    // Clear existing target names
-    target_names.clear();
-    
-    // Free existing target_name (for backward compatibility)
-    if (target_name != NULL) {
-        free(target_name);
-        target_name = NULL;
+// Helper function to get process name by PID using CreateToolhelp32Snapshot
+std::wstring GetProcessNameByPid(DWORD pid) {
+    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hSnapshot == INVALID_HANDLE_VALUE) {
+        LOG_W(LOG_ERROR, L"GetProcessNameByPid: Failed to create process snapshot: %lu", GetLastError());
+        return std::wstring(L"");
     }
     
-    // Store new target names
-    target_names = targets;
+    PROCESSENTRY32W pe32;
+    pe32.dwSize = sizeof(PROCESSENTRY32W);
     
-    // For backward compatibility, set the first target as target_name
-    if (!targets.empty()) {
-        size_t len = targets[0].length() + 1;
-        target_name = (wchar_t*)malloc(len * sizeof(wchar_t));
-        if (target_name != NULL) {
-            mbstowcs_s(NULL, target_name, len, targets[0].c_str(), _TRUNCATE);
+    // Get the first process
+    if (!Process32FirstW(hSnapshot, &pe32)) {
+        LOG_W(LOG_ERROR, L"GetProcessNameByPid: Failed to get first process: %lu", GetLastError());
+        CloseHandle(hSnapshot);
+        return std::wstring(L"");
+    }
+    
+    std::wstring processName;
+    do {
+        if (pe32.th32ProcessID == pid) {
+            processName = std::wstring(pe32.szExeFile);
+            break;
         }
-    }
+    } while (Process32NextW(hSnapshot, &pe32));
     
-    LOG_W(LOG_INFO, L"Objcache: Set %zu target names", targets.size());
+    CloseHandle(hSnapshot);
+    
+    return processName;
 }
 
 
-void set_target_name(wchar_t* t) {
-    // Free any existing target name
-    if (target_name != NULL) {
-        free(target_name);
-        target_name = NULL;
-    }
-    
-    // Clear target names vector
-    target_names.clear();
-    
-    // Make a copy of the string instead of just storing the pointer
-    if (t != NULL) {
-        size_t len = wcslen(t) + 1;
-        target_name = (wchar_t*)malloc(len * sizeof(wchar_t));
-        if (target_name != NULL) {
-            wcscpy_s(target_name, len, t);
-            
-            // Convert to string and add to vector for consistency
-            char buffer[MAX_PATH];
-            wcstombs_s(NULL, buffer, MAX_PATH, t, _TRUNCATE);
-            target_names.push_back(std::string(buffer));
+void RefreshProcessMatching() {
+    struct my_hashmap* entry = NULL;
+    struct my_hashmap* tmp = NULL;
+
+    WaitForSingleObject(mutex, INFINITE);
+    HASH_ITER(hh, map, entry, tmp) {
+        int pid = entry->key;
+        std::wstring exePath = GetProcessNameByPid(pid);
+        if (match_process(exePath)) {
+            entry->value = 1;
+            LOG_W(LOG_INFO, L"Objcache: Observe PID %d processname %s", entry->key, exePath.c_str());
+        } else {
+            entry->value = 0;
         }
     }
+    ReleaseMutex(mutex);
+}
+
+
+void set_target_names(const std::vector<std::string>& targets) {
+    target_names.clear();
+    target_names = targets;
+    LOG_W(LOG_INFO, L"Objcache: Set %zu target names", targets.size());
+
+    RefreshProcessMatching();
+}
+
+
+bool match_process(std::wstring exePath) {
+    if (exePath.empty() || target_names.empty()) {
+        return false;
+    }
+
+    // Check against all target names
+    for (const auto& target : target_names) {
+        wchar_t target_wide[MAX_PATH];
+        mbstowcs_s(NULL, target_wide, MAX_PATH, target.c_str(), _TRUNCATE);
+        const wchar_t* result = wcsstr(exePath.c_str(), target_wide);
+        if (result) {
+            return true;
+        }
+    }
+    return false;
 }
 
 
@@ -70,20 +96,27 @@ void objcache_init() {
     mutex = CreateMutex(NULL, FALSE, NULL);
     
     // Populate map with all existing processes
-	// All existing will not be observed
+    // Match them already with our observed processes
     DWORD processes[1024], cbNeeded, processCount;
     if (EnumProcesses(processes, sizeof(processes), &cbNeeded)) {
         processCount = cbNeeded / sizeof(DWORD);
         
         for (DWORD i = 0; i < processCount; i++) {
             if (processes[i] != 0) {
-                add_obj(processes[i], 0);
+                int pid = processes[i];
+                int observe = 0;
+                std::wstring exePath = GetProcessNameByPid(pid);
+                if (match_process(exePath)) {
+                    LOG_W(LOG_INFO, L"Objcache Init: observe process %lu executable path: %s", pid, exePath.c_str());
+                    observe = 1;
+                }
+                add_obj(pid, observe);
             }
         }
-        LOG_W(LOG_INFO, L"Objcache: Objcache initialized with %lu existing processes", processCount);
+        LOG_W(LOG_INFO, L"Objcache Init: Initialized with %lu existing processes", processCount);
     }
     else {
-        LOG_W(LOG_INFO, L"Objcache: Failed to enumerate processes during init: %lu", GetLastError());
+        LOG_W(LOG_INFO, L"Objcache Init: Failed to enumerate processes during init: %lu", GetLastError());
     }
 }
 
@@ -95,44 +128,17 @@ struct my_hashmap* get_obj(int pid) {
         return obj;
     }
     
-    // Add new
-    HANDLE hProcess;
-    WCHAR exePath[MAX_PATH];
+    // Resolve and add if not found
     int observe = 0;
-
-    hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-    if (hProcess == NULL) {
-        // We dont care
-        //LOG_W(LOG_INFO, L"Could not open process %lu error %lu\n", pid, GetLastError());
-    }
-    else {
-        if (!target_names.empty()) {
-            if (GetModuleFileNameEx(hProcess, NULL, exePath, MAX_PATH)) {
-                // Check against all target names
-                for (const auto& target : target_names) {
-                    wchar_t target_wide[MAX_PATH];
-                    mbstowcs_s(NULL, target_wide, MAX_PATH, target.c_str(), _TRUNCATE);
-                    
-                    wchar_t* result = wcsstr(exePath, target_wide);
-                    if (result) {
-                        LOG_W(LOG_INFO, L"Objcache: observe process %lu executable path: %s (matched target: %S)", pid, exePath, target.c_str());
-                        observe = 1;
-                        break; // Found a match, no need to check other targets
-                    }
-                }
-                
-                if (observe == 0) {
-                    //LOG_W(LOG_INFO, L"Objcache: No target match for %lu: %s\n", pid, exePath);
-                }
-            }
-            else {
-                // Can happen often
-                //LOG_W(LOG_INFO, L"Objcache: Failed to get executable path: %lu\n", GetLastError());
-            }
+    if (!target_names.empty()) {
+        std::wstring exePath = GetProcessNameByPid(pid);
+        if (match_process(exePath)) {
+            LOG_W(LOG_INFO, L"Objcache: observe process %lu executable path: %s", pid, exePath.c_str());
+            observe = 1;
+        } else {
+            LOG_W(LOG_INFO, L"Objcache: Failed to get executable path for PID: %lu\n", pid);
         }
-        CloseHandle(hProcess);
     }
-
     struct my_hashmap* res = add_obj(pid, observe);
     return res;
 }
@@ -140,7 +146,6 @@ struct my_hashmap* get_obj(int pid) {
 
 struct my_hashmap* add_obj(int pid, int observe) {
     struct my_hashmap* entry = NULL;
-
     entry = (struct my_hashmap*) malloc(sizeof(struct my_hashmap));
     entry->key = pid;
     entry->value = observe;
@@ -161,25 +166,13 @@ struct my_hashmap* has_obj(int key) {
 
 
 void clean_obj() {
+    WaitForSingleObject(mutex, INFINITE);
     struct my_hashmap* entry = NULL, * tmp = NULL;
     HASH_ITER(hh, map, entry, tmp) {
         HASH_DEL(map, entry);
         free(entry);
     }
-    
-    // Clear target names vector
     target_names.clear();
-    
-    // Free target name
-    if (target_name != NULL) {
-        free(target_name);
-        target_name = NULL;
-    }
-    
-    // Close mutex handle
-    if (mutex != NULL) {
-        CloseHandle(mutex);
-        mutex = NULL;
-    }
+    ReleaseMutex(mutex);
 }
 

@@ -201,6 +201,28 @@ BOOL ProcessResolver::PopulateAllProcesses() {
 }
 
 
+// Re-evaluate all cached processes with current target names
+BOOL ProcessResolver::RefreshTargetMatching() {
+    LOG_A(LOG_INFO, "ProcessResolver: Re-evaluating all cached processes with current target names");
+    std::lock_guard<std::mutex> lock(cache_mutex);
+    
+    for (auto& pair : cache) {
+        DWORD pid = pair.first;
+        Process& process = pair.second;
+
+        bool shouldObserve = ProcessMatchesAnyTarget(process.commandline, g_Config.targetExeName);
+        if (shouldObserve) {
+            LOG_A(LOG_INFO, "Process: observe pid %lu: %s", pid, process.commandline.c_str());
+            process.observe = 1;
+        } else {
+            process.observe = 0;
+        }
+    }
+    
+    return TRUE;
+}
+
+
 // Log statistics about the current cache state
 void ProcessResolver::LogCacheStatistics() {
     std::lock_guard<std::mutex> lock(cache_mutex);

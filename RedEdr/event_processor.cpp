@@ -57,20 +57,24 @@ void EventProcessor::init() {
 
 
 void EventProcessor::InitialProcessInfo(Process *process) {
-    if (process->GetHandle() == NULL) {
-        LOG_A(LOG_WARNING, "EventProcessor: Cant access Process pid %lu",
+    // Try to open the process handle for detailed information
+    if (!process->OpenTarget()) {
+        LOG_A(LOG_WARNING, "EventProcessor: Cannot open process handle for pid %lu",
             process->id);
         return;
     }
+    
     DWORD exitCode;
     if (!GetExitCodeProcess(process->GetHandle(), &exitCode)) {
         LOG_A(LOG_WARNING, "EventProcessor: Failed to get exit code for process pid %lu, error: %lu",
             process->id, GetLastError());
+        process->CloseTarget();
         return;
     }
     if (exitCode != STILL_ACTIVE) {
         LOG_A(LOG_WARNING, "EventProcessor: Process pid %lu is not active (exit code: %lu)",
             process->id, exitCode);
+        process->CloseTarget();
         return;
     }
 
@@ -140,6 +144,9 @@ void EventProcessor::InitialProcessInfo(Process *process) {
     catch (const std::exception& e) {
         LOG_A(LOG_ERROR, "EventProcessor: Error enumerating modules: %s", e.what());
     }
+    
+    // Close the process handle after gathering information
+    process->CloseTarget();
 }
 
 

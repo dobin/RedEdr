@@ -15,17 +15,9 @@
 #include "etw_krabs.h"
 
 
-BOOL enabled_consumer = FALSE;
 
 unsigned int events_all = 0;
 unsigned int events_processed = 0;
-
-
-void enable_consumer(BOOL e) {
-    LOG_W(LOG_INFO, L"Handler: Enable: %d", e);
-    enabled_consumer = e;
-}
-
 
 void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trace_context) {
     krabs::schema schema(record, trace_context.schema_locator);
@@ -35,10 +27,6 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
     events_all++;
     if (events_all == 10) {
         LOG_W(LOG_INFO, L"Handler: Processed %u ETW-TI events so far. Seems to work. ", events_all);
-    }
-
-    if (!enabled_consumer) {
-        return;
     }
 
     // Check if we should follow this process
