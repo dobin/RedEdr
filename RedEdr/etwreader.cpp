@@ -50,6 +50,26 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
 }
 
 
+void event_callback_nofilter(const EVENT_RECORD& record, const krabs::trace_context& trace_context) {
+    try {
+        krabs::schema schema(record, trace_context.schema_locator);
+
+        // This function(-chain) should be high performance, or we lose events.
+
+        // This will get information about the process, which may be slow, if not
+        // done before. It can be done before, e.g. when Kernel event arrived
+        std::string json_ret = KrabsEtwEventToJsonStr(record, schema);
+        g_EventAggregator.NewEvent(json_ret);
+    }
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "ETW event_callback exception: %s", e.what());
+    }
+    catch (...) {
+        LOG_A(LOG_ERROR, "ETW event_callback unknown exception");
+    }
+}
+
+
 BOOL InitializeEtwReader(std::vector<HANDLE>& threads) {
     HANDLE thread = CreateThread(NULL, 0, TraceProcessingThread, NULL, 0, NULL);
     if (thread == NULL) {
@@ -194,6 +214,12 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         securityauditing_provider.add_on_event_callback(event_callback);
         trace_user.enable(securityauditing_provider);
         */
+
+		// Microsoft-Windows-Threat-Intelligence
+        /* everything */
+        krabs::provider<> antimalwareengine_provider(L"Microsoft-Antimalware-Engine");
+        antimalwareengine_provider.add_on_event_callback(event_callback_nofilter);
+        trace_user.enable(antimalwareengine_provider);
 
         // Blocking, stopped with trace.stop()
         trace_user.start();
