@@ -83,6 +83,9 @@ int main(int argc, char* argv[]) {
         ("4,pplstart", "PPL service: load", cxxopts::value<bool>()->default_value("false"))
         ("5,pplstop", "PPL service: stop", cxxopts::value<bool>()->default_value("false"))
 
+        // Options
+        ("disable-unfiltered-etw", "Performance: Disable unfiltered ETW", cxxopts::value<bool>()->default_value("false"))
+
         // Debug
         ("l,dllreader", "Debug: DLL reader but no injection (for manual injection tests)", cxxopts::value<bool>()->default_value("false"))
         ("d,debug", "Debug: Enable debug output", cxxopts::value<bool>()->default_value("false"))
@@ -133,6 +136,7 @@ int main(int argc, char* argv[]) {
     g_Config.debug_dllreader = result["dllreader"].as<bool>();
     g_Config.hide_full_output = result["hide"].as<bool>();
     g_Config.web_output = result["web"].as<bool>();
+    g_Config.disable_unfiltered_etw = result["disable-unfiltered-etw"].as<bool>();
     //g_Config.do_dllinjection_ucallstack = result["dllcallstack"].as<bool>();
 
     /*

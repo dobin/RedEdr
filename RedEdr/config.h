@@ -27,6 +27,7 @@ public:
 	bool do_udllinjection = false;
 	bool debug_dllreader = false;
 	bool enable_remote_exec = true;
+	bool disable_unfiltered_etw = false;
 
 	// Input selection
 	bool do_etw = false;

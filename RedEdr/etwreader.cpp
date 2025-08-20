@@ -21,6 +21,12 @@
 
 krabs::user_trace trace_user(L"RedEdrUser");
 
+BOOL use_additional_etw = FALSE;
+
+void enable_additional_etw(BOOL use) {
+    use_additional_etw = use;
+}
+
 
 void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trace_context) {
     try {
@@ -51,6 +57,11 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
 
 
 void event_callback_nofilter(const EVENT_RECORD& record, const krabs::trace_context& trace_context) {
+    if (!use_additional_etw) {
+        // If we dont use additional ETW, we dont want to process these events
+        return;
+	}
+
     try {
         krabs::schema schema(record, trace_context.schema_locator);
 
@@ -102,6 +113,7 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         process_filter.add_on_event_callback(event_callback);
         process_provider.add_filter(process_filter);
         trace_user.enable(process_provider);
+        LOG_A(LOG_INFO, "ETW: Microsoft-Windows-Kernel-Process (1, 2, 3, 4, 5, 6, 11)");
         
         /*
             Event ID 1: PspLogAuditSetLoadImageNotifyRoutineEvent(kernel)
@@ -122,6 +134,7 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         auditapi_filter.add_on_event_callback(event_callback);
         auditapi_provider.add_filter(auditapi_filter);
         trace_user.enable(auditapi_provider);
+        LOG_A(LOG_INFO, "ETW: Microsoft-Windows-Kernel-Audit-API-Calls (3, 4, 5, 6)");
         
         /*
             10 NameCreate
@@ -148,6 +161,7 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         kernelfile_filter.add_on_event_callback(event_callback);
         kernelfile_provider.add_filter(kernelfile_filter);
         trace_user.enable(kernelfile_provider);
+        LOG_A(LOG_INFO, "ETW: Microsoft-Windows-Kernel-File (10, 30)");
 
         /*
             12 KERNEL_NETWORK_TASK_TCPIPConnectionattempted
@@ -167,7 +181,8 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         kernelnetwork_filter.add_on_event_callback(event_callback);
         kernelnetwork_provider.add_filter(kernelnetwork_filter);
         trace_user.enable(kernelnetwork_provider);
-        
+        LOG_A(LOG_INFO, "ETW: Microsoft-Windows-Kernel-Network (12, 15, 28, 31, 42, 43, 58, 59)");
+
         /* https://docs.google.com/spreadsheets/d/1d7hPRktxzYWmYtfLFaU_vMBKX2z98bci0fssTYyofdo/edit?gid=0#gid=0
             4624	An account was successfully logged on.
             4625	An account failed to log on.
@@ -216,10 +231,13 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         */
 
 		// Microsoft-Windows-Threat-Intelligence
-        /* everything */
-        krabs::provider<> antimalwareengine_provider(L"Microsoft-Antimalware-Engine");
-        antimalwareengine_provider.add_on_event_callback(event_callback_nofilter);
-        trace_user.enable(antimalwareengine_provider);
+        /* everything - for the duration of use_additional_etw = true */
+        if (! g_Config.disable_unfiltered_etw) {
+            krabs::provider<> antimalwareengine_provider(L"Microsoft-Antimalware-Engine");
+            antimalwareengine_provider.add_on_event_callback(event_callback_nofilter);
+            trace_user.enable(antimalwareengine_provider);
+            LOG_A(LOG_INFO, "ETW: Microsoft-Antimalware-Engine (all)");
+        }
 
         // Blocking, stopped with trace.stop()
         trace_user.start();

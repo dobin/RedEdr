@@ -20,6 +20,7 @@
 #include "event_processor.h"
 #include "executor.h"
 #include "edr_reader.h"
+#include "etwreader.h"
 
 #pragma comment(lib, "wtsapi32.lib")
 #pragma comment(lib, "userenv.lib")
@@ -403,6 +404,19 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                 }
 				std::string filepath = path + filename;
 
+                // enable Nofilter ETW
+                std::string use_additional_etw;
+                if (req.has_file("use_additional_etw")) {
+                    auto use_additional_etw_field = req.get_file_value("use_additional_etw");
+                    use_additional_etw = use_additional_etw_field.content;
+                }
+                if (use_additional_etw == "true") {
+                    enable_additional_etw(true);
+                }
+                else {
+                    enable_additional_etw(false);
+                }
+
                 // Write the malware
 				LOG_A(LOG_INFO, "Webserver: writing malware: %s in path %s", filename.c_str(), path.c_str());
                 if (! g_Executor.WriteMalware(filepath, file.content)) {
@@ -467,6 +481,10 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         });
 
         svr.Post("/api/kill", [](const httplib::Request&, httplib::Response& res) {
+            // Disable resource intensive ETW collection
+            enable_additional_etw(false);
+
+            // Kill
             bool ret = g_Executor.KillLastExec();
             if (!ret) {
                 res.status = 500;
