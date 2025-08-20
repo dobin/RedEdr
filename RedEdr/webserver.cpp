@@ -114,7 +114,7 @@ std::vector<std::string> GetPplLogs() {
 }
 
 DWORD WINAPI WebserverThread(LPVOID param) {
-    // Static
+    // UI
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
         try {
             std::string indexhtml = read_file("C:\\RedEdr\\index.html");
@@ -160,44 +160,9 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             res.set_content("Internal server error", "text/plain");
         }
     });
-
-    // Recordings
     svr.Get("/api/save", [](const httplib::Request&, httplib::Response& res) {
         g_EventProcessor.SaveToFile();
     });
-    svr.Get("/api/recordings", [](const httplib::Request&, httplib::Response& res) {
-        try {
-            res.set_content(getRecordingsAsJson(), "application/json; charset=UTF-8");
-        } catch (const std::exception& e) {
-            LOG_A(LOG_ERROR, "Error getting recordings: %s", e.what());
-            res.status = 500;
-            res.set_content("{\"error\":\"Internal server error\"}", "application/json");
-        }
-    });
-    svr.Get("/api/recordings/:id", [](const httplib::Request& req, httplib::Response& res) {
-        auto filename = req.path_params.at("id");
-        
-        // Validate the ID to prevent path traversal attacks
-        if (filename.find("..") != std::string::npos || 
-            filename.find("/") != std::string::npos || 
-            filename.find("\\") != std::string::npos ||
-            filename.empty()) {
-            res.status = 400;
-            res.set_content("{\"error\": \"Invalid ID\"}", "application/json");
-            return;
-        }
-        
-        std::string path = "C:\\RedEdr\\Data\\" + filename;
-        std::string data = read_file(path);
-        if (data.empty()) {
-            res.status = 404;
-            res.set_content("{\"error\": \"File not found\"}", "application/json");
-            return;
-        }
-        res.set_content(data.c_str(), "application/json");
-    });
-
-    // UI
     svr.Get("/api/stats", [](const httplib::Request&, httplib::Response& res) {
         nlohmann::json stats = {
             {"events_count", g_EventAggregator.GetCount()},
@@ -210,7 +175,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         res.set_content(stats.dump(), "application/json; charset=UTF-8");
     });
 
-    // Logs
+    // Provide Logs
     svr.Get("/api/logs/rededr", [](const httplib::Request&, httplib::Response& res) {
         // Arry of Dicts
         // Like:
@@ -309,19 +274,19 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         try {
             auto data = json::parse(req.body);
             if (data.contains("trace")) {
-                if (data["trace"].is_array()) {
-                    std::vector<std::string> traceNames = data["trace"].get<std::vector<std::string>>();
-                    LOG_A(LOG_INFO, "Trace targets: %zu targets", traceNames.size());
-                    for (const auto& target : traceNames) {
-                        LOG_A(LOG_INFO, "  - %s", target.c_str());
-                    }
-                    g_Config.targetExeName = traceNames;
-                } else {
-                    // Handle single string for backward compatibility
-                    std::string traceName = data["trace"].get<std::string>();
-                    LOG_A(LOG_INFO, "Trace target: %s", traceName.c_str());
-                    g_Config.targetExeName = {traceName};
+                if (! data["trace"].is_array()) {
+                    LOG_A(LOG_ERROR, "Targets should be an array");
+                    json error_response = { {"error", "trace should be an array"} };
+                    res.status = 400;
+                    res.set_content(error_response.dump(), "application/json");
                 }
+                std::vector<std::string> traceNames = data["trace"].get<std::vector<std::string>>();
+                LOG_A(LOG_INFO, "Trace targets: %zu targets", traceNames.size());
+                for (const auto& target : traceNames) {
+                    LOG_A(LOG_INFO, "  - %s", target.c_str());
+                }
+                g_Config.targetExeName = traceNames;
+
                 ManagerApplyNewTargets();
                 json response = { {"result", "ok"} };
                 res.set_content(response.dump(), "application/json");
