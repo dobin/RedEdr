@@ -14,11 +14,13 @@
 #include <tchar.h>
 #include <tlhelp32.h>
 
-#include "config.h"
-#include "process.h"
-#include "logging.h"
-#include "process_query.h"
+#include "myprocess.h"
 #include "utils.h"
+#include "../Shared/common.h"
+
+// The implementation is in each solution
+void LOG_W(int verbosity, const wchar_t* format, ...);
+void LOG_A(int verbosity, const char* format, ...);
 
 
 // Helper function to get process name by PID using CreateToolhelp32Snapshot
@@ -48,11 +50,6 @@ std::wstring GetProcessNameByPid(DWORD pid) {
     } while (Process32NextW(hSnapshot, &pe32));
     
     CloseHandle(hSnapshot);
-    
-    if (processName.empty()) {
-        LOG_A(LOG_WARNING, "GetProcessNameByPid: Could not find process with PID %lu", pid);
-    }
-    
     return processName;
 }
 
@@ -69,30 +66,21 @@ bool ProcessMatchesAnyTarget(const std::string& processName, const std::vector<s
 // This should be fast
 Process* MakeProcess(DWORD pid, std::vector<std::string> targetNames) {
     Process* process;
-
     process = new Process(pid);
 
-    // Process name - use snapshot approach that works regardless of permissions
+    // Process name
     std::wstring processName = GetProcessNameByPid(pid);
     if (processName.empty()) {
-        LOG_A(LOG_ERROR, "Process: Could not get process name for pid %lu", pid);
+        LOG_A(LOG_ERROR, "MakeProcess: Could not get process name for pid %lu", pid);
 	}
-    if (g_Config.debug) {
-        LOG_W(LOG_INFO, L"Process: Check new process with name: %s", processName.c_str());
-    }
     process->commandline = wstring2string(processName);
     process->name = process->commandline;
 
     // Check if we should trace
     bool shouldObserve = ProcessMatchesAnyTarget(process->name, targetNames);
     if (shouldObserve) {
-        LOG_A(LOG_INFO, "Process: observe pid %lu: %s", pid, process->name.c_str());
+        LOG_A(LOG_INFO, "MakeProcess: observe pid %lu: %s", pid, process->name.c_str());
         process->observe = 1;
-    }
-    else {
-        if (g_Config.debug) {
-            LOG_W(LOG_INFO, L"Process: DONT observe pid %lu: %s", pid, process->name.c_str());
-        }
     }
     return process;
 }

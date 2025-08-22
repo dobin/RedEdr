@@ -12,11 +12,14 @@
 #include <tlhelp32.h>
 #include <set>
 
-#include "logging.h"
 #include "process_resolver.h"
-#include "process_query.h"
 #include "utils.h"
-#include "config.h"
+#include "../Shared/common.h"
+
+// The implementation is in each solution
+void LOG_W(int verbosity, const wchar_t* format, ...);
+void LOG_A(int verbosity, const char* format, ...);
+
 
 /*
  * ProcessResolver: Maintains a cache of process information
@@ -57,6 +60,12 @@ BOOL ProcessResolver::containsObject(DWORD pid) {
 }
 
 
+void ProcessResolver::SetTargetNames(const std::vector<std::string>& names) {
+    std::lock_guard<std::mutex> lock(cache_mutex);
+    targetProcessNames = names;
+}
+
+
 // Get an object from the cache
 Process* ProcessResolver::getObject(DWORD id) {
     {
@@ -68,7 +77,7 @@ Process* ProcessResolver::getObject(DWORD id) {
     }
 
     // Does not exist, create and add to cache
-    Process* process = MakeProcess(id, g_Config.targetProcessNames);
+    Process* process = MakeProcess(id, targetProcessNames);
     if (process == nullptr) {
         return nullptr;
     }
@@ -155,7 +164,7 @@ BOOL ProcessResolver::PopulateAllProcesses() {
             }
             
             // Create process object and add to cache
-            Process* process = MakeProcess(pid, g_Config.targetProcessNames);
+            Process* process = MakeProcess(pid, targetProcessNames);
             if (process != nullptr) {
                 {
                     std::lock_guard<std::mutex> lock(cache_mutex);
@@ -209,7 +218,7 @@ BOOL ProcessResolver::RefreshTargetMatching() {
         DWORD pid = pair.first;
         Process& process = pair.second;
 
-        bool shouldObserve = ProcessMatchesAnyTarget(process.name, g_Config.targetProcessNames);
+        bool shouldObserve = ProcessMatchesAnyTarget(process.name, targetProcessNames);
         if (shouldObserve) {
             LOG_A(LOG_INFO, "Process: observe pid %lu: %s", pid, process.name.c_str());
             process.observe = 1;

@@ -21,7 +21,6 @@ public:
     HANDLE GetHandle();
 
 public:
-    // Internal
     DWORD id = 0;
     BOOL observe = FALSE;
     unsigned int augmented = 0;
@@ -34,4 +33,3 @@ public:
 
 bool ProcessMatchesAnyTarget(const std::string& processName, const std::vector<std::string>& targetNames);
 Process* MakeProcess(DWORD pid, std::vector<std::string> targetNames);
-

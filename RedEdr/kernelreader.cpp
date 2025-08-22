@@ -14,7 +14,6 @@
 #include "../Shared/common.h"
 #include "logging.h"
 #include "kernelreader.h"
-#include "process_resolver.h"
 #include "piping.h"
 #include "event_aggregator.h"
 

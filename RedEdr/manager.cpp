@@ -45,6 +45,7 @@ BOOL ManagerApplyNewTargets() {
     // ETW
     if (g_Config.do_etw) {
         // Re-evaluate all cached processes with the new target names
+        g_ProcessResolver.SetTargetNames(g_Config.targetProcessNames);
         g_ProcessResolver.RefreshTargetMatching();
     }
     
@@ -130,6 +131,7 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
 
         // ETW
         if (g_Config.do_etw) {
+            g_ProcessResolver.SetTargetNames(g_Config.targetProcessNames);
             if (!InitializeEtwReader(threads)) {
                 LOG_A(LOG_ERROR, "Manager: Failed to initialize ETW reader");
                 return FALSE;

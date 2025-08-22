@@ -8,7 +8,7 @@
 #include <mutex>
 
 #include "json.hpp"
-#include "process.h"
+#include "myprocess.h"
 
 
 class EventProcessor {

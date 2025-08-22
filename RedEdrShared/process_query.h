@@ -10,8 +10,7 @@
 #include <mutex>
 
 #include "ranges.h"
-#include "json.hpp"
-#include "process.h"
+#include "myprocess.h"
 
 
 std::wstring GetProcessName(HANDLE hProcess);

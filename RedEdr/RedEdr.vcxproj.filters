@@ -72,17 +72,11 @@
     <ClCompile Include="pplreader.cpp">
       <Filter>Source Files\input</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdrShared\utils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="logreader.cpp">
       <Filter>Source Files\input</Filter>
     </ClCompile>
     <ClCompile Include="manager.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="processinfo.cpp">
-      <Filter>Source Files\windows</Filter>
     </ClCompile>
     <ClCompile Include="dllinjector.cpp">
       <Filter>Source Files\windows</Filter>
@@ -95,12 +89,6 @@
     </ClCompile>
     <ClCompile Include="event_augmenter.cpp">
       <Filter>Source Files\process</Filter>
-    </ClCompile>
-    <ClCompile Include="process_resolver.cpp">
-      <Filter>Source Files\windows</Filter>
-    </ClCompile>
-    <ClCompile Include="process.cpp">
-      <Filter>Source Files\windows</Filter>
     </ClCompile>
     <ClCompile Include="mem_static.cpp">
       <Filter>Source Files\windows</Filter>
@@ -123,10 +111,19 @@
     <ClCompile Include="logging.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdrShared\loguru.cpp">
+    <ClCompile Include="..\RedEdrShared\piping.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdrShared\piping.cpp">
+    <ClCompile Include="..\RedEdrShared\utils.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\myprocess.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\process_resolver.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\loguru.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
   </ItemGroup>
@@ -167,9 +164,6 @@
     <ClInclude Include="httplib.h">
       <Filter>Header Files\libs</Filter>
     </ClInclude>
-    <ClInclude Include="..\RedEdrShared\loguru.hpp">
-      <Filter>Header Files\libs</Filter>
-    </ClInclude>
     <ClInclude Include="dllinjector.h">
       <Filter>Header Files\windows</Filter>
     </ClInclude>
@@ -184,12 +178,6 @@
     </ClInclude>
     <ClInclude Include="jsonw.hpp">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="process_resolver.h">
-      <Filter>Header Files\windows</Filter>
-    </ClInclude>
-    <ClInclude Include="process.h">
-      <Filter>Header Files\windows</Filter>
     </ClInclude>
     <ClInclude Include="mem_static.h">
       <Filter>Header Files\windows</Filter>
@@ -207,6 +195,9 @@
       <Filter>Header Files\windows</Filter>
     </ClInclude>
     <ClInclude Include="logging.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="loguru.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -134,7 +134,9 @@
     <ClCompile Include="etw_krabs.cpp" />
     <ClCompile Include="loguru.cpp" />
     <ClCompile Include="piping.cpp" />
+    <ClCompile Include="myprocess.cpp" />
     <ClCompile Include="process_query.cpp" />
+    <ClCompile Include="process_resolver.cpp" />
     <ClCompile Include="ranges.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
@@ -144,7 +146,9 @@
     <ClInclude Include="loguru.hpp" />
     <ClInclude Include="mypeb.h" />
     <ClInclude Include="piping.h" />
+    <ClInclude Include="myprocess.h" />
     <ClInclude Include="process_query.h" />
+    <ClInclude Include="process_resolver.h" />
     <ClInclude Include="ranges.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>

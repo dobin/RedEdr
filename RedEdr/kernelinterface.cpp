@@ -10,7 +10,6 @@
 
 #include "logging.h"
 #include "config.h"
-#include "process_query.h"
 #include "dllinjector.h"
 #include "kernelinterface.h"
 #include "utils.h"

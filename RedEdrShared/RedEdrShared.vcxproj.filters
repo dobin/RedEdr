@@ -33,6 +33,12 @@
     <ClCompile Include="process_query.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="myprocess.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="process_resolver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="loguru.hpp">
@@ -57,6 +63,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="mypeb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="myprocess.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="process_resolver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -11,9 +11,7 @@
 #include "utils.h"
 #include "etw_krabs.h"
 #include "logging.h"
-
 #include "event_aggregator.h"
-
 #include "etwreader.h"
 #include "process_resolver.h"
 #include "config.h"
@@ -68,7 +66,6 @@ void event_callback_nofilter(const EVENT_RECORD& record, const krabs::trace_cont
         krabs::schema schema(record, trace_context.schema_locator);
 
         // This function(-chain) should be high performance, or we lose events.
-
         DWORD processId = record.EventHeader.ProcessId;
         Process* process = g_ProcessResolver.getObject(processId);
         if (process == NULL) {

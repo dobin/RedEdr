@@ -165,7 +165,7 @@
     <ClCompile Include="..\RedEdr\event_augmenter.cpp" />
     <ClCompile Include="..\RedEdr\event_processor.cpp" />
     <ClCompile Include="..\RedEdr\mem_static.cpp" />
-    <ClCompile Include="..\RedEdr\process.cpp" />
+    <ClCompile Include="..\RedEdr\myprocess.cpp" />
     <ClCompile Include="..\RedEdr\process_resolver.cpp" />
     <ClCompile Include="logging.cpp" />
     <ClCompile Include="UnitTestAnalyzer.cpp" />

@@ -54,7 +54,7 @@
     <ClCompile Include="..\RedEdr\mem_dynamic.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdr\process.cpp">
+    <ClCompile Include="..\RedEdr\myprocess.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
     <ClCompile Include="..\RedEdrShared\utils.cpp">

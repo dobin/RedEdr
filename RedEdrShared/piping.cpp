@@ -8,7 +8,6 @@
 #include "piping.h"
 #include "../Shared/common.h"
 
-
 // The implementation is in each solution
 void LOG_W(int verbosity, const wchar_t* format, ...);
 void LOG_A(int verbosity, const char* format, ...);
