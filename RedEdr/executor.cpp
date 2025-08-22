@@ -5,6 +5,8 @@
 #include <UserEnv.h>
 #include <thread>
 #include <fstream>
+#include <algorithm>
+#include <cctype>
 
 #include "logging.h"
 #include "executor.h"
@@ -96,7 +98,7 @@ void Executor::StopReaderThread() {
 }
 
 
-bool Executor::StartAsSystem(const wchar_t* programPath) {
+bool Executor::StartAsSystem(const wchar_t* commandLine) {
     HANDLE hTokenDup = nullptr;
     LPVOID env = nullptr;
 
@@ -130,11 +132,17 @@ bool Executor::StartAsSystem(const wchar_t* programPath) {
     si.hStdOutput = hStdOutWrite;
     si.hStdError = hStdOutWrite;
 
-    if (!CreateProcessAsUser(hTokenDup, programPath, nullptr, nullptr, nullptr, TRUE,
+    // Create a mutable copy of the command line
+    size_t len = wcslen(commandLine) + 1;
+    wchar_t* mutableCommandLine = new wchar_t[len];
+    wcscpy_s(mutableCommandLine, len, commandLine);
+
+    if (!CreateProcessAsUser(hTokenDup, nullptr, mutableCommandLine, nullptr, nullptr, TRUE,
         CREATE_UNICODE_ENVIRONMENT, env, nullptr, &si, &pi)) {
         std::wcerr << L"Failed to create process as user, error: " << GetLastError() << std::endl;
         if (env) DestroyEnvironmentBlock(env);
         CloseHandle(hTokenDup);
+        delete[] mutableCommandLine;
         return false;
     }
 
@@ -147,12 +155,13 @@ bool Executor::StartAsSystem(const wchar_t* programPath) {
     if (env) DestroyEnvironmentBlock(env);
     CloseHandle(pi.hThread);
     CloseHandle(hTokenDup);
+    delete[] mutableCommandLine;
 
     return true;
 }
 
 
-bool Executor::StartAsUser(const wchar_t* programPath) {
+bool Executor::StartAsUser(const wchar_t* commandLine) {
     // Create pipe for capturing output
     SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE };
     HANDLE hStdOutWrite = nullptr;
@@ -175,9 +184,14 @@ bool Executor::StartAsUser(const wchar_t* programPath) {
     // Optional: set desktop if needed
     si.lpDesktop = const_cast<wchar_t*>(L"winsta0\\default");
 
+    // Create a mutable copy of the command line
+    size_t len = wcslen(commandLine) + 1;
+    wchar_t* mutableCommandLine = new wchar_t[len];
+    wcscpy_s(mutableCommandLine, len, commandLine);
+
     if (!CreateProcess(
-        programPath,      // Application name
-        nullptr,          // Command line
+        nullptr,          // Application name (nullptr to use command line)
+        mutableCommandLine, // Command line
         nullptr,          // Process security
         nullptr,          // Thread security
         TRUE,             // Inherit handles
@@ -189,6 +203,7 @@ bool Executor::StartAsUser(const wchar_t* programPath) {
     )) {
         std::wcerr << L"Failed to create process, error: " << GetLastError() << std::endl;
         CloseHandle(hStdOutWrite);
+        delete[] mutableCommandLine;
         return false;
     }
 
@@ -201,6 +216,7 @@ bool Executor::StartAsUser(const wchar_t* programPath) {
     // Close the write end in parent so only child writes
     CloseHandle(hStdOutWrite);
     CloseHandle(pi.hThread);
+    delete[] mutableCommandLine;
 
     return true;
 }
@@ -221,18 +237,56 @@ bool Executor::WriteMalware(std::string filepath, std::string filedata) {
 }
 
 
+bool Executor::IsDllFile(const std::string& filepath) {
+    std::string lowerPath = filepath;
+    std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    return lowerPath.find(".dll") != std::string::npos;
+}
+
+
+std::wstring Executor::CreateCommandLine(const std::string& filepath) {
+    if (IsDllFile(filepath)) {
+        // For DLL files, check if it contains entry point specification
+        size_t commaPos = filepath.find(',');
+        if (commaPos != std::string::npos) {
+            // Format: "path\to\file.dll,EntryPoint"
+            std::string dllPath = filepath.substr(0, commaPos);
+            std::string entryPoint = filepath.substr(commaPos + 1);
+            
+            // Create rundll32 command: rundll32.exe "dllPath",entryPoint
+            std::wstring commandLine = L"rundll32.exe \"";
+            commandLine += string2wstring(dllPath);
+            commandLine += L"\",";
+            commandLine += string2wstring(entryPoint);
+            return commandLine;
+        } else {
+            // Just a DLL path without entry point, use DllMain as default
+            std::wstring commandLine = L"rundll32.exe \"";
+            commandLine += string2wstring(filepath);
+            commandLine += L"\",DllMain";
+            return commandLine;
+        }
+    } else {
+        // For EXE files, just quote the path
+        std::wstring commandLine = L"\"";
+        commandLine += string2wstring(filepath);
+        commandLine += L"\"";
+        return commandLine;
+    }
+}
+
+
 bool Executor::Start(std::string filepath) {
-    wchar_t* programPath = string2wcharAlloc(filepath.c_str());
+    std::wstring commandLine = CreateCommandLine(filepath);
+    
     bool ret = false;
-
     if (RunsAsSystem()) {
-		ret = StartAsSystem(programPath);
-    }
-    else {
-        ret = StartAsUser(programPath);
+        ret = StartAsSystem(commandLine.c_str());
+    } else {
+        ret = StartAsUser(commandLine.c_str());
     }
 
-    delete[] programPath;
     return ret;
 }
 
