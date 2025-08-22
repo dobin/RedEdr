@@ -58,29 +58,26 @@ int main(int argc, char* argv[]) {
     cxxopts::Options options("RedEdr", "Maldev event recorder");
     options.add_options()
         // Input
-        ("t,trace", "Process name to trace", cxxopts::value<std::string>())
+        ("t,trace", "Input: Process name to observe", cxxopts::value<std::string>()->default_value("malware"))
         ("e,etw", "Input: Consume ETW Events", cxxopts::value<bool>()->default_value("false"))
         ("g,etwti", "Input: Consume ETW-TI Events", cxxopts::value<bool>()->default_value("false"))
         ("k,hook", "Input: Kernel and ntdll hooks", cxxopts::value<bool>()->default_value("false"))
 
+        // Input options
+        ("with-unfiltered-etw", "Input option: Enable unfiltered ETW (performance impact)", cxxopts::value<bool>()->default_value("false"))
+
         // Output
-        ("w,web", "Output: Web server", cxxopts::value<bool>()->default_value("false"))
+        ("w,web", "Output: Web server", cxxopts::value<bool>()->default_value("true"))
 		("p,port", "Output: Web server port", cxxopts::value<int>()->default_value("8080"))
-        ("u,hide", "Output: Hide messages (performance. use with --web)", cxxopts::value<bool>()->default_value("false"))
-
-        // Kernel
-        ("1,krnload", "Kernel Module: Load", cxxopts::value<bool>()->default_value("false"))
-        ("2,krnunload", "Kernel Module: Unload", cxxopts::value<bool>()->default_value("false"))
-        
-        // PPL
-        ("4,pplstart", "PPL service: load", cxxopts::value<bool>()->default_value("false"))
-        ("5,pplstop", "PPL service: stop", cxxopts::value<bool>()->default_value("false"))
-
-        // Options
-        ("disable-unfiltered-etw", "Performance: Disable unfiltered ETW", cxxopts::value<bool>()->default_value("false"))
+        ("s,show", "Output: Show messages on stdout", cxxopts::value<bool>()->default_value("false"))
 
         // Debug
-        ("l,dllreader", "Debug: DLL reader but no injection (for manual injection tests)", cxxopts::value<bool>()->default_value("false"))
+        ("dllreader", "Debug: DLL reader but no injection (for manual injection tests)", cxxopts::value<bool>()->default_value("false"))
+        ("krnload", "Debug: Kernel Module Load", cxxopts::value<bool>()->default_value("false"))
+        ("krnunload", "Debug: Kernel Module Unload", cxxopts::value<bool>()->default_value("false"))
+        ("pplstart", "Debug: PPL service load", cxxopts::value<bool>()->default_value("false"))
+        ("pplstop", "Debug: PPL service stop", cxxopts::value<bool>()->default_value("false"))
+
         ("d,debug", "Debug: Enable debug output", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print usage")
         ;
@@ -93,6 +90,7 @@ int main(int argc, char* argv[]) {
         exit(0);
     }
 
+    // First some debug things
     if (result.count("krnload")) {
         LoadKernelDriver();
         exit(0);
@@ -117,27 +115,21 @@ int main(int argc, char* argv[]) {
         std::string traceTarget = result["trace"].as<std::string>();
         g_Config.targetProcessNames = {traceTarget};
     }
-    else if (! result.count("test") && !result.count("replay")) {
-        std::cout << options.help() << std::endl;
-        exit(0);
-    }
 
 	int port = result["port"].as<int>();
     g_Config.do_etw = result["etw"].as<bool>();
     g_Config.do_etwti = result["etwti"].as<bool>();
 	g_Config.do_hook = result["hook"].as<bool>();
     g_Config.debug_dllreader = result["dllreader"].as<bool>();
-    g_Config.hide_full_output = result["hide"].as<bool>();
+    g_Config.hide_full_output = ! result["show"].as<bool>();
     g_Config.web_output = result["web"].as<bool>();
-    g_Config.disable_unfiltered_etw = result["disable-unfiltered-etw"].as<bool>();
+    g_Config.disable_unfiltered_etw = ! result["with-unfiltered-etw"].as<bool>();
     //g_Config.do_dllinjection_ucallstack = result["dllcallstack"].as<bool>();
 
-    /*
-    if (!g_Config.do_etw && !g_Config.do_mplog && !g_Config.do_kernelcallback 
-        && !g_Config.do_dllinjection && !g_Config.do_etwti && !g_Config.debug_dllreader) {
-        printf("Choose at least one of --etw --etwti --kernel --inject --etwti (--dllreader for testing)");
+    if (!g_Config.do_etw && !g_Config.do_hook && !g_Config.do_etwti && !g_Config.debug_dllreader) {
+        printf("Choose at least one of --etw --etwti --hook");
         return 1;
-    }*/
+    }
 
     CreateRequiredFiles();
     InitProcessQuery();
