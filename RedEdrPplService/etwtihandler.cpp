@@ -7,12 +7,12 @@
 #include <iomanip>
 #include <sstream>
 
-#include "logging.h"
 #include "etwtihandler.h"
-#include "objcache.h"
+#include "logging.h"
 #include "emitter.h"
 #include "json.hpp"
 #include "etw_krabs.h"
+#include "process_resolver.h"
 
 
 // Used for debug currently
@@ -32,8 +32,13 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
 
     // Check if we should follow this process
     DWORD processId = record.EventHeader.ProcessId;
-    struct my_hashmap* obj = get_obj(processId);
-    if (!obj->value) {
+
+    Process* process = g_ProcessResolver.getObject(processId);
+    if (process == NULL) {
+        LOG_A(LOG_WARNING, "ETW: No process object for pid %lu", processId);
+        return;
+    }
+    if (!g_ProcessResolver.observe(processId)) {
         return;
     }
 
@@ -43,5 +48,6 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
     }
 
 	nlohmann::json j = KrabsEtwEventToJsonStr(record, schema);
+	j["process_name"] = process->name;
     SendEmitterPipe((char*)j.dump().c_str());
 }

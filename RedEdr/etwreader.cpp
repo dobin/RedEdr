@@ -246,6 +246,8 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
             LOG_A(LOG_INFO, "ETW: Microsoft-Antimalware-Engine (all)");
         }
 
+		LOG_A(LOG_INFO, "ETW: All ready, start collecting");
+
         // Blocking, stopped with trace.stop()
         trace_user.start();
     }

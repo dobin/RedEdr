@@ -5,11 +5,11 @@
 #include "emitter.h"
 #include "../Shared/common.h"
 #include "logging.h"
-#include "objcache.h"
 #include "etwtireader.h"
 #include "piping.h"
 #include "utils.h"
 #include "json.hpp"
+#include "process_resolver.h"
 
 DWORD start_child_process(wchar_t* childCMD);
 
@@ -57,7 +57,7 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                         if (j.contains("targets") && j["targets"].is_array()) {
                             LOG_A(LOG_INFO, "Control: Processing start command with %zu targets", j["targets"].size());
                             std::vector<std::string> targets = j["targets"];
-                            set_target_names(targets);
+                            g_ProcessResolver.SetTargetNames(targets);
                         } else {
                             LOG_A(LOG_ERROR, "Control: Start command missing 'targets' array");
                         }

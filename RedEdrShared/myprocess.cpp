@@ -71,7 +71,8 @@ Process* MakeProcess(DWORD pid, std::vector<std::string> targetNames) {
     // Process name
     std::wstring processName = GetProcessNameByPid(pid);
     if (processName.empty()) {
-        LOG_A(LOG_ERROR, "MakeProcess: Could not get process name for pid %lu", pid);
+        LOG_A(LOG_WARNING, "MakeProcess: Could not get process name for pid %lu", pid);
+		processName = L"<unknown>";
 	}
     process->commandline = wstring2string(processName);
     process->name = process->commandline;

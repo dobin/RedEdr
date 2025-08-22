@@ -6,7 +6,8 @@
 #include "emitter.h"
 #include "control.h"
 #include "logging.h"
-#include "objcache.h"
+#include "process_resolver.h"
+
 
 SERVICE_STATUS        g_ServiceStatus = { 0 };
 SERVICE_STATUS_HANDLE g_StatusHandle = NULL;
@@ -28,7 +29,7 @@ void ShutdownService() {
     // Perform necessary cleanup before stopping
     StopControl();
     ShutdownEtwtiReader();
-    clean_obj(); // Clean up object cache, target name, and mutex
+	g_ProcessResolver.ResetData(); // Clear process cache
 
     CleanupFileLogging(); // Clean up log file handle
 
@@ -93,7 +94,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
     }
 
     // Initialize object cache
-    objcache_init();
+	g_ProcessResolver.PopulateAllProcesses();
 
     // Start Control thread which will listen on a pipe for commands
     StartControl();
