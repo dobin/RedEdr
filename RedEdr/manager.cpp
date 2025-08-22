@@ -51,9 +51,9 @@ BOOL ManagerApplyNewTargets() {
     // Kernel
     if (g_Config.do_hook) {
         // Kernel driver only supports one target at a time, use the first one
-        if (!g_Config.targetExeName.empty()) {
-            LOG_A(LOG_INFO, "Manager: Tell Kernel about new target: %s", g_Config.targetExeName[0].c_str());
-            if (!EnableKernelDriver(true, g_Config.targetExeName[0])) {
+        if (!g_Config.targetProcessNames.empty()) {
+            LOG_A(LOG_INFO, "Manager: Tell Kernel about new target: %s", g_Config.targetProcessNames[0].c_str());
+            if (!EnableKernelDriver(true, g_Config.targetProcessNames[0])) {
                 LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
                 return FALSE;
             }
@@ -64,15 +64,10 @@ BOOL ManagerApplyNewTargets() {
 
     // PPL
     if (g_Config.do_etwti) {
-        // PPL service supports multiple target names now
-        if (!g_Config.targetExeName.empty()) {
-            LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new targets: %zu names", g_Config.targetExeName.size());
-            if (!EnablePplProducer(true, g_Config.targetExeName)) {
-                LOG_A(LOG_ERROR, "Manager: Failed to enable PPL producer");
-                return FALSE;
-            }
-        } else {
-            LOG_A(LOG_WARNING, "Manager: No target names configured, skip PPL service");
+        LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new targets: %zu names", g_Config.targetProcessNames.size());
+        if (!EnablePplProducer(true, g_Config.targetProcessNames)) {
+            LOG_A(LOG_ERROR, "Manager: Failed to enable PPL producer");
+            return FALSE;
         }
     }
 
@@ -125,6 +120,12 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
                 LOG_A(LOG_ERROR, "Manager: Failed to initialize PPL service");
                 return FALSE;
             }
+
+            LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new targets: %zu names", g_Config.targetProcessNames.size());
+            if (!EnablePplProducer(true, g_Config.targetProcessNames)) {
+                LOG_A(LOG_ERROR, "Manager: Failed to enable PPL producer");
+                return FALSE;
+            }
         }
 
         // ETW
@@ -138,8 +139,8 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
         // Kernel: Enable
         if (g_Config.do_hook) {
             LOG_A(LOG_INFO, "Manager: Kernel module enable collection");
-            if (!g_Config.targetExeName.empty()) {
-                if (!EnableKernelDriver(1, g_Config.targetExeName[0])) {
+            if (!g_Config.targetProcessNames.empty()) {
+                if (!EnableKernelDriver(1, g_Config.targetProcessNames[0])) {
                     LOG_A(LOG_ERROR, "Manager: Kernel module failed");
                     return FALSE;
                 }

@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) {
 
     if (result.count("trace")) {
         std::string traceTarget = result["trace"].as<std::string>();
-        g_Config.targetExeName = {traceTarget};
+        g_Config.targetProcessNames = {traceTarget};
     }
     else if (! result.count("test") && !result.count("replay")) {
         std::cout << options.help() << std::endl;
@@ -153,11 +153,11 @@ int main(int argc, char* argv[]) {
     // All threads of all *Reader subsystems
     std::vector<HANDLE> threads;
     LOG_A(LOG_INFO, "RedEdr %s", REDEDR_VERSION);
-    if (!g_Config.targetExeName.empty()) {
+    if (!g_Config.targetProcessNames.empty()) {
         std::string targets = "";
-        for (size_t i = 0; i < g_Config.targetExeName.size(); ++i) {
+        for (size_t i = 0; i < g_Config.targetProcessNames.size(); ++i) {
             if (i > 0) targets += ", ";
-            targets += g_Config.targetExeName[i];
+            targets += g_Config.targetProcessNames[i];
         }
         LOG_A(LOG_INFO, "Config: tracing %s", targets.c_str());
     } else {

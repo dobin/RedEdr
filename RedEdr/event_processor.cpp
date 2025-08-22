@@ -51,7 +51,7 @@ void EventProcessor::init() {
 	j["do_hook"] = g_Config.do_hook;
 	j["do_hook_callstack"] = g_Config.do_dllinjection_ucallstack;
 	    
-	j["target"] = g_Config.targetExeName;
+	j["targets"] = g_Config.targetProcessNames;
     json_entries.push_back(j);
 }
 

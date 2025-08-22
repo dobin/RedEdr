@@ -267,7 +267,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
 
     // Functions
     svr.Get("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
-        json response = { {"trace", g_Config.targetExeName } };
+        json response = { {"trace", g_Config.targetProcessNames } };
         res.set_content(response.dump(), "application/json");
     });
     svr.Post("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
@@ -285,7 +285,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                 for (const auto& target : traceNames) {
                     LOG_A(LOG_INFO, "  - %s", target.c_str());
                 }
-                g_Config.targetExeName = traceNames;
+                g_Config.targetProcessNames = traceNames;
 
                 ManagerApplyNewTargets();
                 json response = { {"result", "ok"} };

@@ -12,7 +12,7 @@
 
 class Config {
 public:
-	std::vector<std::string> targetExeName = {"malware"};
+	std::vector<std::string> targetProcessNames = {"malware"};
 	bool debug = false;
 
 	// Constants

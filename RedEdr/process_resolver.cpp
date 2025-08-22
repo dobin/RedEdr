@@ -69,7 +69,7 @@ Process* ProcessResolver::getObject(DWORD id) {
     }
 
     // Does not exist, create and add to cache
-    Process* process = MakeProcess(id, g_Config.targetExeName);
+    Process* process = MakeProcess(id, g_Config.targetProcessNames);
     if (process == nullptr) {
         return nullptr;
     }
@@ -156,7 +156,7 @@ BOOL ProcessResolver::PopulateAllProcesses() {
             }
             
             // Create process object and add to cache
-            Process* process = MakeProcess(pid, g_Config.targetExeName);
+            Process* process = MakeProcess(pid, g_Config.targetProcessNames);
             if (process != nullptr) {
                 {
                     std::lock_guard<std::mutex> lock(cache_mutex);
@@ -210,7 +210,7 @@ BOOL ProcessResolver::RefreshTargetMatching() {
         DWORD pid = pair.first;
         Process& process = pair.second;
 
-        bool shouldObserve = ProcessMatchesAnyTarget(process.commandline, g_Config.targetExeName);
+        bool shouldObserve = ProcessMatchesAnyTarget(process.commandline, g_Config.targetProcessNames);
         if (shouldObserve) {
             LOG_A(LOG_INFO, "Process: observe pid %lu: %s", pid, process.commandline.c_str());
             process.observe = 1;

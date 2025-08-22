@@ -37,6 +37,10 @@ BOOL ConnectPplService() {
 
 BOOL EnablePplProducer(BOOL e, std::vector<std::string> targetNames) {
     char buffer[PPL_CONFIG_LEN] = { 0 };
+    if (targetNames.empty()) {
+        LOG_A(LOG_WARNING, "ETW-TI: No target names provided to EnablePplProducer");
+		return FALSE;
+    }
 
     try {
         // Create JSON object with target names
