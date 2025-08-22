@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <Windows.h>
 
 #include "control.h"
@@ -7,7 +6,6 @@
 #include "logging.h"
 #include "etwtireader.h"
 #include "piping.h"
-#include "utils.h"
 #include "json.hpp"
 #include "process_resolver.h"
 

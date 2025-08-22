@@ -1,8 +1,6 @@
 #include <Windows.h>
-#include <stdio.h>
 #include "../Shared/common.h"
 #include <winternl.h>  // needs to be on bottom?
-#include <dbghelp.h>
 
 #include "dllhelper.h"
 #include "logging.h"

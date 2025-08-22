@@ -1,14 +1,12 @@
 #include <Windows.h>
 #include <iostream>
-#include <vector>
 #include <string>
-#include <iomanip>
 #include <sstream>
-
 #include <krabs.hpp>
 #include "json.hpp"
+
+#include "etw_krabs.h"
 #include "utils.h"
-#include "process_query.h"
 
 
 nlohmann::json KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema schema) {

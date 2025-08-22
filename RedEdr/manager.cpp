@@ -1,13 +1,8 @@
-#include <stdio.h>
 #include <windows.h>
-#include <dbghelp.h>
 #include <iostream>
-#include <string.h>
 
 #include "config.h"
-#include "dllinjector.h"
 #include "etwreader.h"
-#include "logreader.h"
 #include "kernelreader.h"
 #include "webserver.h"
 #include "dllreader.h"
@@ -18,7 +13,6 @@
 #include "event_processor.h"
 #include "event_aggregator.h"
 #include "process_resolver.h"
-#include "mem_static.h"
 
 
 /* manager.cpp: Knows and manages all subsystems (Input's)

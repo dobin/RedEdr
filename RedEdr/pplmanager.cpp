@@ -1,16 +1,12 @@
 #include <stdio.h>
 #include <Windows.h>
-//#include "ppl_runner.h"
-#include <cstdio>
 
 #include "logging.h"
 #include "../Shared/common.h"
 #include "serviceutils.h"
 #include "pplmanager.h"
 #include "piping.h"
-#include "utils.h"
 #include "json.hpp"
-
 
 
 // PplManager: Interact with the PPL service 

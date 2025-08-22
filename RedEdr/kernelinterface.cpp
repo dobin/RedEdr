@@ -1,16 +1,9 @@
-#include <stdio.h>
 #include <windows.h>
-#include <cwchar>
-#include <cstdlib>
-#include <string.h>
-#include <stdio.h>
 #include <winioctl.h>
-
 #include "../Shared/common.h"
 
 #include "logging.h"
 #include "config.h"
-#include "dllinjector.h"
 #include "kernelinterface.h"
 #include "utils.h"
 

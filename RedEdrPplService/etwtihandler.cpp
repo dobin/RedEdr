@@ -1,11 +1,7 @@
 #include <windows.h>
 #include <evntrace.h>
 #include <tdh.h>
-#include <iostream>
-#include <vector>
 #include <string>
-#include <iomanip>
-#include <sstream>
 
 #include "etwtihandler.h"
 #include "logging.h"

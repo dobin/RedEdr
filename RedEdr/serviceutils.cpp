@@ -1,17 +1,5 @@
-#include <stdio.h>
 #include <windows.h>
-#include <cwchar>  // For wcstol
-#include <cstdlib> // For exit()
-#include <string.h>
-#include <stdio.h>
-#include <sddl.h> // For ConvertSidToStringSid
-
-
-#include "../Shared/common.h"
-#include "logging.h"
-#include "config.h"
-#include "process_query.h"
-#include "dllinjector.h"
+#include <iostream>
 
 #include "serviceutils.h"
 

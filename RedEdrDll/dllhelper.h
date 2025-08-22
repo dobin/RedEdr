@@ -1,8 +1,6 @@
 #pragma once
 #include <windows.h>
-#include <stdio.h>
 #include <winternl.h>  // needs to be on bottom?
-
 // Pipe
 void InitDllPipe();
 void SendDllPipe(char* buffer);

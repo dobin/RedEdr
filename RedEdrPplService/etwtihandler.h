@@ -1,8 +1,6 @@
 #pragma once
 
-#include <windows.h>
 #include <evntrace.h>
-#include <tdh.h>
 
 #include <krabs.hpp>
 

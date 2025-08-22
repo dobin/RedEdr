@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <Windows.h>
 
 #include "../Shared/common.h"

@@ -1,11 +1,6 @@
 #include <iostream>
-#include <filesystem>
 #include <vector>
-#include <tchar.h>
 #include <windows.h>
-#include <wtsapi32.h>
-#include <UserEnv.h>
-#include <mutex>
 
 #include "httplib.h" // Needs to be on top?
 

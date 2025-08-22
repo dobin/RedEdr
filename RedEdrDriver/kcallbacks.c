@@ -1,14 +1,10 @@
 #include <Ntifs.h>
 #include <ntddk.h>
-#include <wdf.h>
-#include <string.h>
 #include <stdio.h>
-#include <fltkernel.h>
 
 #include "upipe.h"
 #include "kapcinjector.h"
 #include "kcallbacks.h"
-#include "hashcache.h"
 #include "hashcache.h"
 #include "settings.h"
 #include "utils.h"

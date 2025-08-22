@@ -1,9 +1,7 @@
-#include <stdio.h>
 #include <Windows.h>
 
 #include "../Shared/common.h"
 #include "etwtireader.h"
-#include "emitter.h"
 #include "control.h"
 #include "logging.h"
 #include "process_resolver.h"

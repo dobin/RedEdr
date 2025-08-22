@@ -1,11 +1,6 @@
 #include <Ntifs.h>
 #include <ntddk.h>
-#include <wdf.h>
-#include <string.h>
-#include <stdio.h>
-#include <fltkernel.h>
 
-#include "utils.h"
 #include "hashcache.h"
 
 

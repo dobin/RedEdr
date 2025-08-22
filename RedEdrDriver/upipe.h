@@ -1,11 +1,5 @@
 #pragma once
 
-#include <Ntifs.h>
-#include <ntddk.h>
-#include <wdf.h>
-#include <string.h>
-#include <fltkernel.h>
-
 // Function declarations
 void InitializePipe();
 void CleanupPipe();

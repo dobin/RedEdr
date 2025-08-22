@@ -1,8 +1,6 @@
 #pragma once
 
 #include <ntddk.h>
-#include <string.h>
-#include <stdio.h>
 
 #include "../Shared/common.h"
 

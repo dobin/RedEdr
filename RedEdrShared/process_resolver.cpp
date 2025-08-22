@@ -1,19 +1,10 @@
-#include <stdio.h>
 #include <windows.h>
-#include <dbghelp.h>
-#include <wintrust.h>
-#include <Softpub.h>
-#include <wincrypt.h>
 #include <iostream>
 #include <unordered_map>
-#include <memory>
-#include <tchar.h>
 #include <mutex>
 #include <tlhelp32.h>
-#include <set>
 
 #include "process_resolver.h"
-#include "utils.h"
 #include "../Shared/common.h"
 
 // The implementation is in each solution

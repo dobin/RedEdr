@@ -1,6 +1,5 @@
 #pragma once
 
-#include <stdio.h>
 #include <windows.h>
 
 #define MESSAGE_SIZE 1024

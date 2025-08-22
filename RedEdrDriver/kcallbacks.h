@@ -2,10 +2,6 @@
 
 #include <Ntifs.h>
 #include <ntddk.h>
-#include <wdf.h>
-#include <string.h>
-#include <stdio.h>
-#include <fltkernel.h>
 
 
 #define TD_CALLBACK_REGISTRATION_TAG  '0bCO' // TD_CALLBACK_REGISTRATION structure.

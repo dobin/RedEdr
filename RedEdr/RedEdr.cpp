@@ -1,9 +1,6 @@
 
-#include <stdio.h>
 #include <windows.h>
 #include <iostream>
-#include <string.h>
-#include <conio.h>
 #include <vector>
 
 #include "logging.h"
@@ -11,14 +8,10 @@
 #include "cxxops.hpp"
 #include "config.h"
 #include "event_processor.h"
-#include "event_aggregator.h"
 #include "webserver.h"
 #include "kernelinterface.h"
 #include "pplmanager.h"
-#include "dllinjector.h"
-#include "utils.h"
 #include "process_query.h"
-#include "serviceutils.h"
 #include "privileges.h"
 
 #include "../Shared/common.h"

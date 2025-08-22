@@ -1,15 +1,7 @@
 #pragma once
 
-#include <stdio.h>
 #include <windows.h>
-#include <dbghelp.h>
-#include <wintrust.h>
-#include <Softpub.h>
-#include <wincrypt.h>
-#include <iostream>
 #include <unordered_map>
-#include <memory>
-#include <tchar.h>
 
 #include "myprocess.h"
 

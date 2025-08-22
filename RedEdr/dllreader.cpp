@@ -2,21 +2,13 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <iomanip>
-#include <sstream>
-#include <cwchar>
 #include <cstdio>
-#include <sddl.h>
-#include <iostream>
 #include <thread>
-#include <vector>
-#include <stdio.h>
 #include <memory>
 
 #include "../Shared/common.h"
 #include "logging.h"
 #include "dllreader.h"
-#include "utils.h"
 #include "config.h"
 #include "piping.h"
 #include "event_aggregator.h"

@@ -1,11 +1,7 @@
 #include <iostream>
-#include <filesystem>
-#include <vector>
 #include <tchar.h>
 #include <windows.h>
 #include <wtsapi32.h>
-#include <UserEnv.h>
-#include <thread>
 #include <sddl.h>
 
 #include "logging.h"

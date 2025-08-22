@@ -1,8 +1,5 @@
 #include <Ntifs.h>
 #include <ntddk.h>
-#include <wdf.h>
-#include <string.h>
-#include <fltkernel.h>
 
 // Needs to be set on the project properties as well
 #pragma comment(lib, "FltMgr.lib")

@@ -1,15 +1,7 @@
 #include <windows.h>
-#include <evntrace.h>
-#include <tdh.h>
 #include <iostream>
 #include <vector>
 #include <string>
-#include <iomanip>
-#include <sstream>
-#include <wchar.h>
-#include <mutex>
-#include <condition_variable>
-#include <thread>
 
 #include "../Shared/common.h"
 #include "logging.h"

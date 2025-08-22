@@ -1,18 +1,12 @@
 #include <windows.h>
-#include <stdio.h>
-#include <dbghelp.h>
 #include <wintrust.h>
-#include <Softpub.h>
 #include <wincrypt.h>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <winternl.h>
-#include <cwchar>
-#include <wchar.h>
 #include <psapi.h>
-#include <tchar.h>
 #include <tlhelp32.h>
+#include <winternl.h>
 
 #include "process_query.h"
 #include "utils.h"

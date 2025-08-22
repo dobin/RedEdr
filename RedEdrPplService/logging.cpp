@@ -1,7 +1,5 @@
 #include <iostream>
 #include <windows.h>
-#include <dbghelp.h>
-#include <stdio.h>
 
 #include <chrono>
 #include <ctime>

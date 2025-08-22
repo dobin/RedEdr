@@ -2,19 +2,8 @@
 
 #include <windows.h>
 #include <iostream>
-#include <vector>
 #include <string>
-#include <algorithm>
-#include <locale>
-#include <codecvt>
-#include <sstream>
-#include <iostream>
-#include <fstream>
-#include <ctime>
-#include <iomanip>
 
-#include <string>
-#include <vector>
 
 void PrintWcharBufferAsHex(const wchar_t* buffer, size_t bufferSize);
 

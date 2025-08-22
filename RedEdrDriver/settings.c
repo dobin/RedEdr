@@ -1,8 +1,4 @@
 
-#include <ntddk.h>
-#include <string.h>
-#include <stdio.h>
-
 #include "settings.h"
 
 

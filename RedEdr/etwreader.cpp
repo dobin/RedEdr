@@ -1,14 +1,9 @@
 #include <Windows.h>
 #include <iostream>
 #include <vector>
-#include <string>
-#include <iomanip>
-#include <sstream>
-
 #include <krabs.hpp>
-
 #include "json.hpp"
-#include "utils.h"
+
 #include "etw_krabs.h"
 #include "logging.h"
 #include "event_aggregator.h"

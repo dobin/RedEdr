@@ -5,7 +5,6 @@
 #include "event_aggregator.h"
 #include "logging.h"
 #include "utils.h"
-#include "json.hpp"
 
 
 /* Retrieves events from all subsystems (ETW, ETWTI, Kernel, DLL)

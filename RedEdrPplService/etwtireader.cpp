@@ -1,14 +1,7 @@
 #include <windows.h>
 #include <evntrace.h>
 #include <tdh.h>
-#include <combaseapi.h>
-#include <iostream>
-#include <tdh.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <evntrace.h>
 #include <krabs.hpp>
-#include <sddl.h>
 
 
 #include "etwtireader.h"

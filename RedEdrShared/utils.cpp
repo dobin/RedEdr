@@ -1,3 +1,13 @@
+#include <vector>
+#include <algorithm>
+#include <locale>
+#include <sstream>
+#include <iostream>
+#include <fstream>
+#include <ctime>
+#include <iomanip>
+#include <string>
+
 #include "utils.h"
 #include "../Shared/common.h"
 

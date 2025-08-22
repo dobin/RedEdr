@@ -1,8 +1,5 @@
 #include <Ntifs.h>
 #include <ntddk.h>
-#include <wdf.h>
-#include <string.h>
-#include <fltkernel.h>
 
 #include "../Shared/common.h"
 #include "utils.h"
