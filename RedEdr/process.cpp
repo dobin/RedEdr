@@ -81,16 +81,17 @@ Process* MakeProcess(DWORD pid, std::vector<std::string> targetNames) {
         LOG_W(LOG_INFO, L"Process: Check new process with name: %s", processName.c_str());
     }
     process->commandline = wstring2string(processName);
+    process->name = process->commandline;
 
     // Check if we should trace
-    bool shouldObserve = ProcessMatchesAnyTarget(process->commandline, targetNames);
+    bool shouldObserve = ProcessMatchesAnyTarget(process->name, targetNames);
     if (shouldObserve) {
-        LOG_A(LOG_INFO, "Process: observe pid %lu: %s", pid, process->commandline.c_str());
+        LOG_A(LOG_INFO, "Process: observe pid %lu: %s", pid, process->name.c_str());
         process->observe = 1;
     }
     else {
         if (g_Config.debug) {
-            LOG_W(LOG_INFO, L"Process: DONT observe pid %lu: %s", pid, process->commandline.c_str());
+            LOG_W(LOG_INFO, L"Process: DONT observe pid %lu: %s", pid, process->name.c_str());
         }
     }
     return process;

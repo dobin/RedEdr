@@ -39,13 +39,15 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
         DWORD processId = record.EventHeader.ProcessId;
         Process* process = g_ProcessResolver.getObject(processId);
         if (process == NULL) {
+            LOG_A(LOG_WARNING, "ETW: No process object for pid %lu", processId);
             return;
         }
         if (!g_ProcessResolver.observe(processId)) {
             return;
         }
-        std::string json_ret = KrabsEtwEventToJsonStr(record, schema);
-        g_EventAggregator.NewEvent(json_ret);
+        nlohmann::json j = KrabsEtwEventToJsonStr(record, schema);
+        j["process_name"] = process->name;
+        g_EventAggregator.NewEvent(j.dump());
     }
     catch (const std::exception& e) {
         LOG_A(LOG_ERROR, "ETW event_callback exception: %s", e.what());
@@ -67,10 +69,18 @@ void event_callback_nofilter(const EVENT_RECORD& record, const krabs::trace_cont
 
         // This function(-chain) should be high performance, or we lose events.
 
+        DWORD processId = record.EventHeader.ProcessId;
+        Process* process = g_ProcessResolver.getObject(processId);
+        if (process == NULL) {
+            LOG_A(LOG_WARNING, "ETW: No process object for pid %lu", processId);
+            return;
+        }
+
         // This will get information about the process, which may be slow, if not
         // done before. It can be done before, e.g. when Kernel event arrived
-        std::string json_ret = KrabsEtwEventToJsonStr(record, schema);
-        g_EventAggregator.NewEvent(json_ret);
+        nlohmann::json j = KrabsEtwEventToJsonStr(record, schema);
+        j["process_name"] = process->name;
+        g_EventAggregator.NewEvent(j.dump());
     }
     catch (const std::exception& e) {
         LOG_A(LOG_ERROR, "ETW event_callback exception: %s", e.what());

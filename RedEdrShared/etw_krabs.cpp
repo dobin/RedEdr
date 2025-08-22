@@ -11,7 +11,7 @@
 #include "process_query.h"
 
 
-std::string KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema schema) {
+nlohmann::json KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema schema) {
     krabs::parser parser(schema);
 
     // To construct a JSON, we use nlohmann::json, which works in std::string
@@ -20,9 +20,9 @@ std::string KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sch
     nlohmann::json j;
 
     j["type"] = "etw";
-    j["time"] = static_cast<__int64>(record.EventHeader.TimeStamp.QuadPart);
-    j["pid"] = record.EventHeader.ProcessId;
-    j["thread_id"] = record.EventHeader.ThreadId;
+    j["etw_time"] = static_cast<__int64>(record.EventHeader.TimeStamp.QuadPart);
+    j["etw_pid"] = record.EventHeader.ProcessId;
+    j["etw_tid"] = record.EventHeader.ThreadId;
 
     // Construct the event string, like "ImageLoad"
     std::wstring a = std::wstring(schema.task_name());
@@ -37,7 +37,7 @@ std::string KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sch
 	// The ProviderId is just the UID of the provider, which is not very useful
     // This is a workaround. Alternative would be to use TdhGetEventInformation()?
     //j["provider_name"] = std::to_string(record.EventHeader.ProviderId);
-    j["provider_name"] = wchar2string(schema.provider_name());
+    j["etw_provider_name"] = wchar2string(schema.provider_name());
 
     // Iterate over all properties defined in the schema
     for (const auto& property : parser.properties()) {
@@ -132,5 +132,5 @@ std::string KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema sch
         }
     }
 
-    return j.dump();
+    return j;
 }

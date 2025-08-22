@@ -27,6 +27,7 @@ public:
     unsigned int augmented = 0;
     BOOL initialized = FALSE;
 
+    std::string name;
     std::string commandline;
     HANDLE hProcess;
 };

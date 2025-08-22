@@ -14,10 +14,9 @@
 
 #include "logging.h"
 #include "process_resolver.h"
-#include "utils.h"
 #include "process_query.h"
+#include "utils.h"
 #include "config.h"
-#include "event_aggregator.h"
 
 /*
  * ProcessResolver: Maintains a cache of process information
@@ -35,7 +34,7 @@ std::mutex cache_mutex;
 
 
 ProcessResolver::ProcessResolver() {
-	cache.reserve(2000); // Preallocate space for 1000 processes
+	cache.reserve(2000); // Preallocate space for 2000 processes
 }
 
 
@@ -210,9 +209,9 @@ BOOL ProcessResolver::RefreshTargetMatching() {
         DWORD pid = pair.first;
         Process& process = pair.second;
 
-        bool shouldObserve = ProcessMatchesAnyTarget(process.commandline, g_Config.targetProcessNames);
+        bool shouldObserve = ProcessMatchesAnyTarget(process.name, g_Config.targetProcessNames);
         if (shouldObserve) {
-            LOG_A(LOG_INFO, "Process: observe pid %lu: %s", pid, process.commandline.c_str());
+            LOG_A(LOG_INFO, "Process: observe pid %lu: %s", pid, process.name.c_str());
             process.observe = 1;
         } else {
             process.observe = 0;
