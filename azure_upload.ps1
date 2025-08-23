@@ -4,9 +4,9 @@ $config = Get-Content -Raw -Path ".\azure_config.json" | ConvertFrom-Json
 # cleanup
 $path = "C:\rededr\data"
 if (Test-Path $path) {
-    Get-ChildItem -Path $path -File | Remove-Item -Force
+    Get-ChildItem -Path $path -File | Remove-Item -Force -ErrorAction SilentlyContinue
 }
-Get-ChildItem "c:\rededr\rededr.zip" | Remove-Item -Force
+Get-ChildItem "c:\rededr\rededr.zip" | Remove-Item -Force -ErrorAction SilentlyContinue
 
 # make a zip
 $source = "C:\rededr\*"
