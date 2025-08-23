@@ -1,0 +1,7 @@
+{
+  "StorageAccount": "detonator1",
+  "ContainerName": "scripts",
+  "BlobName": "rededr.zip",
+  "FilePath": "C:\\rededr\\rededr.zip",
+  "SasToken": ""
+}

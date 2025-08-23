@@ -4,6 +4,7 @@
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
 todo.txt
+azure_config.json
 
 # User-specific files
 *.rsuser
