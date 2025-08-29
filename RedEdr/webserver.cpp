@@ -377,8 +377,15 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                     enable_additional_etw(false);
                 }
 
+                // fileargs
+                std::string fileargs;
+                if (req.has_file("fileargs")) {
+                    auto fileargs_field = req.get_file_value("fileargs");
+                    fileargs = fileargs_field.content;
+                }
+
                 // Write the malware
-				LOG_A(LOG_INFO, "Webserver: writing malware: %s in path %s", filename.c_str(), path.c_str());
+				LOG_A(LOG_INFO, "Webserver: writing malware: %s", filepath.c_str());
                 if (! g_Executor.WriteMalware(filepath, file.content)) {
 					LOG_A(LOG_ERROR, "Webserver: Failed to write malware to %s", filepath.c_str());
 					res.status = 500;
@@ -394,8 +401,8 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                 g_EdrReader.Start();
 
                 // Start the malware
-                LOG_A(LOG_INFO, "Webserver: Executing malware: %s in path %s", filename.c_str(), path.c_str());
-                BOOL ret = g_Executor.Start(filepath);
+                LOG_A(LOG_INFO, "Webserver: Executing malware: %s", filepath.c_str());
+                BOOL ret = g_Executor.Start(filepath, fileargs);
                 DWORD pid = g_Executor.getLastPid();
                 if (!ret) {
 					if (GetLastError() == ERROR_VIRUS_INFECTED) {

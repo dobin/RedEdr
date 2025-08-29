@@ -5,7 +5,7 @@
 class Executor {
 public:
 	bool WriteMalware(std::string filepath, std::string filedata);
-	bool Start(std::string filepath);
+	bool Start(std::string filepath, std::string fileargs);
 	bool StartAsSystem(const wchar_t* commandLine);
 	bool StartAsUser(const wchar_t* commandLine);
 	bool Stop();
@@ -20,7 +20,7 @@ public:
 
 private:
 	bool IsDllFile(const std::string& filepath);
-	std::wstring CreateCommandLine(const std::string& filepath);
+	std::wstring CreateCommandLine(const std::string& filepath, const std::string& fileargs);
 	HANDLE hStdOutRead = nullptr;
 	HANDLE pihProcess = nullptr;
 	std::string capturedOutput;

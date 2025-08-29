@@ -245,40 +245,29 @@ bool Executor::IsDllFile(const std::string& filepath) {
 }
 
 
-std::wstring Executor::CreateCommandLine(const std::string& filepath) {
+std::wstring Executor::CreateCommandLine(const std::string& filepath, const std::string& fileargs) {
     if (IsDllFile(filepath)) {
-        // For DLL files, check if it contains entry point specification
-        size_t commaPos = filepath.find(',');
-        if (commaPos != std::string::npos) {
-            // Format: "path\to\file.dll,EntryPoint"
-            std::string dllPath = filepath.substr(0, commaPos);
-            std::string entryPoint = filepath.substr(commaPos + 1);
-            
-            // Create rundll32 command: rundll32.exe "dllPath",entryPoint
-            std::wstring commandLine = L"rundll32.exe \"";
-            commandLine += string2wstring(dllPath);
-            commandLine += L"\",";
-            commandLine += string2wstring(entryPoint);
-            return commandLine;
-        } else {
-            // Just a DLL path without entry point, use DllMain as default
-            std::wstring commandLine = L"rundll32.exe \"";
-            commandLine += string2wstring(filepath);
-            commandLine += L"\",DllMain";
-            return commandLine;
-        }
+        // Create rundll32 command: rundll32.exe "dllPath",entryPoint
+        std::wstring commandLine = L"rundll32.exe \"";
+        commandLine += string2wstring(filepath);
+        commandLine += L"\",";
+        commandLine += string2wstring(fileargs);
+        return commandLine;
     } else {
-        // For EXE files, just quote the path
+        // For EXE files, just quote the path and add args
+        // Format: \"path\to\file.exe\" fileargs
         std::wstring commandLine = L"\"";
         commandLine += string2wstring(filepath);
-        commandLine += L"\"";
+        commandLine += L"\" ";
+        commandLine += string2wstring(fileargs);
         return commandLine;
     }
 }
 
 
-bool Executor::Start(std::string filepath) {
-    std::wstring commandLine = CreateCommandLine(filepath);
+bool Executor::Start(std::string filepath, std::string fileargs) {
+    std::wstring commandLine = CreateCommandLine(filepath, fileargs);
+    LOG_W(LOG_INFO, L"Commandline: %s", commandLine.c_str());
     
     bool ret = false;
     if (RunsAsSystem()) {
