@@ -6,6 +6,7 @@
 
 #include "myprocess.h"
 #include "utils.h"
+#include "process_query.h"
 #include "../Shared/common.h"
 
 // The implementation is in each solution
@@ -13,8 +14,29 @@ void LOG_W(int verbosity, const wchar_t* format, ...);
 void LOG_A(int verbosity, const char* format, ...);
 
 
-// Helper function to get process name by PID using CreateToolhelp32Snapshot
+// Helper function to get process command line by PID
+// Falls back to process name if command line cannot be retrieved
 std::wstring GetProcessNameByPid(DWORD pid) {
+    // First try to get the full command line by opening the process
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    if (hProcess != NULL) {
+        try {
+            ProcessPebInfoRet pebInfo = ProcessPebInfo(hProcess);
+            CloseHandle(hProcess);
+            
+            if (!pebInfo.commandline.empty()) {
+                return string2wstring(pebInfo.commandline);
+            }
+        }
+        catch (const std::exception& e) {
+            //LOG_A(LOG_WARNING, "GetProcessNameByPid: Exception getting PEB info for pid %lu: %s", pid, e.what());
+            CloseHandle(hProcess);
+        }
+    //} else {
+    //    LOG_A(LOG_WARNING, "GetProcessNameByPid: Could not open process %lu for command line query (error %lu), falling back to process name", pid, GetLastError());
+    }
+    
+    // Fallback: use CreateToolhelp32Snapshot to get just the process name
     HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hSnapshot == INVALID_HANDLE_VALUE) {
         LOG_A(LOG_ERROR, "GetProcessNameByPid: Failed to create process snapshot: %lu", GetLastError());
@@ -58,12 +80,12 @@ Process* MakeProcess(DWORD pid, std::vector<std::string> targetNames) {
     Process* process;
     process = new Process(pid);
 
-    // Process name
+    // Process name/command line
     std::wstring processName = GetProcessNameByPid(pid);
     if (processName.empty()) {
-        LOG_A(LOG_WARNING, "MakeProcess: Could not get process name for pid %lu", pid);
+        //LOG_A(LOG_WARNING, "MakeProcess: Could not get process name for pid %lu", pid);
 		processName = L"<unknown>";
-	}
+    }
     process->commandline = wstring2string(processName);
     process->name = process->commandline;
 

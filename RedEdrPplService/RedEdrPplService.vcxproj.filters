@@ -51,6 +51,9 @@
     <ClCompile Include="..\RedEdrShared\process_resolver.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
+    <ClCompile Include="..\RedEdrShared\process_query.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="emitter.h">
