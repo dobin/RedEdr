@@ -23,7 +23,6 @@ std::wstring GetProcessNameByPid(DWORD pid) {
         try {
             ProcessPebInfoRet pebInfo = ProcessPebInfo(hProcess);
             CloseHandle(hProcess);
-            
             if (!pebInfo.commandline.empty()) {
                 return string2wstring(pebInfo.commandline);
             }
@@ -88,6 +87,12 @@ Process* MakeProcess(DWORD pid, std::vector<std::string> targetNames) {
     }
     process->commandline = wstring2string(processName);
     process->name = process->commandline;
+
+    // Dont observe ourselves
+    if (contains_case_insensitive(process->name, "rededr.exe")) {
+        process->observe = 0;
+        return process;
+    }
 
     // Check if we should trace
     bool shouldObserve = ProcessMatchesAnyTarget(process->name, targetNames);
