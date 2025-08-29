@@ -56,11 +56,21 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                             LOG_A(LOG_INFO, "Control: Processing start command with %zu targets", j["targets"].size());
                             std::vector<std::string> targets = j["targets"];
                             g_ProcessResolver.SetTargetNames(targets);
+
+                            nlohmann::json start_event;
+                            start_event["event"] = "ppl_start";
+                            start_event["type"] = "meta";
+                            SendEmitterPipe((char *) start_event.dump().c_str());
                         } else {
                             LOG_A(LOG_ERROR, "Control: Start command missing 'targets' array");
                         }
                     }
-                    else if (command == "shutdown") {
+                    else if (command == "stop") {
+                        nlohmann::json stop_event;
+                        stop_event["event"] = "ppl_stop";
+                        stop_event["type"] = "meta";
+                        SendEmitterPipe((char*) stop_event.dump().c_str());
+                    } else if (command == "shutdown") {
                         LOG_A(LOG_INFO, "Control: Received JSON command: shutdown");
                         keep_running = FALSE; // Signal thread to stop
                         g_ServiceStopping = TRUE; // Signal main service loop to stop

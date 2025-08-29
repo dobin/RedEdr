@@ -101,21 +101,29 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
 
         // Load: ETW-TI
         if (g_Config.do_etwti) {
+            // Start PPL service first (if not already)
+            if (!StartThePplService()) {
+                LOG_A(LOG_ERROR, "Manager: Failed to initialize PPL service");
+                return FALSE;
+            }
+
             // Start PPL Reader Thread for dedicated data pipe
+            // will wait for client connection
             LOG_A(LOG_INFO, "Manager: PPL reader thread start");
             if (!PplReaderInit(threads)) {
                 LOG_A(LOG_ERROR, "Manager: Failed to initialize PPL reader");
                 return FALSE;
             }
 
-            // Wait till so the ppl reader pipe is ready
-            Sleep(1000);
 
-            if (!InitPplService()) {
-                LOG_A(LOG_ERROR, "Manager: Failed to initialize PPL service");
+			// Connect to PPL service pipe
+            // it will connect back to the pipe created above when we connect
+            if (!ConnectPplService()) {
+                LOG_A(LOG_ERROR, "ETW-TI: Failed to connect to PPL service pipe");
                 return FALSE;
             }
 
+            // notify service about initial target
             LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new targets: %zu names", g_Config.targetProcessNames.size());
             if (!EnablePplProducer(true, g_Config.targetProcessNames)) {
                 LOG_A(LOG_ERROR, "Manager: Failed to enable PPL producer");

@@ -7,7 +7,7 @@
 
 typedef void (WINAPI* EventRecordCallbackFuncPtr)(PEVENT_RECORD);
 
-int InitializeEtwReader(std::vector<HANDLE>& threads);
+BOOL InitializeEtwReader(std::vector<HANDLE>& threads);
 void EtwReaderStopAll();
 BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType);
 DWORD WINAPI TraceProcessingThread(LPVOID param);

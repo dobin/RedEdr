@@ -15,6 +15,7 @@
 krabs::user_trace trace_user(L"RedEdrUser");
 
 BOOL use_additional_etw = FALSE;
+HANDLE threadReadynessEtw = NULL; // ready to start tracing
 
 void enable_additional_etw(BOOL use) {
     use_additional_etw = use;
@@ -84,13 +85,27 @@ void event_callback_nofilter(const EVENT_RECORD& record, const krabs::trace_cont
 
 
 BOOL InitializeEtwReader(std::vector<HANDLE>& threads) {
+    threadReadynessEtw = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (threadReadynessEtw == NULL) {
+        LOG_A(LOG_ERROR, "ETW: Failed to create event for thread readiness");
+        return FALSE;
+    }
+
     HANDLE thread = CreateThread(NULL, 0, TraceProcessingThread, NULL, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "ETW: Could not start thread");
+        if (threadReadynessEtw != NULL) {
+            CloseHandle(threadReadynessEtw);
+            threadReadynessEtw = NULL;
+        }
         return FALSE;
     }
+    
+    // Wait for the thread (ETW) to be fully initialized before returning
+    WaitForSingleObject(threadReadynessEtw, INFINITE);
+    
     LOG_A(LOG_INFO, "!ETW: Started Thread (handle %p)", thread);
-	threads.push_back(thread);
+    threads.push_back(thread);
     return TRUE;
 }
 
@@ -241,7 +256,10 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
             LOG_A(LOG_INFO, "ETW: Microsoft-Antimalware-Engine (all)");
         }
 
-		LOG_A(LOG_INFO, "ETW: All ready, start collecting");
+        LOG_A(LOG_INFO, "ETW: All providers configured, ready to start collecting");
+        
+        // Signal that the thread is fully initialized
+        SetEvent(threadReadynessEtw);
 
         // Blocking, stopped with trace.stop()
         trace_user.start();
@@ -260,4 +278,10 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
 
 void EtwReaderStopAll() {
     trace_user.stop();
+    
+    // Clean up event handle
+    if (threadReadynessEtw != NULL) {
+        CloseHandle(threadReadynessEtw);
+        threadReadynessEtw = NULL;
+    }
 }

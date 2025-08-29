@@ -75,7 +75,7 @@ BOOL DisablePplProducer() {
     char buffer[PPL_CONFIG_LEN] = { 0 };
     
     try {
-        // Create JSON object for stop command
+        // Create JSON object for shutdown command
         nlohmann::json j;
         j["command"] = "stop";
         
@@ -104,7 +104,7 @@ BOOL DisablePplProducer() {
 }
 
 
-BOOL InitPplService() {
+BOOL StartThePplService() {
     if (!DoesServiceExist(SERVICE_NAME)) {
         LOG_A(LOG_WARNING, "ETW-TI: service %ls not found", SERVICE_NAME);
         LOG_A(LOG_WARNING, "ETW-TI: Attempting to load elam driver");
@@ -121,10 +121,6 @@ BOOL InitPplService() {
         StartPplService();
         Sleep(1000);  // wait for it to start
     }
-	if (!ConnectPplService()) {
-		LOG_A(LOG_ERROR, "ETW-TI: Failed to connect to PPL service pipe");
-		return FALSE;
-	}
     return TRUE;
 }
 

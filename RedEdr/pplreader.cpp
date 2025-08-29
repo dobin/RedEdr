@@ -36,10 +36,16 @@ bool PplReaderInit(std::vector<HANDLE>& threads) {
     HANDLE thread = CreateThread(NULL, 0, PplReaderThread, NULL, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "PplReader: Failed to create thread");
+        if (threadReadynessPpl != NULL) {
+            CloseHandle(threadReadynessPpl);
+            threadReadynessPpl = NULL;
+        }
         return false;
     }
 
+    // Wait for the client to connect (PPL service should already be running)
     WaitForSingleObject(threadReadynessPpl, INFINITE);
+    Sleep(200); // it has to bind() n stuff
     threads.push_back(thread);
     return true;
 }
@@ -57,7 +63,7 @@ DWORD WINAPI PplReaderThread(LPVOID param) {
             Sleep(1000); // Brief delay before retry
             continue;
         }
-        
+        // Signal that the thread is ready
         SetEvent(threadReadynessPpl);
         
         if (!pipeServer->StartAndWaitForClient(TRUE)) {
@@ -67,6 +73,8 @@ DWORD WINAPI PplReaderThread(LPVOID param) {
             Sleep(1000); // Brief delay before retry
             continue;
         }
+
+        LOG_A(LOG_INFO, "PplReaderThread: Client connected successfully");
 
         // Handle it here
         PplReaderClient(pipeServer);
