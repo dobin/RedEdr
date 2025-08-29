@@ -164,21 +164,21 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Webserver
-    if (g_Config.web_output) {
-        InitializeWebServer(threads, port);
-    }
-
     // Functionality
     ManagerStart(threads);
     InitializeEventProcessor(threads);
 
-    // Wait for all threads to complete
-    LOG_A(LOG_INFO, "RedEdr: All started, waiting for %llu threads to exit", threads.size());
-    if (threads.empty()) {
-        LOG_A(LOG_WARNING, "RedEdr: No threads to wait for");
-        return 0;
+    // Webserver - boot it last
+    if (g_Config.web_output) {
+        InitializeWebServer(threads, port);
     }
+
+    // Wait for all threads to complete
+    //LOG_A(LOG_INFO, "RedEdr: All started, waiting for %llu threads to exit", threads.size());
+    //if (threads.empty()) {
+    //    LOG_A(LOG_WARNING, "RedEdr: No threads to wait for");
+    //    return 0;
+    //}
     
     // Log which threads we're waiting for
     //LOG_A(LOG_INFO, "RedEdr: Thread handles being tracked:");
