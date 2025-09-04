@@ -110,8 +110,8 @@ namespace UnitTests
 
             g_Config.targetProcessNames = {processName};
             DWORD pid = FindProcessIdByName(processNameW);
-            Process* p = MakeProcess(pid, processName);
-            
+            Process* p = MakeProcess(pid, std::vector<std::string>{processName});
+
             Assert::IsTrue(pid > 0);
             p = g_ProcessResolver.getObject(pid);
             Assert::IsNotNull(p);
@@ -126,8 +126,8 @@ namespace UnitTests
 
             g_Config.targetProcessNames = {processName};
             DWORD pid = FindProcessIdByName(L"explorer.exe");
-            Process* p = MakeProcess(pid, processName);
-            
+            Process* p = MakeProcess(pid, std::vector<std::string>{processName});
+
             Assert::IsTrue(pid > 0);
             Assert::IsNotNull(p);
             Assert::IsFalse(p->observe);
@@ -139,7 +139,7 @@ namespace UnitTests
             std::string processName = "explorer2.exe";
             g_Config.targetProcessNames = {processName};
             DWORD pid = FindProcessIdByName(L"explorer3.exe");
-            Process* p = MakeProcess(pid, processName);
+            Process* p = MakeProcess(pid, std::vector<std::string>{processName});
 
             Assert::IsFalse(pid > 0);
             Assert::IsNotNull(p);

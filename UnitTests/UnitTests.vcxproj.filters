@@ -51,17 +51,17 @@
     <ClCompile Include="..\RedEdr\mem_static.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdr\myprocess.cpp">
-      <Filter>Source Files\existing</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdr\process_resolver.cpp">
-      <Filter>Source Files\existing</Filter>
-    </ClCompile>
     <ClCompile Include="..\RedEdrShared\process_query.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
     <ClCompile Include="logging.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\myprocess.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\process_resolver.cpp">
+      <Filter>Source Files\existing</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
