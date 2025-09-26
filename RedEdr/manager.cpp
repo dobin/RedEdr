@@ -22,16 +22,6 @@
  */
 
 
-// Unused atm
-void ResetEverything() {
-    g_EventAggregator.ResetData();
-    g_EventProcessor.ResetData();
-    g_ProcessResolver.ResetData();
-    //g_MemStatic.ResetData();
-    //g_MemDynamic.ResetData();
-}
-
-
 BOOL ManagerApplyNewTargets() {
     // DLL
     // -> Automatic upon connect of DLL (initiated by Kernel)
@@ -167,6 +157,9 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
         else {
             // Log cache statistics after successful population
             g_ProcessResolver.LogCacheStatistics();
+
+            // Start cleanup thread to remove stale processes every 30 minutes
+            g_ProcessResolver.StartCleanupThread(std::chrono::minutes(30));
         }
 
 		LOG_A(LOG_INFO, "Manager: All subsystems started");

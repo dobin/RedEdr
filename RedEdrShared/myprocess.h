@@ -12,6 +12,7 @@ class Process {
 public:
     Process();
     Process(DWORD _id);
+    ~Process();  // Destructor to clean up all data
     BOOL doObserve();
 
     bool ObserveIfMatchesTargets(const std::vector<std::string>& targetNames);

@@ -2,6 +2,10 @@
 #include <iostream>
 #include <unordered_map>
 #include <mutex>
+#include <thread>
+#include <atomic>
+#include <chrono>
+#include <vector>
 #include <tlhelp32.h>
 
 #include "process_resolver.h"
@@ -29,6 +33,11 @@ std::mutex cache_mutex;
 
 ProcessResolver::ProcessResolver() {
 	cache.reserve(2000); // Preallocate space for 2000 processes
+}
+
+
+ProcessResolver::~ProcessResolver() {
+    StopCleanupThread();
 }
 
 
@@ -207,5 +216,98 @@ void ProcessResolver::RefreshTargetMatching() {
 void ProcessResolver::LogCacheStatistics() {
     std::lock_guard<std::mutex> lock(cache_mutex);
     LOG_A(LOG_INFO, "ProcessResolver: Total cached processes: %zu", cache.size());
+}
+
+
+// Cleanup thread management
+void ProcessResolver::StartCleanupThread(std::chrono::minutes interval) {
+    if (cleanupThreadRunning.load()) {
+        return; // Already running
+    }
+    
+    cleanupInterval = interval;
+    cleanupThreadRunning = true;
+    cleanupThread = std::thread(&ProcessResolver::CleanupWorker, this);
+    LOG_A(LOG_INFO, "ProcessResolver: Started cleanup thread with %d minute interval", 
+          static_cast<int>(interval.count()));
+}
+
+
+void ProcessResolver::StopCleanupThread() {
+    cleanupThreadRunning = false;
+    if (cleanupThread.joinable()) {
+        cleanupThread.join();
+    }
+    LOG_A(LOG_INFO, "ProcessResolver: Cleanup thread stopped");
+}
+
+
+void ProcessResolver::CleanupWorker() {
+    while (cleanupThreadRunning.load()) {
+        // Sleep for the specified interval, but check every second if we should stop
+        for (int i = 0; i < cleanupInterval.count() * 60 && cleanupThreadRunning.load(); i++) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+        
+        if (cleanupThreadRunning.load()) {
+            CleanupStaleProcesses();
+        }
+    }
+}
+
+
+void ProcessResolver::CleanupStaleProcesses() {
+    LOG_A(LOG_INFO, "ProcessResolver: Starting cleanup of stale processes");
+    
+    std::vector<DWORD> pidsToRemove;
+    size_t totalProcesses = 0;
+    
+    {
+        std::lock_guard<std::mutex> lock(cache_mutex);
+        totalProcesses = cache.size();
+        
+        for (const auto& pair : cache) {
+            DWORD pid = pair.first;
+            
+            // Check if process is still alive
+            if (!IsProcessAlive(pid)) {
+                pidsToRemove.push_back(pid);
+            }
+        }
+    }
+    
+    // Remove stale processes (outside the lock to avoid holding it too long)
+    for (DWORD pid : pidsToRemove) {
+        removeObject(pid);
+    }
+    
+    if (!pidsToRemove.empty()) {
+        LOG_A(LOG_INFO, "ProcessResolver: Cleaned up %zu stale processes (was: %zu, now: %zu)", 
+              pidsToRemove.size(), totalProcesses, GetCacheCount());
+    } else {
+        LOG_A(LOG_DEBUG, "ProcessResolver: No stale processes found during cleanup");
+    }
+}
+
+
+bool ProcessResolver::IsProcessAlive(DWORD pid) {
+    // Skip system idle process (PID 0)
+    if (pid == 0) {
+        return true;
+    }
+    
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (hProcess == NULL) {
+        return false; // Process no longer exists
+    }
+    
+    DWORD exitCode;
+    bool isAlive = true;
+    if (GetExitCodeProcess(hProcess, &exitCode)) {
+        isAlive = (exitCode == STILL_ACTIVE);
+    }
+    
+    CloseHandle(hProcess);
+    return isAlive;
 }
 

@@ -65,7 +65,6 @@ std::wstring GetProcessNameByPid(DWORD pid) {
 }
 
 
-// Helper function to check if process name matches any target
 bool Process::ObserveIfMatchesTargets(const std::vector<std::string>& targetNames) {
     for (const auto& target : targetNames) {
         if (contains_case_insensitive(name, target)) {
@@ -191,6 +190,13 @@ Process::Process(DWORD _id) {
     id = _id;
     observe = FALSE;
     hProcess = NULL;
+}
+
+
+Process::~Process() {
+    // memStatic has its own destructor that will clean up MemoryRegion objects
+    // processLoadedDlls and processPebInfoRet are value types that will be cleaned up automatically
+    // name and commandline are std::string objects that will be cleaned up automatically
 }
 
 
