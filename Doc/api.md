@@ -53,13 +53,13 @@ Used to define what RedEdr will look at, and provides an option
 to also execute the malware. Primarily used by Detonator. 
 
 
-### GET /api/trace
+### GET /api/trace/info
 Gets the current trace target executable names.
 - **Response**: JSON object with current trace targets
 - **Content-Type**: `application/json`
 - **Response Format**: `{"trace": ["target1", "target2"]}`
 
-### POST /api/trace
+### POST /api/trace/start
 Sets the process name(s) to be observed.
 
 Request: `application/json`
@@ -70,12 +70,12 @@ Response: `application/json`
 - **Error Responses**:
   - `400` - Invalid JSON or missing arguments
 
-### POST /api/reset
+### POST /api/trace/reset
 Resets all captured events and system state.
 - **Response**: Clears all current data
 - **Side Effect**: All events and state are reset
 
-### POST /api/exec
+### POST /api/execute/exec
 Executes given file (binary, malware).
 
 Request: Multipart form data with file upload
@@ -83,6 +83,7 @@ Request: Multipart form data with file upload
   - `file` - The executable file to analyze (required)
   - `path` - Custom path for file storage (optional, defaults to "C:\\RedEdr\\data\\")
   - `use_additional_etw` - Enable additional ETW collection ("true"/"false")
+  - `fileargs` - Command line arguments for the executable (optional)
 
 Response: `application/json`
 - **Success**: `{"status": "ok", "pid": process_id}`
@@ -92,7 +93,7 @@ Response: `application/json`
   - `400` - Invalid request (missing file or filename)
   - `500` - Execution failed
 
-### POST /api/kill
+### POST /api/execute/kill
 Kills the last executed process.
 - **Response**: `{"status": "ok"}` on success
 - **Error Responses**:
@@ -199,7 +200,7 @@ Gets the current lock status.
 
 ## Configuration Requirements
 
-- **Remote Execution**: The `/api/exec` and `/api/kill` endpoints are only available when `g_Config.enable_remote_exec` is enabled
+- **Remote Execution**: The `/api/execute/exec` and `/api/execute/kill` endpoints are only available when `g_Config.enable_remote_exec` is enabled
 - **File Paths**: Static files are served from `C:\RedEdr\` directory
 - **Data Storage**: Event recordings are stored in `C:\RedEdr\Data\` directory
 
@@ -207,22 +208,19 @@ Gets the current lock status.
 
 ### Set multiple trace targets
 ```bash
-curl -X POST http://localhost:8080/api/trace \
+curl -X POST http://localhost:8080/api/trace/start \
   -H "Content-Type: application/json" \
   -d '{"trace": ["malware1.exe", "malware2.exe"]}'
 ```
 
 ### Upload and execute file for analysis
 ```bash
-curl -X POST http://localhost:8080/api/exec \
-  -F "file=@/path/to/malware.exe" \
-  -F "path=C:\custom\path\" \
-  -F "use_additional_etw=true"
+curl -X POST http://localhost:8080/api/execute/exec -F "file=@/path/to/malware.exe"
 ```
 
 ### Kill last execution
 ```bash
-curl -X POST http://localhost:8080/api/kill
+curl -X POST http://localhost:8080/api/execute/kill
 ```
 
 ### Acquire resource lock
