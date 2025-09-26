@@ -261,11 +261,11 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
 
     // Functions
-    svr.Get("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
+    svr.Get("/api/trace/info", [](const httplib::Request& req, httplib::Response& res) {
         json response = { {"trace", g_Config.targetProcessNames } };
         res.set_content(response.dump(), "application/json");
     });
-    svr.Post("/api/trace", [](const httplib::Request& req, httplib::Response& res) {
+    svr.Post("/api/trace/start", [](const httplib::Request& req, httplib::Response& res) {
         try {
             auto data = json::parse(req.body);
             if (data.contains("trace")) {
@@ -298,7 +298,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             res.set_content(error_response.dump(), "application/json");
         }
     });
-    svr.Post("/api/reset", [](const httplib::Request&, httplib::Response& res) {
+    svr.Post("/api/trace/reset", [](const httplib::Request&, httplib::Response& res) {
         g_EventAggregator.ResetData();
         g_EventProcessor.ResetData();
     });
@@ -333,7 +333,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
 
     if (g_Config.enable_remote_exec) {
-        svr.Post("/api/exec", [](const httplib::Request& req, httplib::Response& res) {
+        svr.Post("/api/execute/exec", [](const httplib::Request& req, httplib::Response& res) {
             try {
                 // curl.exe -X POST http://localhost:8080/api/exec -F "file=@C:\temp\RedEdrTester.exe"
                 auto file = req.get_file_value("file");
@@ -447,7 +447,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             }
         });
 
-        svr.Post("/api/kill", [](const httplib::Request&, httplib::Response& res) {
+        svr.Post("/api/execute/kill", [](const httplib::Request&, httplib::Response& res) {
             // Disable resource intensive ETW collection
             enable_additional_etw(false);
 

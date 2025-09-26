@@ -98,7 +98,7 @@
         }
 
         async function fetchEvents() {
-            const response = await fetch('/api/events');
+            const response = await fetch('/api/logs/rededr');
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
@@ -149,7 +149,7 @@
         }
 
         async function sendReset() {
-            const response = await fetch('/api/reset', {
+            const response = await fetch('/api/trace/reset', {
                 method: 'POST'
             });
             if (!response.ok) {
@@ -159,7 +159,7 @@
         }
 
         async function sendTrace(name) {
-            const response = await fetch('/api/trace', {
+            const response = await fetch('/api/trace/start', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -181,7 +181,7 @@
             sendReset();
         }
         function BtnOpenEvents() {
-            window.open('/api/events', '_blank');
+            window.open('/api/logs/rededr', '_blank');
         }
         function BtnStart() {
             fetch('/api/start');
@@ -193,8 +193,8 @@
         function setNewTrace(value) {
             sendTrace(value);
         }
-        function setTrace() {
-            fetch('/api/trace')
+        function getTraceTarget() {
+            fetch('/api/trace/info')
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('trace').value = data.trace;
@@ -206,7 +206,7 @@
         setInterval(fetchStats, 1 * 1000); // periodic check
 
         fetchRecordings();
-        setTrace();
+        getTraceTarget();
     </script>
 
 </body>
