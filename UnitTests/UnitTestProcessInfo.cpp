@@ -83,21 +83,20 @@ namespace UnitTests
 
             // PID 1 doesnt exist usually
             // But entry should still be created
-            p = g_ProcessResolver.getObject(1);
+            ProcessResolver processResolver;
+            p = processResolver.getObject(1);
             Assert::IsNotNull(p);
             Assert::IsFalse(p->observe);
-            
-            Assert::IsTrue(g_ProcessResolver.containsObject(1));
+            Assert::IsTrue(processResolver.containsObject(1));
 
             // Great
 			std::wstring processNameW = L"explorer.exe";
             std::string processName = "explorer.exe";
 
-            g_Config.targetProcessNames = {processName};
-            
             DWORD pid = FindProcessIdByName(processNameW);
             Assert::IsTrue(pid > 0);
-            p = g_ProcessResolver.getObject(pid);
+			processResolver.SetTargetNames({ processName });
+            p = processResolver.getObject(pid);
             Assert::IsNotNull(p);
             Assert::IsTrue(p->observe);
             Assert::IsTrue(contains_case_insensitive(p->commandline, processName));
@@ -108,32 +107,29 @@ namespace UnitTests
             std::wstring processNameW = L"explorer.exe";
             std::string processName = "explorer.exe";
 
-            g_Config.targetProcessNames = {processName};
             DWORD pid = FindProcessIdByName(processNameW);
-            Process* p = MakeProcess(pid, std::vector<std::string>{processName});
-
             Assert::IsTrue(pid > 0);
-            p = g_ProcessResolver.getObject(pid);
+
+            Process* p = MakeProcess(pid, std::vector<std::string>{processName});
             Assert::IsNotNull(p);
             Assert::IsTrue(p->observe);
             Assert::IsTrue(contains_case_insensitive(p->commandline, processName));
         }
 
-        TEST_METHOD(TestProcessNonObserverValidProcess)
+        TEST_METHOD(TestProcessNonObserverValidProcessViaMakeProcess)
         {
-            std::wstring processNameW = L"explorer2.exe";
-            std::string processName = "explorer2.exe";
+            std::wstring processNameW = L"explorer.exe";
+            std::string processName_wrong = "explorer2.exe";
 
-            g_Config.targetProcessNames = {processName};
-            DWORD pid = FindProcessIdByName(L"explorer.exe");
-            Process* p = MakeProcess(pid, std::vector<std::string>{processName});
-
+            DWORD pid = FindProcessIdByName(processNameW);
             Assert::IsTrue(pid > 0);
+
+            Process* p = MakeProcess(pid, std::vector<std::string>{processName_wrong});
             Assert::IsNotNull(p);
             Assert::IsFalse(p->observe);
         }
 
-        TEST_METHOD(TestProcessNonObserverInValidProcess)
+        TEST_METHOD(TestProcessNonObserverInValidProcessViaMakeProcess)
         {
             std::wstring processNameW = L"explorer2.exe";
             std::string processName = "explorer2.exe";
