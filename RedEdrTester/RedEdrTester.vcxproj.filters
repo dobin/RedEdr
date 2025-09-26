@@ -30,15 +30,6 @@
     <ClCompile Include="..\RedEdr\kernelinterface.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdr\mem_static.cpp">
-      <Filter>Source Files\existing</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdr\process_resolver.cpp">
-      <Filter>Source Files\existing</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdrShared\logging.cpp">
-      <Filter>Source Files\existing</Filter>
-    </ClCompile>
     <ClCompile Include="..\RedEdr\event_aggregator.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
@@ -51,12 +42,6 @@
     <ClCompile Include="..\RedEdr\event_augmenter.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="..\RedEdr\mem_dynamic.cpp">
-      <Filter>Source Files\existing</Filter>
-    </ClCompile>
-    <ClCompile Include="..\RedEdr\myprocess.cpp">
-      <Filter>Source Files\existing</Filter>
-    </ClCompile>
     <ClCompile Include="..\RedEdrShared\utils.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
@@ -67,6 +52,18 @@
       <Filter>Source Files\existing</Filter>
     </ClCompile>
     <ClCompile Include="..\RedEdrShared\process_query.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\process_mem_static.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\myprocess.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\process_resolver.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdr\logging.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
   </ItemGroup>

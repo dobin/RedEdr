@@ -131,10 +131,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\RedEdrShared\logging.cpp" />
     <ClCompile Include="..\RedEdrShared\loguru.cpp" />
+    <ClCompile Include="..\RedEdrShared\myprocess.cpp" />
     <ClCompile Include="..\RedEdrShared\piping.cpp" />
+    <ClCompile Include="..\RedEdrShared\process_mem_static.cpp" />
     <ClCompile Include="..\RedEdrShared\process_query.cpp" />
+    <ClCompile Include="..\RedEdrShared\process_resolver.cpp" />
     <ClCompile Include="..\RedEdrShared\utils.cpp" />
     <ClCompile Include="..\RedEdr\config.cpp" />
     <ClCompile Include="..\RedEdr\dllinjector.cpp" />
@@ -142,10 +144,7 @@
     <ClCompile Include="..\RedEdr\event_augmenter.cpp" />
     <ClCompile Include="..\RedEdr\event_processor.cpp" />
     <ClCompile Include="..\RedEdr\kernelinterface.cpp" />
-    <ClCompile Include="..\RedEdr\mem_dynamic.cpp" />
-    <ClCompile Include="..\RedEdr\mem_static.cpp" />
-    <ClCompile Include="..\RedEdr\myprocess.cpp" />
-    <ClCompile Include="..\RedEdr\process_resolver.cpp" />
+    <ClCompile Include="..\RedEdr\logging.cpp" />
     <ClCompile Include="..\RedEdr\serviceutils.cpp" />
     <ClCompile Include="RedEdrTester.cpp" />
   </ItemGroup>

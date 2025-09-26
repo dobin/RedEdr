@@ -22,14 +22,15 @@
 
 // Stuff we test
 #include "../RedEdr/config.h"
-#include "../RedEdr/process_resolver.h"
+#include "../RedEdrShared/process_resolver.h"
 #include "../RedEdr/event_processor.h"
-#include "../RedEdr/mem_static.h"
+#include "../RedEdrShared/process_mem_static.h"
 #include "../RedEdr/dllinjector.h"
 #include "../RedEdr/webserver.h"
 #include "../RedEdr/kernelinterface.h"
 #include "../RedEdr/serviceutils.h"
-
+#include "../RedEdrShared/piping.h"
+#include "../RedEdr/logging.h"
 
 void SendToKernel(int enable, char* target) {
 	printf("Sending: %d %s", enable, target);
@@ -38,7 +39,7 @@ void SendToKernel(int enable, char* target) {
 
 
 void SendToKernelReader(char* data) {
-	PipeClient pipeClient;
+	PipeClient pipeClient("KernelReaderTest");
 	pipeClient.Connect(KERNEL_PIPE_NAME);
 	pipeClient.Send(data);
 	pipeClient.Disconnect();
@@ -46,7 +47,7 @@ void SendToKernelReader(char* data) {
 
 
 void SendToDllReader(char* data) {
-	PipeClient pipeClient;
+	PipeClient pipeClient("DllReaderTest");
 	pipeClient.Connect(DLL_PIPE_NAME);
 	pipeClient.Send(data);
 	pipeClient.Disconnect();
@@ -61,9 +62,7 @@ void processinfo(char* pidStr) {
 
 	g_Config.debug = 1;
 	g_Config.hide_full_output = 0;
-	g_Config.targetExeName = {"otepad"};
-
-	//Process* process = new Process(pid);
+	g_ProcessResolver.SetTargetNames({ "otepad", });
 	Process* process = g_ProcessResolver.getObject(pid);  // use the real resolver
 	
 	// PEB
