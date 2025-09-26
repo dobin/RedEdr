@@ -111,11 +111,11 @@ int main(int argc, char* argv[]) {
         exit(0);
     }
 
+    // Store args in config
     if (result.count("trace")) {
         std::string traceTarget = result["trace"].as<std::string>();
         g_Config.targetProcessNames = {traceTarget};
     }
-
 	int port = result["port"].as<int>();
     g_Config.do_etw = result["etw"].as<bool>();
     g_Config.do_etwti = result["etwti"].as<bool>();

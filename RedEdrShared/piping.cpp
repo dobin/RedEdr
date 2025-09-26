@@ -313,11 +313,9 @@ BOOL PipeClient::Connect(const wchar_t *pipe_path) {
 
 
 void PipeClient::Disconnect() {
-    LOG_A(LOG_INFO, "PipingCli %s: Disconnect",
-        pipe_name.c_str());
     std::lock_guard<std::mutex> lock(pipe_mutex);
-    
     if (hPipe != NULL && hPipe != INVALID_HANDLE_VALUE) {
+        LOG_A(LOG_INFO, "PipingCli %s: Disconnect", pipe_name.c_str());
         CloseHandle(hPipe);
     }
     hPipe = NULL;
