@@ -119,7 +119,7 @@ filter Get-TBSHash {
 
 # Generate new Certificate
 $certFolder = "Cert:\CurrentUser\My"
-$cert = New-SelfSignedCertificate -certstorelocation $certFolder -HashAlgorithm SHA256 -Subject "CN=ppl_runner" -TextExtension @("2.5.29.37={text}1.3.6.1.4.1.311.61.4.1,1.3.6.1.5.5.7.3.3")
+$cert = New-SelfSignedCertificate -certstorelocation $certFolder -HashAlgorithm SHA256 -NotAfter (Get-Date).AddYears(5) -Subject "CN=ppl_runner" -TextExtension @("2.5.29.37={text}1.3.6.1.4.1.311.61.4.1,1.3.6.1.5.5.7.3.3")
 $certLocation = "$certFolder\"+$cert.Thumbprint
 # Use the awesome 'Get-TBSHash' from above
 $hash = Get-TBSHash $cert
@@ -129,7 +129,7 @@ Write-Host "SHA256 Hash: $hash"
 
 # Export from store using the password
 $passwordSecure = ConvertTo-SecureString -String $password -Force -AsPlainText
-$outputFilename = "ppl_runner.pfx"
+$outputFilename = "rededr_ppl.pfx"
 Export-PfxCertificate -cert $cert -FilePath $outputFilename -Password $passwordSecure
 
 # Delete Certificate from store
