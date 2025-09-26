@@ -9,18 +9,20 @@
 class ProcessResolver {
 public:
     ProcessResolver();
-    size_t GetCacheCount();
+    
     void addObject(DWORD id, const Process& obj);
     BOOL containsObject(DWORD pid);
     Process* getObject(DWORD id);
-    BOOL observe(DWORD id);
     void removeObject(DWORD id);
+
     void ResetData();
-    BOOL PopulateAllProcesses(); // Populate cache with all running processes
-    void LogCacheStatistics(); // Log statistics about the cache
-    BOOL RefreshCache(); // Refresh cache with new processes and remove dead ones
-    BOOL RefreshTargetMatching(); // Re-evaluate all cached processes with current target names
+    BOOL PopulateAllProcesses();
+    void LogCacheStatistics();
+    //void RefreshCache();
+    void RefreshTargetMatching();
+
     void SetTargetNames(const std::vector<std::string>& names);
+    size_t GetCacheCount();
 
 private:
 	std::vector<std::string> targetProcessNames = {};

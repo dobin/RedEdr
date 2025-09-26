@@ -2,10 +2,8 @@
 #include <vector>
 #include <string>
 
-#include "mem_static.h"
+#include "process_mem_static.h"
 
-
-MemStatic g_MemStatic = MemStatic();
 
 MemStatic::MemStatic() {
 }

@@ -152,10 +152,10 @@ int main(int argc, char* argv[]) {
     // SeDebug
     if (!PermissionMakeMeDebug()) {
         LOG_A(LOG_ERROR, "RedEdr: Permission error - Did you start with local admin?");
-        //return 1;
+        return 1;
     }
     if (!RunsAsSystem()) {
-        LOG_A(LOG_WARNING, "RedEdr: Permission error - Not running as SYSTEM, some ETW data is not available");
+        LOG_A(LOG_WARNING, "RedEdr Permissions: Not running as SYSTEM, some ETW data is not available");
     }
 
     // Ctrl+C

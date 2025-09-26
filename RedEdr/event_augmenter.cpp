@@ -4,7 +4,6 @@
 #include "json.hpp"
 
 #include "event_augmenter.h"
-#include "mem_static.h"
 
 
 /* Augments the Event JSON with additional information
@@ -12,18 +11,18 @@
  */
 
 
-void AugmentEvent(nlohmann::json& j) {
-	AugmentEventWithMemAddrInfo(j);
+void AugmentEvent(nlohmann::json& j, Process *process) {
+	AugmentEventWithMemAddrInfo(j, process);
 }
 
 
-void AugmentEventWithMemAddrInfo(nlohmann::json& j) {
+void AugmentEventWithMemAddrInfo(nlohmann::json& j, Process *process) {
     // InjectedDLL: callstack
     if (j.contains("callstack") && j["callstack"].is_array()) {
         for (auto& callstack_entry : j["callstack"]) {
             if (callstack_entry.contains("addr")) {
                 uint64_t addr = callstack_entry["addr"].get<uint64_t>();
-                std::string symbol = g_MemStatic.ResolveStr(addr);
+                std::string symbol = process->memStatic.ResolveStr(addr);
                 callstack_entry["addr_info"] = symbol;
 
                 if (g_Config.debug) {
@@ -40,7 +39,7 @@ void AugmentEventWithMemAddrInfo(nlohmann::json& j) {
         for (auto& callstack_entry : j["stack_trace"]) {
             if (callstack_entry.contains("addr")) {
                 uint64_t addr = callstack_entry["addr"].get<uint64_t>();
-                std::string symbol = g_MemStatic.ResolveStr(addr);
+                std::string symbol = process->memStatic.ResolveStr(addr);
                 callstack_entry["addr_info"] = symbol;
 
                 if (g_Config.debug) {
@@ -52,26 +51,4 @@ void AugmentEventWithMemAddrInfo(nlohmann::json& j) {
         }
     }
 }
-
-
-BOOL EventHasOurDllCallstack(nlohmann::json& j) {
-    // For ETW
-    unsigned int occurences = 0;
-    if (j.contains("stack_trace") && j["stack_trace"].is_array()) {
-        for (auto& callstack_entry : j["stack_trace"]) {
-            if (callstack_entry.contains("addr_info")) {
-                if (callstack_entry["addr_info"].get<std::string>().find("RedEdrDll.dll") != std::string::npos) {
-                    occurences += 1;
-
-                    // ONE RedEdrDll.dll entry if hooked
-                    if (occurences == 2) {
-                        return TRUE;
-                    }
-                }
-            }
-        }
-    }
-    return FALSE;
-}
-
 

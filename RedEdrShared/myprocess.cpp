@@ -64,15 +64,71 @@ std::wstring GetProcessNameByPid(DWORD pid) {
     return processName;
 }
 
+
 // Helper function to check if process name matches any target
-bool ProcessMatchesAnyTarget(const std::string& processName, const std::vector<std::string>& targetNames) {
+bool Process::ObserveIfMatchesTargets(const std::vector<std::string>& targetNames) {
     for (const auto& target : targetNames) {
-        if (contains_case_insensitive(processName, target)) {
+        if (contains_case_insensitive(name, target)) {
+            LOG_A(LOG_INFO, "Process: observe pid %lu: %s", id, name.c_str());
+            observe = TRUE;
             return true;
         }
     }
+    observe = FALSE;
     return false;
 }
+
+
+bool Process::AugmentInfo() {
+    if (!OpenTarget()) {
+        LOG_A(LOG_WARNING, "EventProcessor: Cannot open process handle for pid %lu", id);
+        return FALSE;
+    }
+    
+    // Check if it is still running
+    DWORD exitCode;
+    if (!GetExitCodeProcess(GetHandle(), &exitCode)) {
+        LOG_A(LOG_WARNING, "EventProcessor: Failed to get exit code for process pid %lu, error: %lu",
+            id, GetLastError());
+        CloseTarget();
+        return FALSE;
+    }
+    if (exitCode != STILL_ACTIVE) {
+        LOG_A(LOG_WARNING, "EventProcessor: Process pid %lu is not active (exit code: %lu)",
+            id, exitCode);
+        CloseTarget();
+        return FALSE;
+    }
+
+    // PEB info
+    processPebInfoRet = ProcessPebInfo(GetHandle());
+
+    // Loaded modules
+    processLoadedDlls = ProcessEnumerateModules(GetHandle());
+    for (auto processLoadedDll : processLoadedDlls) {
+        try {
+            std::vector<ModuleSection> moduleSections = EnumerateModuleSections(
+                GetHandle(), 
+                uint64_to_pointer(processLoadedDll.dll_base));
+            for (auto moduleSection : moduleSections) {
+                MemoryRegion* memoryRegion = new MemoryRegion(
+                    moduleSection.name,
+                    moduleSection.addr, 
+                    moduleSection.size, 
+                    moduleSection.protection);
+                memStatic.AddMemoryRegion(memoryRegion->addr, memoryRegion);
+            }
+        }
+        catch (const std::exception& e) {
+            LOG_A(LOG_ERROR, "EventProcessor: Error enumerating sections for module %s: %s", 
+                    processLoadedDll.name.c_str(), e.what());
+        }
+    }
+
+    CloseTarget();
+    return TRUE;
+}
+
 
 // This should be fast
 Process* MakeProcess(DWORD pid, std::vector<std::string> targetNames) {
@@ -95,11 +151,8 @@ Process* MakeProcess(DWORD pid, std::vector<std::string> targetNames) {
     }
 
     // Check if we should trace
-    bool shouldObserve = ProcessMatchesAnyTarget(process->name, targetNames);
-    if (shouldObserve) {
-        LOG_A(LOG_INFO, "MakeProcess: observe pid %lu: %s", pid, process->name.c_str());
-        process->observe = 1;
-    }
+    process->ObserveIfMatchesTargets(targetNames);
+
     return process;
 }
 

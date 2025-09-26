@@ -1,16 +1,9 @@
 #pragma once
 
-#pragma once
-
 #include <windows.h>
 #include <vector>
 #include <string>
 #include <iostream>
-#include <sstream>
-#include <mutex>
-
-#include "ranges.h"
-#include "myprocess.h"
 
 
 std::wstring GetProcessName(HANDLE hProcess);

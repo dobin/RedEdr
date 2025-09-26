@@ -13,7 +13,7 @@ class EventProcessor {
 public:
 	EventProcessor();
 	void init();
-	void InitialProcessInfo(Process* process);
+	void LogInitialProcessInfo(Process* process);
 	void AnalyzeNewEvents(std::vector<std::string> events);
 	void SaveToFile();
 	std::string GetAllAsJson();

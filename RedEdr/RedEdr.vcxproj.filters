@@ -90,9 +90,6 @@
     <ClCompile Include="event_augmenter.cpp">
       <Filter>Source Files\process</Filter>
     </ClCompile>
-    <ClCompile Include="mem_static.cpp">
-      <Filter>Source Files\windows</Filter>
-    </ClCompile>
     <ClCompile Include="..\RedEdrShared\etw_krabs.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
@@ -124,6 +121,9 @@
       <Filter>Source Files\existing</Filter>
     </ClCompile>
     <ClCompile Include="..\RedEdrShared\loguru.cpp">
+      <Filter>Source Files\existing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RedEdrShared\process_mem_static.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
   </ItemGroup>
@@ -178,9 +178,6 @@
     </ClInclude>
     <ClInclude Include="jsonw.hpp">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="mem_static.h">
-      <Filter>Header Files\windows</Filter>
     </ClInclude>
     <ClInclude Include="dllreader.h">
       <Filter>Header Files\input</Filter>

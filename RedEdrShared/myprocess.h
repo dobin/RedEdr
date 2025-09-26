@@ -4,12 +4,19 @@
 #include <string>
 #include <vector>
 
+#include "process_query.h"
+#include "process_mem_static.h"
+
 
 class Process {
 public:
     Process();
     Process(DWORD _id);
     BOOL doObserve();
+
+    bool ObserveIfMatchesTargets(const std::vector<std::string>& targetNames);
+    bool AugmentInfo();
+
     BOOL OpenTarget();
     BOOL CloseTarget();
     HANDLE GetHandle();
@@ -17,13 +24,20 @@ public:
 public:
     DWORD id = 0;
     BOOL observe = FALSE;
-    unsigned int augmented = 0;
-    BOOL initialized = FALSE;
+
+    BOOL augmented = FALSE;
 
     std::string name;
     std::string commandline;
+
+    // When augmented
+    std::vector<ProcessLoadedDll> processLoadedDlls;
+    ProcessPebInfoRet processPebInfoRet;
+    MemStatic memStatic;
+
+
     HANDLE hProcess;
 };
 
-bool ProcessMatchesAnyTarget(const std::string& processName, const std::vector<std::string>& targetNames);
+
 Process* MakeProcess(DWORD pid, std::vector<std::string> targetNames);

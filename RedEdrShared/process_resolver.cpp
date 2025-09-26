@@ -13,11 +13,11 @@ void LOG_A(int verbosity, const char* format, ...);
 
 
 /*
- * ProcessResolver: Maintains a cache of process information
+ * ProcessResolver: Maintains a cache of processes to see if we should observe them
  * 
  * Features:
- * - Thread-safe caching of Process objects indexed by PID
- * - Automatic population of all running processes on startup
+ * - Thread-safe caching of all processes / Process-objects indexed by PID
+ * - Automatic population of all running processes on startup (speed)
  * - Cache refresh capability to track new/terminated processes
  * - Statistics and monitoring functions
  */
@@ -86,16 +86,6 @@ Process* ProcessResolver::getObject(DWORD id) {
         return &cache[id];
     }
 }
-
-
-BOOL ProcessResolver::observe(DWORD id) {
-    Process* p = getObject(id);
-    if (p != NULL) {
-        return p->doObserve();
-    }
-    return FALSE;
-}
-
 
 // Remove an object from the cache
 void ProcessResolver::removeObject(DWORD id) {
@@ -201,24 +191,15 @@ BOOL ProcessResolver::PopulateAllProcesses() {
 
 
 // Re-evaluate all cached processes with current target names
-BOOL ProcessResolver::RefreshTargetMatching() {
+void ProcessResolver::RefreshTargetMatching() {
     LOG_A(LOG_INFO, "ProcessResolver: Re-evaluating all cached processes with current target names");
     std::lock_guard<std::mutex> lock(cache_mutex);
     
     for (auto& pair : cache) {
         DWORD pid = pair.first;
         Process& process = pair.second;
-
-        bool shouldObserve = ProcessMatchesAnyTarget(process.name, targetProcessNames);
-        if (shouldObserve) {
-            LOG_A(LOG_INFO, "Process: observe pid %lu: %s", pid, process.name.c_str());
-            process.observe = 1;
-        } else {
-            process.observe = 0;
-        }
+        process.ObserveIfMatchesTargets(targetProcessNames);
     }
-    
-    return TRUE;
 }
 
 

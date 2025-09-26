@@ -34,7 +34,7 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
         LOG_A(LOG_WARNING, "ETW: No process object for pid %lu", processId);
         return;
     }
-    if (!g_ProcessResolver.observe(processId)) {
+    if (!process->observe) {
         return;
     }
 

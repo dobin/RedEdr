@@ -11,7 +11,7 @@
 #include "utils.h"
 
 #include "process_resolver.h"
-#include "mem_static.h"
+#include "process_mem_static.h"
 #include "process_query.h"
 #include "process_resolver.h"
 

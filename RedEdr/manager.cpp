@@ -71,11 +71,12 @@ BOOL ManagerApplyNewTargets() {
 
 
 BOOL ManagerStart(std::vector<HANDLE>& threads) {
+	LOG_A(LOG_INFO, "Manager: Starting all subsystems...");
     try {
         // Hook
         if (g_Config.do_hook) {
             // Kernel: Driver load
-            if (! IsServiceRunning(g_Config.driverName)) {
+            if (!IsServiceRunning(g_Config.driverName)) {
                 LOG_A(LOG_INFO, "Manager: Kernel Driver load");
                 if (!LoadKernelDriver()) {
                     LOG_A(LOG_ERROR, "Manager: Kernel driver could not be loaded");
@@ -116,7 +117,7 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
             }
 
 
-			// Connect to PPL service pipe
+            // Connect to PPL service pipe
             // it will connect back to the pipe created above when we connect
             if (!ConnectPplService()) {
                 LOG_A(LOG_ERROR, "ETW-TI: Failed to connect to PPL service pipe");
@@ -148,7 +149,8 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
                     LOG_A(LOG_ERROR, "Manager: Kernel module failed");
                     return FALSE;
                 }
-            } else {
+            }
+            else {
                 LOG_A(LOG_WARNING, "Manager: No target names configured for kernel driver");
             }
         }
@@ -161,14 +163,16 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
         if (!g_ProcessResolver.PopulateAllProcesses()) {
             LOG_A(LOG_WARNING, "Manager: Failed to populate process cache, continuing anyway");
             // Don't return FALSE here as this is not critical for core functionality
-        } else {
+        }
+        else {
             // Log cache statistics after successful population
             g_ProcessResolver.LogCacheStatistics();
         }
 
+		LOG_A(LOG_INFO, "Manager: All subsystems started");
+
         return TRUE;
-        }
-    catch (const std::exception& e) {
+    } catch (const std::exception& e) {
         LOG_A(LOG_ERROR, "Manager: Exception in ManagerStart: %s", e.what());
         return FALSE;
     }

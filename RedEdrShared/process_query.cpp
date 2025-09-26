@@ -116,8 +116,8 @@ ProcessPebInfoRet ProcessPebInfo(HANDLE hProcess) {
     // PEB
     MYPEB peb = {};
     if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), NULL)) {
-        LOG_A(LOG_WARNING, "ProcessPebInfo: Error: Could not ReadProcessMemory1 error: %lu",
-            GetLastError());
+        //LOG_A(LOG_WARNING, "ProcessPebInfo: Error: Could not ReadProcessMemory1 error: %lu",
+        //    GetLastError());
         return processPebInfoRet;
     }
 

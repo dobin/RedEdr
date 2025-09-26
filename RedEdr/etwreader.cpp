@@ -28,19 +28,18 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
 
         // This function(-chain) should be high performance, or we lose events.
 
-        // This will get information about the process, which may be slow, if not
-        // done before. It can be done before, e.g. when Kernel event arrived
         DWORD processId = record.EventHeader.ProcessId;
         Process* process = g_ProcessResolver.getObject(processId);
         if (process == NULL) {
             LOG_A(LOG_WARNING, "ETW: No process object for pid %lu", processId);
             return;
         }
-        if (!g_ProcessResolver.observe(processId)) {
+        if (!process->observe) {
             return;
         }
         nlohmann::json j = KrabsEtwEventToJsonStr(record, schema);
         j["process_name"] = process->name;
+        j["pid"] = processId;
         g_EventAggregator.NewEvent(j.dump());
     }
     catch (const std::exception& e) {
