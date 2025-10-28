@@ -16,7 +16,7 @@ bool GetUserTokenForExecution(HANDLE& hTokenDup) {
     // Open the current process token to enable privileges
     HANDLE hProcessToken = nullptr;
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken)) {
-        std::wcerr << L"Failed to open process token, error: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"Failed to open process token, error: %d", GetLastError());
         return false;
     }
 
@@ -27,7 +27,7 @@ bool GetUserTokenForExecution(HANDLE& hTokenDup) {
 
     // Re-open to verify
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hProcessToken)) {
-        std::wcerr << L"Failed to re-open process token, error: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"Failed to re-open process token, error: %d", GetLastError());
         return false;
     }
 
@@ -53,22 +53,22 @@ bool GetUserTokenForExecution(HANDLE& hTokenDup) {
         WTSFreeMemory(pSessionInfo);
     }
     else {
-        std::wcerr << L"Failed to enumerate sessions, error: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"Failed to enumerate sessions, error: %d", GetLastError());
         return false;
     }
 
     // Query and duplicate the user token
     if (!WTSQueryUserToken(sessionId, &hToken)) {
         DWORD err = GetLastError();
-        std::wcerr << L"Failed to query user token (session " << sessionId << L"), error: " << err << std::endl;
+        LOG_W(LOG_ERROR, L"Failed to query user token (session %d), error: %d", sessionId, err);
         if (err == ERROR_PRIVILEGE_NOT_HELD) {
-            std::wcerr << L"This process must be running as SYSTEM." << std::endl;
+            LOG_W(LOG_ERROR, L"This process must be running as SYSTEM.");
         }
         return false;
     }
 
     if (!DuplicateTokenEx(hToken, TOKEN_ALL_ACCESS, nullptr, SecurityImpersonation, TokenPrimary, &hTokenDup)) {
-        std::wcerr << L"Failed to duplicate token, error: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"Failed to duplicate token, error: %d", GetLastError());
         CloseHandle(hToken);
         return false;
     }
@@ -83,7 +83,7 @@ bool EnablePrivilege(HANDLE hToken, LPCWSTR privilege) {
     LUID luid;
 
     if (!LookupPrivilegeValueW(nullptr, privilege, &luid)) {
-        std::wcerr << L"Failed to look up privilege " << privilege << L", error: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"Failed to look up privilege %s, error: %d", privilege, GetLastError());
         return false;
     }
 
@@ -92,7 +92,7 @@ bool EnablePrivilege(HANDLE hToken, LPCWSTR privilege) {
     tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 
     if (!AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(tp), nullptr, nullptr)) {
-        std::wcerr << L"Failed to adjust token privileges for " << privilege << L", error: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"Failed to adjust token privileges for %s, error: %d", privilege, GetLastError());
         return false;
     }
 
@@ -106,13 +106,13 @@ bool CheckPrivilege(HANDLE hToken, LPCWSTR privilege) {
     privSet.Control = PRIVILEGE_SET_ALL_NECESSARY;
 
     if (!LookupPrivilegeValueW(nullptr, privilege, &privSet.Privilege[0].Luid)) {
-        std::wcerr << L"Failed to look up privilege " << privilege << L", error: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"Failed to look up privilege %s, error: %d", privilege, GetLastError());
         return false;
     }
 
     BOOL hasPrivilege;
     if (!PrivilegeCheck(hToken, &privSet, &hasPrivilege)) {
-        std::wcerr << L"Privilege check failed for " << privilege << L", error: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"Privilege check failed for %s, error: %d", privilege, GetLastError());
         return false;
     }
 

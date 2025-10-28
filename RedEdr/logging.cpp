@@ -10,12 +10,25 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <fstream>
 
 #include "logging.h"
 #include "loguru.hpp"
 
 std::vector<std::string> error_messages;
 std::mutex error_mutex;
+std::ofstream log_file;
+
+// Initialize log file
+void InitLogFile() {
+    static bool initialized = false;
+    if (!initialized) {
+        // Create directory if it doesn't exist
+        CreateDirectoryA("c:\\rededr", NULL);
+        log_file.open("c:\\rededr\\rededr.log", std::ios::app);
+        initialized = true;
+    }
+}
 
 
 std::vector <std::string> GetAgentLogs() {
@@ -73,7 +86,15 @@ void LOG_A(int verbosity, const char* format, ...)
         oss << '.' << std::setfill('0') << std::setw(3) << ms.count();
         oss << " - " << buffer;
 
-        error_messages.push_back(oss.str());
+        std::string log_entry = oss.str();
+        error_messages.push_back(log_entry);
+
+        // Write to file
+        InitLogFile();
+        if (log_file.is_open()) {
+            log_file << log_entry << std::endl;
+            log_file.flush();
+        }
     }
 
     //error_messages.push_back(std::string(buffer));
@@ -132,7 +153,15 @@ void LOG_W(int verbosity, const wchar_t* format, ...)
         oss << '.' << std::setfill('0') << std::setw(3) << ms.count();
         oss << " - " << std::string(buffer);
 
-        error_messages.push_back(oss.str());
+        std::string log_entry = oss.str();
+        error_messages.push_back(log_entry);
+
+        // Write to file
+        InitLogFile();
+        if (log_file.is_open()) {
+            log_file << log_entry << std::endl;
+            log_file.flush();
+        }
     }
 
     //error_messages.push_back(std::string(buffer));

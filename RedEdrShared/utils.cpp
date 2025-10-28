@@ -437,6 +437,7 @@ DWORD StartProcessInBackground(LPCWSTR exePath, LPCWSTR commandLine) {
     else {
         // Print error and return 0 if process creation failed
         std::wcerr << L"Failed to start process. Error: " << GetLastError() << std::endl;
+        //LOG_W(LOG_ERROR, L"Failed to start process. Error: %d", GetLastError());
         return 0;
     }
 }

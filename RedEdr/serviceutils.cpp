@@ -2,13 +2,13 @@
 #include <iostream>
 
 #include "serviceutils.h"
-
+#include "logging.h"
 
 BOOL DoesServiceExist(LPCWSTR serviceName) {
     // Open the Service Control Manager
     SC_HANDLE scmHandle = OpenSCManager(nullptr, nullptr, SC_MANAGER_CONNECT);
     if (!scmHandle) {
-        std::wcerr << L"Failed to open Service Control Manager. Error: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"Failed to open Service Control Manager. Error: %d", GetLastError());
         return FALSE;
     }
 

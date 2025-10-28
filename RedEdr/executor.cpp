@@ -108,7 +108,7 @@ bool Executor::StartAsSystem(const wchar_t* commandLine) {
 
     // Create environment block
     if (!CreateEnvironmentBlock(&env, hTokenDup, TRUE)) {
-        std::wcerr << L"Failed to create environment block, error: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"Failed to create environment block, error: %d", GetLastError());
         env = nullptr; // Ensure it's NULL if it fails
     }
 
@@ -117,7 +117,7 @@ bool Executor::StartAsSystem(const wchar_t* commandLine) {
     HANDLE hStdOutWrite = nullptr;
 
     if (!CreatePipe(&hStdOutRead, &hStdOutWrite, &sa, 0)) {
-        std::wcerr << L"Failed to create pipe, error: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"Failed to create pipe, error: %d", GetLastError());
         CloseHandle(hTokenDup);
         return false;
     }
@@ -139,7 +139,7 @@ bool Executor::StartAsSystem(const wchar_t* commandLine) {
 
     if (!CreateProcessAsUser(hTokenDup, nullptr, mutableCommandLine, nullptr, nullptr, TRUE,
         CREATE_UNICODE_ENVIRONMENT, env, nullptr, &si, &pi)) {
-        std::wcerr << L"Failed to create process as user, error: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"Failed to create process as user, error: %d", GetLastError());
         if (env) DestroyEnvironmentBlock(env);
         CloseHandle(hTokenDup);
         delete[] mutableCommandLine;
@@ -167,7 +167,7 @@ bool Executor::StartAsUser(const wchar_t* commandLine) {
     HANDLE hStdOutWrite = nullptr;
 
     if (!CreatePipe(&hStdOutRead, &hStdOutWrite, &sa, 0)) {
-        std::wcerr << L"Failed to create pipe, error: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"Failed to create pipe, error: %d", GetLastError());
         return false;
     }
 
@@ -201,7 +201,7 @@ bool Executor::StartAsUser(const wchar_t* commandLine) {
         &si,              // Startup info
         &pi               // Process info
     )) {
-        std::wcerr << L"Failed to create process, error: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"Failed to create process, error: %d", GetLastError());
         CloseHandle(hStdOutWrite);
         delete[] mutableCommandLine;
         return false;

@@ -8,6 +8,7 @@
 
 #include "edr_reader.h"
 #include "utils.h"
+#include "logging.h"
 
 EdrReader g_EdrReader;
 
@@ -65,7 +66,7 @@ std::string EdrReader::GetDefenderEventsSince(const std::wstring& isoTime)
     );
 
     if (!hResults) {
-        std::wcerr << L"EvtQuery failed: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"EvtQuery failed: %d", GetLastError());
         return "";
     }
 
@@ -88,7 +89,7 @@ std::string EdrReader::GetDefenderEventsSince(const std::wstring& isoTime)
                     allEvents += bufferUtf8 + "\n";
                 }
                 else {
-                    std::wcerr << L"EvtRender failed: " << GetLastError() << std::endl;
+                    LOG_W(LOG_ERROR, L"EvtRender failed: %d", GetLastError());
                 }
             }
 
@@ -97,7 +98,7 @@ std::string EdrReader::GetDefenderEventsSince(const std::wstring& isoTime)
     }
 
     if (GetLastError() != ERROR_NO_MORE_ITEMS) {
-        std::wcerr << L"EvtNext failed: " << GetLastError() << std::endl;
+        LOG_W(LOG_ERROR, L"EvtNext failed: %d", GetLastError());
     }
     EvtClose(hResults);
 
