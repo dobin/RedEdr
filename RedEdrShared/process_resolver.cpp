@@ -234,6 +234,9 @@ void ProcessResolver::StartCleanupThread(std::chrono::minutes interval) {
 
 
 void ProcessResolver::StopCleanupThread() {
+    if (! cleanupThreadRunning) {
+        return;
+    }
     cleanupThreadRunning = false;
     if (cleanupThread.joinable()) {
         cleanupThread.join();
