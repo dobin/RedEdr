@@ -108,6 +108,16 @@ std::vector<std::string> GetPplLogs() {
     return logs;
 }
 
+bool HasAllowedExtension(const std::string& filename, const std::vector<std::string>& extensions) {
+    for (const auto& ext : extensions) {
+        if (filename.length() >= ext.length() &&
+            filename.compare(filename.length() - ext.length(), ext.length(), ext) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 DWORD WINAPI WebserverThread(LPVOID param) {
     // UI
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
@@ -370,9 +380,9 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                     return;
                 }
 
-                // Check if filename ends with [ .exe, .bat, .cmd, .com ]
-                if (!(ends_with(filename, ".exe") || ends_with(filename, ".bat") ||
-                      ends_with(filename, ".cmd") || ends_with(filename, ".com"))) {
+                // Check if filename ends with allowed executable extensions
+                const std::vector<std::string> allowedExtensions = {".exe", ".bat", ".cmd", ".com"};
+                if (!HasAllowedExtension(filename, allowedExtensions)) {
                     LOG_A(LOG_WARNING, "Webserver: api/execute/exec: Unsupported file type: %s", filename.c_str());
                     res.status = 400;
                     json error_response = {
