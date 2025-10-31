@@ -119,7 +119,7 @@ The log should be printed as stdout.
 
 RedEdr will trace all processes containing by process image name (exe path).
 
-Enable all consumers, and provide as web on [http://localhost:8080](http://localhost:8080), 
+Enable all consumers, and provide as web on [http://localhost:8081](http://localhost:8081), 
 and disable output logging for performance:
 ```
 PS > .\RedEdr.exe --all --web --hide --trace notepad.exe
@@ -264,6 +264,18 @@ To compile the kernel driver:
 * Install WDK (+SDK): https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk
 
 It should deploy everything into `C:\RedEdr\`.
+
+On command line, use Visual Studio developer console. 
+
+Everything:
+```
+repos\RedEdr>msbuild RedEdr.sln /p:Configuration=Debug /p:Platform=x64
+```
+
+RedEdr only:
+```
+repos\RedEdr>msbuild RedEdr.sln /p:Configuration=Debug /p:Platform=x64 /t:RedEdr
+```
 
 
 ## Based on

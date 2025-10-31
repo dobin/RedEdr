@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
 
         // Output
         ("w,web", "Output: Web server", cxxopts::value<bool>()->default_value("true"))
-		("p,port", "Output: Web server port", cxxopts::value<int>()->default_value("8080"))
+		("p,port", "Output: Web server port", cxxopts::value<int>()->default_value("8081"))
         ("s,show", "Output: Show messages on stdout", cxxopts::value<bool>()->default_value("false"))
 
         // Debug

@@ -208,32 +208,32 @@ Gets the current lock status.
 
 ### Set multiple trace targets
 ```bash
-curl -X POST http://localhost:8080/api/trace/start \
+curl -X POST http://localhost:8081/api/trace/start \
   -H "Content-Type: application/json" \
   -d '{"trace": ["malware1.exe", "malware2.exe"]}'
 ```
 
 ### Upload and execute file for analysis
 ```bash
-curl -X POST http://localhost:8080/api/execute/exec -F "file=@/path/to/malware.exe"
+curl -X POST http://localhost:8081/api/execute/exec -F "file=@/path/to/malware.exe"
 ```
 
 ### Kill last execution
 ```bash
-curl -X POST http://localhost:8080/api/execute/kill
+curl -X POST http://localhost:8081/api/execute/kill
 ```
 
 ### Acquire resource lock
 ```bash
-curl -X POST http://localhost:8080/api/lock/acquire
+curl -X POST http://localhost:8081/api/lock/acquire
 ```
 
 ### Get current events
 ```bash
-curl http://localhost:8080/api/logs/rededr
+curl http://localhost:8081/api/logs/rededr
 ```
 
 ### Get system statistics
 ```bash
-curl http://localhost:8080/api/stats
+curl http://localhost:8081/api/stats
 ```

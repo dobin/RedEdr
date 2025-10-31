@@ -366,7 +366,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
 
         svr.Post("/api/execute/exec", [](const httplib::Request& req, httplib::Response& res) {
             try {
-                // curl.exe -X POST http://localhost:8080/api/execute/exec -F "file=@C:\temp\RedEdrTester.exe"
+                // curl.exe -X POST http://localhost:8081/api/execute/exec -F "file=@C:\temp\RedEdrTester.exe"
                 auto file = req.get_file_value("file");
                 auto filename = file.filename;
                 if (file.content.empty() || filename.empty()) {
