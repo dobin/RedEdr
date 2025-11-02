@@ -24,7 +24,7 @@ az storage blob upload `
   --account-name $($config.StorageAccount) `
   --container-name $($config.ContainerName) `
   --name $($config.BlobName) `
-  --file $($config.FilePath) `
+  --file $destination `
   --sas-token "`"$($config.SasToken)`"" `
   --overwrite
 
