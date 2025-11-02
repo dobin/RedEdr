@@ -13,8 +13,6 @@
 #include "process_resolver.h"
 #include "manager.h"
 #include "event_processor.h"
-#include "executor.h"
-#include "edr_reader.h"
 #include "etwreader.h"
 
 #pragma comment(lib, "wtsapi32.lib")
@@ -119,7 +117,7 @@ bool HasAllowedExtension(const std::string& filename, const std::vector<std::str
 }
 
 DWORD WINAPI WebserverThread(LPVOID param) {
-    // UI
+    // The UI
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
         try {
             std::string indexhtml = read_file("C:\\RedEdr\\index.html");
@@ -236,39 +234,6 @@ DWORD WINAPI WebserverThread(LPVOID param) {
 		}
         res.set_content(response.dump(), "application/json");
     });
-    svr.Get("/api/logs/execution", [](const httplib::Request& req, httplib::Response& res) {
-        // Like: 
-        /* 
-           {
-                "pid": 0,
-                "stderr": "",
-                "stdout": ""
-            }
-        */
-        json response = { 
-            { "stdout", g_Executor.GetOutput() },  // String
-            { "stderr", g_Executor.GetOutput() },  // String
-            { "pid", 0 },
-         };
-        res.set_content(response.dump(), "application/json");
-    });
-    svr.Get("/api/logs/edr", [](const httplib::Request& req, httplib::Response& res) {
-        g_EdrReader.Stop(); // Stop reading on this first call FIXME
-        // Like: 
-        /*
-           {
-               "logs":"<Events>\n</Events>",
-               "edr_version":"1.0",
-               "plugin_version":"1.0",
-            }
-        */
-        json response = {
-            { "logs", g_EdrReader.Get() },
-            { "edr_version", "1.0" },
-            { "plugin_version", "1.0" },
-        };
-        res.set_content(response.dump(), "application/json");
-    });
 
     // Functions
     svr.Get("/api/trace/info", [](const httplib::Request& req, httplib::Response& res) {
@@ -291,8 +256,23 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                     LOG_A(LOG_INFO, "  - %s", target.c_str());
                 }
                 g_Config.targetProcessNames = traceNames;
-
                 ManagerApplyNewTargets();
+
+/*
+                // enable Nofilter ETW (experimental)
+                std::string use_additional_etw;
+                if (req.has_file("use_additional_etw")) {
+                    auto use_additional_etw_field = req.get_file_value("use_additional_etw");
+                    use_additional_etw = use_additional_etw_field.content;
+                }
+                if (use_additional_etw == "true") {
+                    enable_additional_etw(true);
+                }
+                else {
+                    enable_additional_etw(false);
+                }
+*/
+
                 json response = { {"result", "ok"} };
                 res.set_content(response.dump(), "application/json");
             }
@@ -309,6 +289,10 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         }
     });
     svr.Post("/api/trace/reset", [](const httplib::Request&, httplib::Response& res) {
+/*
+        enable_additional_etw(false);
+*/
+
         g_EventAggregator.ResetData();
         g_EventProcessor.ResetData();
     });
@@ -342,212 +326,6 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         res.set_content(response.dump(), "application/json");
     });
 
-    if (g_Config.enable_remote_exec) {
-        // Get available execution types
-        svr.Get("/api/execute/types", [](const httplib::Request&, httplib::Response& res) {
-            try {
-                // For now, only one execution type is supported
-                json response = {
-                    { "types", json::array({"exec"}) },
-                    { "default", "exec" }
-                };
-                LOG_A(LOG_INFO, "Returning available execution types");
-                res.set_content(response.dump(), "application/json");
-            } catch (const std::exception& e) {
-                LOG_A(LOG_ERROR, "Error in /api/execute/types: %s", e.what());
-                res.status = 500;
-                json error_response = {
-                    { "types", json::array() },
-                    { "default", "" }
-                };
-                res.set_content(error_response.dump(), "application/json");
-            }
-        });
-
-        svr.Post("/api/execute/exec", [](const httplib::Request& req, httplib::Response& res) {
-            try {
-                // curl.exe -X POST http://localhost:8081/api/execute/exec -F "file=@C:\temp\RedEdrTester.exe"
-                auto file = req.get_file_value("file");
-                auto filename = file.filename;
-                if (file.content.empty() || filename.empty()) {
-                    LOG_A(LOG_WARNING, "Webserver: api/execute/exec: Invalid file request");
-                    res.status = 400;
-                    json error_response = {
-                        { "status", "error" },
-                        { "message", "Invalid request: filename or file data is missing" },
-                    };
-                    res.set_content(error_response.dump(), "application/json");
-                    return;
-                }
-
-                // Check if filename ends with allowed executable extensions
-                const std::vector<std::string> allowedExtensions = {".exe", ".bat", ".cmd", ".com"};
-                if (!HasAllowedExtension(filename, allowedExtensions)) {
-                    LOG_A(LOG_WARNING, "Webserver: api/execute/exec: Unsupported file type: %s", filename.c_str());
-                    res.status = 400;
-                    json error_response = {
-                        { "status", "error" },
-                        { "message", "Unsupported file type. Only .exe, .bat, .cmd, .com are allowed." },
-                    };
-                    res.set_content(error_response.dump(), "application/json");
-                    return;
-                }
-
-                // Get execution_mode parameter (for future multi-type support)
-                std::string execution_mode = "exec";
-                if (req.has_file("execution_mode")) {
-                    auto mode_field = req.get_file_value("execution_mode");
-                    if (mode_field.content != "exec") {
-                        LOG_A(LOG_WARNING, "Unsupported execution type: %s", mode_field.content.c_str());
-                        LOG_A(LOG_WARNING, "Falling back to 'exec' execution type");
-                    }
-                }
-
-                // drop_path
-                std::string drop_path;
-                if (req.has_file("drop_path")) {
-                    auto path_field = req.get_file_value("drop_path");
-                    drop_path = path_field.content;
-                } else {
-                    // Default path if not provided
-                    drop_path = "C:\\RedEdr\\data\\";
-                }
-                if (!drop_path.empty() && drop_path.back() != '\\') {
-                    // Make sure we have trailing backslash
-                    drop_path += '\\';
-                }
-				std::string filepath = drop_path + filename;
-
-                // executable_args
-                std::string executable_args;
-                if (req.has_file("executable_args")) {
-                    auto args_field = req.get_file_value("executable_args");
-                    executable_args = args_field.content;
-                }
-
-                // executable_name (for ZIP/RAR/ISO support - not yet implemented)
-                std::string executable_name;
-                if (req.has_file("executable_name")) {
-                    auto name_field = req.get_file_value("executable_name");
-                    executable_name = name_field.content;
-                    LOG_A(LOG_WARNING, "executable_name parameter received: %s (not yet implemented)", 
-                          executable_name.c_str());
-                }
-
-                // enable Nofilter ETW (experimental)
-                std::string use_additional_etw;
-                if (req.has_file("use_additional_etw")) {
-                    auto use_additional_etw_field = req.get_file_value("use_additional_etw");
-                    use_additional_etw = use_additional_etw_field.content;
-                }
-                if (use_additional_etw == "true") {
-                    enable_additional_etw(true);
-                }
-                else {
-                    enable_additional_etw(false);
-                }
-
-                // Write the malware
-				LOG_A(LOG_INFO, "Writing file: %s", filepath.c_str());
-                if (! g_Executor.WriteMalware(filepath, file.content)) {
-					LOG_A(LOG_ERROR, "Failed to write file to %s", filepath.c_str());
-					res.status = 500;
-					json error_response = {
-						{ "status", "error" },
-						{ "message", "Failed to write file" }
-					};
-					res.set_content(error_response.dump(), "application/json");
-					return;
-                }
-
-                // TODO: Prepare file for execution (handle ZIP, RAR, ISO extraction/mounting)
-                // For now, actualFilePath is the same as filepath
-                std::string actualFilePath = filepath;
-
-                // Activate EDR WindowsEvent reader
-                g_EdrReader.Start();
-
-                // Start the malware
-                LOG_A(LOG_INFO, "Executing file: %s", actualFilePath.c_str());
-                BOOL ret = g_Executor.Start(actualFilePath, executable_args);
-                DWORD pid = g_Executor.getLastPid();
-                if (!ret) {
-					if (GetLastError() == ERROR_VIRUS_INFECTED) {
-						LOG_A(LOG_INFO, "Malware execution blocked by antivirus");
-						json response = {
-                            { "status", "virus" },
-                            { "pid", pid },
-						};
-						res.set_content(response.dump(), "application/json");
-						return;
-					}
-
-                    res.status = 500;
-                    json error_response = {
-                        { "status", "error" },
-                        { "message", "Failed to execute malware" }
-                    };
-                    res.set_content(error_response.dump(), "application/json");
-                    return;
-                }
-                json response = { 
-                    { "status", "ok" },
-                    { "pid", pid },
-                };
-                res.set_content(response.dump(), "application/json");
-            } catch (const std::exception& e) {
-                LOG_A(LOG_ERROR, "Error in /api/execute/exec: %s", e.what());
-                res.status = 500;
-                json error_response = { 
-                    { "status", "error" }, 
-                    { "message", "Internal server error" } 
-                };
-                res.set_content(error_response.dump(), "application/json");
-            } catch (...) {
-                LOG_A(LOG_ERROR, "Unknown error in /api/execute/exec");
-                res.status = 500;
-                json error_response = {
-                    { "status", "error" }, 
-                    { "message", "Unknown server error" }
-                };
-                res.set_content(error_response.dump(), "application/json");
-            }
-        });
-
-        svr.Post("/api/execute/kill", [](const httplib::Request&, httplib::Response& res) {
-            try {
-                LOG_A(LOG_INFO, "Kill request received");
-
-                enable_additional_etw(false);
-
-                // Kill
-                bool ret = g_Executor.KillLastExec();
-                if (!ret) {
-                    res.status = 500;
-                    json error_response = {
-                        { "status", "error" },
-                        { "message", "Failed to kill last execution" }
-                    };
-                    res.set_content(error_response.dump(), "application/json");
-                    return;
-                }
-
-                json response = {
-                    { "status", "ok" },
-                    { "message", "Last execution killed successfully" }
-                };
-                res.set_content(response.dump(), "application/json");
-            } catch (const std::exception& e) {
-                LOG_A(LOG_ERROR, "Error in /api/execute/kill: %s", e.what());
-                res.status = 500;
-                json error_response = {
-                    { "status", "error" },
-                    { "message", "Internal server error" }
-                };
-                res.set_content(error_response.dump(), "application/json");
-            }
-        });
-    }
 
     LOG_A(LOG_INFO, "WEB: Web Server listening on http://0.0.0.0:%i", webserver_port);
     

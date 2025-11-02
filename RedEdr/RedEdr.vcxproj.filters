@@ -96,12 +96,6 @@
     <ClCompile Include="..\RedEdrShared\process_query.cpp">
       <Filter>Source Files\existing</Filter>
     </ClCompile>
-    <ClCompile Include="executor.cpp">
-      <Filter>Source Files\windows</Filter>
-    </ClCompile>
-    <ClCompile Include="edr_reader.cpp">
-      <Filter>Source Files\input</Filter>
-    </ClCompile>
     <ClCompile Include="privileges.cpp">
       <Filter>Source Files\windows</Filter>
     </ClCompile>
@@ -180,12 +174,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="dllreader.h">
-      <Filter>Header Files\input</Filter>
-    </ClInclude>
-    <ClInclude Include="executor.h">
-      <Filter>Header Files\windows</Filter>
-    </ClInclude>
-    <ClInclude Include="edr_reader.h">
       <Filter>Header Files\input</Filter>
     </ClInclude>
     <ClInclude Include="privileges.h">

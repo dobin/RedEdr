@@ -9,7 +9,6 @@ RedEdr provides a REST API through an embedded HTTP server for interacting with 
 **Events** can be viewed as a dict (key value pair). It is mostly flat, but can contain arrays or further dicts: 
 ```
 
-
 ```
 
 
@@ -75,37 +74,14 @@ Resets all captured events and system state.
 - **Response**: Clears all current data
 - **Side Effect**: All events and state are reset
 
-### POST /api/execute/exec
-Executes given file (binary, malware).
-
-Request: Multipart form data with file upload
-- **Form Fields**:
-  - `file` - The executable file to analyze (required)
-  - `path` - Custom path for file storage (optional, defaults to "C:\\RedEdr\\data\\")
-  - `use_additional_etw` - Enable additional ETW collection ("true"/"false")
-  - `fileargs` - Command line arguments for the executable (optional)
-
-Response: `application/json`
-- **Success**: `{"status": "ok", "pid": process_id}`
-- **Virus Detected**: `{"status": "virus", "pid": process_id}`
-- **Error Responses**:
-  - `{ "status": "error", "message": "error_description"}`
-  - `400` - Invalid request (missing file or filename)
-  - `500` - Execution failed
-
-### POST /api/execute/kill
-Kills the last executed process.
-- **Response**: `{"status": "ok"}` on success
-- **Error Responses**:
-  - `{ "status": "error", "message": "Failed to kill last execution" }`
-  - `500` - Kill operation failed
-
 
 ## Retrieve Log Results
 
 Actually retrieve the recorded logs of all involved components. 
 
+
 ### GET /api/logs/rededr
+
 Retrieves all captured events from the current session.
 Events are things recorded by RedEdr, including ETW events, or DLL hooking events.
 
@@ -131,7 +107,7 @@ Response Example:
 ```
 
 ### GET /api/logs/agent
-Get the logging output of the agent itself (combines agent and PPL service logs).
+Get the logging output of the agent itself (RedEdr and also RedEdrPplService).
 
 Response: `application/json`
 - Array of log strings
@@ -143,36 +119,6 @@ Response example:
     "Config: tracing otepad",
     "Permissions: Enabled PRIVILEGED & DEBUG"
 ]
-```
-
-### GET /api/logs/execution
-Retrieves executor information.
-
-Response: `application/json`
-- Object with execution details
-
-Response example: 
-```json
-{
-    "pid": 0,
-    "stderr": "Command line error",
-    "stdout": "Output content"
-}
-```
-
-### GET /api/logs/edr
-Get the data of the EDR log reader plugin.
-
-Response: `application/json`
-- Object with EDR logs and version information
-
-Response example:
-```json
-{
-    "logs":"<Events>\n</Events>",
-    "edr_version":"1.0",
-    "plugin_version":"1.0"
-}
 ```
 
 
@@ -197,43 +143,3 @@ Gets the current lock status.
 - **Response**: JSON object with lock state
 - **Response Format**: `{"in_use": true/false}`
 
-
-## Configuration Requirements
-
-- **Remote Execution**: The `/api/execute/exec` and `/api/execute/kill` endpoints are only available when `g_Config.enable_remote_exec` is enabled
-- **File Paths**: Static files are served from `C:\RedEdr\` directory
-- **Data Storage**: Event recordings are stored in `C:\RedEdr\Data\` directory
-
-## Example Usage
-
-### Set multiple trace targets
-```bash
-curl -X POST http://localhost:8081/api/trace/start \
-  -H "Content-Type: application/json" \
-  -d '{"trace": ["malware1.exe", "malware2.exe"]}'
-```
-
-### Upload and execute file for analysis
-```bash
-curl -X POST http://localhost:8081/api/execute/exec -F "file=@/path/to/malware.exe"
-```
-
-### Kill last execution
-```bash
-curl -X POST http://localhost:8081/api/execute/kill
-```
-
-### Acquire resource lock
-```bash
-curl -X POST http://localhost:8081/api/lock/acquire
-```
-
-### Get current events
-```bash
-curl http://localhost:8081/api/logs/rededr
-```
-
-### Get system statistics
-```bash
-curl http://localhost:8081/api/stats
-```

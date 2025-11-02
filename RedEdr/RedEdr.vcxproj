@@ -153,11 +153,9 @@
     <ClCompile Include="..\RedEdrShared\process_resolver.cpp" />
     <ClCompile Include="..\RedEdrShared\process_query.cpp" />
     <ClCompile Include="..\RedEdrShared\utils.cpp" />
-    <ClCompile Include="edr_reader.cpp" />
     <ClCompile Include="event_aggregator.cpp" />
     <ClCompile Include="event_augmenter.cpp" />
     <ClCompile Include="event_processor.cpp" />
-    <ClCompile Include="executor.cpp" />
     <ClCompile Include="logging.cpp" />
     <ClCompile Include="manager.cpp" />
     <ClCompile Include="config.cpp" />
@@ -176,11 +174,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="loguru.hpp" />
-    <ClInclude Include="edr_reader.h" />
     <ClInclude Include="event_aggregator.h" />
     <ClInclude Include="event_augmenter.h" />
     <ClInclude Include="event_processor.h" />
-    <ClInclude Include="executor.h" />
     <ClInclude Include="jsonw.hpp" />
     <ClInclude Include="logging.h" />
     <ClInclude Include="manager.h" />
