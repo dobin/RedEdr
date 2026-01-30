@@ -116,6 +116,7 @@ int main(int argc, char* argv[]) {
     if (result.count("trace")) {
         std::string traceTarget = result["trace"].as<std::string>();
         g_Config.targetProcessNames = {traceTarget};
+        // ManagerApplyNewTargets(g_Config.targetProcessNames); // no need here?
     }
 	int port = result["port"].as<int>();
     g_Config.do_etw = result["etw"].as<bool>();

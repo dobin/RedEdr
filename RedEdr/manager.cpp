@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <iostream>
+#include <string>
 
 #include "config.h"
 #include "etwreader.h"
@@ -22,7 +23,13 @@
  */
 
 
-BOOL ManagerApplyNewTargets() {
+BOOL ManagerApplyNewTargets(std::vector<std::string> traceNames) {
+    LOG_A(LOG_INFO, "Trace targets: %zu targets", traceNames.size());
+    for (const auto& target : traceNames) {
+        LOG_A(LOG_INFO, "  - %s", target.c_str());
+    }
+    g_Config.targetProcessNames = traceNames;
+
     // DLL
     // -> Automatic upon connect of DLL (initiated by Kernel)
 

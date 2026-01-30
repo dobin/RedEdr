@@ -250,22 +250,14 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                     res.set_content(error_response.dump(), "application/json");
                 }
                 std::vector<std::string> traceNames = data["trace"].get<std::vector<std::string>>();
-                LOG_A(LOG_INFO, "Trace targets: %zu targets", traceNames.size());
-                for (const auto& target : traceNames) {
-                    LOG_A(LOG_INFO, "  - %s", target.c_str());
+                if (!ManagerApplyNewTargets(traceNames)) {
+                    LOG_A(LOG_ERROR, "Trace start: Failed to apply new targets");
+                    json error_response = { {"error", "Failed to apply new targets"} };
+                    res.status = 500;
+                    res.set_content(error_response.dump(), "application/json");
+					return;
                 }
-                g_Config.targetProcessNames = traceNames;
-                ManagerApplyNewTargets();
-
-/*
-                std::string use_additional_etw;
-                if (req.has_file("use_additional_etw")) {
-                    auto use_additional_etw_field = req.get_file_value("use_additional_etw");
-                    use_additional_etw = use_additional_etw_field.content;
-                }
-*/
                 trace_in_progress(true);
-
                 json response = { {"result", "ok"} };
                 res.set_content(response.dump(), "application/json");
             }
