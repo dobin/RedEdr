@@ -115,31 +115,34 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
             LOG_A(LOG_WARNING, "No type? %s", j.dump().c_str());
             return;
         }
-        if (!j.contains("pid")) {
-            LOG_A(LOG_WARNING, "No pid? %s", j.dump().c_str());
-            return;
-        }
+        //if (!j.contains("pid")) {
+        //    LOG_A(LOG_WARNING, "No pid? %s", j.dump().c_str());
+        //    return;
+        //}
 
         // Stats (for UI)
         EventStats(j);
 
-        Process* process = g_ProcessResolver.getObject(j["pid"].get<DWORD>());
-        if (process == nullptr) {
-            // Should not happen
-            LOG_A(LOG_WARNING, "EventProcessor: Failed to get process object for pid %lu", j["pid"].get<DWORD>());
-            return;
-        }
+		// etw_pid is typically the source process of the event
+        if (j.contains("etw_pid") && !j["etw_pid"].is_null()) {
+            Process* process = g_ProcessResolver.getObject(j["etw_pid"].get<DWORD>());
+            if (process == nullptr) {
+                // Should not happen
+                LOG_A(LOG_WARNING, "EventProcessor: Failed to get process object for pid %lu", j["etw_pid"].get<DWORD>());
+                return;
+            }
 
-        // Check if we need to gather the detailed information about the process
-        // If yes (not done before), do it and log it
-        if (! process->augmented) {
-            process->AugmentInfo();
-            process->augmented = true;
-            LogInitialProcessInfo(process);
-        }
+            // Check if we need to gather the detailed information about the process
+            // If yes (not done before), do it and log it
+            if (!process->augmented) {
+                process->AugmentInfo();
+                process->augmented = true;
+                LogInitialProcessInfo(process);
+            }
 
-        // Augment the JSON Event with memory info
-        AugmentEventWithMemAddrInfo(j, process);
+            // Augment the JSON Event with memory info
+            AugmentEventWithMemAddrInfo(j, process);
+        }
 
         // Print Event
         PrintEvent(j);
@@ -214,7 +217,7 @@ void EventProcessor::EventStats(nlohmann::json& j) {
         num_dll += 1;
     }
     else if (j["type"] == "etw") {
-        if (j["provider_name"] == "Microsoft-Windows-Threat-Intelligence") {
+        if (j["etw_provider_name"] == "Microsoft-Windows-Threat-Intelligence") {
             num_etwti += 1;
         }
         else {

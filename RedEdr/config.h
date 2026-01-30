@@ -21,12 +21,15 @@ public:
 	bool do_udllinjection = false;
 	bool debug_dllreader = false;
 	bool enable_remote_exec = true;
-	bool disable_unfiltered_etw = false;
 
 	// Input selection
 	bool do_etw = false;
 	bool do_etwti = false;
 	bool do_hook = false;
+	
+	// More input
+	bool do_defendertrace = false;
+	bool do_antimalwareengine = false;
 	bool do_dllinjection_ucallstack = true;
 
 	// ETW input selection

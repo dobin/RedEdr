@@ -30,7 +30,7 @@ nlohmann::json KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema 
     j["event"] = d;
 
     //j["opcode_id"] = schema.event_opcode();
-	j["event_id"] = schema.event_id();
+	j["etw_event_id"] = schema.event_id();
 
 	// The ProviderId is just the UID of the provider, which is not very useful
     // This is a workaround. Alternative would be to use TdhGetEventInformation()?
@@ -52,6 +52,7 @@ nlohmann::json KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema 
                 continue;
             }
             std::string jsonKey = wstring2string((std::wstring&)propertyName);
+            std::transform(jsonKey.begin(), jsonKey.end(), jsonKey.begin(), ::tolower); // lowercase
 
             // Special cases
             if (propertyName == L"ProtectionMask" || propertyName == L"LastProtectionMask") {

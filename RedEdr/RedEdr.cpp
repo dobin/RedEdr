@@ -64,7 +64,8 @@ int main(int argc, char* argv[]) {
         ("k,hook", "Input: Kernel and ntdll hooks", cxxopts::value<bool>()->default_value("false"))
 
         // Input options
-        ("with-unfiltered-etw", "Input option: Enable unfiltered ETW (performance impact)", cxxopts::value<bool>()->default_value("false"))
+        ("with-defendertrace", "Input option Defender: Add MsMpEng.exe access events to target process", cxxopts::value<bool>()->default_value("false"))
+        ("with-antimalwareengine", "Input option Defender: Grab events of ETW Microsoft-Antimalware-Engine related to target process", cxxopts::value<bool>()->default_value("false"))
 
         // Output
         ("w,web", "Output: Web server", cxxopts::value<bool>()->default_value("true"))
@@ -123,11 +124,11 @@ int main(int argc, char* argv[]) {
     g_Config.debug_dllreader = result["dllreader"].as<bool>();
     g_Config.hide_full_output = ! result["show"].as<bool>();
     g_Config.web_output = result["web"].as<bool>();
-    g_Config.disable_unfiltered_etw = ! result["with-unfiltered-etw"].as<bool>();
-    //g_Config.do_dllinjection_ucallstack = result["dllcallstack"].as<bool>();
+	g_Config.do_defendertrace = result["with-defendertrace"].as<bool>();
+	g_Config.do_antimalwareengine = result["with-antimalwareengine"].as<bool>();
 
     if (!g_Config.do_etw && !g_Config.do_hook && !g_Config.do_etwti && !g_Config.debug_dllreader) {
-        printf("Choose at least one of --etw --etwti --hook");
+        printf("Choose at least one of --etw / --etwti / --hook");
         return 1;
     }
 

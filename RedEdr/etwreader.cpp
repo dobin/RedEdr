@@ -10,24 +10,27 @@
 #include "etwreader.h"
 #include "process_resolver.h"
 #include "config.h"
+#include "utils.h"
 
 
 krabs::user_trace trace_user(L"RedEdrUser");
 
-BOOL use_additional_etw = FALSE;
+BOOL is_trace_in_progress = FALSE; // currently unused
 HANDLE threadReadynessEtw = NULL; // ready to start tracing
 
-void enable_additional_etw(BOOL use) {
-    use_additional_etw = use;
+
+void trace_in_progress(BOOL use) {
+    is_trace_in_progress = use;
 }
 
 
-void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trace_context) {
+// Handle ETW events for process monitoring
+// - Where ProcessId of EventHeader is our target process
+void event_callback_process(const EVENT_RECORD& record, const krabs::trace_context& trace_context) {
     try {
         krabs::schema schema(record, trace_context.schema_locator);
-
-        // This function(-chain) should be high performance, or we lose events.
-
+        
+		// Check if we observe the process which emitted this event
         DWORD processId = record.EventHeader.ProcessId;
         Process* process = g_ProcessResolver.getObject(processId);
         if (process == NULL) {
@@ -37,9 +40,12 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
         if (!process->observe) {
             return;
         }
+
+        // Convert ETW to JSON
         nlohmann::json j = KrabsEtwEventToJsonStr(record, schema);
-        j["process_name"] = process->name;
-        j["pid"] = processId;
+        j["etw_process"] = process->name;
+
+        // Emit event
         g_EventAggregator.NewEvent(j.dump());
     }
     catch (const std::exception& e) {
@@ -51,28 +57,67 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
 }
 
 
-void event_callback_nofilter(const EVENT_RECORD& record, const krabs::trace_context& trace_context) {
-    if (!use_additional_etw) {
-        // If we dont use additional ETW, we dont want to process these events
-        return;
-	}
+// Handle ETW events for antimalware monitoring
+// - Where "pid" or "filename" or "name" matches our target processes
+void event_callback_antimalware(const EVENT_RECORD& record, const krabs::trace_context& trace_context) {
+    //if (!is_trace_in_progress) {
+	//	return;
+	//}
 
     try {
         krabs::schema schema(record, trace_context.schema_locator);
+        // Convert ETW to JSON
+        nlohmann::json j = KrabsEtwEventToJsonStr(record, schema);
 
-        // This function(-chain) should be high performance, or we lose events.
+        // Resolve (source) process name
         DWORD processId = record.EventHeader.ProcessId;
         Process* process = g_ProcessResolver.getObject(processId);
         if (process == NULL) {
             LOG_A(LOG_WARNING, "ETW: No process object for pid %lu", processId);
             return;
         }
+        j["etw_process"] = process->name;
 
-        // This will get information about the process, which may be slow, if not
-        // done before. It can be done before, e.g. when Kernel event arrived
-        nlohmann::json j = KrabsEtwEventToJsonStr(record, schema);
-        j["process_name"] = process->name;
-        g_EventAggregator.NewEvent(j.dump());
+        // Check if destination is one of our target processes
+        if (j.contains("pid") && !j["pid"].is_null()) {
+            DWORD targetPid = j["pid"].get<DWORD>();
+
+			// check if we observe the target process
+            Process* targetProcess = g_ProcessResolver.getObject(targetPid);
+            if (targetProcess == NULL) {
+                LOG_A(LOG_WARNING, "ETW: No target process object for pid %lu", targetPid);
+                return;
+            }
+            if (targetProcess->observe) {
+                // Emit event
+                g_EventAggregator.NewEvent(j.dump());
+			}
+        }
+		// Check if filename matches any of our target processes
+        // Cache MOACLookup 36
+        else if (j.contains("filename") && !j["filename"].is_null()) {
+            std::string filename = j["filename"].get<std::string>();
+            for (const auto& targetProcessName : g_Config.targetProcessNames) {
+                if (ends_with_case_insensitive(filename, targetProcessName)) {
+                    // Emit event
+                    g_EventAggregator.NewEvent(j.dump());
+                    break;
+                }
+            }
+        }
+		// Check if name matches any of our target processes
+        // ExpensiveOperationTaskExpensiveOperationBegin 43
+        // ExpensiveOperationTaskExpensiveOperationEnd 67
+        else if (j.contains("name") && !j["name"].is_null()) {
+            std::string filename = j["name"].get<std::string>();
+            for (const auto& targetProcessName : g_Config.targetProcessNames) {
+                if (ends_with_case_insensitive(filename, targetProcessName)) {
+                    // Emit event
+                    g_EventAggregator.NewEvent(j.dump());
+                    break;
+                }
+            }
+        }
     }
     catch (const std::exception& e) {
         LOG_A(LOG_ERROR, "ETW event_callback exception: %s", e.what());
@@ -117,7 +162,7 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
             1 ProcessStart
             2 ProcessStop
             3 ThreadStart
-            4 ThreadStop?
+            4 ThreadStop
             5 ImageLoad
             6 ImageUnload
             11 ProcessFreeze
@@ -126,7 +171,7 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         std::vector<unsigned short> process_event_ids = { 1, 2, 3, 4, 5, 6, 11 };
         krabs::event_filter process_filter(process_event_ids);
         process_provider.trace_flags(process_provider.trace_flags() | EVENT_ENABLE_PROPERTY_STACK_TRACE);
-        process_filter.add_on_event_callback(event_callback);
+        process_filter.add_on_event_callback(event_callback_process);
         process_provider.add_filter(process_filter);
         trace_user.enable(process_provider);
         LOG_A(LOG_INFO, "ETW: Microsoft-Windows-Kernel-Process (1, 2, 3, 4, 5, 6, 11)");
@@ -147,7 +192,7 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         std::vector<unsigned short> auditapi_event_ids = { 3, 4, 5, 6 };
         krabs::event_filter auditapi_filter(auditapi_event_ids);
         auditapi_provider.trace_flags(auditapi_provider.trace_flags() | EVENT_ENABLE_PROPERTY_STACK_TRACE);
-        auditapi_filter.add_on_event_callback(event_callback);
+        auditapi_filter.add_on_event_callback(event_callback_process);
         auditapi_provider.add_filter(auditapi_filter);
         trace_user.enable(auditapi_provider);
         LOG_A(LOG_INFO, "ETW: Microsoft-Windows-Kernel-Audit-API-Calls (3, 4, 5, 6)");
@@ -174,7 +219,7 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         std::vector<unsigned short> kernelfile_event_ids = { 10, 30 };
         krabs::event_filter kernelfile_filter(kernelfile_event_ids);
         kernelfile_provider.trace_flags(kernelfile_provider.trace_flags() | EVENT_ENABLE_PROPERTY_STACK_TRACE);
-        kernelfile_filter.add_on_event_callback(event_callback);
+        kernelfile_filter.add_on_event_callback(event_callback_process);
         kernelfile_provider.add_filter(kernelfile_filter);
         trace_user.enable(kernelfile_provider);
         LOG_A(LOG_INFO, "ETW: Microsoft-Windows-Kernel-File (10, 30)");
@@ -194,7 +239,7 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         std::vector<unsigned short> kernelnetwork_event_ids = { 12, 15, 28, 31, 42, 43, 58, 59 };
         krabs::event_filter kernelnetwork_filter(kernelnetwork_event_ids);
         kernelnetwork_provider.trace_flags(kernelnetwork_provider.trace_flags() | EVENT_ENABLE_PROPERTY_STACK_TRACE);
-        kernelnetwork_filter.add_on_event_callback(event_callback);
+        kernelnetwork_filter.add_on_event_callback(event_callback_process);
         kernelnetwork_provider.add_filter(kernelnetwork_filter);
         trace_user.enable(kernelnetwork_provider);
         LOG_A(LOG_INFO, "ETW: Microsoft-Windows-Kernel-Network (12, 15, 28, 31, 42, 43, 58, 59)");
@@ -242,15 +287,15 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         /* 
         krabs::provider<> securityauditing_provider(L"Microsoft-Windows-Security-Auditing");
         securityauditing_provider.trace_flags(securityauditing_provider.trace_flags() | EVENT_ENABLE_PROPERTY_STACK_TRACE);
-        securityauditing_provider.add_on_event_callback(event_callback);
+        securityauditing_provider.add_on_event_callback(event_callback_process);
         trace_user.enable(securityauditing_provider);
         */
 
-		// Microsoft-Windows-Threat-Intelligence
-        /* everything - for the duration of use_additional_etw = true */
-        if (! g_Config.disable_unfiltered_etw) {
-            krabs::provider<> antimalwareengine_provider(L"Microsoft-Antimalware-Engine");
-            antimalwareengine_provider.add_on_event_callback(event_callback_nofilter);
+		// Microsoft-Antimalware-Engine
+        // We currently observe all event id's, and filter in the callback
+        krabs::provider<> antimalwareengine_provider(L"Microsoft-Antimalware-Engine");
+        if (g_Config.do_antimalwareengine) {
+            antimalwareengine_provider.add_on_event_callback(event_callback_antimalware);
             trace_user.enable(antimalwareengine_provider);
             LOG_A(LOG_INFO, "ETW: Microsoft-Antimalware-Engine (all)");
         }

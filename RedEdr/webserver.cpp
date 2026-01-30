@@ -199,7 +199,6 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             ]
         */
         try {
-
             res.set_content(g_EventProcessor.GetAllAsJson(), "application/json");
         } catch (const std::exception& e) {
             LOG_A(LOG_ERROR, "Error getting events: %s", e.what());
@@ -245,7 +244,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             auto data = json::parse(req.body);
             if (data.contains("trace")) {
                 if (! data["trace"].is_array()) {
-                    LOG_A(LOG_ERROR, "Targets should be an array");
+                    LOG_A(LOG_ERROR, "Trace start: Targets should be an array, but is %s", data["trace"]);
                     json error_response = { {"error", "trace should be an array"} };
                     res.status = 400;
                     res.set_content(error_response.dump(), "application/json");
@@ -259,19 +258,13 @@ DWORD WINAPI WebserverThread(LPVOID param) {
                 ManagerApplyNewTargets();
 
 /*
-                // enable Nofilter ETW (experimental)
                 std::string use_additional_etw;
                 if (req.has_file("use_additional_etw")) {
                     auto use_additional_etw_field = req.get_file_value("use_additional_etw");
                     use_additional_etw = use_additional_etw_field.content;
                 }
-                if (use_additional_etw == "true") {
-                    enable_additional_etw(true);
-                }
-                else {
-                    enable_additional_etw(false);
-                }
 */
+                trace_in_progress(true);
 
                 json response = { {"result", "ok"} };
                 res.set_content(response.dump(), "application/json");
@@ -289,12 +282,12 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         }
     });
     svr.Post("/api/trace/reset", [](const httplib::Request&, httplib::Response& res) {
-/*
-        enable_additional_etw(false);
-*/
-
+        trace_in_progress(false);
         g_EventAggregator.ResetData();
         g_EventProcessor.ResetData();
+    });
+    svr.Post("/api/trace/stop", [](const httplib::Request&, httplib::Response& res) {
+        trace_in_progress(false);
     });
 
     // Lock management endpoints

@@ -118,6 +118,16 @@ bool contains_case_insensitive(const std::string& haystack, const std::string& n
 }
 
 
+bool ends_with_case_insensitive(const std::string& str, const std::string& suffix) {
+    if (suffix.size() > str.size()) {
+        return false;
+    }
+    std::string str_lower = to_lowercase2(str);
+    std::string suffix_lower = to_lowercase2(suffix);
+    return str_lower.compare(str_lower.size() - suffix_lower.size(), suffix_lower.size(), suffix_lower) == 0;
+}
+
+
 // Dear mother of god whats up with all these goddamn string types
 wchar_t* string2wcharAlloc(const std::string& str) {
     if (str.empty()) {

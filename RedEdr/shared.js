@@ -20,9 +20,9 @@ function displayEvents(events) {
             }
 
             // header
-            if (key === 'time' || key === 'pid' || key === 'tid' ||
-                key === 'krn_pid' || key === 'ppid' || key === 'observe' ||
-                key === 'thread_id' || key === 'provider_name'  || key === 'id' || key == 'trace_id'
+            if (key === 'etw_time' || key === 'etw_pid' || key === 'etw_process' || key === 'etw_tid' ||
+                key === 'etw_pid' || key === 'etw_event_id' ||
+                key === 'thread_id' || key === 'etw_provider_name'  || key === 'id' || key == 'trace_id'
             ) {
                 eventHeader += `<span class="highlight_a">${key}:${value}</span> `;
             } else if (key === 'type' || key === 'func' || key === 'event' || key === 'task') {

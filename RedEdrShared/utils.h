@@ -30,6 +30,7 @@ std::string wchar2string(const wchar_t* wstr); // 4
 std::wstring string2wstring(const std::string& str); // 3
 
 bool contains_case_insensitive(const std::string& haystack, const std::string& needle); // 5
+bool ends_with_case_insensitive(const std::string& str, const std::string& suffix); // 1
 void remove_all_occurrences_case_insensitive(std::string& str, const std::string& to_remove); // 3
 bool wstring_starts_with(const std::wstring& str, const std::wstring& prefix); // 3
 wchar_t* JsonEscape(wchar_t* str, size_t buffer_size); // 9
