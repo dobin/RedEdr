@@ -85,7 +85,11 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
 void KernelReaderShutdown() {
     KernelReaderThreadStopFlag = TRUE;
 
-    if (! kernelPipeServer->IsConnected()) {
+    if (kernelPipeServer == NULL) {
+        return;
+    }
+
+    if (!kernelPipeServer->IsConnected()) {
         PipeClient pipeClient("RedEdr KernelReaderShutdown");
         char buf[DATA_BUFFER_SIZE] = { 0 }; // We may receive a full event here
         const char *send = "";
@@ -96,9 +100,9 @@ void KernelReaderShutdown() {
     }
     else {
         // Connected
-        kernelPipeServer->Shutdown(); // if connected
-        kernelPipeServer = NULL;
+        kernelPipeServer->Shutdown();
         delete kernelPipeServer;
+        kernelPipeServer = NULL;
     }
 }
 

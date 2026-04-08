@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <atomic>
 #include <windows.h>
 
 #include "httplib.h" // Needs to be on top?
@@ -32,7 +33,7 @@ HANDLE webserver_thread;
 httplib::Server svr;
 int webserver_port;
 
-bool in_use = false;
+std::atomic<bool> in_use{false};
 
 
 std::wstring StripToFirstDot(const std::wstring& input) {
@@ -284,17 +285,16 @@ DWORD WINAPI WebserverThread(LPVOID param) {
 
     // Lock management endpoints
     svr.Post("/api/lock/acquire", [](const httplib::Request&, httplib::Response& res) {
-        if (in_use) {
+        bool expected = false;
+        if (!in_use.compare_exchange_strong(expected, true)) {
             res.status = 409; // Conflict
             json error_response = {
                 { "status", "error" },
                 { "message", "Resource is already in use" },
             };
             res.set_content(error_response.dump(), "application/json");
-        } else {
-            in_use = true;
-            // Returns 200 OK
         }
+        // else: successfully acquired, returns 200 OK
     });
     svr.Post("/api/lock/release", [](const httplib::Request&, httplib::Response& res) {
         if (! in_use) {

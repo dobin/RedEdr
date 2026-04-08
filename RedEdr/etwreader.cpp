@@ -310,9 +310,17 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
     }
     catch (const std::exception& e) {
         LOG_A(LOG_ERROR, "ETW TraceProcessingThread exception: %s", e.what());
+        // Ensure the init waiter is unblocked even on failure
+        if (threadReadynessEtw != NULL) {
+            SetEvent(threadReadynessEtw);
+        }
     }
     catch (...) {
         LOG_A(LOG_ERROR, "ETW TraceProcessingThread unknown exception");
+        // Ensure the init waiter is unblocked even on failure
+        if (threadReadynessEtw != NULL) {
+            SetEvent(threadReadynessEtw);
+        }
     }
 
     LOG_A(LOG_INFO, "!ETW: Thread finished");
