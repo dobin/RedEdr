@@ -1,6 +1,7 @@
 #include <Windows.h>
 #include <iostream>
 #include <vector>
+#include <atomic>
 #include <krabs.hpp>
 #include "json.hpp"
 
@@ -15,7 +16,7 @@
 
 krabs::user_trace trace_user(L"RedEdrUser");
 
-BOOL is_trace_in_progress = FALSE; // currently unused
+std::atomic<BOOL> is_trace_in_progress{FALSE}; // currently unused
 HANDLE threadReadynessEtw = NULL; // ready to start tracing
 
 

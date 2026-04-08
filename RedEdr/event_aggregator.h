@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <vector>
 #include <mutex>
+#include <atomic>
 
 
 class EventAggregator {
@@ -24,7 +25,7 @@ public:
 	// events (Analyzer)
 	std::condition_variable cv; // Will be called upon each insert
 	std::mutex analyzer_shutdown_mtx;
-	bool done = false;  // Flag to signal when to stop the consumer thread
+	std::atomic<bool> done{false};  // Flag to signal when to stop the consumer thread
 
 private:
 	// JSON should be UTF-8 which is std::string...

@@ -22,9 +22,7 @@ BOOL DoesServiceExist(LPCWSTR serviceName) {
     }
 
     // Check if the error is due to the service not existing
-    //DWORD error = GetLastError();
-    //CloseServiceHandle(scmHandle);
-    //return error != ERROR_SERVICE_DOES_NOT_EXIST ? true : false;
+    CloseServiceHandle(scmHandle);
     return FALSE;
 }
 

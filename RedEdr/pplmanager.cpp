@@ -181,10 +181,12 @@ BOOL InstallElamCertPpl()
 
     if (InstallELAMCertificateInfo(fileHandle) == FALSE) {
         LOG_A(LOG_ERROR, "ETW-TI: install_elam_cert: install_elam_certificateInfo Error: %d", GetLastError());
+        CloseHandle(fileHandle);
         return FALSE;
     }
     LOG_A(LOG_INFO, "ETW-TI: install_elam_cert: Installed ELAM driver cert");
 
+    CloseHandle(fileHandle);
     return TRUE;
 }
 
@@ -226,10 +228,10 @@ BOOL InstallPplService()
         retval = GetLastError();
         if (retval == ERROR_SERVICE_EXISTS) {
             LOG_A(LOG_INFO, "ETW-TI: install_service: CreateService: Service '%ls' Already Exists", SERVICE_NAME);
-            //LOG_A(LOG_INFO, "[PPL_RUNNER] install_service: Run 'net start %s' to start the service", SERVICE_NAME);
         }
         else {
             LOG_A(LOG_ERROR, "ETW-TI: install_service: CreateService Error: %d", retval);
+            CloseServiceHandle(hSCManager);
             return FALSE;
         }
     }
@@ -238,11 +240,15 @@ BOOL InstallPplService()
         info.dwLaunchProtected = SERVICE_LAUNCH_PROTECTED_ANTIMALWARE_LIGHT;
         if (ChangeServiceConfig2(hService, SERVICE_CONFIG_LAUNCH_PROTECTED, &info) == FALSE) {
             LOG_A(LOG_ERROR, "ETW-TI: install_service: ChangeServiceConfig2 Error: %d", GetLastError());
+            CloseServiceHandle(hService);
+            CloseServiceHandle(hSCManager);
             return FALSE;
         }
+        CloseServiceHandle(hService);
     }
 
     LOG_A(LOG_INFO, "ETW-TI: install_service: Created Service: %ls", serviceCMD);
+    CloseServiceHandle(hSCManager);
     return TRUE;
 }
 
@@ -270,6 +276,8 @@ BOOL StartPplService()
     bSuccess = StartService(hService, 0, NULL);
     if (!bSuccess) {
         retval = GetLastError();
+        CloseServiceHandle(hService);
+        CloseServiceHandle(hSCManager);
         if (retval == ERROR_SERVICE_ALREADY_RUNNING) {
             LOG_A(LOG_WARNING, "ETW-TI: Service is already running");
             return TRUE;

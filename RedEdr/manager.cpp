@@ -177,7 +177,7 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
         return FALSE;
     }
     catch (...) {
-        LOG_A(LOG_ERROR, "Manager: Unknown exception in ManagerStart");
+        LOG_A(LOG_ERROR, "Manager: FATAL unknown exception in ManagerStart (possible SEH/access violation)");
         return FALSE;
     }
 }
