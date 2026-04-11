@@ -18,7 +18,8 @@
 
 
 // Private variables
-bool KernelReaderThreadStopFlag = FALSE;
+HANDLE hStopEventKernel = NULL;     // signaled to request thread stop
+HANDLE hKernelThreadHandle = NULL;   // stored thread handle for join/terminate
 HANDLE kernel_pipe = NULL;
 PipeServer* kernelPipeServer = NULL;
 HANDLE threadReadynessKernel; // ready to accept clients
@@ -28,19 +29,26 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param);
 
 
 bool KernelReaderInit(std::vector<HANDLE>& threads) {
-    const wchar_t* data = L"";
+    hStopEventKernel = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (hStopEventKernel == NULL) {
+        LOG_A(LOG_ERROR, "KernelReader: Failed to create stop event");
+        return false;
+    }
     threadReadynessKernel = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (threadReadynessKernel == NULL) {
-		LOG_A(LOG_ERROR, "KernelReader: Failed to create event for thread readyness");
-		return false;
-	}
+        LOG_A(LOG_ERROR, "KernelReader: Failed to create event for thread readyness");
+        CloseHandle(hStopEventKernel);
+        hStopEventKernel = NULL;
+        return false;
+    }
 
     LOG_A(LOG_INFO, "!KernelReader: Start thread");
-    HANDLE thread = CreateThread(NULL, 0, KernelReaderProcessingThread, (LPVOID)data, 0, NULL);
+    HANDLE thread = CreateThread(NULL, 0, KernelReaderProcessingThread, NULL, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "KernelReader: Failed to create thread for trace session logreader");
         return false;
     }
+    hKernelThreadHandle = thread;
 
     WaitForSingleObject(threadReadynessKernel, INFINITE);
     threads.push_back(thread);
@@ -51,7 +59,7 @@ bool KernelReaderInit(std::vector<HANDLE>& threads) {
 
 DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
     // Loop which accepts new clients
-    while (!KernelReaderThreadStopFlag) {
+    while (WaitForSingleObject(hStopEventKernel, 0) != WAIT_OBJECT_0) {
         LOG_A(LOG_INFO, "KernelReader: Waiting for kernel");
         kernelPipeServer = new PipeServer("RedEdr KernelReader", (wchar_t*) KERNEL_PIPE_NAME);
         kernelPipeServer->Start(TRUE);
@@ -62,7 +70,7 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
             continue;
         }
 		LOG_A(LOG_INFO, "KernelReader: Kernel connected");
-        while (!KernelReaderThreadStopFlag) {
+        while (WaitForSingleObject(hStopEventKernel, 0) != WAIT_OBJECT_0) {
             std::vector<std::string> events = kernelPipeServer->ReceiveBatch();
             if (events.empty()) {
                 break;
@@ -83,26 +91,54 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
 
 
 void KernelReaderShutdown() {
-    KernelReaderThreadStopFlag = TRUE;
+    // Signal stop
+    if (hStopEventKernel != NULL) {
+        SetEvent(hStopEventKernel);
+    }
 
     if (kernelPipeServer == NULL) {
-        return;
+        // Thread may be blocked in WaitForClient; unblock it with a fake connect
+        try {
+            PipeClient pipeClient("RedEdr KernelReaderShutdown");
+            char buf[DATA_BUFFER_SIZE] = { 0 };
+            const char* send = "";
+            if (pipeClient.Connect(KERNEL_PIPE_NAME)) {
+                pipeClient.Receive(buf, DATA_BUFFER_SIZE);
+                pipeClient.Send((char*)send);
+                pipeClient.Disconnect();
+            }
+        }
+        catch (...) {}
     }
-
-    if (!kernelPipeServer->IsConnected()) {
+    else if (!kernelPipeServer->IsConnected()) {
         PipeClient pipeClient("RedEdr KernelReaderShutdown");
-        char buf[DATA_BUFFER_SIZE] = { 0 }; // We may receive a full event here
-        const char *send = "";
-        pipeClient.Connect(KERNEL_PIPE_NAME);
-        pipeClient.Receive(buf, DATA_BUFFER_SIZE);
-        pipeClient.Send((char*) send);
-        pipeClient.Disconnect();
+        char buf[DATA_BUFFER_SIZE] = { 0 };
+        const char* send = "";
+        if (pipeClient.Connect(KERNEL_PIPE_NAME)) {
+            pipeClient.Receive(buf, DATA_BUFFER_SIZE);
+            pipeClient.Send((char*)send);
+            pipeClient.Disconnect();
+        }
     }
     else {
-        // Connected
         kernelPipeServer->Shutdown();
         delete kernelPipeServer;
         kernelPipeServer = NULL;
+    }
+
+    // Wait for thread to exit cleanly
+    if (hKernelThreadHandle != NULL) {
+        if (WaitForSingleObject(hKernelThreadHandle, 5000) == WAIT_TIMEOUT) {
+            LOG_A(LOG_WARNING, "KernelReader: Thread did not exit in time, force-terminating");
+            TerminateThread(hKernelThreadHandle, 1);
+        }
+        CloseHandle(hKernelThreadHandle);
+        hKernelThreadHandle = NULL;
+    }
+
+    if (hStopEventKernel != NULL) {
+        CloseHandle(hStopEventKernel);
+        hStopEventKernel = NULL;
     }
 }
 

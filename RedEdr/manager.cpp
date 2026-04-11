@@ -14,6 +14,7 @@
 #include "event_processor.h"
 #include "event_aggregator.h"
 #include "process_resolver.h"
+#include "logreader.h"
 
 
 /* manager.cpp: Knows and manages all subsystems (Input's)
@@ -222,4 +223,7 @@ void ManagerShutdown() {
     // Analyzer
     LOG_A(LOG_INFO, "Manager: Stop EventProcessor");
     StopEventProcessor();
+
+    // LogReader (stop flag only; thread polls every 1s)
+    LogReaderStopAll();
 }

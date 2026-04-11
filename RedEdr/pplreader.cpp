@@ -15,8 +15,9 @@
 
 
 // Private Variables
-bool PplReaderThreadStop = FALSE; // set to true to stop the server thread
-HANDLE threadReadynessPpl; // ready to accept clients
+HANDLE hStopEventPpl = NULL;   // signaled to request thread stop
+HANDLE hPplThreadHandle = NULL; // stored thread handle for join/terminate
+HANDLE threadReadynessPpl;     // ready to accept clients
 
 
 // Private Function Definitions
@@ -26,22 +27,29 @@ DWORD WINAPI PplReaderThread(LPVOID param);
 
 // Init
 bool PplReaderInit(std::vector<HANDLE>& threads) {
-    const wchar_t* data = L"";
+    hStopEventPpl = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (hStopEventPpl == NULL) {
+        LOG_A(LOG_ERROR, "PplReader: Failed to create stop event");
+        return false;
+    }
     threadReadynessPpl = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (threadReadynessPpl == NULL) {
         LOG_A(LOG_ERROR, "PplReader: Failed to create event for thread readiness");
+        CloseHandle(hStopEventPpl);
+        hStopEventPpl = NULL;
         return false;
     }
 
     HANDLE thread = CreateThread(NULL, 0, PplReaderThread, NULL, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "PplReader: Failed to create thread");
-        if (threadReadynessPpl != NULL) {
-            CloseHandle(threadReadynessPpl);
-            threadReadynessPpl = NULL;
-        }
+        CloseHandle(threadReadynessPpl);
+        threadReadynessPpl = NULL;
+        CloseHandle(hStopEventPpl);
+        hStopEventPpl = NULL;
         return false;
     }
+    hPplThreadHandle = thread;
 
     // Wait for the client to connect (PPL service should already be running)
     WaitForSingleObject(threadReadynessPpl, INFINITE);
@@ -56,7 +64,7 @@ DWORD WINAPI PplReaderThread(LPVOID param) {
     LOG_A(LOG_INFO, "!PplReaderThread: begin");
 
     // Loop which accepts new clients
-    while (!PplReaderThreadStop) {
+    while (WaitForSingleObject(hStopEventPpl, 0) != WAIT_OBJECT_0) {
         PipeServer* pipeServer = new PipeServer("RedEdr PplReader", (wchar_t*) PPL_DATA_PIPE_NAME);
         if (pipeServer == nullptr) {
             LOG_A(LOG_ERROR, "PplReaderThread: Failed to create PipeServer");
@@ -98,7 +106,7 @@ void PplReaderClient(PipeServer* pipeServer) {
     }
     LOG_A(LOG_INFO, "PplReaderClient: RedEdrPplService connected successful, starting event reception");
 
-    while (!PplReaderThreadStop) {
+    while (WaitForSingleObject(hStopEventPpl, 0) != WAIT_OBJECT_0) {
         try {
             std::vector<std::string> results = pipeServer->ReceiveBatch();
             if (results.empty()) {
@@ -123,9 +131,42 @@ void PplReaderClient(PipeServer* pipeServer) {
 // Shutdown
 void PplReaderShutdown() {
     LOG_A(LOG_INFO, "PPLReader: Shutdown");
-    PplReaderThreadStop = TRUE;
-    
-    // Close event handle
+
+    // Signal stop
+    if (hStopEventPpl != NULL) {
+        SetEvent(hStopEventPpl);
+    }
+
+    // Unblock ConnectNamedPipe if the thread is waiting for a PPL client
+    try {
+        PipeClient pipeClient("RedEdr PplReaderShutdown");
+        char buf[DATA_BUFFER_SIZE] = { 0 };
+        const char* send = "";
+        if (pipeClient.Connect(PPL_DATA_PIPE_NAME)) {
+            pipeClient.Receive(buf, DATA_BUFFER_SIZE);
+            pipeClient.Send((char*)send);
+            pipeClient.Disconnect();
+        }
+    }
+    catch (...) {
+        // Ignore — pipe may not be listening yet
+    }
+
+    // Wait for thread to exit cleanly
+    if (hPplThreadHandle != NULL) {
+        if (WaitForSingleObject(hPplThreadHandle, 5000) == WAIT_TIMEOUT) {
+            LOG_A(LOG_WARNING, "PplReader: Thread did not exit in time, force-terminating");
+            TerminateThread(hPplThreadHandle, 1);
+        }
+        CloseHandle(hPplThreadHandle);
+        hPplThreadHandle = NULL;
+    }
+
+    // Close event handles
+    if (hStopEventPpl != NULL) {
+        CloseHandle(hStopEventPpl);
+        hStopEventPpl = NULL;
+    }
     if (threadReadynessPpl != NULL) {
         CloseHandle(threadReadynessPpl);
         threadReadynessPpl = NULL;

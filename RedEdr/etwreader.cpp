@@ -18,6 +18,8 @@ krabs::user_trace trace_user(L"RedEdrUser");
 
 std::atomic<BOOL> is_trace_in_progress{FALSE}; // currently unused
 HANDLE threadReadynessEtw = NULL; // ready to start tracing
+HANDLE hStopEventEtw = NULL;      // signaled to request thread stop
+HANDLE hEtwThreadHandle = NULL;   // stored thread handle for join/terminate
 
 
 void trace_in_progress(BOOL use) {
@@ -130,21 +132,29 @@ void event_callback_antimalware(const EVENT_RECORD& record, const krabs::trace_c
 
 
 BOOL InitializeEtwReader(std::vector<HANDLE>& threads) {
+    hStopEventEtw = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (hStopEventEtw == NULL) {
+        LOG_A(LOG_ERROR, "ETW: Failed to create stop event");
+        return FALSE;
+    }
     threadReadynessEtw = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (threadReadynessEtw == NULL) {
         LOG_A(LOG_ERROR, "ETW: Failed to create event for thread readiness");
+        CloseHandle(hStopEventEtw);
+        hStopEventEtw = NULL;
         return FALSE;
     }
 
     HANDLE thread = CreateThread(NULL, 0, TraceProcessingThread, NULL, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "ETW: Could not start thread");
-        if (threadReadynessEtw != NULL) {
-            CloseHandle(threadReadynessEtw);
-            threadReadynessEtw = NULL;
-        }
+        CloseHandle(hStopEventEtw);
+        hStopEventEtw = NULL;
+        CloseHandle(threadReadynessEtw);
+        threadReadynessEtw = NULL;
         return FALSE;
     }
+    hEtwThreadHandle = thread;
     
     // Wait for the thread (ETW) to be fully initialized before returning
     WaitForSingleObject(threadReadynessEtw, INFINITE);
@@ -330,9 +340,28 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
 
 
 void EtwReaderStopAll() {
+    // Signal stop
+    if (hStopEventEtw != NULL) {
+        SetEvent(hStopEventEtw);
+    }
+
     trace_user.stop();
-    
-    // Clean up event handle
+
+    // Wait for thread to exit cleanly
+    if (hEtwThreadHandle != NULL) {
+        if (WaitForSingleObject(hEtwThreadHandle, 5000) == WAIT_TIMEOUT) {
+            LOG_A(LOG_WARNING, "ETW: Thread did not exit in time, force-terminating");
+            TerminateThread(hEtwThreadHandle, 1);
+        }
+        CloseHandle(hEtwThreadHandle);
+        hEtwThreadHandle = NULL;
+    }
+
+    // Clean up event handles
+    if (hStopEventEtw != NULL) {
+        CloseHandle(hStopEventEtw);
+        hStopEventEtw = NULL;
+    }
     if (threadReadynessEtw != NULL) {
         CloseHandle(threadReadynessEtw);
         threadReadynessEtw = NULL;

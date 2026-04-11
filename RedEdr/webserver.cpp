@@ -30,6 +30,7 @@ using json = nlohmann::json;
 
 
 HANDLE webserver_thread;
+HANDLE hStopEventWeb = NULL;  // signaled to request thread stop
 httplib::Server svr;
 int webserver_port;
 
@@ -306,7 +307,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
     });
     svr.Get("/api/lock/status", [](const httplib::Request&, httplib::Response& res) {
         json response = {
-            { "in_use", in_use }
+            { "in_use", in_use.load() } // .load() because JSON doesnt understand bool
         };
         res.set_content(response.dump(), "application/json");
     });
@@ -334,9 +335,16 @@ DWORD WINAPI WebserverThread(LPVOID param) {
 
 int InitializeWebServer(std::vector<HANDLE>& threads, int port) {
     webserver_port = port;
+    hStopEventWeb = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (hStopEventWeb == NULL) {
+        LOG_A(LOG_ERROR, "WEB: Failed to create stop event");
+        return 1;
+    }
     webserver_thread = CreateThread(NULL, 0, WebserverThread, NULL, 0, NULL);
     if (webserver_thread == NULL) {
         LOG_A(LOG_ERROR, "WEB: Failed to create thread for webserver");
+        CloseHandle(hStopEventWeb);
+        hStopEventWeb = NULL;
         return 1;
     }
     LOG_A(LOG_INFO, "!Web: Started Thread (handle %p)", webserver_thread);
@@ -346,6 +354,25 @@ int InitializeWebServer(std::vector<HANDLE>& threads, int port) {
 
 
 void StopWebServer() {
+    // Signal stop
+    if (hStopEventWeb != NULL) {
+        SetEvent(hStopEventWeb);
+    }
+
     svr.stop();
+
+    // Wait for thread to exit cleanly
+    if (webserver_thread != NULL) {
+        if (WaitForSingleObject(webserver_thread, 5000) == WAIT_TIMEOUT) {
+            LOG_A(LOG_WARNING, "WEB: Thread did not exit in time, force-terminating");
+            TerminateThread(webserver_thread, 1);
+        }
+        // handle ownership stays with the threads vector; do not close here
+    }
+
+    if (hStopEventWeb != NULL) {
+        CloseHandle(hStopEventWeb);
+        hStopEventWeb = NULL;
+    }
 }
 

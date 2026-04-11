@@ -76,7 +76,7 @@ BOOL remote_inject(DWORD target_pid) {
     // Wait for the thread to complete with timeout
     DWORD waitResult = WaitForSingleObject(hThread, 5000); // 5 second timeout
     if (waitResult == WAIT_TIMEOUT) {
-        LOG_A(LOG_WARNING, "DLL injection thread timed out");
+        LOG_A(LOG_WARNING, "DLL injection: LoadLibraryA remote thread in target PID %lu timed out; force-terminating remote thread (not a RedEdr-internal thread)", target_pid);
         TerminateThread(hThread, 1);
     } else if (waitResult != WAIT_OBJECT_0) {
         LOG_A(LOG_WARNING, "Wait for injection thread failed: %lu", GetLastError());

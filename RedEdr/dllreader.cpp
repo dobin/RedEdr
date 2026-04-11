@@ -19,8 +19,9 @@
 
 // Private Variables
 std::vector<std::thread> ConnectedDllReaderThreads; // for each connected dll
-bool DllReaderThreadStop = FALSE; // set to true to stop the server thread
-HANDLE threadReadynessDll; // ready to accept clients
+HANDLE hStopEventDll = NULL;     // signaled to request thread stop
+HANDLE hDllServerThreadHandle = NULL; // stored thread handle for join/terminate
+HANDLE threadReadynessDll;       // ready to accept clients
 
 
 // Private Function Definitions
@@ -31,10 +32,16 @@ void DllReaderShutdown();
 
 // Init
 bool DllReaderInit(std::vector<HANDLE>& threads) {
-    const wchar_t* data = L"";
+    hStopEventDll = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (hStopEventDll == NULL) {
+        LOG_A(LOG_ERROR, "DllReader: Failed to create stop event");
+        return false;
+    }
     threadReadynessDll = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (threadReadynessDll == NULL) {
         LOG_A(LOG_ERROR, "DllReader: Failed to create event for thread readyness");
+        CloseHandle(hStopEventDll);
+        hStopEventDll = NULL;
         return false;
     }
 
@@ -43,6 +50,7 @@ bool DllReaderInit(std::vector<HANDLE>& threads) {
         LOG_A(LOG_ERROR, "DllReader: Failed to create thread");
         return false;
     }
+    hDllServerThreadHandle = thread;
 
     WaitForSingleObject(threadReadynessDll, INFINITE);
     threads.push_back(thread);
@@ -56,7 +64,7 @@ DWORD WINAPI DllReaderThread(LPVOID param) {
     LOG_A(LOG_INFO, "!DllReader Server Thread: begin");
 
     // Loop which accepts new clients
-    while (!DllReaderThreadStop) {
+    while (WaitForSingleObject(hStopEventDll, 0) != WAIT_OBJECT_0) {
         std::unique_ptr<PipeServer> pipeServer = std::make_unique<PipeServer>("DllReader", (wchar_t*) DLL_PIPE_NAME);
         if (!pipeServer) {
             LOG_A(LOG_ERROR, "DllReader: Failed to create PipeServer");
@@ -123,7 +131,7 @@ void DllReaderClientThread(PipeServer* pipeServer) {
         }
 
         // Now receive only
-        while (!DllReaderThreadStop) {
+        while (WaitForSingleObject(hStopEventDll, 0) != WAIT_OBJECT_0) {
             std::vector<std::string> results = server->ReceiveBatch();
             if (results.empty()) {
                 break; // Client disconnected or error
@@ -149,10 +157,12 @@ void DllReaderClientThread(PipeServer* pipeServer) {
 
 // Shutdown
 void DllReaderShutdown() {
-    DllReaderThreadStop = TRUE;
+    // Signal stop
+    if (hStopEventDll != NULL) {
+        SetEvent(hStopEventDll);
+    }
 
-    // Disconnect server pipe
-    // Send some stuff so the ReadFile() in the reader thread returns
+    // Unblock StartAndWaitForClient with a fake connect
     try {
         PipeClient pipeClient("RedEdr DllReaderShutdown");
         char buf[DLL_CONFIG_LEN] = { 0 };
@@ -160,7 +170,7 @@ void DllReaderShutdown() {
         
         if (pipeClient.Connect(DLL_PIPE_NAME)) {
             pipeClient.Receive(buf, DLL_CONFIG_LEN);
-            pipeClient.Send((char *)s);
+            pipeClient.Send((char*)s);
             pipeClient.Disconnect();
         }
     }
@@ -170,8 +180,21 @@ void DllReaderShutdown() {
     catch (...) {
         LOG_A(LOG_WARNING, "DllReaderShutdown: Unknown exception during pipe cleanup");
     }
-    
-    // Close event handle
+
+    // Wait for server thread to exit (it joins client threads internally)
+    if (hDllServerThreadHandle != NULL) {
+        if (WaitForSingleObject(hDllServerThreadHandle, 5000) == WAIT_TIMEOUT) {
+            LOG_A(LOG_WARNING, "DllReader: Server thread did not exit in time, force-terminating");
+            TerminateThread(hDllServerThreadHandle, 1);
+        }
+        CloseHandle(hDllServerThreadHandle);
+        hDllServerThreadHandle = NULL;
+    }
+
+    if (hStopEventDll != NULL) {
+        CloseHandle(hStopEventDll);
+        hStopEventDll = NULL;
+    }
     if (threadReadynessDll != NULL) {
         CloseHandle(threadReadynessDll);
         threadReadynessDll = NULL;

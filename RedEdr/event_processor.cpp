@@ -257,6 +257,7 @@ void EventProcessor::SaveToFile() {
 
 // Module functions
 HANDLE EventProcessor_thread;
+HANDLE hStopEventProcessor = NULL; // signaled to request thread stop
 
 
 // Thread which retrieves and processes events from EventAggregator
@@ -291,9 +292,16 @@ DWORD WINAPI EventProcessorThread(LPVOID param) {
 
 
 int InitializeEventProcessor(std::vector<HANDLE>& threads) {
+    hStopEventProcessor = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (hStopEventProcessor == NULL) {
+        LOG_A(LOG_ERROR, "EventProcessor: Failed to create stop event");
+        return 1;
+    }
     EventProcessor_thread = CreateThread(NULL, 0, EventProcessorThread, NULL, 0, NULL);
     if (EventProcessor_thread == NULL) {
         LOG_A(LOG_ERROR, "EventProcessor: Failed to create thread for EventProcessor");
+        CloseHandle(hStopEventProcessor);
+        hStopEventProcessor = NULL;
         return 1;
     }
     LOG_A(LOG_INFO, "!EventProcessor: Started Thread (handle %p)", EventProcessor_thread);
@@ -304,8 +312,24 @@ int InitializeEventProcessor(std::vector<HANDLE>& threads) {
 
 
 void StopEventProcessor() {
+    // Signal stop
+    if (hStopEventProcessor != NULL) {
+        SetEvent(hStopEventProcessor);
+    }
+
     if (EventProcessor_thread != NULL) {
         g_EventAggregator.Stop();
+
+        if (WaitForSingleObject(EventProcessor_thread, 5000) == WAIT_TIMEOUT) {
+            LOG_A(LOG_WARNING, "EventProcessor: Thread did not exit in time, force-terminating");
+            TerminateThread(EventProcessor_thread, 1);
+        }
+        // handle ownership stays with the threads vector; do not close here
+    }
+
+    if (hStopEventProcessor != NULL) {
+        CloseHandle(hStopEventProcessor);
+        hStopEventProcessor = NULL;
     }
 }
 
