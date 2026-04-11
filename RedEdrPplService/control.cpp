@@ -5,6 +5,7 @@
 #include "../Shared/common.h"
 #include "logging.h"
 #include "etwtireader.h"
+#include "etwtihandler.h"
 #include "piping.h"
 #include "json.hpp"
 #include "process_resolver.h"
@@ -56,6 +57,9 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                             LOG_A(LOG_INFO, "Control: Processing start command with %zu targets", j["targets"].size());
                             std::vector<std::string> targets = j["targets"];
                             g_ProcessResolver.SetTargetNames(targets);
+
+                            BOOL doDefenderTrace = j.value("do_defendertrace", false) ? TRUE : FALSE;
+                            SetDefenderTraceConfig(doDefenderTrace, targets);
 
                             nlohmann::json start_event;
                             start_event["event"] = "ppl_start";

@@ -58,7 +58,7 @@ BOOL ManagerApplyNewTargets(std::vector<std::string> traceNames) {
     // PPL
     if (g_Config.do_etwti) {
         LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new targets: %zu names", g_Config.targetProcessNames.size());
-        if (!EnablePplProducer(true, g_Config.targetProcessNames)) {
+        if (!EnablePplProducer(true, g_Config.targetProcessNames, g_Config.do_defendertrace)) {
             LOG_A(LOG_ERROR, "Manager: Failed to enable PPL producer");
             return FALSE;
         }
@@ -124,7 +124,7 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
 
             // notify service about initial target
             LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new targets: %zu names", g_Config.targetProcessNames.size());
-            if (!EnablePplProducer(true, g_Config.targetProcessNames)) {
+            if (!EnablePplProducer(true, g_Config.targetProcessNames, g_Config.do_defendertrace)) {
                 LOG_A(LOG_ERROR, "Manager: Failed to enable PPL producer");
                 return FALSE;
             }

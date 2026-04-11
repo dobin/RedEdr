@@ -31,7 +31,7 @@ BOOL ConnectPplService() {
 }
 
 
-BOOL EnablePplProducer(BOOL e, std::vector<std::string> targetNames) {
+BOOL EnablePplProducer(BOOL e, std::vector<std::string> targetNames, bool doDefenderTrace) {
     char buffer[PPL_CONFIG_LEN] = { 0 };
     if (targetNames.empty()) {
         LOG_A(LOG_WARNING, "ETW-TI: No target names provided to EnablePplProducer");
@@ -43,6 +43,7 @@ BOOL EnablePplProducer(BOOL e, std::vector<std::string> targetNames) {
         nlohmann::json j;
         j["command"] = "start";
         j["targets"] = targetNames;
+        j["do_defendertrace"] = doDefenderTrace;
         
         std::string json_str = j.dump();
         

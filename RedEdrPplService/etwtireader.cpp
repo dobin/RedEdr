@@ -59,6 +59,7 @@ void StartEtwtiReader() {
     }
     ti_provider.trace_flags(ti_provider.trace_flags() | EVENT_ENABLE_PROPERTY_STACK_TRACE);
     ti_provider.add_on_event_callback(event_callback);
+    ti_provider.add_on_event_callback(event_callback_defendertrace);
     trace_ppl.enable(ti_provider);
 
     LOG_A(LOG_INFO, "Start reading from ETW-TI");
