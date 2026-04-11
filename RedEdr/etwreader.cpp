@@ -131,6 +131,111 @@ void event_callback_antimalware(const EVENT_RECORD& record, const krabs::trace_c
 }
 
 
+// Handle ETW events from msmpeng.exe (Windows Defender) for defender trace
+// - Only emits events where "pid", "filename", or "name" references our target processes
+void event_callback_defendertrace(const EVENT_RECORD& record, const krabs::trace_context& trace_context) {
+    try {
+        krabs::schema schema(record, trace_context.schema_locator);
+
+        // Resolve source process — must be msmpeng.exe
+        DWORD processId = record.EventHeader.ProcessId;
+        Process* process = g_ProcessResolver.getObject(processId);
+        if (process == NULL) {
+            LOG_A(LOG_WARNING, "ETW: No process object for pid %lu", processId);
+            return;
+        }
+        if (!contains_case_insensitive(process->name, "msmpeng")) {
+            return;
+        }
+
+        // Convert ETW to JSON
+        nlohmann::json j = KrabsEtwEventToJsonStr(record, schema);
+        j["etw_process"] = process->name;
+
+        g_EventAggregator.NewEvent(j.dump());
+        
+
+        // Check if destination is one of our target processes (pid)
+        // NOTE: Not used by defender?
+        if (j.contains("pid") && !j["pid"].is_null()) {
+            DWORD targetPid = j["pid"].get<DWORD>();
+
+            // check if we observe the target process
+            Process* targetProcess = g_ProcessResolver.getObject(targetPid);
+            if (targetProcess == NULL) {
+                LOG_A(LOG_WARNING, "ETW: No target process object for pid %lu", targetPid);
+                return;
+            }
+            if (targetProcess->observe) {
+                // Emit event
+                g_EventAggregator.NewEvent(j.dump());
+            }
+        }
+        // Check if destination is one of our target processes (targetprocessid)
+        else if (j.contains("targetprocessid") && !j["targetprocessid"].is_null()) {
+            DWORD targetPid = j["targetprocessid"].get<DWORD>();
+
+            // check if we observe the target process
+            Process* targetProcess = g_ProcessResolver.getObject(targetPid);
+            if (targetProcess == NULL) {
+                LOG_A(LOG_WARNING, "ETW: No target process object for pid %lu", targetPid);
+                return;
+            }
+            if (targetProcess->observe) {
+                // Emit event
+                g_EventAggregator.NewEvent(j.dump());
+            }
+        }
+        // Check if destination is one of our target processes (processid)
+        else if (j.contains("processid") && !j["processid"].is_null()) {
+            DWORD targetPid = j["processid"].get<DWORD>();
+
+            // check if we observe the target process
+            Process* targetProcess = g_ProcessResolver.getObject(targetPid);
+            if (targetProcess == NULL) {
+                LOG_A(LOG_WARNING, "ETW: No target process object for pid %lu", targetPid);
+                return;
+            }
+            if (targetProcess->observe) {
+                // Emit event
+                g_EventAggregator.NewEvent(j.dump());
+            }
+        }
+        // Check if filename matches any of our target processes
+        // NOTE: Not used by defender?
+        else if (j.contains("filename") && !j["filename"].is_null()) {
+            std::string filename = j["filename"].get<std::string>();
+            for (const auto& targetProcessName : g_Config.targetProcessNames) {
+                if (ends_with_case_insensitive(filename, targetProcessName)) {
+                    // Emit event
+                    g_EventAggregator.NewEvent(j.dump());
+                    break;
+                }
+            }
+        }
+        // Check if name matches any of our target processes
+        // NOTE: Not used by defender?
+        else if (j.contains("name") && !j["name"].is_null()) {
+            std::string filename = j["name"].get<std::string>();
+            for (const auto& targetProcessName : g_Config.targetProcessNames) {
+                if (ends_with_case_insensitive(filename, targetProcessName)) {
+                    // Emit event
+                    g_EventAggregator.NewEvent(j.dump());
+                    break;
+                }
+            }
+        }
+
+    }
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "ETW event_callback exception: %s", e.what());
+    }
+    catch (...) {
+        LOG_A(LOG_ERROR, "ETW event_callback unknown exception");
+    }
+}
+
+
 BOOL InitializeEtwReader(std::vector<HANDLE>& threads) {
     hStopEventEtw = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (hStopEventEtw == NULL) {
@@ -183,6 +288,9 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         krabs::event_filter process_filter(process_event_ids);
         process_provider.trace_flags(process_provider.trace_flags() | EVENT_ENABLE_PROPERTY_STACK_TRACE);
         process_filter.add_on_event_callback(event_callback_process);
+        if (g_Config.do_defendertrace) {
+            process_filter.add_on_event_callback(event_callback_defendertrace);
+        }
         process_provider.add_filter(process_filter);
         trace_user.enable(process_provider);
         LOG_A(LOG_INFO, "ETW: Microsoft-Windows-Kernel-Process (1, 2, 3, 4, 5, 6, 11)");
@@ -204,6 +312,9 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         krabs::event_filter auditapi_filter(auditapi_event_ids);
         auditapi_provider.trace_flags(auditapi_provider.trace_flags() | EVENT_ENABLE_PROPERTY_STACK_TRACE);
         auditapi_filter.add_on_event_callback(event_callback_process);
+        if (g_Config.do_defendertrace) {
+            auditapi_filter.add_on_event_callback(event_callback_defendertrace);
+        }
         auditapi_provider.add_filter(auditapi_filter);
         trace_user.enable(auditapi_provider);
         LOG_A(LOG_INFO, "ETW: Microsoft-Windows-Kernel-Audit-API-Calls (3, 4, 5, 6)");
@@ -231,6 +342,9 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         krabs::event_filter kernelfile_filter(kernelfile_event_ids);
         kernelfile_provider.trace_flags(kernelfile_provider.trace_flags() | EVENT_ENABLE_PROPERTY_STACK_TRACE);
         kernelfile_filter.add_on_event_callback(event_callback_process);
+        if (g_Config.do_defendertrace) {
+            kernelfile_filter.add_on_event_callback(event_callback_defendertrace);
+        }
         kernelfile_provider.add_filter(kernelfile_filter);
         trace_user.enable(kernelfile_provider);
         LOG_A(LOG_INFO, "ETW: Microsoft-Windows-Kernel-File (10, 30)");
@@ -251,6 +365,9 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         krabs::event_filter kernelnetwork_filter(kernelnetwork_event_ids);
         kernelnetwork_provider.trace_flags(kernelnetwork_provider.trace_flags() | EVENT_ENABLE_PROPERTY_STACK_TRACE);
         kernelnetwork_filter.add_on_event_callback(event_callback_process);
+        if (g_Config.do_defendertrace) {
+            kernelnetwork_filter.add_on_event_callback(event_callback_defendertrace);
+        }
         kernelnetwork_provider.add_filter(kernelnetwork_filter);
         trace_user.enable(kernelnetwork_provider);
         LOG_A(LOG_INFO, "ETW: Microsoft-Windows-Kernel-Network (12, 15, 28, 31, 42, 43, 58, 59)");

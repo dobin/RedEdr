@@ -1,10 +1,8 @@
 ﻿# RedEdr
 
-Display events from Windows to see the detection surface of your malware.
+Display events from Windows to see the detection surface of your malware. Same data as an ETW-based EDR sees (Defender, Elastic, Fibratus...). 
 
-Same data as an EDR sees. 
-
-* Find the telemetry your malware generates
+* Identify the telemetry your malware generates
 * Verify your anti-EDR techniques work
 * Debug and analyze malware
 
@@ -15,7 +13,7 @@ It generates [JSON files](https://github.com/dobin/RedEdr/tree/master/Data)
 collecting [the telemetry](https://github.com/dobin/RedEdr/blob/master/Doc/captured_events.md) 
 of your RedTeaming tools. 
 
-Try it online at [rededr.r00ted.ch](https://rededr.r00ted.ch)
+It is now part of Detonator, see [detonator.r00ted.ch](https://detonator.r00ted.ch). 
 
 
 ## Screenshots
@@ -157,11 +155,46 @@ See `gpedit.msc -> Computer Configuration -> Windows Settings -> Security Settin
 for settings to log.
 
 
-## Detections
+## EDR Introspection (for Defender)
 
-* RWX allocation
-* RW->RX protection change
-* Callstack from non-image
+The following is useful to reverse engineer EDR's, and to verify your anti-EDR techniques
+are targeted. It will observe Defender EDR. 
+
+For more details, see Levi's blog at [My Hacker Blog](https://blog.levi.wiki/), 
+and the [EDR-Introspection](https://github.com/cailllev/EDR-Introspection) project. 
+
+
+### Microsoft-Antimalware-Engine ETW events
+
+Argument: `--with-antimalwareengine`
+
+Example: `.\RedEdr.exe --etw --trace putty --web --with-antimalwareengine`
+
+This will collect `Microsoft-Antimalware-Engine` events related to the target process. 
+See blog post [Defender Telemetry](https://blog.deeb.ch/posts/defender-telemetry/) for an overview of available events. 
+
+For example the "Behavior Monitoring BmProcessContextStart", which indicates Defender will start behavior monitoring on the targeted process:
+```
+Behavior Monitoring BmProcessContextStart etw etw_event_id:0x6D etw_pid:0x1524 etw_process:MsMpEng.exe etw_provider_name:Microsoft-Antimalware-Engine etw_tid:0x37A8 etw_time:0x1DCC98C2B514B90 id:0x3 trace_id:0x29
+imagepath:\Device\HarddiskVolume6\toolz\putty.exe pid:0x11F48 processcontextid:0x188F7789520
+```
+
+
+### MsMpEng.exe ETW events
+
+Argument: `--with-defendertrace`
+
+Example: `.\RedEdr.exe --etw --trace putty --web --with-defendertrace`
+
+This will collect `msmpeng.exe` ETW events related to our target process. 
+See blog post [Windows Telemetry](https://blog.deeb.ch/posts/windows-telemetry/) for an overview of available events. 
+
+For example "Info" ETW event of "Microsoft-Windows-Kernel-Audit-API-Calls" accessing our target process:
+```
+Info etw etw_event_id:0x6 etw_pid:0x1524 etw_process:MsMpEng.exe etw_provider_name:Microsoft-Windows-Kernel-Audit-API-Calls etw_tid:0x21E0 etw_time:0x1DCC9BA7177FD80 id:0x1 trace_id:0x29
+desiredaccess:0x1FFFFF returncode:0x0 targetprocessid:0x1524 targetthreatid:0x21E0
+```
+
 
 
 ## Example Output
