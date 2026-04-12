@@ -2,10 +2,6 @@
 #include <stdio.h>
 #include <Ntifs.h>
 
-#define LOG_ERROR 0
-#define LOG_AARNING 1
-#define LOG_INFO 2
-#define LOG_DEBUG 3
 
 void LOG_A(int severity, char* format, ...);
 int IsSubstringInUnicodeString(PUNICODE_STRING pDestString, PCWSTR pSubString);

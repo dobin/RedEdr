@@ -11,7 +11,6 @@ HANDLE hPipe = NULL;
 
 // Spinlock to protect pipe handle access
 KSPIN_LOCK pipeLock;
-KIRQL oldIrql;
 
 
 // Initialize the pipe subsystem
@@ -28,6 +27,7 @@ void CleanupPipe() {
 
 int IsUserspacePipeConnected() {
     BOOLEAN connected;
+    KIRQL oldIrql;
     KeAcquireSpinLock(&pipeLock, &oldIrql);
     connected = (hPipe != NULL);
     KeReleaseSpinLock(&pipeLock, oldIrql);
@@ -43,6 +43,7 @@ int LogEvent(char* message) {
     }
 
     HANDLE currentPipe;
+    KIRQL oldIrql;
     KeAcquireSpinLock(&pipeLock, &oldIrql);
     currentPipe = hPipe;
     KeReleaseSpinLock(&pipeLock, oldIrql);
@@ -91,7 +92,8 @@ int LogEvent(char* message) {
 
 void DisconnectUserspacePipe() {
     HANDLE pipeToClose = NULL;
-    
+    KIRQL oldIrql;
+
     KeAcquireSpinLock(&pipeLock, &oldIrql);
     pipeToClose = hPipe;
     hPipe = NULL;
@@ -107,6 +109,7 @@ void DisconnectUserspacePipe() {
 // Connect to the userspace daemon
 int ConnectUserspacePipe() {
     UNICODE_STRING pipeName;
+    KIRQL oldIrql;
     RtlInitUnicodeString(&pipeName, DRIVER_KERNEL_PIPE_NAME);
 
     OBJECT_ATTRIBUTES fattrs = { 0 };

@@ -259,6 +259,11 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
     LOG_A(LOG_INFO, "RedEdr Kernel Driver %s\n", REDEDR_VERSION);
     InitializeHashTable();
     InitializePipe();
+    init_settings();
+    if (!InitCallbacks()) {
+        LOG_A(LOG_INFO, "InitCallbacks failed: insufficient resources\n");
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
 
     // Setting the unload routine to execute
     DriverObject->DriverUnload = RedEdrUnload;
@@ -294,8 +299,6 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
         return status;
     }
 
-    InitCallbacks();
-    init_settings();
     LoadKernelCallbacks(); // always load the callbacks, based on config
     if (g_Settings.enable_logging) { // only connect when we enable this (deamon may not be ready on load)
         if (!ConnectUserspacePipe()) {

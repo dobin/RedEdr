@@ -1,6 +1,6 @@
 #include <Ntifs.h>
 #include <ntddk.h>
-#include <stdio.h>
+#include <ntstrsafe.h>
 
 #include "upipe.h"
 #include "kapcinjector.h"
@@ -11,31 +11,12 @@
 #include "../Shared/common.h"
 
 
-char* ProcessLine;
-char* ImageLine;
-char* ThreadLine;
-
 
 int InitCallbacks() {
-    ProcessLine = ExAllocatePool2(POOL_FLAG_NON_PAGED, DATA_BUFFER_SIZE, 'log');
-    if (ProcessLine == NULL) {
-        return FALSE;
-    }
-    ImageLine = ExAllocatePool2(POOL_FLAG_NON_PAGED, DATA_BUFFER_SIZE, 'log');
-    if (ImageLine == NULL) {
-        return FALSE;
-    }
-    ThreadLine = ExAllocatePool2(POOL_FLAG_NON_PAGED, DATA_BUFFER_SIZE, 'log');
-    if (ThreadLine == NULL) {
-        return FALSE;
-    }
     return TRUE;
 }
 
 void UninitCallbacks() {
-    ExFreePool(ProcessLine);
-    ExFreePool(ImageLine);
-    ExFreePool(ThreadLine);
 }
 
 
@@ -58,14 +39,15 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
     if (processInfo == NULL) {
         PEPROCESS process = NULL;
         PUNICODE_STRING processName = NULL;
-
-        PsLookupProcessByProcessId(pid, &process);
-        SeLocateProcessImageName(process, &processName);
-
-
-        PsLookupProcessByProcessId(createInfo->ParentProcessId, &parent_process);
         PUNICODE_STRING parent_processName = NULL;
-        SeLocateProcessImageName(parent_process, &parent_processName);
+
+        if (NT_SUCCESS(PsLookupProcessByProcessId(pid, &process))) {
+            SeLocateProcessImageName(process, &processName);
+        }
+
+        if (NT_SUCCESS(PsLookupProcessByProcessId(createInfo->ParentProcessId, &parent_process))) {
+            SeLocateProcessImageName(parent_process, &parent_processName);
+        }
 
         //LOG_A(LOG_INFO, "[RedEdr] Process %wZ created\n", processName);
         //LOG_A(LOG_INFO, "            PID: %d\n", pid);
@@ -79,6 +61,10 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
 
         processInfo = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(PROCESS_INFO), 'Proc');
         if (!processInfo) {
+            if (processName) ExFreePool(processName);
+            if (parent_processName) ExFreePool(parent_processName);
+            if (process) ObDereferenceObject(process);
+            if (parent_process) ObDereferenceObject(parent_process);
             return;
         }
 
@@ -105,11 +91,18 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         //    pid, processInfo->observe);
 
         AddProcessInfo(pid, processInfo);
+
+        // Release kernel object references and pool allocations from SeLocateProcessImageName
+        if (processName) ExFreePool(processName);
+        if (parent_processName) ExFreePool(parent_processName);
+        if (process) ObDereferenceObject(process);
+        if (parent_process) ObDereferenceObject(parent_process);
     }
 
     if (g_Settings.enable_logging && processInfo->observe) {
         char processName[PROC_NAME_LEN];
         char parentName[PROC_NAME_LEN];
+        char ProcessLine[DATA_BUFFER_SIZE];
 
         NTSTATUS status;
         status = WcharToAscii(processInfo->name, wcslen(processInfo->name), processName, sizeof(processName));
@@ -117,7 +110,7 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         JsonEscape(processName, PROC_NAME_LEN);
         JsonEscape(parentName, PROC_NAME_LEN);
 
-        sprintf(ProcessLine, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"process_create\",\"krn_pid\":%llu,\"pid\":%llu,\"name\":\"%s\",\"ppid\":%llu,\"parent_name\":\"%s\"}",
+        RtlStringCbPrintfA(ProcessLine, DATA_BUFFER_SIZE, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"process_create\",\"krn_pid\":%llu,\"pid\":%llu,\"name\":\"%s\",\"ppid\":%llu,\"parent_name\":\"%s\"}",
             systemTime,
             (unsigned __int64)PsGetCurrentProcessId(),
             (unsigned __int64)pid, 
@@ -142,7 +135,8 @@ void CreateThreadNotifyRoutine(HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Create
     ULONG64 systemTime;
     KeQuerySystemTime(&systemTime);
 
-    sprintf(ThreadLine, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"thread_create\",\"krn_pid\":%llu,\"pid\":%llu,\"threadid\":%llu,\"create\":%d}",
+    char ThreadLine[DATA_BUFFER_SIZE];
+    RtlStringCbPrintfA(ThreadLine, DATA_BUFFER_SIZE, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"thread_create\",\"krn_pid\":%llu,\"pid\":%llu,\"threadid\":%llu,\"create\":%d}",
         systemTime,
         (unsigned __int64)PsGetCurrentProcessId(),
         (unsigned __int64)ProcessId,
@@ -176,7 +170,8 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
             Unicodestring2wcharAlloc(FullImageName, ImageName, PATH_LEN);
             WcharToAscii(ImageName, sizeof(ImageName), AsciiImageName, sizeof(AsciiImageName));
             JsonEscape(AsciiImageName, sizeof(AsciiImageName));
-            sprintf(ImageLine, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"image_load\",\"krn_pid\":%llu,\"pid\":%llu,\"image\":\"%s\"}",
+            char ImageLine[DATA_BUFFER_SIZE];
+            RtlStringCbPrintfA(ImageLine, DATA_BUFFER_SIZE, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"image_load\",\"krn_pid\":%llu,\"pid\":%llu,\"image\":\"%s\"}",
                 systemTime,
                 (unsigned __int64)PsGetCurrentProcessId(),
                 (unsigned __int64)ProcessId,
@@ -187,11 +182,16 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
     }
     if (g_Settings.enable_kapc_injection) {
         PPROCESS_INFO processInfo = LookupProcessInfo(ProcessId);
-        if (processInfo != NULL && processInfo->observe && !processInfo->injected) {
-            processInfo->injected = KapcInjectDll(FullImageName, ProcessId, ImageInfo);
-            // TODO lock this?
-            if (processInfo->injected) {
-                LOG_A(LOG_INFO, "Injected DLL into pid: %d\n", ProcessId);
+        if (processInfo != NULL && processInfo->observe) {
+            // Atomically claim injection: only the first thread to succeed injects.
+            if (InterlockedCompareExchange(&processInfo->injected, 1, 0) == 0) {
+                int result = KapcInjectDll(FullImageName, ProcessId, ImageInfo);
+                if (result) {
+                    LOG_A(LOG_INFO, "Injected DLL into pid: %d\n", ProcessId);
+                } else {
+                    // Reset so injection can be retried on the next image load.
+                    InterlockedExchange(&processInfo->injected, 0);
+                }
             }
         }
     }
@@ -375,7 +375,7 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
 
     if (1) {
         char line[DATA_BUFFER_SIZE] = { 0 };
-        sprintf(line, "%p:%p;%p;%ls;%ls;%d,0x%x,0x%x,0x%x",
+        RtlStringCbPrintfA(line, DATA_BUFFER_SIZE, "%p:%p;%p;%ls;%ls;%d,0x%x,0x%x,0x%x",
             /*"ObCallbackTest: CBTdPreOperationCallback\n"
             "    Client Id:    %p:%p\n"
             "    Object:       %p\n"

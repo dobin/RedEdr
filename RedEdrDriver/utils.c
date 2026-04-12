@@ -31,7 +31,7 @@ int IsSubstringInUnicodeString(PUNICODE_STRING pDestString, PCWSTR pSubString) {
         return FALSE;
     }
     size_t lengthInWchars = pDestString->Length / sizeof(WCHAR);
-    WCHAR tempBuffer[KRN_LOG_LEN];
+    WCHAR tempBuffer[PATH_LEN];
     
     // Ensure we don't overflow the temp buffer
     if (lengthInWchars >= sizeof(tempBuffer) / sizeof(WCHAR)) {

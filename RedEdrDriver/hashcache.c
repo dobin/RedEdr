@@ -82,7 +82,7 @@ NTSTATUS RemoveProcessInfo(HANDLE ProcessId)
             else {
                 HashTable[index] = entry->Next;
             }
-            ExFreePoolWithTag(entry, 'pInf');
+            ExFreePoolWithTag(entry, 'Hash');
             KeReleaseSpinLock(&HashTableLock, oldIrql);
             return STATUS_SUCCESS;
         }
@@ -113,11 +113,11 @@ VOID FreeHashTable()
 
             // Free the associated PROCESS_INFO structure if allocated separately
             if (entry->ProcessInfo) {
-                ExFreePool(entry->ProcessInfo);
+                ExFreePoolWithTag(entry->ProcessInfo, 'Proc');
             }
 
             // Free the hash table entry itself
-            ExFreePool(entry);
+            ExFreePoolWithTag(entry, 'Hash');
 
             // Move to the next entry in the list
             entry = tempEntry;
@@ -133,5 +133,6 @@ VOID FreeHashTable()
 
 ULONG HashFunction(HANDLE ProcessId)
 {
-    return ((ULONG_PTR)ProcessId) % HASH_TABLE_SIZE;
+    // PIDs on Windows are always multiples of 4; shift right to use all buckets.
+    return ((ULONG_PTR)ProcessId >> 2) % HASH_TABLE_SIZE;
 }
