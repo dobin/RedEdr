@@ -137,19 +137,9 @@ void PplReaderShutdown() {
         SetEvent(hStopEventPpl);
     }
 
-    // Unblock ConnectNamedPipe if the thread is waiting for a PPL client
-    try {
-        PipeClient pipeClient("RedEdr PplReaderShutdown");
-        char buf[DATA_BUFFER_SIZE] = { 0 };
-        const char* send = "";
-        if (pipeClient.Connect(PPL_DATA_PIPE_NAME)) {
-            pipeClient.Receive(buf, DATA_BUFFER_SIZE);
-            pipeClient.Send((char*)send);
-            pipeClient.Disconnect();
-        }
-    }
-    catch (...) {
-        // Ignore — pipe may not be listening yet
+    // Cancel any blocking I/O (ReceiveBatch or ConnectNamedPipe) on the worker thread
+    if (hPplThreadHandle != NULL) {
+        CancelSynchronousIo(hPplThreadHandle);
     }
 
     // Wait for thread to exit cleanly
