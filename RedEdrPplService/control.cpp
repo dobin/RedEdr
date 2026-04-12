@@ -57,6 +57,7 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                             LOG_A(LOG_INFO, "Control: Processing start command with %zu targets", j["targets"].size());
                             std::vector<std::string> targets = j["targets"];
                             g_ProcessResolver.SetTargetNames(targets);
+                            g_ProcessResolver.RefreshTargetMatching();
 
                             BOOL doDefenderTrace = j.value("do_defendertrace", false) ? TRUE : FALSE;
                             SetDefenderTraceConfig(doDefenderTrace, targets);
