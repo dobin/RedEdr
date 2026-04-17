@@ -9,6 +9,7 @@
 #include <tlhelp32.h>
 
 #include "process_resolver.h"
+#include "utils.h"
 #include "../Shared/common.h"
 
 // The implementation is in each solution
@@ -207,6 +208,11 @@ void ProcessResolver::RefreshTargetMatching() {
     for (auto& pair : cache) {
         DWORD pid = pair.first;
         Process& process = pair.second;
+        // Don't observe ourselves
+        if (contains_case_insensitive(process.name, "rededr.exe")) {
+            process.observe = FALSE;
+            continue;
+        }
         process.ObserveIfMatchesTargets(targetProcessNames);
     }
 }
