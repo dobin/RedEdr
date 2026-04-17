@@ -10,9 +10,94 @@
 #include "utils.h"
 #include "../Shared/common.h"
 
+// ZwSetInformationProcess is exported by ntoskrnl but not declared in WDK headers.
+// Resolved dynamically via MmGetSystemRoutineAddress to avoid VCR001 analyzer warnings.
+// ProcessLoggingInformation (class 87) sets per-process ETW-TI logging flags so that
+// the Microsoft-Windows-Threat-Intelligence provider emits the full range of events
+// (WriteVM, ReadVM, SetContextThread, SuspendThread, etc.) for this process.
+// Reference: https://fluxsec.red/reverse-engineering-windows-11-kernel
+typedef NTSTATUS (NTAPI *PFN_ZwSetInformationProcess)(
+    HANDLE ProcessHandle,
+    ULONG  ProcessInformationClass,
+    PVOID  ProcessInformation,
+    ULONG  ProcessInformationLength
+);
+static PFN_ZwSetInformationProcess g_ZwSetInformationProcess = NULL;
+
+// Class 87 - enables kernel-side ETW-TI logging bits in EPROCESS.
+// Mirrors PROCESS_LOGGING_INFORMATION from ntpsapi.h (System Informer).
+#define ProcessLoggingInformation 87
+
+typedef union _PROCESS_LOGGING_INFORMATION {
+    ULONG Flags;
+    struct _PROCESS_LOGGING_INFORMATION_BITS {
+        ULONG EnableReadVmLogging              : 1;
+        ULONG EnableWriteVmLogging             : 1;
+        ULONG EnableProcessSuspendResumeLogging: 1;
+        ULONG EnableThreadSuspendResumeLogging : 1;
+        ULONG EnableLocalExecProtectVmLogging  : 1;
+        ULONG EnableRemoteExecProtectVmLogging : 1;
+        ULONG EnableImpersonationLogging       : 1;
+        ULONG Reserved                         : 25;
+    } Bits;
+} PROCESS_LOGGING_INFORMATION;
+
+// Enable all ETW-TI logging flags for the given process.
+// Must be called at PASSIVE_LEVEL (process-creation callbacks run at PASSIVE_LEVEL).
+// Returns TRUE on success, FALSE on failure.
+static BOOLEAN EnableProcessTelemetryLogging(PEPROCESS Process) {
+    HANDLE hProcess = NULL;
+    NTSTATUS status;
+    BOOLEAN success = FALSE;
+
+    // Convert EPROCESS pointer to a kernel HANDLE without a separate ZwOpenProcess.
+    status = ObOpenObjectByPointer(
+        Process,
+        OBJ_KERNEL_HANDLE,
+        NULL,
+        PROCESS_ALL_ACCESS,
+        *PsProcessType,
+        KernelMode,
+        &hProcess
+    );
+    if (!NT_SUCCESS(status)) {
+        LOG_A(LOG_WARNING, "[RedEdr] EnableProcessTelemetryLogging: ObOpenObjectByPointer failed: 0x%08X\n", status);
+        return FALSE;
+    }
+
+    PROCESS_LOGGING_INFORMATION loggingInfo = { 0 };
+    loggingInfo.Flags = 0x7F; // All 7 logging bits
+
+    if (g_ZwSetInformationProcess == NULL) {
+        ZwClose(hProcess);
+        return FALSE;
+    }
+    status = g_ZwSetInformationProcess(
+        hProcess,
+        ProcessLoggingInformation,
+        &loggingInfo,
+        sizeof(loggingInfo)
+    );
+    if (!NT_SUCCESS(status)) {
+        LOG_A(LOG_WARNING, "[RedEdr] EnableProcessTelemetryLogging: ZwSetInformationProcess failed: 0x%08X\n", status);
+        success = FALSE;
+    } else {
+        success = TRUE;
+    }
+
+    ZwClose(hProcess);
+    return success;
+}
+
 
 
 int InitCallbacks() {
+    UNICODE_STRING funcName;
+    RtlInitUnicodeString(&funcName, L"ZwSetInformationProcess");
+    g_ZwSetInformationProcess = (PFN_ZwSetInformationProcess)MmGetSystemRoutineAddress(&funcName);
+    if (g_ZwSetInformationProcess == NULL) {
+        LOG_A(LOG_WARNING, "[RedEdr] InitCallbacks: failed to resolve ZwSetInformationProcess\n");
+    }
     return TRUE;
 }
 
@@ -21,7 +106,7 @@ void UninitCallbacks() {
 
 
 // For: PsSetCreateProcessNotifyRoutineEx()
-void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE_NOTIFY_INFO createInfo) {
+void CreateProcessNotifyRoutine(PEPROCESS process, HANDLE pid, PPS_CREATE_NOTIFY_INFO createInfo) {
     // Still execute even if we are globally disabled, but need kapc injection
     if (!g_Settings.enable_logging && !g_Settings.enable_kapc_injection) {
         return;
@@ -37,14 +122,12 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
 
     PPROCESS_INFO processInfo = LookupProcessInfo(pid);
     if (processInfo == NULL) {
-        PEPROCESS process = NULL;
         PUNICODE_STRING processName = NULL;
         PUNICODE_STRING parent_processName = NULL;
 
-        if (NT_SUCCESS(PsLookupProcessByProcessId(pid, &process))) {
-            SeLocateProcessImageName(process, &processName);
-        }
+        SeLocateProcessImageName(process, &processName);
 
+        PEPROCESS parent_process = NULL;
         if (NT_SUCCESS(PsLookupProcessByProcessId(createInfo->ParentProcessId, &parent_process))) {
             SeLocateProcessImageName(parent_process, &parent_processName);
         }
@@ -63,7 +146,6 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         if (!processInfo) {
             if (processName) ExFreePool(processName);
             if (parent_processName) ExFreePool(parent_processName);
-            if (process) ObDereferenceObject(process);
             if (parent_process) ObDereferenceObject(parent_process);
             return;
         }
@@ -95,7 +177,6 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
         // Release kernel object references and pool allocations from SeLocateProcessImageName
         if (processName) ExFreePool(processName);
         if (parent_processName) ExFreePool(parent_processName);
-        if (process) ObDereferenceObject(process);
         if (parent_process) ObDereferenceObject(parent_process);
     }
 
@@ -118,6 +199,13 @@ void CreateProcessNotifyRoutine(PEPROCESS parent_process, HANDLE pid, PPS_CREATE
             (unsigned __int64)createInfo->ParentProcessId, 
             parentName);
         LogEvent(ProcessLine);
+
+        // Enable all ETW-TI logging flags so Microsoft-Windows-Threat-Intelligence
+        // emits the full range of events (ReadVM, WriteVM, SetContextThread, etc.)
+        // for this process. Applied to all new processes; RedEdrPplService filters
+        // by observe flag. Must run at PASSIVE_LEVEL - process callbacks qualify.
+        BOOLEAN etwtiEnabledSuccess = EnableProcessTelemetryLogging(process);
+        LOG_A(LOG_INFO, "Enabled ETW-TI logging for pid %d: %d\n", pid, etwtiEnabledSuccess);
     }
 }
 
@@ -363,7 +451,7 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
     //
     // Set call context.
     //
-
+    // TODO necessary?
     TdSetCallContext(PreInfo, CallbackRegistration);
 
 
