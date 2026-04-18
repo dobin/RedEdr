@@ -24,9 +24,18 @@ typedef NTSTATUS (NTAPI *PFN_ZwSetInformationProcess)(
 );
 static PFN_ZwSetInformationProcess g_ZwSetInformationProcess = NULL;
 
-// Class 87 - enables kernel-side ETW-TI logging bits in EPROCESS.
-// Mirrors PROCESS_LOGGING_INFORMATION from ntpsapi.h (System Informer).
-#define ProcessLoggingInformation 87
+typedef NTSTATUS (NTAPI *PFN_ZwQueryInformationProcess)(
+    HANDLE ProcessHandle,
+    ULONG  ProcessInformationClass,
+    PVOID  ProcessInformation,
+    ULONG  ProcessInformationLength,
+    PULONG ReturnLength
+);
+static PFN_ZwQueryInformationProcess g_ZwQueryInformationProcess = NULL;
+
+// PROCESS_LOGGING_INFORMATION
+// based on https://www.legacyy.xyz/defenseevasion/windows/2024/04/24/disabling-etw-ti-without-ppl.html
+#define ProcessLoggingInformation 96  // 0x60  
 
 typedef union _PROCESS_LOGGING_INFORMATION {
     ULONG Flags;
@@ -65,8 +74,22 @@ static BOOLEAN EnableProcessTelemetryLogging(PEPROCESS Process) {
         return FALSE;
     }
 
-    PROCESS_LOGGING_INFORMATION loggingInfo = { 0 };
-    loggingInfo.Flags = 0x7F; // All 7 logging bits
+    // Set the desired logging flags for this process. We enable all the ETW-TI flags to get the full range of events.
+    PROCESS_LOGGING_INFORMATION processLoggingInfo = { 0 };
+    processLoggingInfo.Bits.EnableReadVmLogging = 1;
+    processLoggingInfo.Bits.EnableWriteVmLogging = 1;
+    processLoggingInfo.Bits.EnableProcessSuspendResumeLogging = 1;
+    processLoggingInfo.Bits.EnableThreadSuspendResumeLogging = 1;
+    // Win11 only (build >= 22000); these bits are not present on Win10
+    RTL_OSVERSIONINFOW osVer = { 0 };
+    osVer.dwOSVersionInfoSize = sizeof(osVer);
+    if (NT_SUCCESS(RtlGetVersion(&osVer)) && osVer.dwBuildNumber >= 22000) {
+        processLoggingInfo.Bits.EnableLocalExecProtectVmLogging = 1;
+        processLoggingInfo.Bits.EnableRemoteExecProtectVmLogging = 1;
+        processLoggingInfo.Bits.EnableImpersonationLogging = 1;
+    }
+    // Dont touch reserved for now
+    //processLoggingInfo.Bits.Reserved = 0;
 
     if (g_ZwSetInformationProcess == NULL) {
         ZwClose(hProcess);
@@ -75,8 +98,8 @@ static BOOLEAN EnableProcessTelemetryLogging(PEPROCESS Process) {
     status = g_ZwSetInformationProcess(
         hProcess,
         ProcessLoggingInformation,
-        &loggingInfo,
-        sizeof(loggingInfo)
+        &processLoggingInfo,
+        sizeof(processLoggingInfo)
     );
     if (!NT_SUCCESS(status)) {
         LOG_A(LOG_WARNING, "[RedEdr] EnableProcessTelemetryLogging: ZwSetInformationProcess failed: 0x%08X\n", status);
@@ -89,6 +112,59 @@ static BOOLEAN EnableProcessTelemetryLogging(PEPROCESS Process) {
     return success;
 }
 
+// Query and debug-log the current PROCESS_LOGGING_INFORMATION flags for a process.
+static void LogProcessTelemetryLoggingFlags(PEPROCESS Process, HANDLE pid) {
+    HANDLE hProcess = NULL;
+    NTSTATUS status;
+
+    status = ObOpenObjectByPointer(
+        Process,
+        OBJ_KERNEL_HANDLE,
+        NULL,
+        PROCESS_ALL_ACCESS,
+        *PsProcessType,
+        KernelMode,
+        &hProcess
+    );
+    if (!NT_SUCCESS(status)) {
+        LOG_A(LOG_INFO, "[RedEdr] LogProcessTelemetryLoggingFlags: ObOpenObjectByPointer failed for pid %llu: 0x%08X\n", (ULONG64)pid, status);
+        return;
+    }
+
+    if (g_ZwQueryInformationProcess == NULL) {
+        ZwClose(hProcess);
+        return;
+    }
+
+    PROCESS_LOGGING_INFORMATION loggingInfo = { 0 };
+    ULONG returnLength = 0;
+    status = g_ZwQueryInformationProcess(
+        hProcess,
+        ProcessLoggingInformation,
+        &loggingInfo,
+        sizeof(loggingInfo),
+        &returnLength
+    );
+    ZwClose(hProcess);
+
+    if (!NT_SUCCESS(status)) {
+        LOG_A(LOG_INFO, "[RedEdr] LogProcessTelemetryLoggingFlags: ZwQueryInformationProcess failed for pid %llu: 0x%08X\n", (ULONG64)pid, status);
+        return;
+    }
+
+    LOG_A(LOG_INFO, "[RedEdr] pid %llu ETW-TI flags=0x%02X: ReadVM=%d WriteVM=%d ProcSuspRes=%d ThrSuspRes=%d LocalExecProt=%d RemoteExecProt=%d Impersonation=%d reserved=0x%02X\n",
+        (ULONG64)pid,
+        loggingInfo.Flags,
+        loggingInfo.Bits.EnableReadVmLogging,
+        loggingInfo.Bits.EnableWriteVmLogging,
+        loggingInfo.Bits.EnableProcessSuspendResumeLogging,
+        loggingInfo.Bits.EnableThreadSuspendResumeLogging,
+        loggingInfo.Bits.EnableLocalExecProtectVmLogging,
+        loggingInfo.Bits.EnableRemoteExecProtectVmLogging,
+        loggingInfo.Bits.EnableImpersonationLogging,
+        loggingInfo.Bits.Reserved);
+}
+
 
 
 int InitCallbacks() {
@@ -97,6 +173,12 @@ int InitCallbacks() {
     g_ZwSetInformationProcess = (PFN_ZwSetInformationProcess)MmGetSystemRoutineAddress(&funcName);
     if (g_ZwSetInformationProcess == NULL) {
         LOG_A(LOG_WARNING, "[RedEdr] InitCallbacks: failed to resolve ZwSetInformationProcess\n");
+    }
+
+    RtlInitUnicodeString(&funcName, L"ZwQueryInformationProcess");
+    g_ZwQueryInformationProcess = (PFN_ZwQueryInformationProcess)MmGetSystemRoutineAddress(&funcName);
+    if (g_ZwQueryInformationProcess == NULL) {
+        LOG_A(LOG_WARNING, "[RedEdr] InitCallbacks: failed to resolve ZwQueryInformationProcess\n");
     }
     return TRUE;
 }
@@ -200,12 +282,18 @@ void CreateProcessNotifyRoutine(PEPROCESS process, HANDLE pid, PPS_CREATE_NOTIFY
             parentName);
         LogEvent(ProcessLine);
 
+        // Log current ETW-TI flags before modifying them.
+        LogProcessTelemetryLoggingFlags(process, pid);
+
         // Enable all ETW-TI logging flags so Microsoft-Windows-Threat-Intelligence
         // emits the full range of events (ReadVM, WriteVM, SetContextThread, etc.)
         // for this process. Applied to all new processes; RedEdrPplService filters
         // by observe flag. Must run at PASSIVE_LEVEL - process callbacks qualify.
         BOOLEAN etwtiEnabledSuccess = EnableProcessTelemetryLogging(process);
         LOG_A(LOG_INFO, "Enabled ETW-TI logging for pid %d: %d\n", pid, etwtiEnabledSuccess);
+
+        // Log ETW-TI flags after modification to confirm they were set correctly.
+        LogProcessTelemetryLoggingFlags(process, pid);
     }
 }
 
