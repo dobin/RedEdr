@@ -2,12 +2,9 @@
 
 Display events from Windows to see the detection surface of your malware. Same data as an ETW-based EDR sees (Defender, Elastic, Fibratus...). 
 
-* Identify the telemetry your malware generates
+* Identify the telemetry your malware generates (detection surface)
 * Verify your anti-EDR techniques work
-* Debug and analyze malware
-
-RedEdr will observe one process, and identify malicious patterns. 
-A normal EDR will observe all processes, and identify malicious processes. 
+* Debug and analyze your malware
 
 It generates [JSON files](https://github.com/dobin/RedEdr/tree/master/Data)
 collecting [the telemetry](https://github.com/dobin/RedEdr/blob/master/Doc/captured_events.md) 
@@ -18,16 +15,13 @@ It is now part of Detonator, see [detonator.r00ted.ch](https://detonator.r00ted.
 
 ## Screenshots
 
-The following shellcode execution:
+Shellcode execution:
 ```c
 	PVOID shellcodeAddr = VirtualAlloc(NULL, payloadSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	memcpy(shellcodeAddr, payload, payloadSize);
 	VirtualProtect(shellcodeAddr, payloadSize, PAGE_EXECUTE_READWRITE, &dwOldProtection));
 	HANDLE hThread = CreateThread(NULL, 0, shellcodeAddr, shellcodeAddr, 0, &threadId);
 ```
-
-Can be detected in the RedEdr events by looking at
-the RW->RWX VirtualProtect and following CreateThread invocation.
 
 With ntdll.dll hooking:
 ![RedEdr Screenshot ntdll.dll hooking](https://raw.github.com/dobin/RedEdr/master/Doc/screenshot-web-rwx-dll.png)
@@ -43,15 +37,13 @@ ETW events:
   * Microsoft-Windows-Kernel-Process
   * Microsoft-Windows-Kernel-Audit-API-Calls
   * Microsoft-Windows-Security-Auditing
-    * needs SYSTEM
-    * restrictions apply, configure group policy
-  * And defender
+  * Defender
     * Microsoft-Antimalware-Engine
     * Microsoft-Antimalware-RTP
     * Microsoft-Antimalware-AMFilter
     * Microsoft-Antimalware-Scan-Interface
     * Microsoft-Antimalware-Protection
-* ETW-TI (Threat Intelligence) with a PPL service via ELAM driver
+  * ETW-TI (Threat Intelligence) with a PPL service via ELAM driver
 
 * Kernel Callbacks
   * PsSetCreateProcessNotifyRoutine
@@ -59,32 +51,20 @@ ETW events:
   * PsSetLoadImageNotifyRoutine
   * (ObRegisterCallbacks, not used atm)
 
-* AMSI-style ntdll.dll hooking 
-  * from kernelspace (KAPC from LoadImage callback)
-  * from userspace (ETW based, unreliable)
+* ntdll.dll hooking 
 
 * Callstacks
   * On ntdll.dll hook invocation
   * On several ETW events
  
-* process query:
+* process query
   * PEB
   * Loaded DLL's (and their regions)
 
 
 ## Installation
 
-Use a dedicated VM for RedEdr. Tested on unlicensed (no Defender) Win10 Pro. 
-Install VS2022 as we need it's debug libraries.
-
-Change Windows boot options to enable self-signed kernel drivers and reboot.
-As admin cmd:
-```
-bcdedit /set testsigning on
-bcdedit -debug on
-```
-
-If you use Hyper-V, uncheck "Security -> Enable Secure Boot". 
+Use a dedicated VM for RedEdr. 
 
 Extract release.zip into `C:\RedEdr`. **No other directories are supported.**
 
@@ -108,38 +88,39 @@ Usage:
 ...
 ```
 
-Try: `.\RedEdr.exe --all --trace otepad`, and then start notepad 
+Try: `.\RedEdr.exe --etw --trace otepad`, and then start notepad 
 (will be `notepad.exe` on Windows 10, `Notepad.exe` on Windows 11).
 The log should be printed as stdout.
 
 
-## Standard Usage
+## Simple ETW Usage
 
 RedEdr will trace all processes containing by process image name (exe path).
 
-Enable all consumers, and provide as web on [http://localhost:8081](http://localhost:8081), 
-and disable output logging for performance:
+Capture ETW events and provide a web interface on [http://localhost:8081](http://localhost:8081):
 ```
-PS > .\RedEdr.exe --all --web --hide --trace notepad.exe
-```
-
-Be aware ETW-TI (and possibly other ETW) will record the DLL hooking events if used together
-like this. Better use one of the following.
-
-
-### ntdll.dll hooking
-
-KAPC DLL injection for ntdll.dll hooking. Thats what many EDR's depend on:
-```
-PS > .\RedEdr.exe --kernel --inject --trace notepad.exe
+PS > .\RedEdr.exe --etw --web --trace notepad.exe
 ```
 
-This requires self-signed kernel modules to load. 
+
+## Advanced Usage
+
+For ntdll.dll hooking and ETW-TI, we need to configure windows so it can
+load our kernel module. 
+
+Change Windows boot options to enable self-signed kernel drivers and reboot.
+
+In admin cmd:
+```
+PS > bcdedit /set testsigning on
+PS > bcdedit -debug on
+PS > shutdown /r /t 0
+```
+
+If you use Hyper-V, uncheck "Security -> Enable Secure Boot". 
 
 
-### ETW & ETW-TI
-
-ETW is mostly useful for MDE and Elastic.
+### ETW-TI
 
 ETW-TI requires an ELAM driver to start `RedEdrPplService`, 
 and therefore requires self signed kernel driver option.
@@ -151,8 +132,20 @@ PS > .\RedEdr.exe --etw --etwti --trace notepad.exe
 ```
 
 If you want ETW Microsoft-Windows-Security-Auditing, start as SYSTEM (`psexec -i -s cmd.exe`). 
+
 See `gpedit.msc -> Computer Configuration -> Windows Settings -> Security Settings -> Advanced Audit Policy Configuration -> System Audit Policies - Local Group Policy object`
 for settings to log.
+
+
+### ntdll.dll hooking
+
+KAPC DLL injection for ntdll.dll hooking. Thats what many older EDR's depend on. 
+Also requires our own kernel module. 
+
+```
+PS > .\RedEdr.exe --hook --trace notepad.exe
+```
+
 
 
 ## EDR Introspection (for Defender)
@@ -184,7 +177,7 @@ imagepath:\Device\HarddiskVolume6\toolz\putty.exe pid:0x11F48 processcontextid:0
 
 Argument: `--with-defendertrace`
 
-Example: `.\RedEdr.exe --etw --trace putty --web --with-defendertrace`
+Example: `.\RedEdr.exe --etw --etwti --trace putty --web --with-defendertrace`
 
 This will collect `msmpeng.exe` ETW events related to our target process. 
 See blog post [Windows Telemetry](https://blog.deeb.ch/posts/windows-telemetry/) for an overview of available events. 
@@ -194,7 +187,6 @@ For example "Info" ETW event of "Microsoft-Windows-Kernel-Audit-API-Calls" acces
 Info etw etw_event_id:0x6 etw_pid:0x1524 etw_process:MsMpEng.exe etw_provider_name:Microsoft-Windows-Kernel-Audit-API-Calls etw_tid:0x21E0 etw_time:0x1DCC9BA7177FD80 id:0x1 trace_id:0x29
 desiredaccess:0x1FFFFF returncode:0x0 targetprocessid:0x1524 targetthreatid:0x21E0
 ```
-
 
 
 ## Example Output
