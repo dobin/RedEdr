@@ -20,7 +20,9 @@
 typedef struct _MY_DRIVER_DATA {
     wchar_t filename[TARGET_WSTR_LEN];
     int enable;
-    int dll_inject;
+    int enable_dll_injection;
+    int enable_etwti_events;
+    int enable_etwti_events_defender;
 } MY_DRIVER_DATA, * PMY_DRIVER_DATA;
 
 #define REDEDR_VERSION "0.5.5"

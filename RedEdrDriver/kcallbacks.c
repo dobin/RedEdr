@@ -33,6 +33,14 @@ typedef NTSTATUS (NTAPI *PFN_ZwQueryInformationProcess)(
 );
 static PFN_ZwQueryInformationProcess g_ZwQueryInformationProcess = NULL;
 
+typedef NTSTATUS (NTAPI *PFN_ZwQuerySystemInformation)(
+    ULONG  SystemInformationClass,
+    PVOID  SystemInformation,
+    ULONG  SystemInformationLength,
+    PULONG ReturnLength
+);
+static PFN_ZwQuerySystemInformation g_ZwQuerySystemInformation = NULL;
+
 // PROCESS_LOGGING_INFORMATION
 // based on https://www.legacyy.xyz/defenseevasion/windows/2024/04/24/disabling-etw-ti-without-ppl.html
 #define ProcessLoggingInformation 96  // 0x60  
@@ -166,6 +174,103 @@ static void LogProcessTelemetryLoggingFlags(PEPROCESS Process, HANDLE pid) {
 }
 
 
+// Enumerate all running processes and call EnableProcessTelemetryLogging for
+// every process whose image name matches targetName (case-insensitive).
+// Uses ZwQuerySystemInformation(SystemProcessInformation) to walk the live
+// process list without relying on the driver's own hash table, so it works
+// even for processes that were already running before the driver loaded.
+VOID EnableTelemetryLoggingForProcessByName(PCWSTR targetName) {
+#define SystemProcessInformation 5
+    typedef struct _SYSTEM_PROCESS_INFORMATION {
+        ULONG           NextEntryOffset;
+        ULONG           NumberOfThreads;
+        LARGE_INTEGER   Reserved[3];
+        LARGE_INTEGER   CreateTime;
+        LARGE_INTEGER   UserTime;
+        LARGE_INTEGER   KernelTime;
+        UNICODE_STRING  ImageName;
+        KPRIORITY       BasePriority;
+        HANDLE          UniqueProcessId;
+        HANDLE          InheritedFromUniqueProcessId;
+        ULONG           HandleCount;
+        ULONG           SessionId;
+        ULONG_PTR       PageDirectoryBase;
+        SIZE_T          PeakVirtualSize;
+        SIZE_T          VirtualSize;
+        ULONG           PageFaultCount;
+        SIZE_T          PeakWorkingSetSize;
+        SIZE_T          WorkingSetSize;
+        SIZE_T          QuotaPeakPagedPoolUsage;
+        SIZE_T          QuotaPagedPoolUsage;
+        SIZE_T          QuotaPeakNonPagedPoolUsage;
+        SIZE_T          QuotaNonPagedPoolUsage;
+        SIZE_T          PagefileUsage;
+        SIZE_T          PeakPagefileUsage;
+        SIZE_T          PrivatePageCount;
+        LARGE_INTEGER   ReadOperationCount;
+        LARGE_INTEGER   WriteOperationCount;
+        LARGE_INTEGER   OtherOperationCount;
+        LARGE_INTEGER   ReadTransferCount;
+        LARGE_INTEGER   WriteTransferCount;
+        LARGE_INTEGER   OtherTransferCount;
+    } SYSTEM_PROCESS_INFORMATION, *PSYSTEM_PROCESS_INFORMATION;
+
+    ULONG bufferSize = 1024 * 1024; // 1 MB initial allocation
+    PVOID buffer = ExAllocatePool2(POOL_FLAG_NON_PAGED, bufferSize, 'PrEn');
+    if (buffer == NULL) {
+        LOG_A(LOG_WARNING, "[RedEdr] EnableTelemetryLoggingForProcessByName: allocation failed\n");
+        return;
+    }
+
+    if (g_ZwQuerySystemInformation == NULL) {
+        LOG_A(LOG_WARNING, "[RedEdr] EnableTelemetryLoggingForProcessByName: ZwQuerySystemInformation not resolved\n");
+        ExFreePool(buffer);
+        return;
+    }
+    ULONG returnLength = 0;
+    NTSTATUS status = g_ZwQuerySystemInformation(
+        SystemProcessInformation,
+        buffer,
+        bufferSize,
+        &returnLength
+    );
+    if (!NT_SUCCESS(status)) {
+        LOG_A(LOG_WARNING, "[RedEdr] EnableTelemetryLoggingForProcessByName: ZwQuerySystemInformation failed 0x%08X\n", status);
+        ExFreePool(buffer);
+        return;
+    }
+
+    PSYSTEM_PROCESS_INFORMATION entry = (PSYSTEM_PROCESS_INFORMATION)buffer;
+    for (;;) {
+        // ImageName.Buffer may be NULL for the idle/system processes
+        if (entry->ImageName.Buffer != NULL && entry->ImageName.Length > 0) {
+            UNICODE_STRING targetUs;
+            RtlInitUnicodeString(&targetUs, targetName);
+            if (RtlEqualUnicodeString(&entry->ImageName, &targetUs, TRUE)) {
+                HANDLE pid = entry->UniqueProcessId;
+                PEPROCESS process = NULL;
+                status = PsLookupProcessByProcessId(pid, &process);
+                if (NT_SUCCESS(status)) {
+                    BOOLEAN ok = EnableProcessTelemetryLogging(process);
+                    LOG_A(LOG_INFO, "[RedEdr] EnableTelemetryLoggingForProcessByName: pid %llu -> %d\n",
+                        (ULONG64)pid, ok);
+                    ObDereferenceObject(process);
+                } else {
+                    LOG_A(LOG_WARNING, "[RedEdr] EnableTelemetryLoggingForProcessByName: PsLookupProcessByProcessId pid %llu failed 0x%08X\n",
+                        (ULONG64)pid, status);
+                }
+            }
+        }
+
+        if (entry->NextEntryOffset == 0) {
+            break;
+        }
+        entry = (PSYSTEM_PROCESS_INFORMATION)((PUCHAR)entry + entry->NextEntryOffset);
+    }
+
+    ExFreePool(buffer);
+}
+
 
 int InitCallbacks() {
     UNICODE_STRING funcName;
@@ -179,6 +284,12 @@ int InitCallbacks() {
     g_ZwQueryInformationProcess = (PFN_ZwQueryInformationProcess)MmGetSystemRoutineAddress(&funcName);
     if (g_ZwQueryInformationProcess == NULL) {
         LOG_A(LOG_WARNING, "[RedEdr] InitCallbacks: failed to resolve ZwQueryInformationProcess\n");
+    }
+
+    RtlInitUnicodeString(&funcName, L"ZwQuerySystemInformation");
+    g_ZwQuerySystemInformation = (PFN_ZwQuerySystemInformation)MmGetSystemRoutineAddress(&funcName);
+    if (g_ZwQuerySystemInformation == NULL) {
+        LOG_A(LOG_WARNING, "[RedEdr] InitCallbacks: failed to resolve ZwQuerySystemInformation\n");
     }
     return TRUE;
 }
@@ -289,8 +400,10 @@ void CreateProcessNotifyRoutine(PEPROCESS process, HANDLE pid, PPS_CREATE_NOTIFY
         // emits the full range of events (ReadVM, WriteVM, SetContextThread, etc.)
         // for this process. Applied to all new processes; RedEdrPplService filters
         // by observe flag. Must run at PASSIVE_LEVEL - process callbacks qualify.
-        BOOLEAN etwtiEnabledSuccess = EnableProcessTelemetryLogging(process);
-        LOG_A(LOG_INFO, "Enabled ETW-TI logging for pid %d: %d\n", pid, etwtiEnabledSuccess);
+        if (g_Settings.enable_etwti_events) {
+            BOOLEAN etwtiEnabledSuccess = EnableProcessTelemetryLogging(process);
+            LOG_A(LOG_INFO, "Enabled ETW-TI logging for pid %d: %d\n", pid, etwtiEnabledSuccess);
+        }
 
         // Log ETW-TI flags after modification to confirm they were set correctly.
         LogProcessTelemetryLoggingFlags(process, pid);

@@ -34,7 +34,7 @@
 
 void SendToKernel(int enable, char* target) {
 	printf("Sending: %d %s", enable, target);
-	EnableKernelDriver(enable, target);
+	ConfigureKernelDriver(enable);
 }
 
 

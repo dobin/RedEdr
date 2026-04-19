@@ -62,13 +62,15 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
         data->filename[TARGET_WSTR_LEN - 1] = L'\0';
 
         LOG_A(LOG_INFO, "[IOCTL] Received from user-space: enabled: %i/%i  filename: %ls\n", 
-            data->enable, data->dll_inject, data->filename);
+            data->enable, data->enable_dll_injection, data->filename);
         char* answer;
         if (data->enable) {
-            if (data->dll_inject) {
-                g_Settings.enable_kapc_injection = 1;
-            }
+            g_Settings.enable_kapc_injection = data->enable_dll_injection;
+            g_Settings.enable_etwti_events = data->enable_etwti_events;
+            g_Settings.enable_etwti_events_defender = data->enable_etwti_events_defender;
             g_Settings.enable_logging = 1;
+
+            RtlZeroMemory(g_Settings.target, sizeof(g_Settings.target));
             wcscpy_s(g_Settings.target, TARGET_WSTR_LEN, data->filename);
 
             if (!IsUserspacePipeConnected()) {
@@ -85,12 +87,21 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
             else {
                 answer = "OK";
             }
+
+            // 
+            if (g_Settings.enable_etwti_events_defender) {
+                LOG_A(LOG_INFO, "[IOCTL] Enabling ETW-TI Defender events\n");
+                EnableTelemetryLoggingForProcessByName(L"MsMpEng.exe");
+            }
+
         }
         else {
             LOG_A(LOG_INFO, "[IOCTL] Stop\n");
             g_Settings.enable_kapc_injection = 0;
+            g_Settings.enable_etwti_events = 0;
+            g_Settings.enable_etwti_events_defender = 0;
             g_Settings.enable_logging = 0;
-            wcscpy_s(g_Settings.target, TARGET_WSTR_LEN, data->filename); // should be zero
+            RtlZeroMemory(g_Settings.target, sizeof(g_Settings.target));
             DisconnectUserspacePipe();
             answer = "OK";
         }

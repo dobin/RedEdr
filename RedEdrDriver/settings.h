@@ -12,6 +12,8 @@ typedef struct _Settings{
 
 	int enable_kapc_injection;
 	int enable_logging;
+	int enable_etwti_events;
+	int enable_etwti_events_defender;
 
 	HANDLE trace_pid;
 	int trace_children;

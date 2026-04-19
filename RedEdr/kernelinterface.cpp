@@ -11,9 +11,15 @@
 // KernelInterface: Functions to interact with the kernel driver (load/unload, enable/disable)
 
 
-BOOL EnableKernelDriver(int enable, std::string target) {
+BOOL ConfigureKernelDriver(int enable) {
     HANDLE hDevice = INVALID_HANDLE_VALUE;
     wchar_t* targetW = nullptr;
+
+    if (g_Config.targetProcessNames.empty()) {
+        LOG_A(LOG_ERROR, "Kernel: No target process specified for kernel driver");
+        return FALSE;
+    }
+    std::string target = g_Config.targetProcessNames[0];
     
     try {
         hDevice = CreateFile(L"\\\\.\\RedEdr",
@@ -35,28 +41,51 @@ BOOL EnableKernelDriver(int enable, std::string target) {
             CloseHandle(hDevice);
             return FALSE;
         }
-    MY_DRIVER_DATA dataToSend = { 0 };
+    MY_DRIVER_DATA kernel_config = { 0 };
     if (enable) {
         size_t targetLen = wcslen(targetW);
-        if (targetLen >= sizeof(dataToSend.filename) / sizeof(wchar_t)) {
+        if (targetLen >= sizeof(kernel_config.filename) / sizeof(wchar_t)) {
             LOG_A(LOG_ERROR, "Kernel: Target filename too long");
             delete[] targetW;
             CloseHandle(hDevice);
             return FALSE;
         }
-        wcscpy_s(dataToSend.filename, sizeof(dataToSend.filename) / sizeof(wchar_t), targetW);
-        dataToSend.dll_inject = g_Config.do_hook;
-        dataToSend.enable = enable;
+        wcscpy_s(kernel_config.filename, sizeof(kernel_config.filename) / sizeof(wchar_t), targetW);
+        kernel_config.enable_dll_injection = g_Config.do_hook;
+        kernel_config.enable = enable;
+
+        if (g_Config.do_etwti) {
+            kernel_config.enable_etwti_events = 1;
+            if (g_Config.do_defendertrace) {
+                kernel_config.enable_etwti_events_defender = 1;
+            } else {
+                kernel_config.enable_etwti_events_defender = 0;
+            }
+        } else {
+            kernel_config.enable_etwti_events = 0;
+            kernel_config.enable_etwti_events_defender = 0;
+        }
+
+        // Log
+        LOG_A(LOG_INFO, "Kernel: enable=%d, dll_injection=%d, etwti_events=%d, etwti_events_defender=%d, filename=%ls",
+            kernel_config.enable,
+            kernel_config.enable_dll_injection,
+            kernel_config.enable_etwti_events,
+            kernel_config.enable_etwti_events_defender,
+            kernel_config.filename);
     }
     else {
-        dataToSend.enable = 0;        }
-        delete[] targetW;  // Free allocated memory
-        char buffer_incoming[KRN_CONFIG_LEN] = { 0 }; // Answer will be "OK" or "FAIL" so this is enough
-        DWORD bytesReturned = 0;
-        BOOL success = DeviceIoControl(hDevice,
-            IOCTL_MY_IOCTL_CODE,
-            (LPVOID)&dataToSend,
-            (DWORD)sizeof(dataToSend),
+        kernel_config.enable = 0;        
+        kernel_config.enable_etwti_events = 0;
+        kernel_config.enable_etwti_events_defender = 0;
+    }
+    delete[] targetW;  // Free allocated memory
+    char buffer_incoming[KRN_CONFIG_LEN] = { 0 }; // Answer will be "OK" or "FAIL" so this is enough
+    DWORD bytesReturned = 0;
+    BOOL success = DeviceIoControl(hDevice,
+        IOCTL_MY_IOCTL_CODE,
+            (LPVOID)&kernel_config,
+            (DWORD)sizeof(kernel_config),
             buffer_incoming,
             sizeof(buffer_incoming), // this should get the correct size
             &bytesReturned,
@@ -88,7 +117,7 @@ BOOL EnableKernelDriver(int enable, std::string target) {
         }
     }
     catch (const std::exception& e) {
-        LOG_A(LOG_ERROR, "Kernel: Exception in EnableKernelDriver: %s", e.what());
+        LOG_A(LOG_ERROR, "Kernel: Exception in ConfigureKernelDriver: %s", e.what());
         if (targetW) delete[] targetW;
         if (hDevice != INVALID_HANDLE_VALUE) CloseHandle(hDevice);
         return FALSE;

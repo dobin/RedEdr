@@ -41,17 +41,13 @@ BOOL ManagerApplyNewTargets(std::vector<std::string> traceNames) {
         g_ProcessResolver.RefreshTargetMatching();
     }
     
-    // Kernel
-    if (g_Config.do_hook) {
+    // Kernel Config
+    if (g_Config.do_kernel) {
         // Kernel driver only supports one target at a time, use the first one
-        if (!g_Config.targetProcessNames.empty()) {
-            LOG_A(LOG_INFO, "Manager: Tell Kernel about new target: %s", g_Config.targetProcessNames[0].c_str());
-            if (!EnableKernelDriver(true, g_Config.targetProcessNames[0])) {
-                LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
-                return FALSE;
-            }
-        } else {
-            LOG_A(LOG_WARNING, "Manager: No target names configured, skip kernel driver");
+        LOG_A(LOG_INFO, "Manager: Configure kernel module");
+        if (!ConfigureKernelDriver(true)) {
+            LOG_A(LOG_ERROR, "Manager: Could not communicate with kernel driver, aborting.");
+            return FALSE;
         }
     }
 
@@ -71,7 +67,7 @@ BOOL ManagerApplyNewTargets(std::vector<std::string> traceNames) {
 BOOL ManagerStart(std::vector<HANDLE>& threads) {
 	LOG_A(LOG_INFO, "Manager: Starting all subsystems...");
     try {
-        // Kernel
+        // Kernel: Load module, and reader
         if (g_Config.do_kernel) {
             // Kernel: Driver load
             if (!IsServiceRunning(g_Config.driverName)) {
@@ -139,17 +135,12 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
             }
         }
 
-        // Kernel: Enable
-        if (g_Config.do_hook) {
+        // Kernel: Configuration (target process name etc.)
+        if (g_Config.do_kernel) {
             LOG_A(LOG_INFO, "Manager: Kernel module enable collection");
-            if (!g_Config.targetProcessNames.empty()) {
-                if (!EnableKernelDriver(1, g_Config.targetProcessNames[0])) {
-                    LOG_A(LOG_ERROR, "Manager: Kernel module failed");
-                    return FALSE;
-                }
-            }
-            else {
-                LOG_A(LOG_WARNING, "Manager: No target names configured for kernel driver");
+            if (!ConfigureKernelDriver(1)) {
+                LOG_A(LOG_ERROR, "Manager: Kernel module failed");
+                return FALSE;
             }
         }
 
@@ -200,7 +191,7 @@ void ManagerShutdown() {
     // Hook / DLL injection
     if (g_Config.do_hook || g_Config.debug_dllreader) {
         LOG_A(LOG_INFO, "Manager: Disable kernel driver collection");
-        EnableKernelDriver(0, "");
+        ConfigureKernelDriver(0);
 
         LOG_A(LOG_INFO, "Manager: Stop DLL reader");
         DllReaderShutdown();
@@ -208,7 +199,6 @@ void ManagerShutdown() {
 
     // Kernel
     if (g_Config.do_kernel) {
-    
         LOG_A(LOG_INFO, "Manager: Stop kernel reader");
         KernelReaderShutdown();
     }

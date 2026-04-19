@@ -65,8 +65,8 @@ int main(int argc, char* argv[]) {
         ("hook", "Input: DLL injection/hooking", cxxopts::value<bool>()->default_value("false"))
 
         // Input options
-        ("with-defendertrace", "Input option Defender: Add MsMpEng.exe access events to target process", cxxopts::value<bool>()->default_value("false"))
-        ("with-antimalwareengine", "Input option Defender: Grab events of ETW Microsoft-Antimalware-Engine related to target process", cxxopts::value<bool>()->default_value("false"))
+        ("with-defendertrace", "Input option Defender: Add MsMpEng.exe as target process", cxxopts::value<bool>()->default_value("false"))
+        ("with-antimalwareengine", "Input option Defender: Grab ETW events of Microsoft-Antimalware-Engine (related to target process)", cxxopts::value<bool>()->default_value("false"))
 
         // Output
         ("web", "Output: Web server", cxxopts::value<bool>()->default_value("true"))
@@ -130,6 +130,11 @@ int main(int argc, char* argv[]) {
     g_Config.web_output = result["web"].as<bool>();
 	g_Config.do_defendertrace = result["with-defendertrace"].as<bool>();
 	g_Config.do_antimalwareengine = result["with-antimalwareengine"].as<bool>();
+
+    if (g_Config.do_antimalwareengine && !g_Config.do_etw) {
+        LOG_A(LOG_WARNING, "Config: --with-antimalwareengine has no effect without --etw");
+        return 1;
+    }
 
     if (!g_Config.do_etw && !g_Config.do_kernel && !g_Config.do_etwti && !g_Config.debug_dllreader) {
         printf("Choose at least one of --etw / --etwti / --hook");
