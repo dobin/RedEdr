@@ -122,9 +122,10 @@ int main(int argc, char* argv[]) {
 	int port = result["port"].as<int>();
     g_Config.do_etw = result["etw"].as<bool>();
     g_Config.do_etwti = result["etwti"].as<bool>();
+    if (g_Config.do_etwti) g_Config.do_kernel = true; // it works better with kernel support
     g_Config.do_kernel = result["kernel"].as<bool>();
 	g_Config.do_hook = result["hook"].as<bool>();
-    if (g_Config.do_hook) g_Config.do_kernel = true;
+    if (g_Config.do_hook) g_Config.do_kernel = true; // hook always requires kernel module
     g_Config.debug_dllreader = result["dllreader"].as<bool>();
     g_Config.hide_full_output = ! result["show"].as<bool>();
     g_Config.web_output = result["web"].as<bool>();
