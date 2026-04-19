@@ -190,15 +190,17 @@ void ManagerShutdown() {
 
     // Hook / DLL injection
     if (g_Config.do_hook || g_Config.debug_dllreader) {
-        LOG_A(LOG_INFO, "Manager: Disable kernel driver collection");
-        ConfigureKernelDriver(0);
-
         LOG_A(LOG_INFO, "Manager: Stop DLL reader");
         DllReaderShutdown();
     }
 
     // Kernel
     if (g_Config.do_kernel) {
+        // Tell the driver to stop and disconnect its pipe end.
+        // This unblocks any ReadFile in the kernel reader thread before we join it.
+        LOG_A(LOG_INFO, "Manager: Disable kernel driver collection");
+        ConfigureKernelDriver(0);
+
         LOG_A(LOG_INFO, "Manager: Stop kernel reader");
         KernelReaderShutdown();
     }

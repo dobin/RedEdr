@@ -96,34 +96,12 @@ void KernelReaderShutdown() {
         SetEvent(hStopEventKernel);
     }
 
-    if (kernelPipeServer == NULL) {
-        // Thread may be blocked in WaitForClient; unblock it with a fake connect
-        try {
-            PipeClient pipeClient("RedEdr KernelReaderShutdown");
-            char buf[DATA_BUFFER_SIZE] = { 0 };
-            const char* send = "";
-            if (pipeClient.Connect(KERNEL_PIPE_NAME)) {
-                pipeClient.Receive(buf, DATA_BUFFER_SIZE);
-                pipeClient.Send((char*)send);
-                pipeClient.Disconnect();
-            }
-        }
-        catch (...) {}
-    }
-    else if (!kernelPipeServer->IsConnected()) {
-        PipeClient pipeClient("RedEdr KernelReaderShutdown");
-        char buf[DATA_BUFFER_SIZE] = { 0 };
-        const char* send = "";
-        if (pipeClient.Connect(KERNEL_PIPE_NAME)) {
-            pipeClient.Receive(buf, DATA_BUFFER_SIZE);
-            pipeClient.Send((char*)send);
-            pipeClient.Disconnect();
-        }
-    }
-    else {
-        kernelPipeServer->Shutdown();
-        delete kernelPipeServer;
-        kernelPipeServer = NULL;
+    // Cancel any pending synchronous I/O in the reader thread.
+    // The thread may be blocked in ConnectNamedPipe (WaitForClient) or in
+    // ReadFile (ReceiveBatch, which holds pipe_mutex).  CancelSynchronousIo
+    // unblocks both cases without trying to acquire the mutex.
+    if (hKernelThreadHandle != NULL) {
+        CancelSynchronousIo(hKernelThreadHandle);
     }
 
     // Wait for thread to exit cleanly
@@ -134,6 +112,12 @@ void KernelReaderShutdown() {
         }
         CloseHandle(hKernelThreadHandle);
         hKernelThreadHandle = NULL;
+    }
+
+    // Clean up pipe server if the thread left it behind (e.g. cancelled in WaitForClient path)
+    if (kernelPipeServer != NULL) {
+        delete kernelPipeServer;
+        kernelPipeServer = NULL;
     }
 
     if (hStopEventKernel != NULL) {

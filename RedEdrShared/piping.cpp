@@ -241,6 +241,10 @@ std::vector<std::string> PipeServer::ReceiveBatch() {
             LOG_A(LOG_INFO, "PipingSrv: %s: disconnected", 
                 pipe_name.c_str());
         }
+        else if (error == ERROR_OPERATION_ABORTED) {
+            LOG_A(LOG_INFO, "PipingSrv: %s: I/O cancelled (shutdown)", 
+                pipe_name.c_str());
+        }
         else {
             LOG_A(LOG_ERROR, "PipingSrv: %s: Error reading from named pipe: %lu", 
                 pipe_name.c_str(), 
