@@ -42,7 +42,7 @@ bool KernelReaderInit(std::vector<HANDLE>& threads) {
         return false;
     }
 
-    LOG_A(LOG_INFO, "!KernelReader: Start thread");
+    LOG_A(LOG_DEBUG, "!KernelReader: Start thread");
     HANDLE thread = CreateThread(NULL, 0, KernelReaderProcessingThread, NULL, 0, NULL);
     if (thread == NULL) {
         LOG_A(LOG_ERROR, "KernelReader: Failed to create thread for trace session logreader");
@@ -60,7 +60,7 @@ bool KernelReaderInit(std::vector<HANDLE>& threads) {
 DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
     // Loop which accepts new clients
     while (WaitForSingleObject(hStopEventKernel, 0) != WAIT_OBJECT_0) {
-        LOG_A(LOG_INFO, "KernelReader: Waiting for kernel");
+        LOG_A(LOG_DEBUG, "KernelReader: Waiting for kernel");
         kernelPipeServer = new PipeServer("RedEdr KernelReader", (wchar_t*) KERNEL_PIPE_NAME);
         kernelPipeServer->Start(TRUE);
         SetEvent(threadReadynessKernel); // signal the event
@@ -85,7 +85,7 @@ DWORD WINAPI KernelReaderProcessingThread(LPVOID param) {
         kernelPipeServer = NULL;
     }
 
-    LOG_A(LOG_INFO, "!DllReader Server Thread: end");
+    LOG_A(LOG_DEBUG, "!Kernel Reader: Thread finished");
     return 0;
 }
 

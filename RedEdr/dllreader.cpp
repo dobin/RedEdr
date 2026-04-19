@@ -61,7 +61,7 @@ bool DllReaderInit(std::vector<HANDLE>& threads) {
 
 // Pipe Reader Thread: Server
 DWORD WINAPI DllReaderThread(LPVOID param) {
-    LOG_A(LOG_INFO, "!DllReader Server Thread: begin");
+    LOG_A(LOG_DEBUG, "!DllReader Thread: begin");
 
     // Loop which accepts new clients
     while (WaitForSingleObject(hStopEventDll, 0) != WAIT_OBJECT_0) {
@@ -100,7 +100,7 @@ DWORD WINAPI DllReaderThread(LPVOID param) {
         }
     }
 
-    LOG_A(LOG_INFO, "!DllReader Server Thread: end");
+    LOG_A(LOG_DEBUG, "!DllReader Thread: end");
     return 0;
 }
 

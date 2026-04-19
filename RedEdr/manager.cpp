@@ -79,7 +79,7 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
             }
 
             // Kernel: Start Reader Thread
-            LOG_A(LOG_INFO, "Manager: Kernel reader thread start");
+            LOG_A(LOG_INFO, "Manager: Kernel Reader init");
             if (!KernelReaderInit(threads)) {
                 LOG_A(LOG_ERROR, "Manager: Failed to initialize kernel reader");
                 return FALSE;
@@ -97,6 +97,7 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
         // Load: ETW-TI
         if (g_Config.do_etwti) {
             // Start PPL service first (if not already)
+            LOG_A(LOG_INFO, "Manager: Start ETW-TI PPL service");
             if (!StartThePplService()) {
                 LOG_A(LOG_ERROR, "Manager: Failed to initialize PPL service");
                 return FALSE;
@@ -104,7 +105,7 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
 
             // Start PPL Reader Thread for dedicated data pipe
             // will wait for client connection
-            LOG_A(LOG_INFO, "Manager: PPL reader thread start");
+            LOG_A(LOG_INFO, "Manager: PPL Reader init");
             if (!PplReaderInit(threads)) {
                 LOG_A(LOG_ERROR, "Manager: Failed to initialize PPL reader");
                 return FALSE;
@@ -113,13 +114,14 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
 
             // Connect to PPL service pipe
             // it will connect back to the pipe created above when we connect
+            LOG_A(LOG_INFO, "Manager: Connect to ETW-TI PPL service pipe");
             if (!ConnectPplService()) {
                 LOG_A(LOG_ERROR, "ETW-TI: Failed to connect to PPL service pipe");
                 return FALSE;
             }
 
             // notify service about initial target
-            LOG_A(LOG_INFO, "Manager: Tell ETW-TI about new targets: %zu names", g_Config.targetProcessNames.size());
+            LOG_A(LOG_INFO, "Manager: Configure ETW-TI PPL");
             if (!EnablePplProducer(true, g_Config.targetProcessNames, g_Config.do_defendertrace)) {
                 LOG_A(LOG_ERROR, "Manager: Failed to enable PPL producer");
                 return FALSE;
@@ -129,6 +131,7 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
         // ETW
         if (g_Config.do_etw) {
             g_ProcessResolver.SetTargetNames(g_Config.targetProcessNames);
+            LOG_A(LOG_INFO, "Manager: ETW Reader init");
             if (!InitializeEtwReader(threads)) {
                 LOG_A(LOG_ERROR, "Manager: Failed to initialize ETW reader");
                 return FALSE;
@@ -137,7 +140,7 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
 
         // Kernel: Configuration (target process name etc.)
         if (g_Config.do_kernel) {
-            LOG_A(LOG_INFO, "Manager: Kernel module enable collection");
+            LOG_A(LOG_INFO, "Manager: Kernel module configuration");
             if (!ConfigureKernelDriver(1)) {
                 LOG_A(LOG_ERROR, "Manager: Kernel module failed");
                 return FALSE;
@@ -148,7 +151,7 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
         //Sleep(1000);
 
         // Populate process cache with all currently running processes
-        LOG_A(LOG_INFO, "Manager: Populating process cache with all running processes");
+        //LOG_A(LOG_INFO, "Manager: Populating process cache with all running processes");
         if (!g_ProcessResolver.PopulateAllProcesses()) {
             LOG_A(LOG_WARNING, "Manager: Failed to populate process cache, continuing anyway");
             // Don't return FALSE here as this is not critical for core functionality

@@ -264,7 +264,7 @@ BOOL InitializeEtwReader(std::vector<HANDLE>& threads) {
     // Wait for the thread (ETW) to be fully initialized before returning
     WaitForSingleObject(threadReadynessEtw, INFINITE);
     
-    LOG_A(LOG_INFO, "!ETW: Started Thread (handle %p)", thread);
+    LOG_A(LOG_DEBUG, "!ETW: Thread: begin");
     threads.push_back(thread);
     return TRUE;
 }
@@ -451,7 +451,7 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
         }
     }
 
-    LOG_A(LOG_INFO, "!ETW: Thread finished");
+    LOG_A(LOG_DEBUG, "!ETW: Thread finished");
     return 0;
 }
 

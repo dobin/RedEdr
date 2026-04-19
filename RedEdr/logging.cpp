@@ -19,6 +19,8 @@ std::vector<std::string> error_messages;
 std::mutex error_mutex;
 std::ofstream log_file;
 
+#define DO_LOG_DEBUG 0
+
 // Initialize log file
 void InitLogFile() {
     static bool initialized = false;
@@ -38,6 +40,10 @@ std::vector <std::string> GetAgentLogs() {
 
 void LOG_A(int verbosity, const char* format, ...)
 {
+    if (!DO_LOG_DEBUG && verbosity == LOG_DEBUG) {
+        return;
+    }
+
     va_list args;
     va_start(args, format);
     char buffer[DATA_BUFFER_SIZE] = { 0 };
@@ -103,6 +109,10 @@ void LOG_A(int verbosity, const char* format, ...)
 
 void LOG_W(int verbosity, const wchar_t* format, ...)
 {
+    if (!DO_LOG_DEBUG && verbosity == LOG_DEBUG) {
+        return;
+    }
+
     va_list args;
     va_start(args, format);
     wchar_t wide_buffer[DATA_BUFFER_SIZE];

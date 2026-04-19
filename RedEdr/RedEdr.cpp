@@ -155,7 +155,7 @@ int main(int argc, char* argv[]) {
             if (i > 0) targets += ", ";
             targets += g_Config.targetProcessNames[i];
         }
-        LOG_A(LOG_INFO, "Config: tracing %s", targets.c_str());
+        LOG_A(LOG_INFO, "Config: tracing process(es): \"%s\"", targets.c_str());
     } else {
         LOG_A(LOG_INFO, "Config: no targets configured");
     }
@@ -194,14 +194,14 @@ int main(int argc, char* argv[]) {
     // Log which threads we're waiting for
     //LOG_A(LOG_INFO, "RedEdr: Thread handles being tracked:");
     for (size_t i = 0; i < threads.size(); i++) {
-        LOG_A(LOG_INFO, "Track Thread %zu (handle 0x%p)", i, threads[i]);
+        LOG_A(LOG_DEBUG, "Track Thread %zu (handle 0x%p)", i, threads[i]);
     }
 
     // Wait for all threads to complete
-    LOG_A(LOG_INFO, "RedEdr: All started, waiting for %llu threads to exit", threads.size());
+    LOG_A(LOG_INFO, "RedEdr: All started, ready");
     DWORD res = WaitForMultipleObjects((DWORD)threads.size(), threads.data(), TRUE, INFINITE);
     if (res == WAIT_FAILED) {
-        LOG_A(LOG_INFO, "RedEdr: Wait failed");
+        LOG_A(LOG_ERROR, "RedEdr: Wait failed");
     }
     LOG_A(LOG_INFO, "RedEdr: all %llu threads finished", threads.size());
 

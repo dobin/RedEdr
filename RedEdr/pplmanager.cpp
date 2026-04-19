@@ -61,7 +61,7 @@ BOOL EnablePplProducer(BOOL e, std::vector<std::string> targetNames, bool doDefe
             LOG_A(LOG_INFO, "ETW-TI: Error sending JSON to ppl service: %s", buffer);
             return FALSE;
         }
-        LOG_A(LOG_INFO, "ETW-TI: ppl reader: Enabled with targets JSON");
+        LOG_A(LOG_DEBUG, "ETW-TI: ppl reader: Enabled with targets JSON");
         
         return TRUE;
     }

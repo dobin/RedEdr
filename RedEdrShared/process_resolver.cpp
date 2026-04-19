@@ -192,7 +192,7 @@ BOOL ProcessResolver::PopulateAllProcesses() {
     
     CloseHandle(hSnapshot);
     
-    LOG_A(LOG_INFO, "ProcessResolver: Successfully populated cache with %d processes", 
+    LOG_A(LOG_DEBUG, "ProcessResolver: Successfully populated cache with %d processes", 
           cachedCount);
     //LOG_A(LOG_INFO, "ProcessResolver: Current cache size: %zu", GetCacheCount());
     
@@ -221,7 +221,7 @@ void ProcessResolver::RefreshTargetMatching() {
 // Log statistics about the current cache state
 void ProcessResolver::LogCacheStatistics() {
     std::lock_guard<std::mutex> lock(cache_mutex);
-    LOG_A(LOG_INFO, "ProcessResolver: Total cached processes: %zu", cache.size());
+    LOG_A(LOG_DEBUG, "ProcessResolver: Total cached processes: %zu", cache.size());
 }
 
 
@@ -234,7 +234,7 @@ void ProcessResolver::StartCleanupThread(std::chrono::minutes interval) {
     cleanupInterval = interval;
     cleanupThreadRunning = true;
     cleanupThread = std::thread(&ProcessResolver::CleanupWorker, this);
-    LOG_A(LOG_INFO, "ProcessResolver: Started cleanup thread with %d minute interval", 
+    LOG_A(LOG_DEBUG, "ProcessResolver: Started cleanup thread with %d minute interval", 
           static_cast<int>(interval.count()));
 }
 

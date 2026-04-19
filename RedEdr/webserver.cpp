@@ -328,7 +328,7 @@ DWORD WINAPI WebserverThread(LPVOID param) {
         LOG_A(LOG_INFO, "WEB: Server listen returned false (normal during shutdown)");
     }
     
-    LOG_A(LOG_INFO, "!WEB: Thread finished");
+    LOG_A(LOG_DEBUG, "!WEB: Thread finished");
     return 0;
 }
 
@@ -347,7 +347,7 @@ int InitializeWebServer(std::vector<HANDLE>& threads, int port) {
         hStopEventWeb = NULL;
         return 1;
     }
-    LOG_A(LOG_INFO, "!Web: Started Thread (handle %p)", webserver_thread);
+    LOG_A(LOG_DEBUG, "!Web: Thread started");
     threads.push_back(webserver_thread);
     return 0;
 }

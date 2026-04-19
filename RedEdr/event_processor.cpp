@@ -287,7 +287,7 @@ DWORD WINAPI EventProcessorThread(LPVOID param) {
         LOG_A(LOG_ERROR, "EventProcessorThread: Unknown exception in main loop");
     }
 
-    LOG_A(LOG_INFO, "!EventProcessor: Thread finished");
+    LOG_A(LOG_DEBUG, "!EventProcessor: Thread finished");
     return 0;
 }
 
@@ -305,7 +305,7 @@ int InitializeEventProcessor(std::vector<HANDLE>& threads) {
         hStopEventProcessor = NULL;
         return 1;
     }
-    LOG_A(LOG_INFO, "!EventProcessor: Started Thread (handle %p)", EventProcessor_thread);
+    LOG_A(LOG_DEBUG, "!EventProcessor: Thread started");
 
     threads.push_back(EventProcessor_thread);
     return 0;

@@ -61,13 +61,13 @@ bool PplReaderInit(std::vector<HANDLE>& threads) {
 
 // Pipe Reader Thread: Server
 DWORD WINAPI PplReaderThread(LPVOID param) {
-    LOG_A(LOG_INFO, "!PplReaderThread: begin");
+    LOG_A(LOG_DEBUG, "!Ppl ReaderThread: begin");
 
     // Loop which accepts new clients
     while (WaitForSingleObject(hStopEventPpl, 0) != WAIT_OBJECT_0) {
         PipeServer* pipeServer = new PipeServer("RedEdr PplReader", (wchar_t*) PPL_DATA_PIPE_NAME);
         if (pipeServer == nullptr) {
-            LOG_A(LOG_ERROR, "PplReaderThread: Failed to create PipeServer");
+            LOG_A(LOG_ERROR, "PplReader: Failed to create PipeServer");
             Sleep(1000); // Brief delay before retry
             continue;
         }
@@ -75,25 +75,25 @@ DWORD WINAPI PplReaderThread(LPVOID param) {
         SetEvent(threadReadynessPpl);
         
         if (!pipeServer->StartAndWaitForClient(TRUE)) {
-            LOG_A(LOG_ERROR, "PplReaderThread: Failed to start pipe server or wait for client");
+            LOG_A(LOG_ERROR, "PplReader: Failed to start pipe server or wait for client");
             pipeServer->Shutdown();
             delete pipeServer;
             Sleep(1000); // Brief delay before retry
             continue;
         }
 
-        LOG_A(LOG_INFO, "PplReaderThread: Client connected successfully");
+        LOG_A(LOG_INFO, "PplReader: Client connected successfully");
 
         // Handle it here
         PplReaderClient(pipeServer);
 
         // We finished
-        LOG_A(LOG_INFO, "PplReaderThread: Client disconnected, shutting down this pipe");
+        LOG_A(LOG_INFO, "PplReader: Client disconnected, shutting down this pipe");
         pipeServer->Shutdown();
         delete pipeServer;
     }
     
-    LOG_A(LOG_INFO, "!PplReaderThreadd: end");
+    LOG_A(LOG_DEBUG, "!Ppl ReaderThread: end");
     return 0;
 }
 
@@ -101,16 +101,16 @@ DWORD WINAPI PplReaderThread(LPVOID param) {
 // Pipe Reader Thread: Process Client
 void PplReaderClient(PipeServer* pipeServer) {
     if (pipeServer == nullptr) {
-        LOG_A(LOG_ERROR, "PplReaderClient: pipeServer is null");
+        LOG_A(LOG_ERROR, "PplReader: pipeServer is null");
         return;
     }
-    LOG_A(LOG_INFO, "PplReaderClient: RedEdrPplService connected successful, starting event reception");
+    LOG_A(LOG_INFO, "PplReader: RedEdrPplService connected successful, starting event reception");
 
     while (WaitForSingleObject(hStopEventPpl, 0) != WAIT_OBJECT_0) {
         try {
             std::vector<std::string> results = pipeServer->ReceiveBatch();
             if (results.empty()) {
-                LOG_A(LOG_INFO, "PplReaderClient: PPL service disconnected");
+                LOG_A(LOG_INFO, "PplReader: PPL service disconnected");
                 break; // Client disconnected or error
             }
             for (const auto& result : results) {
@@ -121,7 +121,7 @@ void PplReaderClient(PipeServer* pipeServer) {
             }
         }
         catch (...) {
-            LOG_A(LOG_ERROR, "PplReaderClient: Exception in receive loop");
+            LOG_A(LOG_ERROR, "PplReader: Exception in receive loop");
             break;
         }
     }
