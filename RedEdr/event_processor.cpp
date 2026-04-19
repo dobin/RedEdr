@@ -47,6 +47,7 @@ void EventProcessor::init() {
 
 	j["do_etw"] = g_Config.do_etw;
 	j["do_etwti"] = g_Config.do_etwti;
+	j["do_kernel"] = g_Config.do_kernel;
 	j["do_hook"] = g_Config.do_hook;
 	j["do_hook_callstack"] = g_Config.do_dllinjection_ucallstack;
 	    

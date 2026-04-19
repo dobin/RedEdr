@@ -25,7 +25,8 @@ public:
 	// Input selection
 	bool do_etw = false;
 	bool do_etwti = false;
-	bool do_hook = false;
+	bool do_kernel = false; // kernel module loaded (set by --kernel or --hook)
+	bool do_hook = false;   // kernel module + DLL injection/hooking (set by --hook)
 	
 	// More input
 	bool do_defendertrace = false;

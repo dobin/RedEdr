@@ -58,19 +58,20 @@ int main(int argc, char* argv[]) {
     cxxopts::Options options("RedEdr", "Maldev event recorder");
     options.add_options()
         // Input
-        ("t,trace", "Input: Process name to observe", cxxopts::value<std::string>()->default_value("malware"))
-        ("e,etw", "Input: Consume ETW Events", cxxopts::value<bool>()->default_value("false"))
-        ("g,etwti", "Input: Consume ETW-TI Events", cxxopts::value<bool>()->default_value("false"))
-        ("k,hook", "Input: Kernel and ntdll hooks", cxxopts::value<bool>()->default_value("false"))
+        ("trace", "Input: Process name to observe", cxxopts::value<std::string>()->default_value("malware"))
+        ("etw", "Input: Consume ETW Events", cxxopts::value<bool>()->default_value("false"))
+        ("etwti", "Input: Consume ETW-TI Events", cxxopts::value<bool>()->default_value("false"))
+        ("kernel", "Input: Enable kernel module", cxxopts::value<bool>()->default_value("false"))
+        ("hook", "Input: DLL injection/hooking", cxxopts::value<bool>()->default_value("false"))
 
         // Input options
         ("with-defendertrace", "Input option Defender: Add MsMpEng.exe access events to target process", cxxopts::value<bool>()->default_value("false"))
         ("with-antimalwareengine", "Input option Defender: Grab events of ETW Microsoft-Antimalware-Engine related to target process", cxxopts::value<bool>()->default_value("false"))
 
         // Output
-        ("w,web", "Output: Web server", cxxopts::value<bool>()->default_value("true"))
-		("p,port", "Output: Web server port", cxxopts::value<int>()->default_value("8081"))
-        ("s,show", "Output: Show messages on stdout", cxxopts::value<bool>()->default_value("false"))
+        ("web", "Output: Web server", cxxopts::value<bool>()->default_value("true"))
+		("port", "Output: Web server port", cxxopts::value<int>()->default_value("8081"))
+        ("show", "Output: Show messages on stdout", cxxopts::value<bool>()->default_value("false"))
 
         // Debug
         ("dllreader", "Debug: DLL reader but no injection (for manual injection tests)", cxxopts::value<bool>()->default_value("false"))
@@ -121,14 +122,16 @@ int main(int argc, char* argv[]) {
 	int port = result["port"].as<int>();
     g_Config.do_etw = result["etw"].as<bool>();
     g_Config.do_etwti = result["etwti"].as<bool>();
+    g_Config.do_kernel = result["kernel"].as<bool>();
 	g_Config.do_hook = result["hook"].as<bool>();
+    if (g_Config.do_hook) g_Config.do_kernel = true;
     g_Config.debug_dllreader = result["dllreader"].as<bool>();
     g_Config.hide_full_output = ! result["show"].as<bool>();
     g_Config.web_output = result["web"].as<bool>();
 	g_Config.do_defendertrace = result["with-defendertrace"].as<bool>();
 	g_Config.do_antimalwareengine = result["with-antimalwareengine"].as<bool>();
 
-    if (!g_Config.do_etw && !g_Config.do_hook && !g_Config.do_etwti && !g_Config.debug_dllreader) {
+    if (!g_Config.do_etw && !g_Config.do_kernel && !g_Config.do_etwti && !g_Config.debug_dllreader) {
         printf("Choose at least one of --etw / --etwti / --hook");
         return 1;
     }

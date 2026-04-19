@@ -71,8 +71,8 @@ BOOL ManagerApplyNewTargets(std::vector<std::string> traceNames) {
 BOOL ManagerStart(std::vector<HANDLE>& threads) {
 	LOG_A(LOG_INFO, "Manager: Starting all subsystems...");
     try {
-        // Hook
-        if (g_Config.do_hook) {
+        // Kernel
+        if (g_Config.do_kernel) {
             // Kernel: Driver load
             if (!IsServiceRunning(g_Config.driverName)) {
                 LOG_A(LOG_INFO, "Manager: Kernel Driver load");
@@ -197,21 +197,20 @@ void ManagerShutdown() {
         EtwReaderStopAll();
     }
 
-    // Hook
-    if (g_Config.do_hook) {
-        LOG_A(LOG_INFO, "Manager: Disable kernel driver");
+    // Hook / DLL injection
+    if (g_Config.do_hook || g_Config.debug_dllreader) {
+        LOG_A(LOG_INFO, "Manager: Disable kernel driver collection");
         EnableKernelDriver(0, "");
-
-        LOG_A(LOG_INFO, "Manager: Stop kernel reader");
-        KernelReaderShutdown();
 
         LOG_A(LOG_INFO, "Manager: Stop DLL reader");
         DllReaderShutdown();
     }
-    // Debug: DLL Reader
-    if (g_Config.debug_dllreader) {
-        LOG_A(LOG_INFO, "Manager: Stop DLL reader");
-        DllReaderShutdown();
+
+    // Kernel
+    if (g_Config.do_kernel) {
+    
+        LOG_A(LOG_INFO, "Manager: Stop kernel reader");
+        KernelReaderShutdown();
     }
 
     // Web server
