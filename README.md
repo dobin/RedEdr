@@ -113,11 +113,25 @@ Change Windows boot options to enable self-signed kernel drivers and reboot.
 In admin cmd:
 ```
 PS > bcdedit /set testsigning on
+
+# required for win11 on proxmox even with secureboot disabled in bios
+PS > bcdedit /set {bootmgr} testsigning on
+PS > bcdedit /set {current} testsigning on
+PS > bcdedit /set hypervisorlaunchtype off
+
 PS > bcdedit -debug on
 PS > shutdown /r /t 0
 ```
 
 If you use Hyper-V, uncheck "Security -> Enable Secure Boot". 
+
+If you use Proxmox, this works for me: 
+* Reboot VM, press ESC a lot to go to BIOS menu
+* Navigate to Device Manager > Secure Boot Configuration.
+* Uncheck Attempt Secure Boot.
+* Look for an option labeled Secure Boot Mode. Change it from Standard to Custom.
+* Enter the Custom Secure Boot Options (or "Key Management").
+* Select Delete all Secure Boot Variables (or "Clear Secure Boot Keys").
 
 
 ### ETW-TI
