@@ -225,7 +225,7 @@ VOID NTAPI APCInjectorRoutine(PKAPC Apc, PKNORMAL_ROUTINE* NormalRoutine, PVOID*
 	ExInitializeWorkItem(&Sf.WorkItem, (PWORKER_THREAD_ROUTINE)WorkerRoutine, &Sf);  // deprecated
 	// 6) Wait for the event object
 	ExQueueWorkItem(&Sf.WorkItem, DelayedWorkQueue);  // deprecated
-	KeWaitForSingleObject(&Sf.Event, Executive, KernelMode, TRUE, 0);
+	KeWaitForSingleObject(&Sf.Event, Executive, KernelMode, FALSE, 0);
 	
 	/*
 	// Alternative to the deprecated functions, untested
