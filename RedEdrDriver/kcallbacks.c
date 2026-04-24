@@ -89,12 +89,13 @@ static BOOLEAN EnableProcessTelemetryLogging(PEPROCESS Process) {
     processLoggingInfo.Bits.EnableProcessSuspendResumeLogging = 1;
     processLoggingInfo.Bits.EnableThreadSuspendResumeLogging = 1;
     // Win11 only (build >= 22000); these bits are not present on Win10
-    RTL_OSVERSIONINFOW osVer = { 0 };
+    RTL_OSVERSIONINFOW osVer = {0};
     osVer.dwOSVersionInfoSize = sizeof(osVer);
     if (NT_SUCCESS(RtlGetVersion(&osVer)) && osVer.dwBuildNumber >= 22000) {
+        LOG_A(LOG_INFO, "Detected Windows 11");
         processLoggingInfo.Bits.EnableLocalExecProtectVmLogging = 1;
         processLoggingInfo.Bits.EnableRemoteExecProtectVmLogging = 1;
-        processLoggingInfo.Bits.EnableImpersonationLogging = 1;
+        //processLoggingInfo.Bits.EnableImpersonationLogging = 1;
     }
     // Dont touch reserved for now
     //processLoggingInfo.Bits.Reserved = 0;
