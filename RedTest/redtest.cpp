@@ -120,71 +120,75 @@ void EnumerateMemoryRegions() {
 
 void PrintMemorySegments() {
     printf("\n=== MEMORY SEGMENTS ===\n\n");
+    printf("%-12s %-18s %-8s %-18s\n", "Segment", "Address", "Perm", "Size");
+    printf("========================================================================\n");
+
+    MEMORY_BASIC_INFORMATION mbi = { 0 };
 
     // Get module handle for the executable
     HMODULE hModule = GetModuleHandleA(NULL);
-    if (hModule) {
-        printf("[+] Code Segment (.text):       0x%p\n", (LPVOID)hModule);
+    
+    // Query .text section details
+    if (hModule && VirtualQuery((LPVOID)hModule, &mbi, sizeof(mbi)) == sizeof(mbi)) {
+        printf("%-12s 0x%016p %-8s 0x%016zx (%.2f KB)\n", 
+            ".text", 
+            mbi.AllocationBase, 
+            GetProtectionString(mbi.Protect),
+            mbi.RegionSize,
+            mbi.RegionSize / 1024.0);
     }
 
-    // Get address of a static variable (data segment)
-    printf("[+] Data Segment (.data):       0x%p (static data example)\n", (LPVOID)&g_dummyShellcode);
+    // Query .data segment details
+    if (VirtualQuery((LPVOID)&g_dummyShellcode, &mbi, sizeof(mbi)) == sizeof(mbi)) {
+        printf("%-12s 0x%016p %-8s 0x%016zx (%.2f KB)\n", 
+            ".data", 
+            mbi.AllocationBase, 
+            GetProtectionString(mbi.Protect),
+            mbi.RegionSize,
+            mbi.RegionSize / 1024.0);
+    }
 
-    // Get stack address
+    // Query stack details
     int stackVar = 0;
-    printf("[+] Stack:                      0x%p (stack frame example)\n", (LPVOID)&stackVar);
+    if (VirtualQuery((LPVOID)&stackVar, &mbi, sizeof(mbi)) == sizeof(mbi)) {
+        printf("%-12s 0x%016p %-8s 0x%016zx (%.2f KB)\n", 
+            "Stack", 
+            mbi.AllocationBase, 
+            GetProtectionString(mbi.Protect),
+            mbi.RegionSize,
+            mbi.RegionSize / 1024.0);
+    }
 
-    // Get heap address by allocating
+    // Query heap details
     LPVOID heapAlloc = HeapAlloc(GetProcessHeap(), 0, 64);
     if (heapAlloc) {
-        printf("[+] Heap:                       0x%p (heap allocation example)\n", heapAlloc);
+        if (VirtualQuery(heapAlloc, &mbi, sizeof(mbi)) == sizeof(mbi)) {
+            printf("%-12s 0x%016p %-8s 0x%016zx (%.2f KB)\n", 
+                "Heap", 
+                mbi.AllocationBase, 
+                GetProtectionString(mbi.Protect),
+                mbi.RegionSize,
+                mbi.RegionSize / 1024.0);
+        }
         HeapFree(GetProcessHeap(), 0, heapAlloc);
     }
 
-    // Get PEB (Process Environment Block) address
+    // Query PEB (Process Environment Block) address
 #ifdef _WIN64
     PVOID peb = (PVOID)__readgsqword(0x60);
 #else
     PVOID peb = (PVOID)__readfsdword(0x30);
 #endif
-    printf("[+] PEB (Process Env Block):    0x%p\n", peb);
-
-    // Get TEB (Thread Environment Block) address
-#ifdef _WIN64
-    PVOID teb = (PVOID)__readgsqword(0x30);
-#else
-    PVOID teb = (PVOID)__readfsdword(0x18);
-#endif
-    printf("[+] TEB (Thread Env Block):     0x%p\n", teb);
-
-    // Query and print .text section details
-    MEMORY_BASIC_INFORMATION mbi = { 0 };
-    if (VirtualQuery((LPVOID)hModule, &mbi, sizeof(mbi)) == sizeof(mbi)) {
-        printf("\n[*] Code Section Details:\n");
-        printf("    Base:       0x%p\n", mbi.AllocationBase);
-        printf("    Size:       0x%zx bytes (%.2f KB)\n", mbi.RegionSize, mbi.RegionSize / 1024.0);
-        printf("    Protection: %s\n", GetProtectionString(mbi.Protect));
-        printf("    Type:       %s\n", GetTypeString(mbi.Type));
+    if (VirtualQuery(peb, &mbi, sizeof(mbi)) == sizeof(mbi)) {
+        printf("%-12s 0x%016p %-8s 0x%016zx (%.2f KB)\n", 
+            "PEB", 
+            mbi.AllocationBase, 
+            GetProtectionString(mbi.Protect),
+            mbi.RegionSize,
+            mbi.RegionSize / 1024.0);
     }
 
-    // Query stack details
-    if (VirtualQuery((LPVOID)&stackVar, &mbi, sizeof(mbi)) == sizeof(mbi)) {
-        printf("\n[*] Stack Details:\n");
-        printf("    Base:       0x%p\n", mbi.AllocationBase);
-        printf("    Size:       0x%zx bytes (%.2f KB)\n", mbi.RegionSize, mbi.RegionSize / 1024.0);
-        printf("    Protection: %s\n", GetProtectionString(mbi.Protect));
-        printf("    Type:       %s\n", GetTypeString(mbi.Type));
-    }
-
-    // Query data segment details
-    if (VirtualQuery((LPVOID)&g_dummyShellcode, &mbi, sizeof(mbi)) == sizeof(mbi)) {
-        printf("\n[*] Data Section Details:\n");
-        printf("    Base:       0x%p\n", mbi.AllocationBase);
-        printf("    Size:       0x%zx bytes (%.2f KB)\n", mbi.RegionSize, mbi.RegionSize / 1024.0);
-        printf("    Protection: %s\n", GetProtectionString(mbi.Protect));
-        printf("    Type:       %s\n", GetTypeString(mbi.Type));
-    }
-
+    printf("========================================================================\n");
     printf("\n");
 }
 

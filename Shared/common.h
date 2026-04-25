@@ -25,7 +25,7 @@ typedef struct _MY_DRIVER_DATA {
     int enable_etwti_events_defender;
 } MY_DRIVER_DATA, * PMY_DRIVER_DATA;
 
-#define REDEDR_VERSION "0.5.5"
+#define REDEDR_VERSION "1.0"
 
 #define DRIVER_KERNEL_PIPE_NAME L"\\??\\pipe\\RedEdrKrnCom"
 #define KERNEL_PIPE_NAME L"\\\\.\\pipe\\RedEdrKrnCom"
