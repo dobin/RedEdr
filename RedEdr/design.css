@@ -5,10 +5,10 @@ body {
     padding: 0;
 }
 header {
-    background-color: #4CAF50;
+    background-color: #A93226;
     color: white;
     padding: 10px 20px;
-    text-align: center;
+    text-align: left;
 }
 .stats {
     display: flex;
@@ -41,9 +41,20 @@ header {
 }
 .item {
     padding: 0px;
-    background-color: rgb(27, 77, 24);
+    background-color: rgb(80, 22, 22);
     border: 1px solid #ccc;
     padding: 0.5em;
+}
+header a {
+    color: white;
+}
+.stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+}
+.stat-item {
+    white-space: nowrap;
 }
 
 .event {

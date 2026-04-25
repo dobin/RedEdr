@@ -12,32 +12,26 @@
     <header>
         <div class="container">
             <div class="item">
-                <div id="stats-counter"></div>
-            </div>
-
-            <div class="item">
-                <div>Events</div>
-                <div><button onclick="BtnOpenEvents()">Open Events</button></div>
-                <div><button onclick="BtnSave()">Save Events</button></div>
-                <div><button onclick="BtnReset()">Clear Events</button></div>
+                <div><strong>RedEdr</strong></div>
+                <div><a href="https://github.com/dobin/RedEdr" target="_blank">github.com/dobin/RedEdr</a></div>
             </div>
             <div class="item">
-                <div>Process</div>
-                <div><input type="text" id="trace" placeholder="otepad" oninput="setNewTrace(this.value)"></div>
-            </div>
-            <div class="item">
-                <div>Collection</div>
-                <div><button onclick="BtnStart()">Start</button></div>
-                <div><button onclick="BtnStop()">Stop</button></div>
-                <div><button onclick="BtnRefresh()">Refresh</button></div>
+                <div>Target</div>
+                <div><input type="text" id="trace" placeholder="otepad"></div>
+                <div><button onclick="BtnApplyTrace()">Apply</button></div>
             </div>
             <div class="item" id="response">
-                <div>Kernel: <span id="num_kernel">0</span></div>
-                <div>ETW: <span id="num_etw">0</span></div>
-                <div>ETWTI: <span id="num_etwti">0</span></div>
-                <div>DLL: <span id="num_dll">0</span></div>
-                <div>Process Cache: <span id="num_process_cache">0</span></div>
+                <div>Events: <span id="stats-counter">0</span></div>
+                <div id="stat_kernel" style="display:none">Kernel: <span id="num_kernel">0</span></div>
+                <div id="stat_etw" style="display:none">   ETW &nbsp;&nbsp;&nbsp;: <span id="num_etw">0</span></div>
+                <div id="stat_etwti" style="display:none"> ETWTI &nbsp;: <span id="num_etwti">0</span></div>
+                <div id="stat_dll" style="display:none">   DLL &nbsp;&nbsp;&nbsp;: <span id="num_dll">0</span></div>
             </div>
+            <div class="item">
+                <div>Options</div>
+                <div><button onclick="BtnReset()">Clear Events</button></div>
+            </div>
+
         </div>
     </header>
 
@@ -121,13 +115,16 @@
                 MyData.stats = data;
 
                 // Update UI
-                document.getElementById('stats-counter').textContent = `Events: ${data.events_count}`;
+                document.getElementById('stats-counter').textContent = `${data.events_count}`;
 
-                document.getElementById('num_kernel').textContent = `${data.num_kernel}`;
-                document.getElementById('num_etw').textContent = `${data.num_etw}`;
-                document.getElementById('num_etwti').textContent = `${data.num_etwti}`;
-                document.getElementById('num_dll').textContent = `${data.num_dll}`;
-                document.getElementById('num_process_cache').textContent = `${data.num_process_cache}`;
+                function setStat(statId, spanId, value) {
+                    document.getElementById(spanId).textContent = value;
+                    document.getElementById(statId).style.display = value > 0 ? 'block' : 'none';
+                }
+                setStat('stat_kernel', 'num_kernel', data.num_kernel);
+                setStat('stat_etw', 'num_etw', data.num_etw);
+                setStat('stat_etwti', 'num_etwti', data.num_etwti);
+                setStat('stat_dll', 'num_dll', data.num_dll);
             }
         }
 
@@ -171,27 +168,11 @@
             }
         }
 
-        function BtnRefresh() {
-            fetchEvents();
-        }
-        function BtnSave() {
-            sendSave();
-        }
         function BtnReset() {
             sendReset();
         }
-        function BtnOpenEvents() {
-            window.open('/api/logs/rededr', '_blank');
-        }
-        function BtnStart() {
-            fetch('/api/start');
-        }
-        function BtnStop() {
-            fetch('/api/stop');
-        }
-
-        function setNewTrace(value) {
-            sendTrace(value);
+        function BtnApplyTrace() {
+            sendTrace(document.getElementById('trace').value);
         }
         function getTraceTarget() {
             fetch('/api/trace/info')
