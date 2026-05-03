@@ -299,10 +299,15 @@ Good luck.
 
 Use VS2022. Compile as DEBUG.
 
-To compile the kernel driver: 
-* Install WDK (+SDK): https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk
+To compile the kernel driver:
+* check https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk 
+* Read the instructions on the website carefully
+* Install the shit in visual studio 2022 installer which is needed
+* Install the SDK, and WDK
+* Make sure you have the correct version installed for your system (eg. 10.0.26100 vs 10.0.28000)
+* If it doesnt work, abondon all hope and install Linux
 
-It should deploy everything into `C:\RedEdr\`.
+On building, it should deploy everything into `C:\RedEdr\`.
 
 On command line, use Visual Studio developer console. 
 
