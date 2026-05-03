@@ -14,18 +14,16 @@ void LOG_W(int verbosity, const wchar_t* format, ...);
 void LOG_A(int verbosity, const char* format, ...);
 
 
-// Helper function to get process command line by PID
-// Falls back to process name if command line cannot be retrieved
-std::wstring GetProcessNameByPid(DWORD pid) {
-    // First try to get the full command line by opening the process
+// Helper function to get process PEB info by PID
+// Falls back to process name if PEB info cannot be retrieved
+ProcessPebInfoRet GetProcessNameByPid(DWORD pid) {
+    // First try to get the full PEB info by opening the process
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
     if (hProcess != NULL) {
         try {
             ProcessPebInfoRet pebInfo = ProcessPebInfo(hProcess);
             CloseHandle(hProcess);
-            if (!pebInfo.commandline.empty()) {
-                return string2wstring(pebInfo.commandline);
-            }
+            return pebInfo;
         }
         catch (const std::exception& e) {
             //LOG_A(LOG_WARNING, "GetProcessNameByPid: Exception getting PEB info for pid %lu: %s", pid, e.what());
@@ -34,34 +32,33 @@ std::wstring GetProcessNameByPid(DWORD pid) {
     //} else {
     //    LOG_A(LOG_WARNING, "GetProcessNameByPid: Could not open process %lu for command line query (error %lu), falling back to process name", pid, GetLastError());
     }
-    
-    // Fallback: use CreateToolhelp32Snapshot to get just the process name
+
+    // Fallback: 
+    // use CreateToolhelp32Snapshot to get just the process name
+    // If we dont have the permissions for the process basically
     HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hSnapshot == INVALID_HANDLE_VALUE) {
         LOG_A(LOG_ERROR, "GetProcessNameByPid: Failed to create process snapshot: %lu", GetLastError());
-        return std::wstring(L"");
+        return ProcessPebInfoRet();
     }
-    
     PROCESSENTRY32W pe32;
     pe32.dwSize = sizeof(PROCESSENTRY32W);
-    
     // Get the first process
     if (!Process32FirstW(hSnapshot, &pe32)) {
         LOG_A(LOG_ERROR, "GetProcessNameByPid: Failed to get first process: %lu", GetLastError());
         CloseHandle(hSnapshot);
-        return std::wstring(L"");
+        return ProcessPebInfoRet();
     }
-    
-    std::wstring processName;
+    ProcessPebInfoRet result;
     do {
         if (pe32.th32ProcessID == pid) {
-            processName = std::wstring(pe32.szExeFile);
+            std::wstring processName(pe32.szExeFile);
+            result.image_path = wstring2string(processName);
             break;
         }
     } while (Process32NextW(hSnapshot, &pe32));
-    
     CloseHandle(hSnapshot);
-    return processName;
+    return result;
 }
 
 
@@ -131,28 +128,24 @@ bool Process::AugmentInfo() {
 
 // This should be fast
 Process* MakeProcess(DWORD pid, std::vector<std::string> targetNames) {
-    Process* process;
-    process = new Process(pid);
+	Process* process;
+	process = new Process(pid);
 
-    // Process name/command line
-    std::wstring processName = GetProcessNameByPid(pid);
-    if (processName.empty()) {
-        //LOG_A(LOG_WARNING, "MakeProcess: Could not get process name for pid %lu", pid);
-		processName = L"<unknown>";
-    }
-    process->commandline = wstring2string(processName);
-    process->name = process->commandline;
+	// Process PEB info
+	ProcessPebInfoRet pebInfo = GetProcessNameByPid(pid);
+	process->name = pebInfo.image_path;
+	process->commandline = pebInfo.commandline;
 
-    // Dont observe ourselves
-    if (contains_case_insensitive(process->name, "rededr.exe")) {
-        process->observe = 0;
-        return process;
-    }
+	// Dont observe ourselves
+	if (contains_case_insensitive(process->name, "rededr.exe")) {
+		process->observe = 0;
+		return process;
+	}
 
-    // Check if we should trace
-    process->ObserveIfMatchesTargets(targetNames);
+	// Check if we should trace
+	process->ObserveIfMatchesTargets(targetNames);
 
-    return process;
+	return process;
 }
 
 
