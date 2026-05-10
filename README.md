@@ -297,7 +297,9 @@ IPC:
 
 Good luck.
 
-Use VS2022. Compile as DEBUG.
+Use VS2022. get it from https://aka.ms/vs/17/release/vs_community.exe (or https://visualstudio.microsoft.com/vs/older-downloads/ with account).
+
+Compile as DEBUG.
 
 To compile the kernel driver:
 * check https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk 
