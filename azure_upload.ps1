@@ -25,7 +25,7 @@ az storage blob upload `
   --container-name $($config.ContainerName) `
   --name $($config.BlobName) `
   --file $destination `
-  --sas-token "`"$($config.SasToken)`"" `
+  --sas-token '$($config.SasToken)' `
   --overwrite
 
 # delete zip
