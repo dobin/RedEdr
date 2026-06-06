@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <atomic>
+#include <sstream>
 #include <windows.h>
 
 #include "httplib.h" // Needs to be on top?
@@ -178,6 +179,15 @@ DWORD WINAPI WebserverThread(LPVOID param) {
             {"num_process_cache", g_ProcessResolver.GetCacheCount()}
         };
         res.set_content(stats.dump(), "application/json; charset=UTF-8");
+    });
+    svr.Get("/api/version", [](const httplib::Request&, httplib::Response& res) {
+        std::string build_date = __DATE__;
+        std::string build_time = __TIME__;
+        nlohmann::json version = {
+            {"build_date", build_date},
+            {"build_time", build_time}
+        };
+        res.set_content(version.dump(), "application/json; charset=UTF-8");
     });
 
     // Provide Logs
