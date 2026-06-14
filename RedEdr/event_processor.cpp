@@ -88,6 +88,7 @@ void EventProcessor::LogInitialProcessInfo(Process *process) {
         jDlls["type"] = "process_query";
         jDlls["time"] = get_time();
         jDlls["pid"] = process->id;
+        jDlls["process_name"] = process->processPebInfoRet.image_path;
         jDlls["dlls"] = {};
         for (auto dllEntry : processLoadedDlls) {
             jDlls["dlls"] += {
