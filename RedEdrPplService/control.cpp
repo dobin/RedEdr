@@ -60,7 +60,8 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                             g_ProcessResolver.RefreshTargetMatching();
 
                             BOOL doDefenderTrace = j.value("do_defendertrace", false) ? TRUE : FALSE;
-                            SetDefenderTraceConfig(doDefenderTrace, targets);
+                            std::vector<std::string> defenderTargets = {"msmpeng.exe"};
+                            SetDefenderTraceConfig(doDefenderTrace, defenderTargets);
 
                             nlohmann::json start_event;
                             start_event["event"] = "ppl_start";
