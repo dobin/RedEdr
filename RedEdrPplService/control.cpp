@@ -63,6 +63,7 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                             SetDefenderTraceConfig(doDefenderTrace);
 
                             if (doDefenderTrace) {
+                                // Emit defender trace start event with module info
                                 DWORD pid = FindProcessIdByName(L"MsMpEng.exe");
                                 if (pid != 0) {
                                     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
@@ -72,6 +73,9 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                                         LOG_A(LOG_INFO, "Control: MsMpEng.exe base address: 0x%llx", pebInfo.image_base);
                                         
                                         std::vector<ProcessLoadedDll> modules = ProcessEnumerateModules(hProcess);
+                                        
+                                        // Collect all non-SYSTEM32 modules
+                                        nlohmann::json modules_array = nlohmann::json::array();
                                         for (const auto& mod : modules) {
                                             // Exclude modules in SYSTEM32 (case-insensitive check)
                                             std::string modNameLower = mod.name;
@@ -80,17 +84,23 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                                                 continue;
                                             }
 
-                                            nlohmann::json defender_event;
-                                            defender_event["event"] = "defender_module";
-                                            defender_event["type"] = "meta";
-                                            defender_event["pid"] = pid;
-                                            defender_event["name"] = mod.name;
-                                            defender_event["base"] = mod.dll_base;
-                                            defender_event["size"] = mod.size;
+                                            nlohmann::json mod_info;
+                                            mod_info["name"] = mod.name;
+                                            mod_info["base"] = mod.dll_base;
+                                            mod_info["size"] = mod.size;
+                                            modules_array.push_back(mod_info);
                                             
-                                            SendEmitterPipe((char*)defender_event.dump().c_str());
                                             LOG_A(LOG_INFO, "Control: MsMpEng.exe module: %s at 0x%llx (size: %lu)", mod.name.c_str(), mod.dll_base, mod.size);
                                         }
+                                        
+                                        // Send single event with all modules
+                                        nlohmann::json defender_event;
+                                        defender_event["event"] = "defender_modules";
+                                        defender_event["type"] = "meta";
+                                        defender_event["pid"] = pid;
+                                        defender_event["modules"] = modules_array;
+                                        
+                                        SendEmitterPipe((char*)defender_event.dump().c_str());
                                         CloseHandle(hProcess);
                                     } else {
                                         LOG_A(LOG_ERROR, "Control: Failed to open msmpeng.exe process. Error: %lu", GetLastError());
