@@ -10,4 +10,4 @@ void event_callback(const EVENT_RECORD& record, const krabs::trace_context& trac
 void event_callback_defendertrace(const EVENT_RECORD& record, const krabs::trace_context& trace_context);
 
 extern volatile BOOL g_DoDefenderTrace;
-void SetDefenderTraceConfig(BOOL enabled, const std::vector<std::string>& targetNames);
+void SetDefenderTraceConfig(BOOL enabled);

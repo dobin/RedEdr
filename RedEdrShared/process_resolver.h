@@ -26,6 +26,7 @@ public:
     void RefreshTargetMatching();
 
     void SetTargetNames(const std::vector<std::string>& names);
+    const std::vector<std::string>& GetTargetNames() const;
     size_t GetCacheCount();
     
     // Cleanup thread management

@@ -67,6 +67,11 @@ void ProcessResolver::SetTargetNames(const std::vector<std::string>& names) {
 }
 
 
+const std::vector<std::string>& ProcessResolver::GetTargetNames() const {
+    return targetProcessNames;
+}
+
+
 // Get an object from the cache
 Process* ProcessResolver::getObject(DWORD id) {
     {

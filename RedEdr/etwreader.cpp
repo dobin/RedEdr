@@ -152,13 +152,13 @@ void event_callback_defendertrace(const EVENT_RECORD& record, const krabs::trace
         nlohmann::json j = KrabsEtwEventToJsonStr(record, schema);
         j["etw_process"] = process->name;
 
-        g_EventAggregator.NewEvent(j.dump());
-        
-
         // Check if destination is one of our target processes (pid)
         // NOTE: Not used by defender?
         if (j.contains("pid") && !j["pid"].is_null()) {
             DWORD targetPid = j["pid"].get<DWORD>();
+            if (targetPid == 0 || targetPid == 0xFFFFFFFF) {
+                return;
+            }
 
             // check if we observe the target process
             Process* targetProcess = g_ProcessResolver.getObject(targetPid);
@@ -174,6 +174,9 @@ void event_callback_defendertrace(const EVENT_RECORD& record, const krabs::trace
         // Check if destination is one of our target processes (targetprocessid)
         else if (j.contains("targetprocessid") && !j["targetprocessid"].is_null()) {
             DWORD targetPid = j["targetprocessid"].get<DWORD>();
+            if (targetPid == 0 || targetPid == 0xFFFFFFFF) {
+                return;
+            }
 
             // check if we observe the target process
             Process* targetProcess = g_ProcessResolver.getObject(targetPid);
@@ -189,6 +192,9 @@ void event_callback_defendertrace(const EVENT_RECORD& record, const krabs::trace
         // Check if destination is one of our target processes (processid)
         else if (j.contains("processid") && !j["processid"].is_null()) {
             DWORD targetPid = j["processid"].get<DWORD>();
+            if (targetPid == 0 || targetPid == 0xFFFFFFFF) {
+                return;
+            }
 
             // check if we observe the target process
             Process* targetProcess = g_ProcessResolver.getObject(targetPid);

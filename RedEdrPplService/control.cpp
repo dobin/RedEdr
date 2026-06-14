@@ -60,13 +60,50 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                             g_ProcessResolver.RefreshTargetMatching();
 
                             BOOL doDefenderTrace = j.value("do_defendertrace", false) ? TRUE : FALSE;
-                            std::vector<std::string> defenderTargets = {"msmpeng.exe"};
-                            SetDefenderTraceConfig(doDefenderTrace, defenderTargets);
+                            SetDefenderTraceConfig(doDefenderTrace);
 
-                            nlohmann::json start_event;
-                            start_event["event"] = "ppl_start";
-                            start_event["type"] = "meta";
-                            SendEmitterPipe((char *) start_event.dump().c_str());
+                            if (doDefenderTrace) {
+                                DWORD pid = FindProcessIdByName(L"MsMpEng.exe");
+                                if (pid != 0) {
+                                    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+                                    if (hProcess) {
+                                        LOG_A(LOG_INFO, "Control: Found MsMpEng.exe (PID: %lu)", pid);
+                                        ProcessPebInfoRet pebInfo = ProcessPebInfo(hProcess);
+                                        LOG_A(LOG_INFO, "Control: MsMpEng.exe base address: 0x%llx", pebInfo.image_base);
+                                        
+                                        std::vector<ProcessLoadedDll> modules = ProcessEnumerateModules(hProcess);
+                                        for (const auto& mod : modules) {
+                                            // Exclude modules in SYSTEM32 (case-insensitive check)
+                                            std::string modNameLower = mod.name;
+                                            std::transform(modNameLower.begin(), modNameLower.end(), modNameLower.begin(), ::tolower);
+                                            if (modNameLower.find("system32") != std::string::npos) {
+                                                continue;
+                                            }
+
+                                            nlohmann::json defender_event;
+                                            defender_event["event"] = "defender_module";
+                                            defender_event["type"] = "meta";
+                                            defender_event["pid"] = pid;
+                                            defender_event["name"] = mod.name;
+                                            defender_event["base"] = mod.dll_base;
+                                            defender_event["size"] = mod.size;
+                                            
+                                            SendEmitterPipe((char*)defender_event.dump().c_str());
+                                            LOG_A(LOG_INFO, "Control: MsMpEng.exe module: %s at 0x%llx (size: %lu)", mod.name.c_str(), mod.dll_base, mod.size);
+                                        }
+                                        CloseHandle(hProcess);
+                                    } else {
+                                        LOG_A(LOG_ERROR, "Control: Failed to open msmpeng.exe process. Error: %lu", GetLastError());
+                                    }
+                                } else {
+                                    LOG_A(LOG_WARNING, "Control: msmpeng.exe process not found");
+                                }
+                            }
+
+                            nlohmann::json start_event3;
+                            start_event3["event"] = "ppl_start3";
+                            start_event3["type"] = "meta";
+                            SendEmitterPipe((char *) start_event3.dump().c_str());
                         } else {
                             LOG_A(LOG_ERROR, "Control: Start command missing 'targets' array");
                         }
