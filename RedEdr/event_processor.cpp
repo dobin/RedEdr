@@ -59,47 +59,51 @@ void EventProcessor::init() {
 void EventProcessor::LogInitialProcessInfo(Process *process) {
     // Log: Peb Info
     ProcessPebInfoRet processPebInfoRet = process->processPebInfoRet;
-    try {
-        nlohmann::json j;
-		j["pid"] = process->id;
-        j["type"] = "process_query";
-        j["func"] = "peb";
-        j["time"] = get_time();
-        j["id"] = process->id;
-        j["parent_pid"] = processPebInfoRet.parent_pid;
-        j["image_path"] = processPebInfoRet.image_path;
-        j["commandline"] = processPebInfoRet.commandline;
-        j["working_dir"] = processPebInfoRet.working_dir;
-        j["is_debugged"] = processPebInfoRet.is_debugged;
-        j["is_protected_process"] = processPebInfoRet.is_protected_process;
-        j["is_protected_process_light"] = processPebInfoRet.is_protected_process_light;
-        j["image_base"] = processPebInfoRet.image_base;
-        g_EventAggregator.NewEvent(j.dump());
-    }
-    catch (const std::exception& e) {
-        LOG_A(LOG_ERROR, "EventProcessor: Error creating PEB info JSON: %s", e.what());
+    if (!processPebInfoRet.image_path.empty()) {
+        try {
+            nlohmann::json j;
+            j["pid"] = process->id;
+            j["type"] = "process_query";
+            j["func"] = "peb";
+            j["time"] = get_time();
+            j["id"] = process->id;
+            j["parent_pid"] = processPebInfoRet.parent_pid;
+            j["image_path"] = processPebInfoRet.image_path;
+            j["commandline"] = processPebInfoRet.commandline;
+            j["working_dir"] = processPebInfoRet.working_dir;
+            j["is_debugged"] = processPebInfoRet.is_debugged;
+            j["is_protected_process"] = processPebInfoRet.is_protected_process;
+            j["is_protected_process_light"] = processPebInfoRet.is_protected_process_light;
+            j["image_base"] = processPebInfoRet.image_base;
+            g_EventAggregator.NewEvent(j.dump());
+        }
+        catch (const std::exception& e) {
+            LOG_A(LOG_ERROR, "EventProcessor: Error creating PEB info JSON: %s", e.what());
+        }
     }
 
     // Log: Loaded Modules Info
     try {
         std::vector<ProcessLoadedDll> processLoadedDlls = process->processLoadedDlls;
-        nlohmann::json jDlls;
-        jDlls["func"] = "loaded_dll";
-        jDlls["type"] = "process_query";
-        jDlls["time"] = get_time();
-        jDlls["pid"] = process->id;
-        jDlls["process_name"] = process->processPebInfoRet.image_path;
-        jDlls["dlls"] = {};
-        for (auto dllEntry : processLoadedDlls) {
-            jDlls["dlls"] += {
-                {"addr", dllEntry.dll_base},
-                {"size", dllEntry.size},
-                {"name", dllEntry.name}
-            };
+        if (!processLoadedDlls.empty()) {
+            nlohmann::json jDlls;
+            jDlls["func"] = "loaded_dll";
+            jDlls["type"] = "process_query";
+            jDlls["time"] = get_time();
+            jDlls["pid"] = process->id;
+            jDlls["process_name"] = process->processPebInfoRet.image_path;
+            jDlls["dlls"] = {};
+            for (auto dllEntry : processLoadedDlls) {
+                jDlls["dlls"] += {
+                    {"addr", dllEntry.dll_base},
+                    {"size", dllEntry.size},
+                    {"name", dllEntry.name}
+                };
+            }
+            std::string jsonStr = jDlls.dump();
+            remove_all_occurrences_case_insensitive(jsonStr, "C:\\\\Windows\\\\system32\\\\");
+            g_EventAggregator.NewEvent(jsonStr);
         }
-        std::string jsonStr = jDlls.dump();
-        remove_all_occurrences_case_insensitive(jsonStr, "C:\\\\Windows\\\\system32\\\\");
-        g_EventAggregator.NewEvent(jsonStr);
     }
     catch (const std::exception& e) {
         LOG_A(LOG_ERROR, "EventProcessor: Error enumerating modules: %s", e.what());
