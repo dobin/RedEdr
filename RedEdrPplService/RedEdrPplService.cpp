@@ -94,6 +94,23 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
     // Initialize object cache
 	g_ProcessResolver.PopulateAllProcesses();
 
+    // Get Defender information (for EDRi)
+    // Augment the MsMpEng.exe process info, even if it aint a target, so we can log its modules
+    DWORD pid = FindProcessIdByName(L"MsMpEng.exe");
+    if (pid != 0) {
+        Process* process = g_ProcessResolver.getObject(pid);
+        if (process) {
+            // Augment process info if not already done
+            if (!process->augmented) {
+                if (process->AugmentInfo()) {
+                    process->augmented = TRUE;
+                } else {
+                    LOG_A(LOG_ERROR, "Control: Failed to augment MsMpEng.exe process info");
+                }
+            }
+        }
+    }
+
     // Start Control thread which will listen on a pipe for commands
     StartControl();
 

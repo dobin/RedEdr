@@ -19,6 +19,60 @@ volatile BOOL keep_running = TRUE; // Made volatile for thread safety
 PipeServer pipeServer = PipeServer("RedEdrPPL Server", (wchar_t*)PPL_SERVICE_PIPE_NAME);
 
 
+void SendDefenderInfos() {
+    // Emit defender trace start event with module info
+    DWORD pid = FindProcessIdByName(L"MsMpEng.exe");
+    if (pid != 0) {
+        Process* process = g_ProcessResolver.getObject(pid);
+        if (process) {
+            LOG_A(LOG_INFO, "Control: Found MsMpEng.exe (PID: %lu) in resolver", pid);
+            
+            // Augment process info if not already done
+            if (!process->augmented) {
+                if (process->AugmentInfo()) {
+                    process->augmented = TRUE;
+                } else {
+                    LOG_A(LOG_ERROR, "Control: Failed to augment MsMpEng.exe process info");
+                }
+            }
+            
+            nlohmann::json modules_array = nlohmann::json::array();
+            for (const auto& mod : process->processLoadedDlls) {
+                nlohmann::json mod_info;
+
+                // name is like: C:\WINDOWS\system32\amsiproxy.dll
+                // Replace with just amsiproxy.dll to save space if in system32
+                std::string mod_name = mod.name;
+                size_t pos = mod_name.find_last_of("SYSTEM32\\");
+                if (pos != std::string::npos) {
+                    mod_name = mod_name.substr(pos + 1);
+                }
+
+                mod_info["name"] = mod_name;
+                mod_info["base"] = mod.dll_base;
+                mod_info["size"] = mod.size;
+                modules_array.push_back(mod_info);
+                
+                //LOG_A(LOG_INFO, "Control: MsMpEng.exe module: %s at 0x%llx (size: %lu)", mod.name.c_str(), mod.dll_base, mod.size);
+            }
+            
+            // Send single event with all modules
+            nlohmann::json defender_event;
+            defender_event["event"] = "defender_modules";
+            defender_event["type"] = "meta";
+            defender_event["pid"] = pid;
+            defender_event["modules"] = modules_array;
+            
+            SendEmitterPipe((char*)defender_event.dump().c_str());
+        } else {
+            LOG_A(LOG_ERROR, "Control: Failed to get MsMpEng.exe process from resolver");
+        }
+    } else {
+        LOG_A(LOG_WARNING, "Control: msmpeng.exe process not found");
+    }
+}
+
+
 DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
     char buffer[PPL_CONFIG_LEN];
 
@@ -63,53 +117,9 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                             SetDefenderTraceConfig(doDefenderTrace);
 
                             if (doDefenderTrace) {
-                                // Emit defender trace start event with module info
-                                DWORD pid = FindProcessIdByName(L"MsMpEng.exe");
-                                if (pid != 0) {
-                                    Process* process = g_ProcessResolver.getObject(pid);
-                                    if (process) {
-                                        LOG_A(LOG_INFO, "Control: Found MsMpEng.exe (PID: %lu) in resolver", pid);
-                                        
-                                        // Augment process info if not already done
-                                        if (!process->augmented) {
-                                            if (process->AugmentInfo()) {
-                                                process->augmented = TRUE;
-                                            } else {
-                                                LOG_A(LOG_ERROR, "Control: Failed to augment MsMpEng.exe process info");
-                                            }
-                                        }
-                                        
-                                        nlohmann::json modules_array = nlohmann::json::array();
-                                        for (const auto& mod : process->processLoadedDlls) {
-                                            nlohmann::json mod_info;
-                                            mod_info["name"] = mod.name;
-                                            mod_info["base"] = mod.dll_base;
-                                            mod_info["size"] = mod.size;
-                                            modules_array.push_back(mod_info);
-                                            
-                                            LOG_A(LOG_INFO, "Control: MsMpEng.exe module: %s at 0x%llx (size: %lu)", mod.name.c_str(), mod.dll_base, mod.size);
-                                        }
-                                        
-                                        // Send single event with all modules
-                                        nlohmann::json defender_event;
-                                        defender_event["event"] = "defender_modules";
-                                        defender_event["type"] = "meta";
-                                        defender_event["pid"] = pid;
-                                        defender_event["modules"] = modules_array;
-                                        
-                                        SendEmitterPipe((char*)defender_event.dump().c_str());
-                                    } else {
-                                        LOG_A(LOG_ERROR, "Control: Failed to get MsMpEng.exe process from resolver");
-                                    }
-                                } else {
-                                    LOG_A(LOG_WARNING, "Control: msmpeng.exe process not found");
-                                }
+                                // Send on each new start command
+                                SendDefenderInfos();
                             }
-
-                            nlohmann::json start_event3;
-                            start_event3["event"] = "ppl_start3";
-                            start_event3["type"] = "meta";
-                            SendEmitterPipe((char *) start_event3.dump().c_str());
                         } else {
                             LOG_A(LOG_ERROR, "Control: Start command missing 'targets' array");
                         }

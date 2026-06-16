@@ -146,8 +146,10 @@ BOOL PipeServer::Send(char* buffer) {
     
     // Check for potential overflow
     if (buffer_len >= PIPE_BUFFER_SIZE) {
-        LOG_A(LOG_ERROR, "PipingSrv %s: Buffer too large for pipe",
-            pipe_name.c_str());
+        LOG_A(LOG_ERROR, "PipingSrv %s: Buffer too large for pipe (size: %zu, max: %d)",
+            pipe_name.c_str(),
+            buffer_len,
+            PIPE_BUFFER_SIZE);
         return FALSE;
     }
     
@@ -349,8 +351,10 @@ BOOL PipeClient::Send(char* buffer) {
     
     // Check for potential overflow
     if (buffer_len >= PIPE_BUFFER_SIZE) {
-        LOG_A(LOG_ERROR, "PipingCli %s: Buffer too large for pipe",
-            pipe_name.c_str());
+        LOG_A(LOG_ERROR, "PipingCli %s: Buffer too large for pipe (size: %zu, max: %d)",
+            pipe_name.c_str(),
+            buffer_len,
+            PIPE_BUFFER_SIZE);
         return FALSE;
     }
     
