@@ -40,12 +40,20 @@ void SendDefenderInfos() {
             for (const auto& mod : process->processLoadedDlls) {
                 nlohmann::json mod_info;
 
-                // name is like: C:\WINDOWS\system32\amsiproxy.dll
-                // Replace with just amsiproxy.dll to save space if in system32
+                // Keep full path, but extract just the filename if it's in system32 to save space
                 std::string mod_name = mod.name;
-                size_t pos = mod_name.find_last_of("SYSTEM32\\");
-                if (pos != std::string::npos) {
-                    mod_name = mod_name.substr(pos + 1);
+                
+                // Case-insensitive check for "system32\"
+                std::string lower_name = mod_name;
+                for (char& c : lower_name) {
+                    if (c >= 'A' && c <= 'Z') c += 32;
+                }
+                
+                if (lower_name.find("system32\\") != std::string::npos) {
+                    size_t pos = mod_name.find_last_of("\\/");
+                    if (pos != std::string::npos) {
+                        mod_name = mod_name.substr(pos + 1);
+                    }
                 }
 
                 mod_info["name"] = mod_name;
