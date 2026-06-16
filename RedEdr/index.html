@@ -3,192 +3,1224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RedEdr</title>
-    <script src="/static/shared.js"></script>
-    <link rel="stylesheet" href="/static/design.css">
+    <title>SemiDataSieve</title>
+    <style>
+        .nicebutton {
+            padding: 5px 5px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            display: flex;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        
+        .log-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            background-color: #fafbfc;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.3;
+        }
+        
+        .log-line {
+            background-color: #ffffff;
+            border: 1px solid #e1e5e9;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.2s ease;
+        }
+        
+        .log-line:hover {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-color: #c6d0dd;
+        }
+        
+        .log-kv {
+            display: inline-block;
+            margin-right: 12px;
+            margin-bottom: 2px;
+        }
+        
+        .log-entry {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0;
+            padding: 6px 10px;
+            border-bottom: 1px solid #f0f3f6;
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .log-key, .log-value {
+            position: relative;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: background-color 0.15s ease;
+        }
+        
+        .log-key {
+            color: #0969da;
+            font-weight: 500;
+            padding: 1px 2px;
+        }
+        
+        .log-key:hover {
+            background-color: #fff8c5;
+            box-shadow: 0 0 0 1px #0969da;
+            border-radius: 3px;
+        }
+        
+        .log-key.hover-active {
+            background-color: #ffeaa7;
+            box-shadow: 0 0 0 2px #0969da;
+            border-radius: 3px;
+        }
+        
+        .log-value {
+            color: #1f2328;
+            padding: 1px 2px;
+            margin-right: 12px;
+            word-break: break-word;
+        }
+        
+        .log-value:hover {
+            background-color: #fff8c5;
+            box-shadow: 0 0 0 1px #0969da;
+            border-radius: 3px;
+        }
+        
+        .log-value.hover-active {
+            background-color: #ffeaa7;
+            box-shadow: 0 0 0 2px #0969da;
+            border-radius: 3px;
+        }
+        
+        .log-header {
+            background-color: #f6f8fa;
+            border-left: 4px solid #0969da;
+            border-bottom: 1px solid #d8dee4;
+        }
+        
+        .log-header .log-key {
+            color: #0969da;
+            font-weight: 600;
+        }
+        
+        .log-important {
+            background-color: #fff8e1;
+            border-left: 4px solid #fb8500;
+            border-bottom: 1px solid #e9d5a1;
+        }
+        
+        .log-important .log-key {
+            color: #b8490a;
+            font-weight: 600;
+        }
+        
+        .menu {
+            font-size: 14px;
+            width: 22em;
+            background-color: #333;
+            color: white;
+        }
+        .menu-head {
+            background-color: #493f3f;
+            color: white;
+            padding: 10px;
+        }
+        .menu-quick {
+            background-color: #3f493f;
+            color: white;
+            padding: 10px;
+        }
+        .menu-filter {
+            background-color: #79825f;
+            color: white;
+            padding: 10px;
+        }
+        .menu-visibility {
+            background-color: #2f3233;
+            color: white;
+            padding: 10px;
+        }
+
+        .popup {
+            position: absolute;
+            background: white;
+            border: 1px solid black;
+            padding: 5px;
+            display: none;
+            z-index: 100;
+        }
+
+        .settings {
+            width: 50%;
+            position: absolute;
+            background: white;
+            border: 1px solid black;
+            padding: 5px;
+            display: none;
+            z-index: 100;
+
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #settings-input {
+            width: 100%;  /* Makes it take the full width of the settings div */
+            height: 150px; /* Increases the height */
+            resize: vertical; /* Allows vertical resizing */
+            font-family: monospace; /* Good for JSON input */
+        }
+
+        /* Container for each input field and the clear button */
+        .input-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        /* Style for the clear button */
+        .clear-btn {
+            padding-left: 3px;
+            padding-right: 3px;
+            margin-left: 3px;
+            margin-right: 3px;
+        }
+
+        /* only for modern browsers? */
+        input[type="checkbox"] {
+            accent-color: rgb(53, 52, 52);
+        }
+
+        .checkbox-nice {
+            margin-right: 0.5em;
+        }
+
+        /* Optional hover effect */
+        .clear-btn:hover {
+            color: red;
+        }
+
+        .lbl_width {
+            width: 7.5em;
+            display: inline-block;
+        }
+
+        .input-short {
+            width: 7em;
+        }
+
+        input:read-only {
+            background-color: #DDD;
+            border: 1px solid #DDD;
+            cursor: default;
+        }
+    </style>
 </head>
+
 <body>
+    <div class="log-container" id="log-container"></div>
 
-    <header>
-        <div class="container">
-            <div class="item">
-                <div><strong>RedEdr</strong></div>
-                <div><a href="https://github.com/dobin/RedEdr" target="_blank">github.com/dobin/RedEdr</a></div>
-            </div>
-            <div class="item">
-                <div>Target</div>
-                <div><input type="text" id="trace" placeholder="otepad"></div>
-                <div><button onclick="BtnApplyTrace()">Apply</button></div>
-            </div>
-            <div class="item" id="response">
-                <div>Events: <span id="stats-counter">0</span></div>
-                <div id="stat_kernel" style="display:none">Kernel: <span id="num_kernel">0</span></div>
-                <div id="stat_etw" style="display:none">   ETW &nbsp;&nbsp;&nbsp;: <span id="num_etw">0</span></div>
-                <div id="stat_etwti" style="display:none"> ETWTI &nbsp;: <span id="num_etwti">0</span></div>
-                <div id="stat_dll" style="display:none">   DLL &nbsp;&nbsp;&nbsp;: <span id="num_dll">0</span></div>
-            </div>
-            <div class="item">
-                <div>Options</div>
-                <div><button onclick="BtnReset()">Clear Events</button></div>
-            </div>
-
+    <div class="menu" id="menu">
+        <!-- Menu: Head -->
+        <div class="menu-head">
+            <h2>SemiDataSieve</h2>
+            <br>
+            key:value filtering<br>
+            <br>
+            <button class="nicebutton" onclick="settingsShow()">Options</button>
+            <button class="nicebutton" onclick="storageShow()">Storage</button>
         </div>
-    </header>
+        
+        <!-- Menu: Quick -->
+        <div class="menu-quick">
+            <h2>Quick Filter</h2> <br>
 
-    <div class="tabs">
-        <div class="tab active" onclick="showContent('tab1', this)">Events</div>
-        <div class="tab" onclick="showContent('tab2', this)">Analyzer</div>
-        <div class="tab" onclick="showContent('tab3', this)">Recordings</div>
+            <input type="checkbox" checked id="myCheckbox_include_key" onclick="handleQuickCheckboxClick('include_key')"> 
+            <label class="lbl_width">include if key</label>
+            <div class="input-container">
+                <input class="input-short" type="text" id="quick-filter-include-key" onchange="quickFilterOnChange()">
+                <button class="clear-btn" onclick="quickFilterClear('quick-filter-include-key')">X</button>
+            </div>
+            <br>
+
+            <input type="checkbox" checked id="myCheckbox_include_value" onclick="handleQuickCheckboxClick('include_value')"> 
+            <label class="lbl_width">include if value</label>
+            <div class="input-container">
+                <input class="input-short" type="text" id="quick-filter-include-value" onchange="quickFilterOnChange()">
+                <button class="clear-btn" onclick="quickFilterClear('quick-filter-include-value')">X</button>
+            </div>
+            <br><br>
+            
+            <input type="checkbox" checked id="myCheckbox_exclude_key" onclick="handleQuickCheckboxClick('exclude_key')"> 
+            <label class="lbl_width">exclude if key</label>
+            <div class="input-container">
+                <input class="input-short" type="text" id="quick-filter-exclude-key" onchange="quickFilterOnChange()">
+                <button class="clear-btn" onclick="quickFilterClear('quick-filter-exclude-key')">X</button>
+            </div>
+            <br>
+
+            <input type="checkbox" checked id="myCheckbox_exclude_value" onclick="handleQuickCheckboxClick('exclude_value')"> 
+            <label class="lbl_width">exclude if value</label>
+            <div class="input-container">
+                <input class="input-short" type="text" id="quick-filter-exclude-value" onchange="quickFilterOnChange()">
+                <button class="clear-btn" onclick="quickFilterClear('quick-filter-exclude-value')">X</button>
+            </div>
+            <br><br>
+            
+            <button class="nicebutton" onclick="quickFilterAdd()">Add as filter</button>
+        </div>
+        
+        <!-- Menu: Filter -->
+        <div class="menu-filter">
+            <h2>Filter</h2>
+            <br>
+            <div id="filter-container"></div>
+        </div>
+
+        <!-- Menu: Visibility -->
+        <div class="menu-visibility">
+            <h2>Visibility</h2>
+            <br>
+            <div id="visibility-container"></div>
+        </div>
     </div>
 
-    <div class="content" id="content">
-        <div id="tab1" class="tab-content">
-            <div id="eventContainer"></div>
+    <!-- Popup Windows (one for key, value) -->
+    <div class="popup" id="popup_key" onmouseenter="cancelHidePopup()" onmouseleave="scheduleHidePopup()">
+        Key:
+        <button id="action-button-key-include">Include</button>
+        <button id="action-button-key-exclude">Exclude</button>
+        <button id="action-button-key-hide">Hide</button>
+        <button id="action-button-key-header">Header</button>
+        <button id="action-button-key-important">Important</button>
+    </div>
+    <div class="popup" id="popup_value" onmouseenter="cancelHidePopup()" onmouseleave="scheduleHidePopup()">
+        Value:
+        <button id="action-button-value-include">Include</button>
+        <button id="action-button-value-exclude">Exclude</button>
+    </div>
+
+    <!-- Settings Popup -->
+    <div class="settings" id="settings">
+        <div>
+            <h2>Settings</h2>
+            <textarea id="settings-input" placeholder="Paste JSON here"></textarea>
+            <br>
+            <button class="nicebutton" onclick="settings_load_data()">Load</button>
+            <button class="nicebutton" onclick="settings_download_logs()">Download</button>
+            <button class="nicebutton" onclick="settingsShow()">Close</button>
+            <br>
         </div>
-        <div id="tab3" class="tab-content" style="display: none;">
-            <div id="recordingsContainer"></div>
+        <input type="file" id="fileInput">
+        <button class="nicebutton" onclick="settings_upload_file()">Private Upload</button>
+        <div>
+
         </div>
     </div>
 
+    <!-- Storage Popup -->
+    <div class="settings" id="storage">
+        <h2>Storage</h2>
+
+        <button onclick="StorageSaveCurrent()">Save</button>
+
+        <h3>Saved Entries</h3>
+        <select id="StorageEntriesList"></select>
+
+        <button onclick="StorageLoadEntry()">Load</button>
+        <button onclick="StorageDeleteEntry()">Delete</button>
+    </div>
+
+    <!-- JavaScript yay -->
     <script>
-        MyData = {
-            "stats": {
-                "events_count": 0,
-            },
-            "events": [],
-        }
-
-        function showContent(tabId, tabElement) {
-            // Hide all tab contents
-            const contents = document.querySelectorAll('.tab-content');
-            contents.forEach(content => content.style.display = 'none');
-
-            // Remove active class from all tabs
-            const tabs = document.querySelectorAll('.tab');
-            tabs.forEach(tab => tab.classList.remove('active'));
-
-            // Show the selected tab content
-            document.getElementById(tabId).style.display = 'block';
-
-            // Add active class to the clicked tab if tabElement is provided
-            if (tabElement) {
-                tabElement.classList.add('active');
-            }
-        }
-
-        function showRecordings(data) {
-            const container = document.getElementById('recordingsContainer');
-            container.innerHTML = '';
-
-            data.forEach(recording => {
-                const div = document.createElement('div');
-                div.innerHTML = `
-                    <div class="recording">
-                        <a href="/recordings?name=${recording}" target="_blank">${recording}</a> <br>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        async function fetchEvents() {
-            const response = await fetch('/api/logs/rededr');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const data = await response.json();
-            displayEvents(data);
-        }
-
-        async function fetchStats() {
-            const response = await fetch('/api/stats');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const data = await response.json();
-
-            // Check if we need to update something
-            if (data.events_count > MyData.stats.events_count) {
-                fetchEvents();
-
-                // Store new stats
-                MyData.stats = data;
-
-                // Update UI
-                document.getElementById('stats-counter').textContent = `${data.events_count}`;
-
-                function setStat(statId, spanId, value) {
-                    document.getElementById(spanId).textContent = value;
-                    document.getElementById(statId).style.display = value > 0 ? 'block' : 'none';
+        // DATA SOURCE CONFIGURATION
+        // Three ways to load data:
+        // 1. Demo data (default for standalone)
+        // 2. Flask template injection (for small datasets or initial data)
+        // 3. REST API endpoint (recommended for large datasets)
+        
+        // Demo data for standalone usage
+        const DEMO_DATA = [
+            { id: 1, timestamp: "2025-03-08 12:00:00", level: "INFO", message: "System started" },
+            { id: 2, timestamp: "2025-03-08 12:05:00", level: "WARNING", message: "High memory usage detected" },
+            { id: 3, timestamp: "2025-03-08 12:10:00", level: "ERROR", message: "System crash" },
+            { id: 4, timestamp: "2025-03-08 12:10:00", nolevel: "ERROR", stuff: "0x1234", addr: 0x1235, offset: 0x643643, size: 0x23643,
+                "info": "microsoft threat intelligence provider"
+             }
+        ];
+        
+        // Flask template injection (for small datasets)
+        // For Flask integration, uncomment the next line and pass data from your Flask route
+        // const FLASK_DATA = {{ data | tojson | safe }};
+        
+        // REST API endpoint configuration (recommended for large datasets)
+        // For Flask integration, set this to your API endpoint, e.g., '/api/logs' or '/api/logs/rededr'
+        // const FLASK_API_ENDPOINT = "{{ api_endpoint }}";
+        const FLASK_API_ENDPOINT_VAR = "/api/logs/rededr";  // Example endpoint, replace with your actual endpoint
+        const FLASK_API_ENDPOINT = typeof FLASK_API_ENDPOINT_VAR !== 'undefined' ? FLASK_API_ENDPOINT_VAR : null;
+        
+        // Initialize data source
+        const INITIAL_DATA = typeof FLASK_DATA !== 'undefined' ? FLASK_DATA : DEMO_DATA;
+        
+        // The reference data. This is always unfiltered.
+        let logs_orig = INITIAL_DATA;
+        // The actual data. filtered from logs_orig
+        let logs = logs_orig.slice();  // copy first
+        
+        // Fetch data from REST API if endpoint is configured
+        async function fetchDataFromApi(endpoint) {
+            try {
+                const response = await fetch(endpoint);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
                 }
-                setStat('stat_kernel', 'num_kernel', data.num_kernel);
-                setStat('stat_etw', 'num_etw', data.num_etw);
-                setStat('stat_etwti', 'num_etwti', data.num_etwti);
-                setStat('stat_dll', 'num_dll', data.num_dll);
+                const data = await response.json();
+                logs_orig = data;
+                refresh();
+                console.log(`Loaded ${data.length} entries from API: ${endpoint}`);
+            } catch (error) {
+                console.error('Error fetching data from API:', error);
+                alert(`Failed to load data from API: ${error.message}`);
             }
         }
-
-        async function fetchRecordings() {
-            const response = await fetch('/api/recordings');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const data = await response.json();
-            showRecordings(data);
+        
+        // Load data from API on page load if endpoint is configured
+        if (FLASK_API_ENDPOINT) {
+            fetchDataFromApi(FLASK_API_ENDPOINT);
         }
 
-        async function sendSave() {
-            const response = await fetch('/api/save');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const data = await response.json();
+        // List of all filters (can be configured via Flask)
+        // For Flask integration, uncomment the next line in your template:
+        // const FLASK_FILTERS = {{ filters | tojson | safe }};
+        const DEMO_FILTERS = [
+            //{ type: "key", action: "include", key: "level", value: "", active: true },
+            //{ type: "key", action: "exclude", key: "level", value: "INFO", active: true },
+            //{ type: "value", action: "include", key: "", value: "memory", active: true }
+        ];
+        let filters = typeof FLASK_FILTERS !== 'undefined' ? FLASK_FILTERS : DEMO_FILTERS;
+        
+        // Visibility configuration (can be configured via Flask)
+        // For Flask integration, uncomment the next line in your template:
+        // const FLASK_VISIBILITY = {{ visibility | tojson | safe }};
+        const DEMO_VISIBILITY = [
+            { type: "key", action: "hide", key: "etw_event_id", value: "" },
+            { type: "key", action: "header", key: "event", value: "" },
+            { type: "key", action: "header", key: "etw_provider_name", value: "" },
+            { type: "key", action: "header", key: "etw_process", value: "" },
+            { type: "key", action: "header", key: "type", value: "" },
+            { type: "key", action: "important", key: "message", value: "" },
+        ];
+        let visibility = typeof FLASK_VISIBILITY !== 'undefined' ? FLASK_VISIBILITY : DEMO_VISIBILITY;
+
+        // Color configuration for keys and values (can be configured via Flask)
+        // For Flask integration, uncomment the next line in your template:
+        // const FLASK_COLOR_RULES = {{ color_rules | tojson | safe }};
+        const DEMO_COLOR_RULES = [
+            { type: "key", match: "event", color: "blue", backgroundColor: "#e6f2ff" },
+            { type: "key", match: "etw_provider_name", color: "white", backgroundColor: "#d9534f" },
+            { type: "key", match: "message", color: "green", backgroundColor: "#e6ffe6" },
+            { type: "key", match: "error", color: "white", backgroundColor: "#d9534f" }
+        ];
+        const colorRules = typeof FLASK_COLOR_RULES !== 'undefined' ? FLASK_COLOR_RULES : DEMO_COLOR_RULES;
+
+        // Popup menu data
+        let currentLogEntry = null;
+        let currentKey = null;
+        let currentValue = null;
+        let showTimeout = null;
+        let hideTimeout = null;
+        let popupShown = false;
+        let hoveredElement = null;
+        
+        // Timing constants for popup behavior
+        const POPUP_SHOW_DELAY = 500; // milliseconds to wait before showing popup
+        const POPUP_HIDE_DELAY = 300; // milliseconds to wait before hiding popup
+
+
+        // Click on non-popups
+
+        document.getElementById("log-container").addEventListener("click", function(event) {
+            HidePopups();
+        });
+        function HidePopups() {
+            document.getElementById("settings").style.display = "none";
+            document.getElementById("storage").style.display = "none";
+            hidePopupImmediately();
         }
 
-        async function sendReset() {
-            const response = await fetch('/api/trace/reset', {
-                method: 'POST'
+
+        // Quick Filter
+
+        function filterClearStats() {
+            // set all filter.stat = 0 for all filters
+            filters.forEach(filter => filter.stats = 0);
+        }
+
+        function handleQuickCheckboxClick(id) {
+            //quick_filters[id] = document.getElementById("myCheckbox_" + id).checked;
+            refresh();
+        }
+
+        function quickFilterClear(inputId) {
+            document.getElementById(inputId).value = "";
+            refresh();
+        }
+
+        function quickFilterOnChange() {
+            refresh();
+        }
+
+        function quickFilterAdd() {
+            const keyInclude = document.getElementById("quick-filter-include-key").value;
+            const valueInclude = document.getElementById("quick-filter-include-value").value;
+            const keyExclude = document.getElementById("quick-filter-exclude-key").value;
+            const valueExclude = document.getElementById("quick-filter-exclude-value").value;
+
+            if (keyInclude) {
+                addFilter("key", "include", null, keyInclude, "");
+            }
+            if (valueInclude) {
+                addFilter("value", "include", null, "", valueInclude);
+            }
+            if (keyExclude) {
+                addFilter("key", "exclude", null, keyExclude, "");
+            }
+            if (valueExclude) {
+                addFilter("value", "exclude", null, "", valueExclude);
+            }
+
+            // clear
+            document.getElementById("quick-filter-include-key").value = "";
+            document.getElementById("quick-filter-include-value").value = "";
+            document.getElementById("quick-filter-exclude-key").value = "";
+            document.getElementById("quick-filter-exclude-value").value = "";
+        }
+
+
+        // Menu Filter UI
+
+        function menuFiltersRefresh() {
+            const filterContainer = document.getElementById("filter-container"); 
+            filterContainer.innerHTML = ""; // Clear previous filters
+
+            if (filters.length === 0) {
+                // show text if no filters are set
+                const filterDiv = document.createElement("div");
+                filterDiv.textContent = "Hover over a key or value to add a filter";
+                filterContainer.appendChild(filterDiv);
+                return;
+            }
+
+            filters.forEach((filter, index) => {
+                const filterDiv = document.createElement("div");
+
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.classList.add("checkbox-nice");
+                if (filter.active === false) {
+                    checkbox.checked = false;
+                } else {
+                    checkbox.checked = true;
+                }
+                checkbox.onchange = () => {
+                    filters[index].active = checkbox.checked;
+                    refresh();
+                };
+                filterDiv.appendChild(checkbox);
+
+                // add a label
+                const t = filter.type === "key"
+                        ? `${filter.action} if ${filter.type} `
+                        : `${filter.action} if ${filter.type} `;
+                const filterLabel = document.createElement("label");
+                filterLabel.textContent = t;
+                filterLabel.classList.add("lbl_width");
+                filterDiv.appendChild(filterLabel);
+
+                const filterInput = document.createElement("input");
+                filterInput.type = "text";
+                filterInput.readOnly = true;
+                filterInput.value = filter.type === "key"
+                    ? `${filter.key}`
+                    : `${filter.value}`;
+                filterInput.classList.add("input-short");
+                filterDiv.appendChild(filterInput);
+
+                // Add a remove button
+                const removeButton = document.createElement("button");
+                removeButton.textContent = "X";
+                removeButton.style.marginLeft = "6px";
+                removeButton.style.marginRight = "6px";
+                removeButton.style.paddingLeft = "6px";
+                removeButton.style.paddingRight = "6px";
+                removeButton.onclick = () => removeFilter(index);
+                filterDiv.appendChild(removeButton);
+
+                // add stats text
+                if (filter.stats != 0) {
+                    const statsText = document.createTextNode(`(${filter.stats})`);
+                    filterDiv.appendChild(statsText);
+                }
+                
+                filterContainer.appendChild(filterDiv);
             });
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const data = await response.json();
+
         }
 
-        async function sendTrace(name) {
-            const response = await fetch('/api/trace/start', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ "trace": name }),
+
+        // Filter Backend
+        
+        function addFilter(type, action, _logentry, key, value) {
+            filters.push({
+                type: type,
+                action: action,
+                key: key,
+                value: value,
+                active: true
             });
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
+            refresh()
         }
 
-        function BtnReset() {
-            sendReset();
+        function removeFilter(index) {
+            filters.splice(index, 1); // Remove the filter from the array
+            refresh()
         }
-        function BtnApplyTrace() {
-            sendTrace(document.getElementById('trace').value);
+
+        function filterOrigLogs(logs, myfilters) {
+            // copy filters
+            myfilters = myfilters.slice();
+
+            // add quick filters
+            const keyIncludeChecked = document.getElementById("myCheckbox_include_key").checked;
+            const keyInclude = document.getElementById("quick-filter-include-key").value;
+            const valueIncludeChecked = document.getElementById("myCheckbox_include_value").checked;
+            const valueInclude = document.getElementById("quick-filter-include-value").value;
+            const keyExcludeChecked = document.getElementById("myCheckbox_exclude_key").checked;
+            const keyExclude = document.getElementById("quick-filter-exclude-key").value;
+            const valueExcludeChecked = document.getElementById("myCheckbox_exclude_value").checked;
+            const valueExclude = document.getElementById("quick-filter-exclude-value").value;
+            if (keyInclude && keyIncludeChecked) {
+                myfilters.push({ type: "key", action: "include", key: keyInclude, value: "", active: true });
+            }
+            if (valueInclude && valueIncludeChecked) {
+                myfilters.push({ type: "value", action: "include", key: "", value: valueInclude, active: true });
+            }
+            if (keyExclude && keyExcludeChecked) {
+                myfilters.push({ type: "key", action: "exclude", key: keyExclude, value: "", active: true });
+            }
+            if (valueExclude && valueExcludeChecked) {
+                myfilters.push({ type: "value", action: "exclude", key: "", value: valueExclude, active: true });
+            }
+
+            filterClearStats();
+
+            return logs.filter(log => {
+                // First: Check for excludes (dominant)
+                stage1_res = myfilters
+                    .filter(filter => filter.active && filter.action === "exclude")
+                    .every(filter => {
+                        if (filter.type === "key") {
+                            if (filter.action === "exclude") {
+                                if (log.hasOwnProperty(filter.key)) {
+                                    filter.stats++;
+                                    return false;
+                                }
+                            }
+                        } else if (filter.type === "value") {
+                            let isContain = Object.values(log).some(value => {
+                                return String(value).toLowerCase().includes(filter.value.toLowerCase());
+                            });
+                            if (isContain) {
+                                filter.stats++;
+                                return false;
+                            }
+                        }
+                        return true;
+                    });
+                if (! stage1_res) {
+                    // exclude this
+                    return false;
+                }
+
+                // Second: Check if it should be included
+                // true if
+                stage2_filters = myfilters
+                    .filter(filter => filter.active && filter.action === "include")
+                if (stage2_filters.length === 0) {
+                    // no include filters, include all
+                    return true;
+                }
+                stage2_res = stage2_filters
+                    .some(filter => {
+                        if (filter.type === "key") {
+                            if (filter.action === "include") {
+                                if (log.hasOwnProperty(filter.key)) {
+                                    filter.stats++;
+                                    return true;
+                                }
+                            }
+                        } else if (filter.type === "value") {
+                            let isContain = Object.values(log).some(value => {
+                                return String(value).toLowerCase().includes(filter.value.toLowerCase());
+                            });
+                            if (isContain) {
+                                filter.stats++;
+                                return true;
+                            }
+                        }
+                        return false;
+                    });
+                return stage2_res;
+            });
         }
-        function getTraceTarget() {
-            fetch('/api/trace/info')
+
+        // Visibility backend
+
+        function addVisibility(type, action, _logentry, key, value) {
+            visibility.push({
+                type: type,
+                action: action,
+                key: key,
+                value: value
+            });
+            refresh()
+        }
+
+        function removeVisibility(index) {
+            visibility.splice(index, 1); // Remove the filter from the array
+            refresh()
+        }
+
+
+        // Menu Visibility UI
+
+        function menuVisibilityRefresh() {
+            const visibilityContainer = document.getElementById("visibility-container"); 
+            visibilityContainer.innerHTML = ""; // Clear previous visibility
+
+            if (visibility.length === 0) {
+                const visibilityDiv = document.createElement("div");
+                visibilityDiv.textContent = "";
+                visibilityContainer.appendChild(visibilityDiv);
+                return;
+            }
+
+            visibility.forEach((visibility, index) => {
+                const visibilityDiv = document.createElement("div");
+                visibilityDiv.classList.add("visibility-item");
+
+                if (visibility.type == "key") {
+                    visibilityDiv.textContent = `${visibility.action} ${visibility.type}: ${visibility.key} `;
+                } else if (visibility.type == "value") {
+                    visibilityDiv.textContent = `${visibility.action} ${visibility.type}: ${visibility.value} `;
+                }
+                
+                // Add a remove button
+                const removeButton = document.createElement("button");
+                removeButton.textContent = "X";
+                // make it bigger
+                // margin
+                removeButton.style.marginLeft = "3px";
+                removeButton.style.marginRight = "3px";
+                removeButton.style.paddingLeft = "3px";
+                removeButton.style.paddingRight = "3px";
+                removeButton.onclick = () => removeVisibility(index);
+
+                visibilityDiv.appendChild(removeButton);
+                visibilityContainer.appendChild(visibilityDiv);
+            });
+        }
+
+        // Settings
+        function settingsShow() {
+            // toggle
+            if (document.getElementById("settings").style.display === "block") {
+                document.getElementById("settings").style.display = "none";
+                return;
+            }
+
+            // set settings
+            document.getElementById("settings-input").value = JSON.stringify(logs_orig, null, 2);
+            document.getElementById("settings").style.display = "block";
+        }
+
+        function settings_load_data() {
+            const settingsInput = document.getElementById("settings-input");
+            const settingsData = settingsInput.value;
+            try {
+                const jsonData = JSON.parse(settingsData);
+                logs_orig = jsonData;
+                refresh();
+            } catch (error) {
+                console.error("Invalid JSON data:", error);
+            }
+
+            // hide
+            document.getElementById("settings").style.display = "none";
+        }
+
+        function settings_load_data_from_url(url) {
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('trace').value = data.trace;
-                });
+                    logs_orig = data;
+                    refresh();
+                })
+                .catch(error => console.error("Error loading JSON from URL:", error));
         }
 
-        showContent('tab1', null);  // show first tab
-        fetchStats(); // initial fetch
-        setInterval(fetchStats, 1 * 1000); // periodic check
+        function settings_download_logs() {
+            const jsonData = JSON.stringify(logs_orig, null, 2);
+            const blob = new Blob([jsonData], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
 
-        fetchRecordings();
-        getTraceTarget();
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "ssds.json";  // File name
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function settings_upload_file() {
+            const fileInput = document.getElementById("fileInput");
+            const file = fileInput.files[0]; // Get the selected file
+            
+            if (!file) {
+                alert("No file selected!");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const fileContent = event.target.result;
+                try {
+                    const jsonData = JSON.parse(fileContent);
+                    logs_orig = jsonData;
+                    refresh();
+                } catch (error) {
+                    console.error("Invalid JSON file:", error);
+                }
+            };
+            reader.readAsText(file);
+
+            // as we are in settings, hide it
+            settingsShow();
+        }
+
+
+        // Logs
+
+        function hexify(value) {
+            if (typeof value === "number" && !isNaN(value)) {
+                return "0x" + value.toString(16);
+            }
+            return value;
+        }
+
+        function renderLogs() {
+            const container = document.getElementById("log-container");
+            container.innerHTML = "";
+            logs.forEach((log, logIndex) => {
+                const logDiv = document.createElement("div");
+                logDiv.classList.add("log-line");
+
+                const entryDivHeader = document.createElement("div");
+                entryDivHeader.classList.add("log-entry");
+                entryDivHeader.classList.add("log-header");
+
+                const entryDivImportant = document.createElement("div");
+                entryDivImportant.classList.add("log-entry");
+                entryDivImportant.classList.add("log-important");
+                
+                const entryDiv = document.createElement("div");
+                entryDiv.classList.add("log-entry");
+
+                const arrayEntryDiv = document.createElement("div");
+                arrayEntryDiv.classList.add("log-entry");
+
+                Object.entries(log).forEach(([key, value]) => {
+                    // check if key is in visibility
+                    if (visibility.some(filter => filter.key === key && filter.action === "hide")) {
+                        return;
+                    }
+
+                    // Check if value is an array
+                    if (Array.isArray(value)) {
+                        const arrayContainer = document.createElement("div");
+                        arrayContainer.classList.add("log-kv");
+
+                        const keySpan = document.createElement("span");
+                        keySpan.classList.add("log-key");
+                        keySpan.textContent = key + ": ";
+                        keySpan.dataset.logIndex = logIndex;
+                        keySpan.dataset.key = key;
+                        keySpan.onmouseenter = (event) => {
+                            keySpan.classList.add("hover-active");
+                            scheduleShowPopup(event, "key");
+                        };
+                        keySpan.onmouseleave = () => {
+                            keySpan.classList.remove("hover-active");
+                            scheduleHidePopup();
+                        };
+
+                        // Apply color rules to key
+                        const keyRule = colorRules.find(r => r.type === "key" && key === r.match);
+                        if (keyRule) {
+                            if (keyRule.color) keySpan.style.color = keyRule.color;
+                            if (keyRule.backgroundColor) keySpan.style.backgroundColor = keyRule.backgroundColor;
+                        }
+
+                        const toggleButton = document.createElement("button");
+                        toggleButton.textContent = `Show (${value.length})`;
+                        toggleButton.style.marginLeft = "5px";
+                        toggleButton.style.fontSize = "12px";
+                        toggleButton.style.padding = "2px 5px";
+                        
+                        const arrayContent = document.createElement("div");
+                        arrayContent.style.display = "none";
+                        arrayContent.style.marginLeft = "20px";
+                        arrayContent.style.marginTop = "5px";
+                        arrayContent.style.border = "1px solid #ccc";
+                        arrayContent.style.padding = "5px";
+                        arrayContent.style.backgroundColor = "#f9f9f9";
+
+                        value.forEach((item, arrayIndex) => {
+                            const itemDiv = document.createElement("div");
+                            itemDiv.style.marginBottom = "3px";
+                            itemDiv.style.padding = "2px";
+                            itemDiv.style.borderBottom = "1px solid #eee";
+
+                            if (typeof item === 'object' && item !== null) {
+                                // If array item is an object, display key-value pairs horizontally
+                                const itemEntries = Object.entries(item);
+                                itemEntries.forEach(([itemKey, itemValue], entryIndex) => {
+                                    const itemKeySpan = document.createElement("span");
+                                    itemKeySpan.textContent = itemKey + ": ";
+                                    itemKeySpan.style.fontWeight = "bold";
+                                    itemKeySpan.style.marginRight = "5px";
+
+                                    const itemValueSpan = document.createElement("span");
+                                    itemValueSpan.textContent = hexify(itemValue);
+                                    itemValueSpan.style.marginRight = "15px";
+
+                                    itemDiv.appendChild(itemKeySpan);
+                                    itemDiv.appendChild(itemValueSpan);
+                                });
+                            } else {
+                                // If array item is a primitive, just display it
+                                itemDiv.textContent = `[${arrayIndex}]: ${hexify(item)}`;
+                            }
+                            arrayContent.appendChild(itemDiv);
+                        });
+
+                        toggleButton.onclick = () => {
+                            if (arrayContent.style.display === "none") {
+                                arrayContent.style.display = "block";
+                                toggleButton.textContent = `Hide (${value.length})`;
+                            } else {
+                                arrayContent.style.display = "none";
+                                toggleButton.textContent = `Show (${value.length})`;
+                            }
+                        };
+
+                        arrayContainer.appendChild(keySpan);
+                        arrayContainer.appendChild(toggleButton);
+                        arrayContainer.appendChild(arrayContent);
+
+                        if (visibility.some(filter => filter.key === key && filter.action === "header")) {
+                            entryDivHeader.appendChild(arrayContainer);
+                        } else if (visibility.some(filter => filter.key === key && filter.action === "important")) {
+                            entryDivImportant.appendChild(arrayContainer);
+                        } else {
+                            arrayEntryDiv.appendChild(arrayContainer);
+                        }
+                    } else {
+                        // Handle non-array values as before
+                        const keySpan = document.createElement("span");
+                        keySpan.classList.add("log-key");
+                        keySpan.textContent = key + ": ";
+                        keySpan.dataset.logIndex = logIndex;
+                        keySpan.dataset.key = key;
+                        keySpan.onmouseenter = (event) => {
+                            keySpan.classList.add("hover-active");
+                            scheduleShowPopup(event, "key");
+                        };
+                        keySpan.onmouseleave = () => {
+                            keySpan.classList.remove("hover-active");
+                            scheduleHidePopup();
+                        };
+                        
+                        // Apply color rules to key
+                        const keyRule = colorRules.find(r => r.type === "key" && key === r.match);
+                        if (keyRule) {
+                            if (keyRule.color) keySpan.style.color = keyRule.color;
+                            if (keyRule.backgroundColor) keySpan.style.backgroundColor = keyRule.backgroundColor;
+                        }
+
+                        const valueSpan = document.createElement("span");
+                        valueSpan.classList.add("log-value");
+                        valueSpan.textContent = hexify(value);
+                        valueSpan.dataset.logIndex = logIndex;
+                        valueSpan.dataset.key = key;
+                        valueSpan.dataset.value = value;
+                        valueSpan.onmouseenter = (event) => {
+                            valueSpan.classList.add("hover-active");
+                            scheduleShowPopup(event, "value");
+                        };
+                        valueSpan.onmouseleave = () => {
+                            valueSpan.classList.remove("hover-active");
+                            scheduleHidePopup();
+                        };
+
+                        // Apply color rules to value
+                        const valStr = String(value);
+                        const valueRule = colorRules.find(r => r.type === "value" && valStr === r.match);
+                        if (valueRule) {
+                            if (valueRule.color) valueSpan.style.color = valueRule.color;
+                            if (valueRule.backgroundColor) valueSpan.style.backgroundColor = valueRule.backgroundColor;
+                        }
+
+                        const log_kv = document.createElement("div");
+                        log_kv.classList.add("log-kv");
+                        log_kv.appendChild(keySpan);
+                        log_kv.appendChild(valueSpan);
+                        
+                        if (visibility.some(filter => filter.key === key && filter.action === "header")) {
+                            entryDivHeader.appendChild(log_kv);
+                        } else if (visibility.some(filter => filter.key === key && filter.action === "important")) {
+                            entryDivImportant.appendChild(log_kv);
+                        } else {
+                            entryDiv.appendChild(log_kv);
+                        }
+                    }
+                });
+
+                // append if has children
+                if (entryDivHeader.children.length > 0) {
+                    logDiv.appendChild(entryDivHeader);
+                }
+                if (entryDivImportant.children.length > 0) {
+                    logDiv.appendChild(entryDivImportant);
+                }
+                logDiv.appendChild(entryDiv);
+                if (arrayEntryDiv.children.length > 0) {
+                    logDiv.appendChild(arrayEntryDiv);
+                }
+                
+                container.appendChild(logDiv);
+            });
+        }
+
+        // Logs popup
+
+        function popupInit() {
+            document.getElementById("action-button-key-include").addEventListener("click", () => {
+                addFilter("key", "include", currentLogEntry, currentKey, currentValue);
+                hidePopupImmediately();
+            });
+            document.getElementById("action-button-key-exclude").addEventListener("click", () => {
+                addFilter("key", "exclude", currentLogEntry, currentKey, currentValue);
+                hidePopupImmediately();
+            });
+            document.getElementById("action-button-value-include").addEventListener("click", () => {
+                addFilter("value", "include", currentLogEntry, currentKey, currentValue);
+                hidePopupImmediately();
+            });
+            document.getElementById("action-button-value-exclude").addEventListener("click", () => {
+                addFilter("value", "exclude", currentLogEntry, currentKey, currentValue);
+                hidePopupImmediately();
+            });
+
+            document.getElementById("action-button-key-hide").addEventListener("click", () => {
+                addVisibility("key", "hide", currentLogEntry, currentKey, currentValue);
+                hidePopupImmediately();
+            });
+            document.getElementById("action-button-key-header").addEventListener("click", () => {
+                addVisibility("key", "header", currentLogEntry, currentKey, currentValue);
+                hidePopupImmediately();
+            });
+            document.getElementById("action-button-key-important").addEventListener("click", () => {
+                addVisibility("key", "important", currentLogEntry, currentKey, currentValue);
+                hidePopupImmediately();
+            });
+        }
+
+        function scheduleShowPopup(event, type) {
+            // Clear any existing timeouts
+            clearTimeout(showTimeout);
+            clearTimeout(hideTimeout);
+            
+            // Store the event data
+            currentLogEntry = event.target.dataset.logIndex;
+            currentKey = event.target.dataset.key;
+            currentValue = event.target.dataset.value || "";
+            hoveredElement = event.target;
+            
+            // Schedule the popup to show after a delay
+            showTimeout = setTimeout(() => {
+                showPopup(event, type);
+            }, POPUP_SHOW_DELAY);
+        }
+
+        function showPopup(event, type) {
+            // Hide any existing popup first
+            hidePopupImmediately();
+            
+            const popupName = "popup_" + type;
+            const popup = document.getElementById(popupName);
+            popup.style.left = `${event.pageX + 5}px`;
+            popup.style.top = `${event.pageY + 5}px`;
+            popup.style.display = "block";
+            
+            popupShown = true;
+        }
+
+        function scheduleHidePopup() {
+            // Clear any pending show timeout
+            clearTimeout(showTimeout);
+            
+            // Only schedule hide if we're not already hiding
+            if (popupShown && !hideTimeout) {
+                hideTimeout = setTimeout(() => {
+                    hidePopupImmediately();
+                }, POPUP_HIDE_DELAY);
+            }
+        }
+
+        function hidePopupImmediately() {
+            clearTimeout(showTimeout);
+            clearTimeout(hideTimeout);
+            showTimeout = null;
+            hideTimeout = null;
+            
+            document.getElementById("popup_key").style.display = "none";
+            document.getElementById("popup_value").style.display = "none";
+            popupShown = false;
+        }
+
+        function cancelHidePopup() {
+            clearTimeout(hideTimeout);
+            hideTimeout = null;
+        }
+
+
+        // Storage
+        const STORAGE_KEY = "savedJsonEntries";
+
+        function storageShow() {
+            // toggle
+            if (document.getElementById("storage").style.display === "block") {
+                document.getElementById("storage").style.display = "none";
+            } else {
+                StorageUpdateDropdown();
+                document.getElementById("storage").style.display = "block";
+            }
+        }
+
+        function StorageGetSavedEntries() {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+        }
+
+        function StorageUpdateDropdown() {
+            const savedEntries = StorageGetSavedEntries();
+            const dropdown = document.getElementById("StorageEntriesList");
+            dropdown.innerHTML = "";
+
+            Object.keys(savedEntries).forEach(key => {
+                let option = document.createElement("option");
+                option.value = key;
+                option.textContent = key;
+                dropdown.appendChild(option);
+            });
+        }
+
+        function StorageSaveCurrent() {
+            let data = StorageGetUiData();
+            let key = prompt("Enter a name for this entry:");
+            if (!key) return;
+
+            let savedEntries = StorageGetSavedEntries();
+            savedEntries[key] = data;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(savedEntries));
+
+            StorageUpdateDropdown();
+        }
+
+        function StorageLoadEntry() {
+            let selectedKey = document.getElementById("StorageEntriesList").value;
+            if (!selectedKey) return;
+            let savedEntries = StorageGetSavedEntries();
+
+            let data = savedEntries[selectedKey]
+            StorageSetUiData(data);
+        }
+
+        function StorageDeleteEntry() {
+            let selectedKey = document.getElementById("StorageEntriesList").value;
+            if (!selectedKey) return;
+
+            let savedEntries = StorageGetSavedEntries();
+            delete savedEntries[selectedKey];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(savedEntries));
+
+            StorageUpdateDropdown();
+        }
+
+        function StorageGetUiData() {
+            let data = {
+                "filters": filters,
+                "visibility": visibility,
+                "quick_filter_key_inc":   document.getElementById("quick-filter-include-key").value,
+                "quick_filter_value_inc": document.getElementById("quick-filter-include-value").value,
+                "quick_filter_key_ex":    document.getElementById("quick-filter-exclude-key").value,
+                "quick_filter_value_ex":  document.getElementById("quick-filter-exclude-value").value,
+            }
+            return data;
+        }
+
+        function StorageSetUiData(data) {
+            filters = data["filters"];
+            visibility = data["visibility"];
+            document.getElementById("quick-filter-include-key").value =   data["quick_filter_key_inc"];
+            document.getElementById("quick-filter-include-value").value = data["quick_filter_value_inc"];
+            document.getElementById("quick-filter-exclude-key").value =   data["quick_filter_key_ex"];
+            document.getElementById("quick-filter-exclude-value").value = data["quick_filter_value_ex"];
+        
+            refresh();
+        }
+
+
+        // Main
+
+        function refresh() {
+            logs = filterOrigLogs(logs_orig, filters);
+            renderLogs();
+
+            // After filterOrigLogs for stats
+            menuVisibilityRefresh();
+            menuFiltersRefresh();
+        }
+
+        popupInit();
+        refresh();
     </script>
-
 </body>
 </html>
