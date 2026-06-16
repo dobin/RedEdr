@@ -66,24 +66,21 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                                 // Emit defender trace start event with module info
                                 DWORD pid = FindProcessIdByName(L"MsMpEng.exe");
                                 if (pid != 0) {
-                                    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-                                    if (hProcess) {
-                                        LOG_A(LOG_INFO, "Control: Found MsMpEng.exe (PID: %lu)", pid);
-                                        ProcessPebInfoRet pebInfo = ProcessPebInfo(hProcess);
-                                        LOG_A(LOG_INFO, "Control: MsMpEng.exe base address: 0x%llx", pebInfo.image_base);
+                                    Process* process = g_ProcessResolver.getObject(pid);
+                                    if (process) {
+                                        LOG_A(LOG_INFO, "Control: Found MsMpEng.exe (PID: %lu) in resolver", pid);
                                         
-                                        std::vector<ProcessLoadedDll> modules = ProcessEnumerateModules(hProcess);
-                                        
-                                        // Collect all non-SYSTEM32 modules
-                                        nlohmann::json modules_array = nlohmann::json::array();
-                                        for (const auto& mod : modules) {
-                                            // Exclude modules in SYSTEM32 (case-insensitive check)
-                                            std::string modNameLower = mod.name;
-                                            std::transform(modNameLower.begin(), modNameLower.end(), modNameLower.begin(), ::tolower);
-                                            if (modNameLower.find("system32") != std::string::npos) {
-                                                continue;
+                                        // Augment process info if not already done
+                                        if (!process->augmented) {
+                                            if (process->AugmentInfo()) {
+                                                process->augmented = TRUE;
+                                            } else {
+                                                LOG_A(LOG_ERROR, "Control: Failed to augment MsMpEng.exe process info");
                                             }
-
+                                        }
+                                        
+                                        nlohmann::json modules_array = nlohmann::json::array();
+                                        for (const auto& mod : process->processLoadedDlls) {
                                             nlohmann::json mod_info;
                                             mod_info["name"] = mod.name;
                                             mod_info["base"] = mod.dll_base;
@@ -101,9 +98,8 @@ DWORD WINAPI ServiceControlPipeThread(LPVOID param) {
                                         defender_event["modules"] = modules_array;
                                         
                                         SendEmitterPipe((char*)defender_event.dump().c_str());
-                                        CloseHandle(hProcess);
                                     } else {
-                                        LOG_A(LOG_ERROR, "Control: Failed to open msmpeng.exe process. Error: %lu", GetLastError());
+                                        LOG_A(LOG_ERROR, "Control: Failed to get MsMpEng.exe process from resolver");
                                     }
                                 } else {
                                     LOG_A(LOG_WARNING, "Control: msmpeng.exe process not found");
