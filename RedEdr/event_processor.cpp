@@ -121,10 +121,6 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
             LOG_A(LOG_WARNING, "No type? %s", j.dump().c_str());
             return;
         }
-        //if (!j.contains("pid")) {
-        //    LOG_A(LOG_WARNING, "No pid? %s", j.dump().c_str());
-        //    return;
-        //}
 
         // Stats (for UI)
         EventStats(j);
@@ -148,6 +144,24 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
 
             // Augment the JSON Event with memory info
             AugmentEventWithMemAddrInfo(j, process);
+        }
+
+        // Handle defender_modules event to update ProcessResolver
+        if (j.contains("event") && j["event"] == "defender_modules" && j.contains("pid") && j.contains("modules")) {
+            DWORD pid = j["pid"];
+            Process* process = g_ProcessResolver.getObject(pid);
+            if (process) {
+                process->processLoadedDlls.clear();
+                for (const auto& mod : j["modules"]) {
+                    ProcessLoadedDll dll;
+                    dll.name = mod.value("name", "");
+                    dll.dll_base = mod.value("base", (uint64_t)0);
+                    dll.size = mod.value("size", (ULONG)0);
+                    process->processLoadedDlls.push_back(dll);
+                }
+                process->augmented = TRUE;
+                LOG_A(LOG_INFO, "EventProcessor: Updated ProcessResolver with %zu modules for MsMpEng.exe (PID: %lu)", process->processLoadedDlls.size(), pid);
+            }
         }
 
         // Print Event
