@@ -2,6 +2,8 @@
 
 #include <windows.h>
 #include <unordered_map>
+#include <memory>
+#include <mutex>
 #include <thread>
 #include <atomic>
 #include <chrono>
@@ -14,7 +16,7 @@ public:
     ProcessResolver();
     ~ProcessResolver();
     
-    void addObject(DWORD id, const Process& obj);
+    // addObject() removed: use getObject() which auto-creates, or insertProcess() for pre-built objects
     BOOL containsObject(DWORD pid);
     Process* getObject(DWORD id);
     void removeObject(DWORD id);
@@ -26,7 +28,7 @@ public:
     void RefreshTargetMatching();
 
     void SetTargetNames(const std::vector<std::string>& names);
-    const std::vector<std::string>& GetTargetNames() const;
+    std::vector<std::string> GetTargetNames() const;  // returns a snapshot copy (thread-safe)
     size_t GetCacheCount();
     
     // Cleanup thread management
@@ -35,8 +37,10 @@ public:
 
 private:
 	std::vector<std::string> targetProcessNames = {};
-    std::unordered_map<DWORD, Process> cache;
+    std::unordered_map<DWORD, std::unique_ptr<Process>> cache;
     
+    mutable std::mutex cache_mutex;
+
     // Cleanup thread members
     std::atomic<bool> cleanupThreadRunning{false};
     std::thread cleanupThread;

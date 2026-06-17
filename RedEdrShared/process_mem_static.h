@@ -26,6 +26,13 @@ class MemStatic {
 public:
 	MemStatic();
 	~MemStatic();  // Destructor to clean up memory
+
+	// Owning type: no shallow copies allowed
+	MemStatic(const MemStatic&) = delete;
+	MemStatic& operator=(const MemStatic&) = delete;
+	MemStatic(MemStatic&&) = default;
+	MemStatic& operator=(MemStatic&&) = default;
+
 	void AddMemoryRegion(uint64_t addr, MemoryRegion* region);
 	BOOL ExistMemoryRegion(uint64_t addr);
 	MemoryRegion* GetMemoryRegion(uint64_t addr);

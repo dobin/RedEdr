@@ -29,7 +29,6 @@ void LOG_A(int verbosity, const char* format, ...);
 
 
 ProcessResolver g_ProcessResolver;
-std::mutex cache_mutex;
 
 
 ProcessResolver::ProcessResolver() {
@@ -42,22 +41,12 @@ ProcessResolver::~ProcessResolver() {
 }
 
 
-// Add an object to the cache
-void ProcessResolver::addObject(DWORD id, const Process& obj) {
-    std::lock_guard<std::mutex> lock(cache_mutex);
-    cache[id] = obj;
-}
+// Removed: addObject() — callers should use getObject() which auto-creates entries.
 
 
 BOOL ProcessResolver::containsObject(DWORD pid) {
     std::lock_guard<std::mutex> lock(cache_mutex);
-    auto it = cache.find(pid);
-    if (it != cache.end()) {
-        return TRUE;
-    }
-    else {
-        return FALSE;
-    }
+    return cache.count(pid) ? TRUE : FALSE;
 }
 
 
@@ -67,42 +56,44 @@ void ProcessResolver::SetTargetNames(const std::vector<std::string>& names) {
 }
 
 
-const std::vector<std::string>& ProcessResolver::GetTargetNames() const {
+// Returns a snapshot copy so callers can iterate safely without holding the lock.
+std::vector<std::string> ProcessResolver::GetTargetNames() const {
+    std::lock_guard<std::mutex> lock(cache_mutex);
     return targetProcessNames;
 }
 
 
-// Get an object from the cache
+// Get an object from the cache, creating it if it doesn't exist.
+// The returned pointer is stable for the lifetime of the cache entry
+// (unique_ptr in an unordered_map is not moved by insertions).
+// Callers must not hold the pointer across operations that may call removeObject().
 Process* ProcessResolver::getObject(DWORD id) {
+    // Fast path: already cached
     {
         std::lock_guard<std::mutex> lock(cache_mutex);
         auto it = cache.find(id);
         if (it != cache.end()) {
-            return &it->second; // Return a pointer to the object
+            return it->second.get();
         }
     }
 
-    // Does not exist, create and add to cache
-    Process* process = MakeProcess(id, targetProcessNames);
-    if (process == nullptr) {
+    // Slow path: create outside the lock (MakeProcess can be slow)
+    std::unique_ptr<Process> process(MakeProcess(id, targetProcessNames));
+    if (!process) {
         return nullptr;
     }
 
-    {
-        std::lock_guard<std::mutex> lock(cache_mutex);
-        cache[id] = *process;
+    // Re-acquire lock and insert, but check again in case another thread beat us
+    std::lock_guard<std::mutex> lock(cache_mutex);
+    auto it = cache.find(id);
+    if (it != cache.end()) {
+        // Another thread already inserted — use theirs, discard ours
+        return it->second.get();
     }
-    
-    // Clean up the temporary process object
-    delete process;
-    
-    {
-        std::lock_guard<std::mutex> lock(cache_mutex);
-        return &cache[id];
-    }
+    auto [inserted_it, ok] = cache.emplace(id, std::move(process));
+    return inserted_it->second.get();
 }
 
-// Remove an object from the cache
 void ProcessResolver::removeObject(DWORD id) {
     std::lock_guard<std::mutex> lock(cache_mutex);
     cache.erase(id);
@@ -160,25 +151,19 @@ BOOL ProcessResolver::PopulateAllProcesses() {
             }
             
             // Create process object and add to cache
-            Process* process = MakeProcess(pid, targetProcessNames);
-            if (process != nullptr) {
-                {
-                    std::lock_guard<std::mutex> lock(cache_mutex);
-                    cache[pid] = *process;
+            std::unique_ptr<Process> process(MakeProcess(pid, targetProcessNames));
+            if (process) {
+                std::lock_guard<std::mutex> lock(cache_mutex);
+                // Only insert if still absent (another thread may have added it)
+                if (!cache.count(pid)) {
+                    cache.emplace(pid, std::move(process));
+                    cachedCount++;
                 }
                 
-                // Clean up the temporary process object
-                delete process;
-                cachedCount++;
-                
-                // Log progress for large numbers of processes
-                //if (cachedCount % 50 == 0) {
-                //    LOG_A(LOG_DEBUG, "ProcessResolver: Cached %d processes so far...", cachedCount);
-                //}
             }
             else {
                 // MakeProcess can fail for protected/system processes, this is normal
-                LOG_A(LOG_DEBUG, "ProcessResolver: Failed to create process object for PID %lu (%ls)", 
+                LOG_A(LOG_DEBUG, "ProcessResolver: Failed to create process object for PID %lu (%ls)",
                       pid, pe32.szExeFile);
             }
             
@@ -211,8 +196,7 @@ void ProcessResolver::RefreshTargetMatching() {
     std::lock_guard<std::mutex> lock(cache_mutex);
     
     for (auto& pair : cache) {
-        DWORD pid = pair.first;
-        Process& process = pair.second;
+        Process& process = *pair.second;
         // Don't observe ourselves
         if (contains_case_insensitive(process.name, "rededr.exe")) {
             process.observe = FALSE;
@@ -272,31 +256,27 @@ void ProcessResolver::CleanupWorker() {
 
 void ProcessResolver::CleanupStaleProcesses() {
     LOG_A(LOG_INFO, "ProcessResolver: Starting cleanup of stale processes");
-    
+
     std::vector<DWORD> pidsToRemove;
     size_t totalProcesses = 0;
-    
+
     {
         std::lock_guard<std::mutex> lock(cache_mutex);
         totalProcesses = cache.size();
-        
         for (const auto& pair : cache) {
-            DWORD pid = pair.first;
-            
-            // Check if process is still alive
-            if (!IsProcessAlive(pid)) {
-                pidsToRemove.push_back(pid);
+            if (!IsProcessAlive(pair.first)) {
+                pidsToRemove.push_back(pair.first);
             }
         }
+        // Remove while still holding the lock so we don't race with a re-insert
+        // of the same PID by a new event
+        for (DWORD pid : pidsToRemove) {
+            cache.erase(pid);
+        }
     }
-    
-    // Remove stale processes (outside the lock to avoid holding it too long)
-    for (DWORD pid : pidsToRemove) {
-        removeObject(pid);
-    }
-    
+
     if (!pidsToRemove.empty()) {
-        LOG_A(LOG_INFO, "ProcessResolver: Cleaned up %zu stale processes (was: %zu, now: %zu)", 
+        LOG_A(LOG_INFO, "ProcessResolver: Cleaned up %zu stale processes (was: %zu, now: %zu)",
               pidsToRemove.size(), totalProcesses, GetCacheCount());
     } else {
         LOG_A(LOG_DEBUG, "ProcessResolver: No stale processes found during cleanup");

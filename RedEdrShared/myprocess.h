@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <string>
 #include <vector>
+#include <atomic>
 
 #include "process_query.h"
 #include "process_mem_static.h"
@@ -13,6 +14,13 @@ public:
     Process();
     Process(DWORD _id);
     ~Process();  // Destructor to clean up all data
+
+    // Owning type: no copies (MemStatic owns heap memory)
+    Process(const Process&) = delete;
+    Process& operator=(const Process&) = delete;
+    Process(Process&&) = default;
+    Process& operator=(Process&&) = default;
+
     BOOL doObserve();
 
     bool ObserveIfMatchesTargets(const std::vector<std::string>& targetNames);
@@ -26,7 +34,7 @@ public:
     DWORD id = 0;
     BOOL observe = FALSE;
 
-    BOOL augmented = FALSE;
+    std::atomic<BOOL> augmented{FALSE};
 
     std::string name;
     std::string commandline;
