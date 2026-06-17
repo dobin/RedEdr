@@ -1,4 +1,6 @@
 #include <Windows.h>
+#include <iostream>
+#include <filesystem>
 
 #include "control.h"
 #include "emitter.h"
@@ -9,6 +11,13 @@
 #include "piping.h"
 #include "json.hpp"
 #include "process_resolver.h"
+#include "../RedEdrShared/utils.h"
+
+
+namespace fs = std::filesystem;
+
+// Link against Version.lib
+#pragma comment(lib, "Version.lib")
 
 DWORD start_child_process(wchar_t* childCMD);
 
@@ -19,8 +28,93 @@ volatile BOOL keep_running = TRUE; // Made volatile for thread safety
 PipeServer pipeServer = PipeServer("RedEdrPPL Server", (wchar_t*)PPL_SERVICE_PIPE_NAME);
 
 
+// Helper function to extract file version (of a PE/dll)
+std::string GetDllVersion(const fs::path& dllPath) {
+    DWORD dwHandle = 0;
+    DWORD dwSize = GetFileVersionInfoSizeW(dllPath.c_str(), &dwHandle);
+    
+    if (dwSize == 0) return "Unknown";
+
+    std::vector<BYTE> buffer(dwSize);
+    if (!GetFileVersionInfoW(dllPath.c_str(), 0, dwSize, buffer.data())) {
+        return "Unknown";
+    }
+
+    VS_FIXEDFILEINFO* lpFileInfo = nullptr;
+    UINT uiLen = 0;
+    if (!VerQueryValueW(buffer.data(), L"\\", (LPVOID*)&lpFileInfo, &uiLen) || uiLen == 0) {
+        return "Unknown";
+    }
+
+    // Extract major, minor, build, and private parts
+    int major = HIWORD(lpFileInfo->dwFileVersionMS);
+    int minor = LOWORD(lpFileInfo->dwFileVersionMS);
+    int build = HIWORD(lpFileInfo->dwFileVersionLS);
+    int revision = LOWORD(lpFileInfo->dwFileVersionLS);
+
+    return std::to_string(major) + "." + 
+           std::to_string(minor) + "." + 
+           std::to_string(build) + "." + 
+           std::to_string(revision);
+}
+
+
+std::string GetMpengineVersion() {
+    fs::path baseDir = L"C:\\ProgramData\\Microsoft\\Windows Defender\\Definition Updates";
+    fs::path targetDll;
+
+    // 1. Search dynamically for mpengine.dll inside subdirectories
+    // Its in something like: 
+    // C:\ProgramData\Microsoft\Windows Defender\Definition Updates\{26187561-F935-4D14-8C5C-78828BFBE0F6}\mpengine.dll
+    if (fs::exists(baseDir) && fs::is_directory(baseDir)) {
+        for (const auto& entry : fs::recursive_directory_iterator(baseDir)) {
+            if (entry.is_regular_file() && entry.path().filename() == "mpengine.dll") {
+                targetDll = entry.path();
+                break; // Found the active instance
+            }
+        }
+    }
+
+    // 2. Return the found version
+    if (!targetDll.empty()) {
+        LOG_W(LOG_INFO, L"Found mpengine.dll at: %s", targetDll.c_str());
+        return GetDllVersion(targetDll);
+    } else {
+        LOG_A(LOG_WARNING, "mpengine.dll could not be found under the Definition Updates tree.");
+        return "Unknown";
+    }
+}
+
+
+nlohmann::json GetDefenderPlatformInfo() {
+    nlohmann::json info;
+    
+    // Helper lambda to read registry string and convert to narrow string
+    auto readRegString = [](const std::wstring& subKey, const std::wstring& valueName) -> std::string {
+        HKEY hKey;
+        wchar_t buffer[MAX_PATH];
+        DWORD bufferSize = sizeof(buffer);
+
+        if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, subKey.c_str(), 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+            if (RegQueryValueExW(hKey, valueName.c_str(), NULL, NULL, (LPBYTE)buffer, &bufferSize) == ERROR_SUCCESS) {
+                RegCloseKey(hKey);
+                return wchar2string(buffer);
+            }
+            RegCloseKey(hKey);
+        }
+        return "";
+    };
+
+    info["as_signature_version"] = readRegString(L"SOFTWARE\\Microsoft\\Windows Defender\\Signature Updates", L"ASSignatureVersion");
+    info["av_signature_version"] = readRegString(L"SOFTWARE\\Microsoft\\Windows Defender\\Signature Updates", L"AVSignatureVersion");
+    info["install_location"] = readRegString(L"SOFTWARE\\Microsoft\\Windows Defender", L"InstallLocation");
+    
+    return info;
+}
+
+
 void SendDefenderInfos() {
-    // Emit defender trace start event with module info
+    // Emit defender trace start event with MsMpEng.exe module info (DLL list) and engine version
     DWORD pid = FindProcessIdByName(L"MsMpEng.exe");
     if (pid != 0) {
         Process* process = g_ProcessResolver.getObject(pid);
@@ -64,14 +158,25 @@ void SendDefenderInfos() {
                 //LOG_A(LOG_INFO, "Control: MsMpEng.exe module: %s at 0x%llx (size: %lu)", mod.name.c_str(), mod.dll_base, mod.size);
             }
             
-            // Send single event with all modules
+            // Send single event with all modules and engine version
             nlohmann::json defender_event;
             defender_event["event"] = "defender_modules";
             defender_event["type"] = "meta";
             defender_event["pid"] = pid;
             defender_event["modules"] = modules_array;
-            
+            defender_event["mpengine_version"] = GetMpengineVersion();
             SendEmitterPipe((char*)defender_event.dump().c_str());
+
+            // Send separate event with platform info
+            nlohmann::json platform_event;
+            platform_event["event"] = "defender_platform_info";
+            platform_event["type"] = "meta";
+            platform_event["pid"] = pid;
+            nlohmann::json platform_info = GetDefenderPlatformInfo();
+            platform_event["as_signature_version"] = platform_info["as_signature_version"];
+            platform_event["av_signature_version"] = platform_info["av_signature_version"];
+            platform_event["install_location"] = platform_info["install_location"];
+            SendEmitterPipe((char*)platform_event.dump().c_str());
         } else {
             LOG_A(LOG_ERROR, "Control: Failed to get MsMpEng.exe process from resolver");
         }
