@@ -175,14 +175,14 @@ HANDLE Process::GetHandle() {
 
 Process::Process() {
     observe = FALSE;
-    hProcess = NULL;
+    // hProcess initialised to NULL in declaration
 }
 
 
 Process::Process(DWORD _id) {
     id = _id;
     observe = FALSE;
-    hProcess = NULL;
+    // hProcess initialised to NULL in declaration
 }
 
 

@@ -27,10 +27,8 @@ public:
                  (std::min)(end_, other.end_), nullptr };
     }
 
-    Range merge(const Range& other) const {
-        if (!overlaps(other) && !is_adjacent(other)) return *this;  // Non-overlapping
-        //return { std::min(start_, other.start_), std::max(end_, other.end_), NULL };
-    }
+    // merge() intentionally omitted — merge_overlapping() is disabled.
+    // Do not implement without resolving data_ ownership.
 
     /*
     void print() const {
@@ -115,12 +113,9 @@ private:
         merged.push_back(ranges_[0]);
 
         for (size_t i = 1; i < ranges_.size(); ++i) {
-            if (merged.back().overlaps(ranges_[i]) || merged.back().is_adjacent(ranges_[i])) {
-                merged.back() = merged.back().merge(ranges_[i]);
-            }
-            else {
-                merged.push_back(ranges_[i]);
-            }
+            // NOTE: merge_overlapping() is disabled — merge() is not implemented
+            // because Range::data_ ownership semantics are unresolved.
+            merged.push_back(ranges_[i]);
         }
 
         ranges_ = std::move(merged);

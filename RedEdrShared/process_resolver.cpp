@@ -68,26 +68,30 @@ std::vector<std::string> ProcessResolver::GetTargetNames() const {
 // (unique_ptr in an unordered_map is not moved by insertions).
 // Callers must not hold the pointer across operations that may call removeObject().
 Process* ProcessResolver::getObject(DWORD id) {
-    // Fast path: already cached
+    // Phase 1: check cache and snapshot targetProcessNames atomically under one lock.
+    std::vector<std::string> targetNamesCopy;
     {
         std::lock_guard<std::mutex> lock(cache_mutex);
         auto it = cache.find(id);
         if (it != cache.end()) {
-            return it->second.get();
+            return it->second.get();  // Fast path: already cached
         }
+        // Snapshot target names so MakeProcess() doesn't race with SetTargetNames()
+        targetNamesCopy = targetProcessNames;
     }
 
-    // Slow path: create outside the lock (MakeProcess can be slow)
-    std::unique_ptr<Process> process(MakeProcess(id, targetProcessNames));
+    // Phase 2: create the Process outside the lock (MakeProcess can be slow — it opens
+    // the process and walks the snapshot).
+    std::unique_ptr<Process> process(MakeProcess(id, targetNamesCopy));
     if (!process) {
         return nullptr;
     }
 
-    // Re-acquire lock and insert, but check again in case another thread beat us
+    // Phase 3: re-acquire lock and insert, checking again in case another thread beat us.
     std::lock_guard<std::mutex> lock(cache_mutex);
     auto it = cache.find(id);
     if (it != cache.end()) {
-        // Another thread already inserted — use theirs, discard ours
+        // Another thread already inserted — use theirs, discard ours.
         return it->second.get();
     }
     auto [inserted_it, ok] = cache.emplace(id, std::move(process));

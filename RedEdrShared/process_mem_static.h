@@ -5,7 +5,6 @@
 #include <string>
 
 #include "ranges.h"
-#include "json.hpp"
 
 
 
@@ -39,12 +38,8 @@ public:
 	void RemoveMemoryRegion(uint64_t addr, size_t size);
 	void ResetData();
 	void PrintMemoryRegions();
-	nlohmann::json ToJson();
 	std::string ResolveStr(uint64_t addr);
 
 private:
 	RangeSet memoryRegions;
 };
-
-
-extern MemStatic g_MemStatic;

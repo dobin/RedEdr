@@ -77,21 +77,6 @@ void MemStatic::PrintMemoryRegions() {
 }
 
 
-nlohmann::json MemStatic::ToJson() {
-	nlohmann::json j;
-	for (const auto& it : memoryRegions.ranges_) {
-		MemoryRegion* r = (MemoryRegion*)it.data_;
-
-		j.push_back({
-			{"name", r->name},
-			{"addr", r->addr},
-			{"size", r->size},
-			{"protection", r->protection}
-			});
-	}
-	return j;
-}
-
 
 std::string MemStatic::ResolveStr(uint64_t addr) {
 	MemoryRegion* r = GetMemoryRegion(addr);

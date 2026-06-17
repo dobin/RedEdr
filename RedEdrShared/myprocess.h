@@ -44,8 +44,8 @@ public:
     ProcessPebInfoRet processPebInfoRet;
     MemStatic memStatic;
 
-
-    HANDLE hProcess;
+private:
+    HANDLE hProcess = NULL;
 };
 
 
