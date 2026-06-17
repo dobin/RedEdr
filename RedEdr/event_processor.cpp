@@ -152,12 +152,23 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
             Process* process = g_ProcessResolver.getObject(pid);
             if (process) {
                 process->processLoadedDlls.clear();
+                process->memStatic.ResetData();
                 for (const auto& mod : j["modules"]) {
                     ProcessLoadedDll dll;
                     dll.name = mod.value("name", "");
                     dll.dll_base = mod.value("base", (uint64_t)0);
                     dll.size = mod.value("size", (ULONG)0);
                     process->processLoadedDlls.push_back(dll);
+
+                    // Populate memStatic so stack trace addresses can be resolved
+                    if (dll.dll_base != 0 && dll.size != 0) {
+                        MemoryRegion* memoryRegion = new MemoryRegion(
+                            dll.name,
+                            dll.dll_base,
+                            dll.size,
+                            "r-x");
+                        process->memStatic.AddMemoryRegion(memoryRegion->addr, memoryRegion);
+                    }
                 }
                 process->augmented = TRUE;
                 LOG_A(LOG_INFO, "EventProcessor: Updated ProcessResolver with %zu modules for MsMpEng.exe (PID: %lu)", process->processLoadedDlls.size(), pid);
