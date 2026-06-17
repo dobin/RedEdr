@@ -197,11 +197,9 @@
     <ClInclude Include="webserver.h" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="index.html">
+    <None Include="index.html">
       <DeploymentContent>true</DeploymentContent>
-    </Text>
-  </ItemGroup>
-  <ItemGroup>
+    </None>
     <None Include="design.css">
       <DeploymentContent>true</DeploymentContent>
     </None>
