@@ -171,7 +171,7 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
                     }
                 }
                 process->augmented = TRUE;
-                LOG_A(LOG_INFO, "EventProcessor: Updated ProcessResolver with %zu modules for %s (PID: %lu)", process->processLoadedDlls.size(), process->process_name.c_str(), pid);
+                LOG_A(LOG_INFO, "EventProcessor: Updated ProcessResolver with %zu modules for %s (PID: %lu)", process->processLoadedDlls.size(), process->name.c_str(), pid);
             }
         }
 
