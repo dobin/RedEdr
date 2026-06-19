@@ -146,8 +146,8 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
             AugmentEventWithMemAddrInfo(j, process);
         }
 
-        // Handle defender_modules event to update ProcessResolver
-        if (j.contains("event") && j["event"] == "defender_modules" && j.contains("pid") && j.contains("modules")) {
+        // Handle process_modules event to update ProcessResolver
+        if (j.contains("event") && j["event"] == "process_modules" && j.contains("pid") && j.contains("modules")) {
             DWORD pid = j["pid"];
             Process* process = g_ProcessResolver.getObject(pid);
             if (process) {
@@ -171,7 +171,7 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
                     }
                 }
                 process->augmented = TRUE;
-                LOG_A(LOG_INFO, "EventProcessor: Updated ProcessResolver with %zu modules for MsMpEng.exe (PID: %lu)", process->processLoadedDlls.size(), pid);
+                LOG_A(LOG_INFO, "EventProcessor: Updated ProcessResolver with %zu modules for %s (PID: %lu)", process->processLoadedDlls.size(), process->process_name.c_str(), pid);
             }
         }
 

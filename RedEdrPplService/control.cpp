@@ -114,74 +114,81 @@ nlohmann::json GetDefenderPlatformInfo() {
 
 
 void SendDefenderInfos() {
-    // Emit defender trace start event with MsMpEng.exe module info (DLL list) and engine version
-    DWORD pid = FindProcessIdByName(L"MsMpEng.exe");
-    if (pid != 0) {
-        Process* process = g_ProcessResolver.getObject(pid);
-        if (process) {
-            LOG_A(LOG_INFO, "Control: Found MsMpEng.exe (PID: %lu) in resolver", pid);
-            
-            // Augment process info if not already done
-            if (!process->augmented) {
-                if (process->AugmentInfo()) {
-                    process->augmented = TRUE;
-                } else {
-                    LOG_A(LOG_ERROR, "Control: Failed to augment MsMpEng.exe process info");
-                }
-            }
-            
-            nlohmann::json modules_array = nlohmann::json::array();
-            for (const auto& mod : process->processLoadedDlls) {
-                nlohmann::json mod_info;
-
-                // Keep full path, but extract just the filename if it's in system32 to save space
-                std::string mod_name = mod.name;
+    // List of processes to gather module info from
+    const wchar_t* target_processes[] = {L"MsMpEng.exe", L"MsSense.exe"};
+    
+    for (const wchar_t* process_name : target_processes) {
+        DWORD pid = FindProcessIdByName(process_name);
+        if (pid != 0) {
+            Process* process = g_ProcessResolver.getObject(pid);
+            if (process) {
+                LOG_W(LOG_INFO, L"Control: Found %s (PID: %lu) in resolver", process_name, pid);
                 
-                // Case-insensitive check for "system32\"
-                std::string lower_name = mod_name;
-                for (char& c : lower_name) {
-                    if (c >= 'A' && c <= 'Z') c += 32;
-                }
-                
-                if (lower_name.find("system32\\") != std::string::npos) {
-                    size_t pos = mod_name.find_last_of("\\/");
-                    if (pos != std::string::npos) {
-                        mod_name = mod_name.substr(pos + 1);
+                // Augment process info if not already done
+                if (!process->augmented) {
+                    if (process->AugmentInfo()) {
+                        process->augmented = TRUE;
+                    } else {
+                        LOG_W(LOG_ERROR, L"Control: Failed to augment %s process info", process_name);
                     }
                 }
-
-                mod_info["name"] = mod_name;
-                mod_info["base"] = mod.dll_base;
-                mod_info["size"] = mod.size;
-                modules_array.push_back(mod_info);
                 
-                //LOG_A(LOG_INFO, "Control: MsMpEng.exe module: %s at 0x%llx (size: %lu)", mod.name.c_str(), mod.dll_base, mod.size);
-            }
-            
-            // Send single event with all modules and engine version
-            nlohmann::json defender_event;
-            defender_event["event"] = "defender_modules";
-            defender_event["type"] = "meta";
-            defender_event["pid"] = pid;
-            defender_event["modules"] = modules_array;
-            defender_event["mpengine_version"] = GetMpengineVersion();
-            SendEmitterPipe((char*)defender_event.dump().c_str());
+                nlohmann::json modules_array = nlohmann::json::array();
+                for (const auto& mod : process->processLoadedDlls) {
+                    nlohmann::json mod_info;
 
-            // Send separate event with platform info
-            nlohmann::json platform_event;
-            platform_event["event"] = "defender_platform_info";
-            platform_event["type"] = "meta";
-            platform_event["pid"] = pid;
-            nlohmann::json platform_info = GetDefenderPlatformInfo();
-            platform_event["as_signature_version"] = platform_info["as_signature_version"];
-            platform_event["av_signature_version"] = platform_info["av_signature_version"];
-            platform_event["install_location"] = platform_info["install_location"];
-            SendEmitterPipe((char*)platform_event.dump().c_str());
+                    // Keep full path, but extract just the filename if it's in system32 to save space
+                    std::string mod_name = mod.name;
+                    
+                    // Case-insensitive check for "system32\"
+                    std::string lower_name = mod_name;
+                    for (char& c : lower_name) {
+                        if (c >= 'A' && c <= 'Z') c += 32;
+                    }
+                    
+                    if (lower_name.find("system32\\") != std::string::npos) {
+                        size_t pos = mod_name.find_last_of("\\/");
+                        if (pos != std::string::npos) {
+                            mod_name = mod_name.substr(pos + 1);
+                        }
+                    }
+
+                    mod_info["name"] = mod_name;
+                    mod_info["base"] = mod.dll_base;
+                    mod_info["size"] = mod.size;
+                    modules_array.push_back(mod_info);
+                }
+                
+                // Send event with process modules
+                nlohmann::json modules_event;
+                modules_event["event"] = "process_modules";
+                modules_event["type"] = "meta";
+                modules_event["pid"] = pid;
+                modules_event["process_name"] = wchar2string(process_name);
+                modules_event["modules"] = modules_array;
+                
+                SendEmitterPipe((char*)modules_event.dump().c_str());
+            } else {
+                LOG_W(LOG_ERROR, L"Control: Failed to get %s process from resolver", process_name);
+            }
         } else {
-            LOG_A(LOG_ERROR, "Control: Failed to get MsMpEng.exe process from resolver");
+            LOG_W(LOG_WARNING, L"Control: %s process not found", process_name);
         }
-    } else {
-        LOG_A(LOG_WARNING, "Control: msmpeng.exe process not found");
+    }
+
+    // Send separate event with Defender platform info (only once, not per process)
+    DWORD msmpeng_pid = FindProcessIdByName(L"MsMpEng.exe");
+    if (msmpeng_pid != 0) {
+        nlohmann::json platform_event;
+        platform_event["event"] = "defender_platform_info";
+        platform_event["type"] = "meta";
+        platform_event["pid"] = msmpeng_pid;
+        nlohmann::json platform_info = GetDefenderPlatformInfo();
+        platform_event["as_signature_version"] = platform_info["as_signature_version"];
+        platform_event["av_signature_version"] = platform_info["av_signature_version"];
+        platform_event["install_location"] = platform_info["install_location"];
+        platform_event["mpengine_version"] = GetMpengineVersion();
+        SendEmitterPipe((char*)platform_event.dump().c_str());
     }
 }
 
