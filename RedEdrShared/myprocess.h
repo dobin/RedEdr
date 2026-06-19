@@ -36,7 +36,8 @@ public:
 
     std::atomic<BOOL> augmented{FALSE};
 
-    std::string name;
+    std::string name;           // Just the filename (e.g., "notepad.exe")
+    std::string image_path;     // Full path (e.g., "C:\\Windows\\System32\\notepad.exe")
     std::string commandline;
 
     // When augmented

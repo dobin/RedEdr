@@ -14,6 +14,19 @@ void LOG_W(int verbosity, const wchar_t* format, ...);
 void LOG_A(int verbosity, const char* format, ...);
 
 
+// Helper function to extract filename from a full path
+static std::string ExtractFilename(const std::string& path) {
+    if (path.empty()) {
+        return "";
+    }
+    size_t lastBackslash = path.find_last_of("\\");
+    if (lastBackslash != std::string::npos) {
+        return path.substr(lastBackslash + 1);
+    }
+    return path;
+}
+
+
 // Helper function to get process PEB info by PID
 // Falls back to process name if PEB info cannot be retrieved
 ProcessPebInfoRet GetProcessNameByPid(DWORD pid) {
@@ -133,7 +146,8 @@ Process* MakeProcess(DWORD pid, std::vector<std::string> targetNames) {
 
 	// Process PEB info
 	ProcessPebInfoRet pebInfo = GetProcessNameByPid(pid);
-	process->name = pebInfo.image_path;
+	process->image_path = pebInfo.image_path;
+	process->name = ExtractFilename(pebInfo.image_path);
 	process->commandline = pebInfo.commandline;
 
 	// Dont observe ourselves
