@@ -122,6 +122,24 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
             return;
         }
 
+        // Cleanup badly labeled 
+        if (j["etw_provider_name"] == "Microsoft-Windows-Kernel-Audit-API-Calls") {
+            switch(j["etw_event_id"]) {
+                case 3:
+                    j["event"] = "NtCreateSymbolicLink";
+                    break;
+                case 4:
+                    j["event"] = "PspSetContextThreadInternal";
+                    break;
+                case 5:
+                    j["event"] = "PspLogAuditOpenProcessEvent";
+                    break;
+                case 6:
+                    j["event"] = "PspLogAuditOpenThreadEvent";
+                    break;
+            }
+        }
+
         // Stats (for UI)
         EventStats(j);
 
