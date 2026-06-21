@@ -432,10 +432,14 @@
         // For Flask integration, uncomment the next line in your template:
         // const FLASK_COLOR_RULES = {{ color_rules | tojson | safe }};
         const DEMO_COLOR_RULES = [
-            { type: "key", match: "event", color: "blue", backgroundColor: "#e6f2ff" },
-            { type: "key", match: "etw_provider_name", color: "white", backgroundColor: "#d9534f" },
-            { type: "key", match: "message", color: "green", backgroundColor: "#e6ffe6" },
-            { type: "key", match: "error", color: "white", backgroundColor: "#d9534f" }
+            { type: "value", match: "Microsoft-Windows-Kernel-Process", backgroundColor: "#e6f2ff" },
+            { type: "value", match: "Microsoft-Windows-Kernel-Audit-API-Calls", backgroundColor: "#fff4e6" },
+            { type: "value", match: "Microsoft-Windows-Kernel-File", backgroundColor: "#e6ffe6" },
+            { type: "value", match: "Microsoft-Windows-Kernel-Network", backgroundColor: "#ffe6f2" },
+            { type: "value", match: "Microsoft-Antimalware-Engine", backgroundColor: "#f2e6ff" },
+            { type: "value", match: "Microsoft-Windows-Threat-Intelligence", backgroundColor: "#ff38f2" },
+            { type: "value", match: "MsMpEng.exe", backgroundColor: "#e32f22" },
+            { type: "value", match: "MsSense.exe", backgroundColor: "#e35c22" },
         ];
         const colorRules = typeof FLASK_COLOR_RULES !== 'undefined' ? FLASK_COLOR_RULES : DEMO_COLOR_RULES;
 
