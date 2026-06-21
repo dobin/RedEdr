@@ -41,6 +41,20 @@ typedef NTSTATUS (NTAPI *PFN_ZwQuerySystemInformation)(
 );
 static PFN_ZwQuerySystemInformation g_ZwQuerySystemInformation = NULL;
 
+// PsGetProcessSignatureLevel / PsGetProcessSectionSignatureLevel
+// These documented kernel APIs return the SignatureLevel and
+// SectionSignatureLevel EPROCESS fields without needing the raw offset.
+// Available since Windows 8.1; resolved dynamically to stay compatible.
+typedef UCHAR (NTAPI *PFN_PsGetProcessSignatureLevel)(
+    PEPROCESS Process
+);
+static PFN_PsGetProcessSignatureLevel g_PsGetProcessSignatureLevel = NULL;
+
+typedef UCHAR (NTAPI *PFN_PsGetProcessSectionSignatureLevel)(
+    PEPROCESS Process
+);
+static PFN_PsGetProcessSectionSignatureLevel g_PsGetProcessSectionSignatureLevel = NULL;
+
 // PROCESS_LOGGING_INFORMATION
 // based on https://www.legacyy.xyz/defenseevasion/windows/2024/04/24/disabling-etw-ti-without-ppl.html
 #define ProcessLoggingInformation 96  // 0x60  
@@ -291,6 +305,18 @@ int InitCallbacks() {
     g_ZwQuerySystemInformation = (PFN_ZwQuerySystemInformation)MmGetSystemRoutineAddress(&funcName);
     if (g_ZwQuerySystemInformation == NULL) {
         LOG_A(LOG_WARNING, "[RedEdr] InitCallbacks: failed to resolve ZwQuerySystemInformation\n");
+    }
+
+    RtlInitUnicodeString(&funcName, L"PsGetProcessSignatureLevel");
+    g_PsGetProcessSignatureLevel = (PFN_PsGetProcessSignatureLevel)MmGetSystemRoutineAddress(&funcName);
+    if (g_PsGetProcessSignatureLevel == NULL) {
+        LOG_A(LOG_WARNING, "[RedEdr] InitCallbacks: failed to resolve PsGetProcessSignatureLevel\n");
+    }
+
+    RtlInitUnicodeString(&funcName, L"PsGetProcessSectionSignatureLevel");
+    g_PsGetProcessSectionSignatureLevel = (PFN_PsGetProcessSectionSignatureLevel)MmGetSystemRoutineAddress(&funcName);
+    if (g_PsGetProcessSectionSignatureLevel == NULL) {
+        LOG_A(LOG_WARNING, "[RedEdr] InitCallbacks: failed to resolve PsGetProcessSectionSignatureLevel\n");
     }
     return TRUE;
 }
@@ -743,7 +769,7 @@ Exit:
 
 
 // Get the PS_PROTECTION offset for the current OS build number.
-static ULONG_PTR GetPsProtectionOffset(ULONG buildNumber) {
+static ULONG_PTR GetHardcodedPsProtectionOffset(ULONG buildNumber) {
     // Map build numbers to known offsets
     if (buildNumber >= 26100) {
         return PSPROTECTION_OFFSET_26100;  // Win11 24H2+
@@ -770,6 +796,146 @@ static ULONG_PTR GetPsProtectionOffset(ULONG buildNumber) {
         return PSPROTECTION_OFFSET_9600;   // Win8.1
     }
     return 0; // Unknown/unsupported
+}
+
+
+// Scan the EPROCESS structure for the PS_PROTECTION field by looking for the
+// well-known layout pattern:
+//
+//   [SignatureLevel] [SectionSignatureLevel] [Protection] [HangCount/GhostCount bitfield]
+//     offset-2          offset-1               offset       offset+1
+//
+// This is a stable structural invariant across all known Windows builds (8.1+).
+// SignatureLevel and SectionSignatureLevel are non-zero UCHARs for protected
+// processes, with values in the range 0x01..0x3F (code integrity signature
+// levels). By matching the 3-byte pattern [nonzero-siglevel, nonzero-secsiglevel,
+// expected-protection], we dramatically reduce false positives compared to
+// scanning for a single byte value.
+//
+// Parameters:
+//   Process             - PEPROCESS pointer for the target process
+//   ExpectedProtection  - The PS_PROTECTION byte value we expect to find
+//                         (e.g. MAKE_PS_PROTECTION(ANTIMALWARE, 0, PROTECTED_LIGHT) = 0x31)
+//   ScanRangeBytes      - How many bytes of EPROCESS to scan (e.g. 4096)
+//
+// Returns: the offset of the Protection field if exactly one candidate is found,
+//          or 0 if zero or multiple candidates are found.
+static ULONG_PTR ScanEprocessForProtectionOffset(
+    PEPROCESS Process,
+    UCHAR ExpectedProtection,
+    ULONG ScanRangeBytes)
+{
+    ULONG candidateCount = 0;
+    ULONG_PTR candidateOffset = 0;
+    ULONG knownOffset = 0;
+
+    // Get the hardcoded offset for comparison / logging
+    RTL_OSVERSIONINFOW osVer = { 0 };
+    osVer.dwOSVersionInfoSize = sizeof(osVer);
+    if (NT_SUCCESS(RtlGetVersion(&osVer))) {
+        knownOffset = (ULONG)GetHardcodedPsProtectionOffset(osVer.dwBuildNumber);
+    }
+
+    // Query the ACTUAL signature level values from the kernel without needing
+    // to know EPROCESS offsets. These APIs are available since Windows 8.1.
+    UCHAR expectedSigLevel = 0;
+    UCHAR expectedSecSigLevel = 0;
+    BOOLEAN haveExpectedSigLevels = FALSE;
+
+    if (g_PsGetProcessSignatureLevel != NULL && g_PsGetProcessSectionSignatureLevel != NULL) {
+        expectedSigLevel    = g_PsGetProcessSignatureLevel(Process);
+        expectedSecSigLevel = g_PsGetProcessSectionSignatureLevel(Process);
+        haveExpectedSigLevels = TRUE;
+        LOG_A(LOG_INFO, "[RedEdr] ScanEprocessForProtectionOffset: kernel APIs report "
+            "SignatureLevel=0x%02X SectionSignatureLevel=0x%02X\n",
+            expectedSigLevel, expectedSecSigLevel);
+    } else {
+        LOG_A(LOG_WARNING, "[RedEdr] ScanEprocessForProtectionOffset: "
+            "PsGetProcessSignatureLevel not available, falling back to heuristics\n");
+    }
+
+    LOG_A(LOG_INFO, "[RedEdr] ScanEprocessForProtectionOffset: EPROCESS=%p, expected=0x%02X, range=%lu, knownOffset=0x%lX\n",
+        Process, ExpectedProtection, ScanRangeBytes, knownOffset);
+
+    // We need at least 2 bytes before the candidate for SignatureLevel and
+    // SectionSignatureLevel, so start scanning at offset 2.
+    // Scan at 1-byte granularity since PS_PROTECTION is not necessarily aligned
+    // (e.g. 0x87A on build 22631).
+    for (ULONG offset = 2; offset < ScanRangeBytes; offset += 1) {
+        __try {
+            UCHAR* base = (UCHAR*)((ULONG_PTR)Process + offset);
+            UCHAR val = *base;
+
+            if (val != ExpectedProtection) {
+                continue;
+            }
+
+            UCHAR sigLevel    = *(base - 2);  // SignatureLevel
+            UCHAR secSigLevel = *(base - 1);  // SectionSignatureLevel
+
+            if (haveExpectedSigLevels) {
+                // Exact match using values from the kernel APIs — no false positives.
+                if (sigLevel != expectedSigLevel || secSigLevel != expectedSecSigLevel) {
+                    continue;
+                }
+            } else {
+                // Fallback heuristic: both must be non-zero and look like
+                // signature level values (small, not part of a pointer).
+                if (sigLevel == 0 || secSigLevel == 0) {
+                    continue;
+                }
+                if (sigLevel > 0x7F || secSigLevel > 0x7F) {
+                    continue;
+                }
+            }
+
+            // We have a strong candidate!
+            candidateCount++;
+            candidateOffset = offset;
+            BOOLEAN isKnownOffset = (offset == knownOffset);
+
+            LOG_A(LOG_INFO, "[RedEdr] ScanEprocessForProtectionOffset: CANDIDATE at offset 0x%04lX  "
+                "SignatureLevel=0x%02X  SectionSignatureLevel=0x%02X  Protection=0x%02X  %s\n",
+                offset, sigLevel, secSigLevel, val,
+                isKnownOffset ? "<-- MATCHES KNOWN OFFSET" : "");
+
+            // Log surrounding context bytes for manual verification.
+            if (offset >= 8 && (offset + 8) < ScanRangeBytes) {
+                UCHAR* ctx = (UCHAR*)((ULONG_PTR)Process + offset - 8);
+                LOG_A(LOG_INFO, "[RedEdr]   context[-8..+8]: "
+                    "%02X %02X %02X %02X %02X %02X %02X %02X [%02X] %02X %02X %02X %02X %02X %02X %02X\n",
+                    ctx[0], ctx[1], ctx[2], ctx[3], ctx[4], ctx[5], ctx[6], ctx[7],
+                    ctx[8],  // this is our candidate (Protection byte)
+                    ctx[9], ctx[10], ctx[11], ctx[12], ctx[13], ctx[14], ctx[15]);
+            }
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            LOG_A(LOG_WARNING, "[RedEdr] ScanEprocessForProtectionOffset: exception at offset 0x%04lX, stopping scan\n", offset);
+            break;
+        }
+    }
+
+    LOG_A(LOG_INFO, "[RedEdr] ScanEprocessForProtectionOffset: found %lu candidate(s)\n", candidateCount);
+
+    if (candidateCount == 1) {
+        LOG_A(LOG_INFO, "[RedEdr] ScanEprocessForProtectionOffset: exactly 1 candidate at 0x%04lX — high confidence\n",
+            (ULONG)candidateOffset);
+        if (candidateOffset != knownOffset && knownOffset != 0) {
+            LOG_A(LOG_WARNING, "[RedEdr] ScanEprocessForProtectionOffset: WARNING — scanned offset 0x%04lX differs from hardcoded 0x%04lX!\n",
+                (ULONG)candidateOffset, knownOffset);
+        }
+        return candidateOffset;
+    } else if (candidateCount == 0) {
+        LOG_A(LOG_WARNING, "[RedEdr] ScanEprocessForProtectionOffset: NO candidates found! "
+            "Expected pattern [SigLevel, SecSigLevel, 0x%02X] not present in scanned range\n",
+            ExpectedProtection);
+    } else {
+        LOG_A(LOG_WARNING, "[RedEdr] ScanEprocessForProtectionOffset: %lu candidates — ambiguous, "
+            "cannot auto-detect. Known offset 0x%lX\n",
+            candidateCount, knownOffset);
+    }
+
+    return 0;
 }
 
 
@@ -808,13 +974,12 @@ NTSTATUS SetProcessProtection(
 
     LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: OS build %lu\n", osVer.dwBuildNumber);
 
-    protectionOffset = GetPsProtectionOffset(osVer.dwBuildNumber);
+    protectionOffset = GetHardcodedPsProtectionOffset(osVer.dwBuildNumber);
     if (protectionOffset == 0) {
-        LOG_A(LOG_ERROR, "[RedEdr] SetProcessProtection: Unsupported OS build %lu\n", osVer.dwBuildNumber);
-        return STATUS_NOT_SUPPORTED;
+        LOG_A(LOG_WARNING, "[RedEdr] SetProcessProtection: Unsupported OS build %lu, will attempt dynamic offset discovery\n", osVer.dwBuildNumber);
+    } else {
+        LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: PS_PROTECTION offset = 0x%lX\n", (ULONG)protectionOffset);
     }
-
-    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: PS_PROTECTION offset = 0x%lX\n", (ULONG)protectionOffset);
 
     // Look up the EPROCESS for the target PID
     status = PsLookupProcessByProcessId((HANDLE)(ULONG_PTR)ProcessId, &process);
@@ -824,13 +989,61 @@ NTSTATUS SetProcessProtection(
         return status;
     }
 
-    // Calculate the address of PS_PROTECTION in this EPROCESS
-    UCHAR* pProtection = (UCHAR*)((ULONG_PTR)process + protectionOffset);
+    // The expected current protection byte: the process should currently be
+    // running as PPL-Antimalware-Light (signer=3, audit=0, type=1 => 0x31).
+    // We compute it from the *requested* new values' type/audit but with the
+    // *known current* signer (Antimalware=3). However, we don't know the exact
+    // current value without reading EPROCESS, so use the scan with the known
+    // target value to locate the field, then read back the actual current byte.
+    //
+    // Strategy: if we have a hardcoded offset, use it and also run the scanner
+    // for verification. If the build is unknown (offset == 0), derive the
+    // expected Protection byte we'll be writing, use the scanner to find the
+    // field, then use whatever the scanner finds at that location.
+    UCHAR oldProtection = 0;
+    UCHAR* pProtection = NULL;
 
-    // Read current value
-    UCHAR oldProtection = *pProtection;
-    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: EPROCESS=%p, PS_PROTECTION at %p\n",
-        process, pProtection);
+    if (protectionOffset != 0) {
+        // Known build: read current value via hardcoded offset.
+        pProtection = (UCHAR*)((ULONG_PTR)process + protectionOffset);
+        oldProtection = *pProtection;
+
+        // Also run the scanner for logging/verification against the known offset.
+        // We scan up to 0x1000 bytes (4KB) which covers all known EPROCESS layouts.
+        //ScanEprocessForProtectionOffset(process, oldProtection, 0x1000);
+    } else {
+        // Unknown build: we don't know the current protection value, so we cannot
+        // directly pass it to the scanner. Instead, compute the new value we want
+        // to write (caller-specified signer/type/audit) and scan for that — if the
+        // process is already at the target level, the scan finds it. More robustly,
+        // try scanning for each valid PPL-Light byte (signer 1..7, type=1, audit=0).
+        // In practice, our PPL service starts as Antimalware-Light (0x31), so try that.
+        UCHAR candidateProtections[] = {
+            MAKE_PS_PROTECTION(PS_PROTECTED_SIGNER_ANTIMALWARE, 0, PS_PROTECTED_TYPE_PROTECTED_LIGHT), // 0x31
+            MAKE_PS_PROTECTION(PS_PROTECTED_SIGNER_LSA,         0, PS_PROTECTED_TYPE_PROTECTED_LIGHT), // 0x41
+            MAKE_PS_PROTECTION(PS_PROTECTED_SIGNER_WINDOWS,     0, PS_PROTECTED_TYPE_PROTECTED_LIGHT), // 0x51
+            MAKE_PS_PROTECTION(PS_PROTECTED_SIGNER_WINTCB,      0, PS_PROTECTED_TYPE_PROTECTED_LIGHT), // 0x61
+        };
+        for (ULONG i = 0; i < ARRAYSIZE(candidateProtections); i++) {
+            ULONG_PTR scannedOffset = ScanEprocessForProtectionOffset(process, candidateProtections[i], 0x1000);
+            if (scannedOffset != 0) {
+                protectionOffset = scannedOffset;
+                pProtection = (UCHAR*)((ULONG_PTR)process + protectionOffset);
+                oldProtection = *pProtection;
+                LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: dynamic discovery found offset 0x%lX (current=0x%02X)\n",
+                    (ULONG)protectionOffset, oldProtection);
+                break;
+            }
+        }
+        if (pProtection == NULL) {
+            LOG_A(LOG_ERROR, "[RedEdr] SetProcessProtection: dynamic offset discovery failed for build %lu\n",
+                osVer.dwBuildNumber);
+            ObDereferenceObject(process);
+            return STATUS_NOT_SUPPORTED;
+        }
+    }
+    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: EPROCESS=%p, PS_PROTECTION at %p (offset=0x%lX)\n",
+        process, pProtection, (ULONG)protectionOffset);
     LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: Old protection = 0x%02X (Type=%u, Audit=%u, Signer=%u)\n",
         oldProtection,
         oldProtection & 0x7,           // Type
