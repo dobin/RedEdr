@@ -9,6 +9,7 @@ BOOL InstallElamCertPpl();
 BOOL InstallPplService();
 BOOL EnablePplProducer(BOOL e, std::vector<std::string> targetNames, bool doDefenderTrace = false);
 BOOL StartThePplService();
+BOOL ElevatePplServiceProtection();
 BOOL ShutdownPplService();
 BOOL DisablePplProducer();
 BOOL remove_ppl_service();

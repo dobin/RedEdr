@@ -711,3 +711,154 @@ Exit:
     return OB_PREOP_SUCCESS;
 }
 
+
+//////////////////////////////////////////////////////////////////////
+// Process Protection Level Manipulation (DKOM)
+//
+// Modifies the PS_PROTECTION field in the EPROCESS structure of a 
+// target process. This allows elevating a PPL-Antimalware process 
+// (e.g. RedEdrPplService) to PPL-WinTcb so it can access higher-
+// protected processes like MsSense.exe.
+//
+// Inspired by: https://github.com/hfiref0x/KDU (ps.cpp)
+//////////////////////////////////////////////////////////////////////
+
+// PS_PROTECTION offsets in EPROCESS for different Windows builds.
+// These are well-known offsets from Windows internals / KDU.
+#define PSPROTECTION_OFFSET_9600   0x67A   // Win8.1
+#define PSPROTECTION_OFFSET_10240  0x6AA   // Win10 TH1
+#define PSPROTECTION_OFFSET_10586  0x6B2   // Win10 TH2
+#define PSPROTECTION_OFFSET_14393  0x6C2   // Win10 RS1
+#define PSPROTECTION_OFFSET_15063  0x6CA   // Win10 RS2..RS4 (15063,16299,17134,17763)
+#define PSPROTECTION_OFFSET_18362  0x6FA   // Win10 19H1/19H2
+#define PSPROTECTION_OFFSET_19041  0x87A   // Win10 20H1..22H2, Win11 21H2..23H2
+#define PSPROTECTION_OFFSET_26100  0x5FA   // Win11 24H2..25H2
+
+// PS_PROTECTION structure layout (1 byte in EPROCESS):
+//   Bits [2:0]  = Type   (PS_PROTECTED_TYPE)
+//   Bit  [3]    = Audit
+//   Bits [7:4]  = Signer (PS_PROTECTED_SIGNER)
+#define MAKE_PS_PROTECTION(signer, audit, type) \
+    (UCHAR)(((signer) << 4) | (((audit) & 1) << 3) | ((type) & 0x7))
+
+
+// Get the PS_PROTECTION offset for the current OS build number.
+static ULONG_PTR GetPsProtectionOffset(ULONG buildNumber) {
+    // Map build numbers to known offsets
+    if (buildNumber >= 26100) {
+        return PSPROTECTION_OFFSET_26100;  // Win11 24H2+
+    }
+    else if (buildNumber >= 19041) {
+        return PSPROTECTION_OFFSET_19041;  // Win10 20H1 through Win11 23H2
+    }
+    else if (buildNumber >= 18362) {
+        return PSPROTECTION_OFFSET_18362;  // Win10 19H1/19H2
+    }
+    else if (buildNumber >= 15063) {
+        return PSPROTECTION_OFFSET_15063;  // Win10 RS2..RS4
+    }
+    else if (buildNumber >= 14393) {
+        return PSPROTECTION_OFFSET_14393;  // Win10 RS1
+    }
+    else if (buildNumber >= 10586) {
+        return PSPROTECTION_OFFSET_10586;  // Win10 TH2
+    }
+    else if (buildNumber >= 10240) {
+        return PSPROTECTION_OFFSET_10240;  // Win10 TH1
+    }
+    else if (buildNumber >= 9600) {
+        return PSPROTECTION_OFFSET_9600;   // Win8.1
+    }
+    return 0; // Unknown/unsupported
+}
+
+
+// Set the PS_PROTECTION field of a process identified by PID.
+// This performs Direct Kernel Object Manipulation (DKOM) to change
+// the protection level of a running process.
+//
+// Parameters:
+//   ProcessId       - PID of the target process
+//   ProtectionSigner - PS_PROTECTED_SIGNER_* value (e.g. 6 for WinTcb)
+//   ProtectionType   - PS_PROTECTED_TYPE_* value (e.g. 1 for ProtectedLight)
+//   ProtectionAudit  - Audit flag (usually 0)
+//
+// Returns NTSTATUS
+NTSTATUS SetProcessProtection(
+    ULONG ProcessId,
+    UCHAR ProtectionSigner,
+    UCHAR ProtectionType,
+    UCHAR ProtectionAudit)
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    PEPROCESS process = NULL;
+    ULONG_PTR protectionOffset = 0;
+
+    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: pid=%lu signer=%u type=%u audit=%u\n",
+        ProcessId, ProtectionSigner, ProtectionType, ProtectionAudit);
+
+    // Get the OS build number to determine the EPROCESS offset
+    RTL_OSVERSIONINFOW osVer = { 0 };
+    osVer.dwOSVersionInfoSize = sizeof(osVer);
+    status = RtlGetVersion(&osVer);
+    if (!NT_SUCCESS(status)) {
+        LOG_A(LOG_ERROR, "[RedEdr] SetProcessProtection: RtlGetVersion failed: 0x%08X\n", status);
+        return status;
+    }
+
+    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: OS build %lu\n", osVer.dwBuildNumber);
+
+    protectionOffset = GetPsProtectionOffset(osVer.dwBuildNumber);
+    if (protectionOffset == 0) {
+        LOG_A(LOG_ERROR, "[RedEdr] SetProcessProtection: Unsupported OS build %lu\n", osVer.dwBuildNumber);
+        return STATUS_NOT_SUPPORTED;
+    }
+
+    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: PS_PROTECTION offset = 0x%lX\n", (ULONG)protectionOffset);
+
+    // Look up the EPROCESS for the target PID
+    status = PsLookupProcessByProcessId((HANDLE)(ULONG_PTR)ProcessId, &process);
+    if (!NT_SUCCESS(status)) {
+        LOG_A(LOG_ERROR, "[RedEdr] SetProcessProtection: PsLookupProcessByProcessId failed for pid %lu: 0x%08X\n",
+            ProcessId, status);
+        return status;
+    }
+
+    // Calculate the address of PS_PROTECTION in this EPROCESS
+    UCHAR* pProtection = (UCHAR*)((ULONG_PTR)process + protectionOffset);
+
+    // Read current value
+    UCHAR oldProtection = *pProtection;
+    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: EPROCESS=%p, PS_PROTECTION at %p\n",
+        process, pProtection);
+    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: Old protection = 0x%02X (Type=%u, Audit=%u, Signer=%u)\n",
+        oldProtection,
+        oldProtection & 0x7,           // Type
+        (oldProtection >> 3) & 0x1,    // Audit
+        (oldProtection >> 4) & 0xF);   // Signer
+
+    // Write new protection value
+    UCHAR newProtection = MAKE_PS_PROTECTION(ProtectionSigner, ProtectionAudit, ProtectionType);
+    *pProtection = newProtection;
+
+    // Verify the write
+    UCHAR verifyProtection = *pProtection;
+    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: New protection = 0x%02X (Type=%u, Audit=%u, Signer=%u)\n",
+        verifyProtection,
+        verifyProtection & 0x7,
+        (verifyProtection >> 3) & 0x1,
+        (verifyProtection >> 4) & 0xF);
+
+    if (verifyProtection != newProtection) {
+        LOG_A(LOG_ERROR, "[RedEdr] SetProcessProtection: Verification failed! Expected 0x%02X, got 0x%02X\n",
+            newProtection, verifyProtection);
+        ObDereferenceObject(process);
+        return STATUS_UNSUCCESSFUL;
+    }
+
+    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: Successfully changed protection for pid %lu\n", ProcessId);
+
+    ObDereferenceObject(process);
+    return STATUS_SUCCESS;
+}
+

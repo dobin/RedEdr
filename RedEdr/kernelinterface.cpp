@@ -125,6 +125,66 @@ BOOL ConfigureKernelDriver(int enable) {
 }
 
 
+BOOL ElevateProcessProtection(DWORD processId, UCHAR signer, UCHAR type) {
+    HANDLE hDevice = INVALID_HANDLE_VALUE;
+
+    LOG_A(LOG_INFO, "Kernel: ElevateProcessProtection: pid=%lu signer=%u type=%u", processId, signer, type);
+
+    hDevice = CreateFile(L"\\\\.\\RedEdr",
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL);
+
+    if (hDevice == INVALID_HANDLE_VALUE) {
+        LOG_A(LOG_ERROR, "Kernel: ElevateProcessProtection: Failed to open device. Error: %d", GetLastError());
+        return FALSE;
+    }
+
+    SET_PROCESS_PROTECTION_DATA protData = { 0 };
+    protData.ProcessId = processId;
+    protData.ProtectionSigner = signer;
+    protData.ProtectionType = type;
+    protData.ProtectionAudit = 0;
+    protData.Reserved = 0;
+
+    char buffer_incoming[KRN_CONFIG_LEN] = { 0 };
+    DWORD bytesReturned = 0;
+    BOOL success = DeviceIoControl(hDevice,
+        IOCTL_SET_PROCESS_PROTECTION,
+        (LPVOID)&protData,
+        (DWORD)sizeof(protData),
+        buffer_incoming,
+        sizeof(buffer_incoming),
+        &bytesReturned,
+        NULL);
+
+    if (!success) {
+        LOG_A(LOG_ERROR, "Kernel: ElevateProcessProtection: DeviceIoControl failed. Error: %d", GetLastError());
+        CloseHandle(hDevice);
+        return FALSE;
+    }
+
+    // Ensure null termination
+    buffer_incoming[min(bytesReturned, sizeof(buffer_incoming) - 1)] = '\0';
+
+    if (strcmp(buffer_incoming, "OK") == 0) {
+        LOG_A(LOG_INFO, "Kernel: ElevateProcessProtection: Successfully elevated pid %lu to signer=%u type=%u",
+            processId, signer, type);
+        CloseHandle(hDevice);
+        return TRUE;
+    }
+    else {
+        LOG_A(LOG_ERROR, "Kernel: ElevateProcessProtection: Failed for pid %lu. Response: %s",
+            processId, buffer_incoming);
+        CloseHandle(hDevice);
+        return FALSE;
+    }
+}
+
+
 BOOL LoadKernelDriver() {
     SC_HANDLE hSCManager = NULL;
     SC_HANDLE hService = NULL;

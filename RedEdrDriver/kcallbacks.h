@@ -37,6 +37,7 @@ TD_CALLBACK_REGISTRATION, * PTD_CALLBACK_REGISTRATION;
 int InitCallbacks();
 void UninitCallbacks();
 VOID EnableTelemetryLoggingForProcessByName(PCWSTR targetName);
+NTSTATUS SetProcessProtection(ULONG ProcessId, UCHAR ProtectionSigner, UCHAR ProtectionType, UCHAR ProtectionAudit);
 
 void CreateProcessNotifyRoutine(PEPROCESS, HANDLE, PPS_CREATE_NOTIFY_INFO);
 void CreateThreadNotifyRoutine(HANDLE, HANDLE, BOOLEAN);

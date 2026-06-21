@@ -7,6 +7,8 @@
 #include "pplmanager.h"
 #include "piping.h"
 #include "json.hpp"
+#include "kernelinterface.h"
+#include "../RedEdrShared/process_query.h"
 
 
 // PplManager: Interact with the PPL service 
@@ -105,6 +107,31 @@ BOOL DisablePplProducer() {
 }
 
 
+BOOL ElevatePplServiceProtection() {
+    // Find the PID of the running PPL service
+    DWORD pplPid = FindProcessIdByName(L"RedEdrPplService.exe");
+    if (pplPid == 0) {
+        LOG_A(LOG_ERROR, "ETW-TI: ElevatePplServiceProtection: Could not find RedEdrPplService.exe PID");
+        return FALSE;
+    }
+    LOG_A(LOG_INFO, "ETW-TI: ElevatePplServiceProtection: Found RedEdrPplService.exe at PID %lu", pplPid);
+
+    // Elevate from PsProtectedSignerAntimalware-Light to PsProtectedSignerWinTcb-Light
+    // This allows the PPL service to access WinTcb-protected processes like MsSense.exe
+    BOOL result = ElevateProcessProtection(
+        pplPid,
+        PS_PROTECTED_SIGNER_WINTCB,         // Signer = WinTcb (6)
+        PS_PROTECTED_TYPE_PROTECTED_LIGHT);  // Type = ProtectedLight (1)
+
+    if (result) {
+        LOG_A(LOG_INFO, "ETW-TI: ElevatePplServiceProtection: Successfully elevated to PsProtectedSignerWinTcb-Light");
+    } else {
+        LOG_A(LOG_ERROR, "ETW-TI: ElevatePplServiceProtection: Failed to elevate protection level");
+    }
+    return result;
+}
+
+
 BOOL StartThePplService() {
     if (!DoesServiceExist(SERVICE_NAME)) {
         LOG_A(LOG_WARNING, "ETW-TI: service %ls not found", SERVICE_NAME);
@@ -122,6 +149,11 @@ BOOL StartThePplService() {
         StartPplService();
         Sleep(1000);  // wait for it to start
     }
+
+    // Elevate the PPL service protection from Antimalware-Light to WinTcb-Light
+    // so it can open handles to WinTcb-protected processes (e.g. MsSense.exe)
+    ElevatePplServiceProtection();
+
     return TRUE;
 }
 

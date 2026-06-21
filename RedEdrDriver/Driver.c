@@ -123,6 +123,48 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
         break;
     }
 
+    case IOCTL_SET_PROCESS_PROTECTION: {
+        LOG_A(LOG_INFO, "[IOCTL] Handling IOCTL_SET_PROCESS_PROTECTION\n");
+
+        // Validate input buffer
+        size_t protInputLen = stack->Parameters.DeviceIoControl.InputBufferLength;
+        if (protInputLen < sizeof(SET_PROCESS_PROTECTION_DATA) ||
+            Irp->AssociatedIrp.SystemBuffer == NULL) {
+            LOG_A(LOG_INFO, "[IOCTL] Invalid protection input buffer: size=%zu, expected=%zu\n",
+                protInputLen, sizeof(SET_PROCESS_PROTECTION_DATA));
+            status = STATUS_INVALID_PARAMETER;
+            Irp->IoStatus.Information = 0;
+            break;
+        }
+
+        PSET_PROCESS_PROTECTION_DATA protData = (PSET_PROCESS_PROTECTION_DATA)Irp->AssociatedIrp.SystemBuffer;
+        LOG_A(LOG_INFO, "[IOCTL] SetProcessProtection: pid=%lu signer=%u type=%u audit=%u\n",
+            protData->ProcessId, protData->ProtectionSigner, protData->ProtectionType, protData->ProtectionAudit);
+
+        NTSTATUS protStatus = SetProcessProtection(
+            protData->ProcessId,
+            protData->ProtectionSigner,
+            protData->ProtectionType,
+            protData->ProtectionAudit);
+
+        // Return result as string
+        char* protAnswer = NT_SUCCESS(protStatus) ? "OK" : "FAIL";
+        size_t protMsgLen = strlen(protAnswer) + 1;
+        size_t protOutputLen = stack->Parameters.DeviceIoControl.OutputBufferLength;
+
+        if (protOutputLen < protMsgLen) {
+            LOG_A(LOG_INFO, "[IOCTL] Protection output buffer too small\n");
+            status = STATUS_BUFFER_TOO_SMALL;
+            Irp->IoStatus.Information = protMsgLen;
+            break;
+        }
+
+        RtlCopyMemory(Irp->AssociatedIrp.SystemBuffer, protAnswer, protMsgLen);
+        Irp->IoStatus.Information = (ULONG)protMsgLen;
+        status = protStatus;
+        break;
+    }
+
     default:
         status = STATUS_INVALID_DEVICE_REQUEST;
         Irp->IoStatus.Information = 0;
