@@ -137,20 +137,11 @@ void SendDefenderInfos() {
                 for (const auto& mod : process->processLoadedDlls) {
                     nlohmann::json mod_info;
 
-                    // Keep full path, but extract just the filename if it's in system32 to save space
+                    // Only dll filename not full path
                     std::string mod_name = mod.name;
-                    
-                    // Case-insensitive check for "system32\"
-                    std::string lower_name = mod_name;
-                    for (char& c : lower_name) {
-                        if (c >= 'A' && c <= 'Z') c += 32;
-                    }
-                    
-                    if (lower_name.find("system32\\") != std::string::npos) {
-                        size_t pos = mod_name.find_last_of("\\/");
-                        if (pos != std::string::npos) {
-                            mod_name = mod_name.substr(pos + 1);
-                        }
+                    size_t pos = mod_name.find_last_of("\\/");
+                    if (pos != std::string::npos) {
+                        mod_name = mod_name.substr(pos + 1);
                     }
 
                     mod_info["name"] = mod_name;
