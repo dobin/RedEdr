@@ -122,9 +122,10 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
             return;
         }
 
-        // Cleanup badly labeled 
+        // Cleanup badly labeled
         if (j["etw_provider_name"] == "Microsoft-Windows-Kernel-Audit-API-Calls") {
-            switch(j["etw_event_id"]) {
+            int etw_event_id = j.value("etw_event_id", -1);
+            switch(etw_event_id) {
                 case 3:
                     j["event"] = "NtCreateSymbolicLink";
                     break;
