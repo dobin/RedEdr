@@ -1,127 +1,123 @@
-#include <iostream>
 #include <windows.h>
+#include <cstdio>
+#include <cstdarg>
+#include <cstring>
 
-#include <chrono>
-#include <ctime>
-#include <iomanip>
-#include <sstream>
-#include <mutex>
-
+#include "logging.h"
 #include "../Shared/common.h"
 
+// Define the provider exactly once, in this translation unit.
+TRACELOGGING_DEFINE_PROVIDER(
+    g_RedEdrPplLogProvider,
+    "RedEdr-PplService-Log",
+    (0x098bd1da, 0xfc3b, 0x46c0, 0xbe, 0xcb, 0x28, 0xb6, 0x79, 0xf4, 0xa1, 0xa2));
 
-static HANDLE g_logFile = INVALID_HANDLE_VALUE;
-static std::mutex g_logMutex;
-static bool g_logInitialized = false;
 
-
-static void InitializeFileLogging() {
-    if (g_logInitialized) return;
-
-    std::lock_guard<std::mutex> lock(g_logMutex);
-    if (g_logInitialized) return; // Double-check after acquiring lock
-
-    // Open log file for write (this will create new or truncate existing)
-    g_logFile = CreateFileA(
-        "C:\\rededr\\pplservice.log",
-        GENERIC_WRITE,
-        FILE_SHARE_READ,
-        NULL,
-        CREATE_ALWAYS,  // This will create new file or truncate existing
-        FILE_ATTRIBUTE_NORMAL,
-        NULL
-    );
-
-    g_logInitialized = true;
+//
+// Severity -> ETW level mapping.
+//
+// LOG_* values come from Shared/common.h:
+//   LOG_ERROR   0
+//   LOG_WARNING 1
+//   LOG_INFO    2
+//   LOG_DEBUG   3
+//
+// ETW levels (WINEVENT_LEVEL_*):
+//   WINEVENT_LEVEL_ERROR    2
+//   WINEVENT_LEVEL_WARNING  3
+//   WINEVENT_LEVEL_INFO     4
+//   WINEVENT_LEVEL_VERBOSE  5
+//
+// ETW level numeric values (from winmeta.h / evntrace.h):
+//   TRACE_LEVEL_CRITICAL  1
+//   TRACE_LEVEL_ERROR     2
+//   TRACE_LEVEL_WARNING   3
+//   TRACE_LEVEL_INFORMATION 4
+//   TRACE_LEVEL_VERBOSE   5
+static UCHAR SeverityToEtwLevel(int severity)
+{
+    switch (severity) {
+    case LOG_ERROR:   return 2; // TRACE_LEVEL_ERROR
+    case LOG_WARNING: return 3; // TRACE_LEVEL_WARNING
+    case LOG_INFO:    return 4; // TRACE_LEVEL_INFORMATION
+    case LOG_DEBUG:   return 5; // TRACE_LEVEL_VERBOSE
+    default:          return 4;
+    }
 }
 
 
-static void WriteToLogFile(const char* message) {
-    InitializeFileLogging();
+// TraceLoggingLevel() requires a compile-time constant, so we dispatch on
+// severity and hardcode the level in each TraceLoggingWrite call.
+#define PPL_LOG_WRITE(lvl, msg, sev) \
+    TraceLoggingWrite(g_RedEdrPplLogProvider, "Log", \
+        TraceLoggingLevel(lvl), \
+        TraceLoggingValue(msg, "Message"), \
+        TraceLoggingValue((UINT32)(sev), "Severity"), \
+        TraceLoggingKeyword(0))
 
-    if (g_logFile == INVALID_HANDLE_VALUE) {
-        // Fallback to debug output if file can't be opened
-        OutputDebugStringA(message);
+static void LogEtwEvent(int severity, const char* message)
+{
+    if (message == NULL) {
         return;
     }
 
-    std::lock_guard<std::mutex> lock(g_logMutex);
-
-    // Get current timestamp
-    using namespace std::chrono;
-    auto now = system_clock::now();
-    auto in_time_t = system_clock::to_time_t(now);
-    auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
-
-    std::tm local_tm;
-    if (localtime_s(&local_tm, &in_time_t) == 0) {
-        std::ostringstream oss;
-        oss << std::put_time(&local_tm, "%Y-%m-%d %H:%M:%S");
-        oss << '.' << std::setfill('0') << std::setw(3) << ms.count();
-        oss << " - " << message << "\r\n";
-
-        std::string timestampedMessage = oss.str();
-        DWORD bytesWritten;
-        if (!WriteFile(g_logFile, timestampedMessage.c_str(), (DWORD)timestampedMessage.length(), &bytesWritten, NULL)) {
-            // If file write fails, fallback to debug output
-            OutputDebugStringA(message);
-        }
-        else {
-            FlushFileBuffers(g_logFile);
-        }
+    switch (severity) {
+    case LOG_ERROR:   PPL_LOG_WRITE(2, message, severity); break; // TRACE_LEVEL_ERROR
+    case LOG_WARNING: PPL_LOG_WRITE(3, message, severity); break; // TRACE_LEVEL_WARNING
+    case LOG_DEBUG:   PPL_LOG_WRITE(5, message, severity); break; // TRACE_LEVEL_VERBOSE
+    default:          PPL_LOG_WRITE(4, message, severity); break; // TRACE_LEVEL_INFORMATION
     }
-    else {
-        // If timestamp formatting fails, still try to write the message
-        std::string simpleMessage = std::string(message) + "\r\n";
-        DWORD bytesWritten;
-        if (!WriteFile(g_logFile, simpleMessage.c_str(), (DWORD)simpleMessage.length(), &bytesWritten, NULL)) {
-            OutputDebugStringA(message);
-        }
-        else {
-            FlushFileBuffers(g_logFile);
-        }
+}
+
+
+BOOL PplLogInit(void)
+{
+    // TraceLoggingRegister returns an HRESULT in userspace.
+    HRESULT hr = TraceLoggingRegister(g_RedEdrPplLogProvider);
+    if (FAILED(hr)) {
+        // Fall back to OutputDebugString so a debugger still sees the failure.
+        char msg[128];
+        _snprintf_s(msg, sizeof(msg), _TRUNCATE,
+                    "[RedEdr PPL] PplLogInit: TraceLoggingRegister failed 0x%08X\n", hr);
+        OutputDebugStringA(msg);
+        return FALSE;
     }
+    return TRUE;
+}
+
+
+void PplLogUninit(void)
+{
+    TraceLoggingUnregister(g_RedEdrPplLogProvider);
 }
 
 
 void LOG_A(int verbosity, const char* format, ...)
 {
-    char message[DATA_BUFFER_SIZE] = "[RedEdr PPL] ";
-    size_t offset = strlen(message);
+    char message[DATA_BUFFER_SIZE];
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
-    int ret = vsnprintf_s(&message[offset], DATA_BUFFER_SIZE - offset, DATA_BUFFER_SIZE - offset, format, arg_ptr);
+    vsnprintf_s(message, sizeof(message), _TRUNCATE, format, arg_ptr);
     va_end(arg_ptr);
 
-    WriteToLogFile(message);
+    LogEtwEvent(verbosity, message);
 }
 
 
 void LOG_W(int verbosity, const wchar_t* format, ...)
 {
-    WCHAR wide_message[DATA_BUFFER_SIZE] = L"[RedEdr PPL] ";
-    size_t offset = wcslen(wide_message);
+    WCHAR wide_message[DATA_BUFFER_SIZE];
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
-    int ret = vswprintf(&wide_message[offset], DATA_BUFFER_SIZE - offset, format, arg_ptr);
+    vswprintf_s(wide_message, sizeof(wide_message) / sizeof(wchar_t), format, arg_ptr);
     va_end(arg_ptr);
 
-    // Convert wide string to UTF-8
+    // Convert wide string to UTF-8 for the ANSI-string ETW field.
     char message[DATA_BUFFER_SIZE];
     int result = WideCharToMultiByte(CP_UTF8, 0, wide_message, -1, message, sizeof(message), NULL, NULL);
     if (result > 0) {
-        WriteToLogFile(message);
+        LogEtwEvent(verbosity, message);
     }
-}
-
-
-void CleanupFileLogging() {
-    std::lock_guard<std::mutex> lock(g_logMutex);
-    if (g_logFile != INVALID_HANDLE_VALUE) {
-        CloseHandle(g_logFile);
-        g_logFile = INVALID_HANDLE_VALUE;
-    }
-    g_logInitialized = false;
 }

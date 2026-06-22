@@ -14,8 +14,8 @@
 #include "event_processor.h"
 #include "event_aggregator.h"
 #include "process_resolver.h"
-#include "logreader.h"
 #include "krnlogreader.h"
+#include "ppllogreader.h"
 
 
 /* manager.cpp: Knows and manages all subsystems (Input's)
@@ -108,6 +108,14 @@ BOOL ManagerStart(std::vector<HANDLE>& threads) {
 
         // Load: ETW-TI
         if (g_Config.do_etwti) {
+            // PPL service log ETW reader: must start BEFORE the PPL service is
+            // started, so that the service's startup log messages are captured.
+            LOG_A(LOG_INFO, "Manager: PplLogReader init");
+            if (!PplLogReaderInit(threads)) {
+                LOG_A(LOG_ERROR, "Manager: Failed to initialize PPL service log ETW reader");
+                return FALSE;
+            }
+
             // Start PPL service first (if not already)
             LOG_A(LOG_INFO, "Manager: Start ETW-TI PPL service");
             if (!StartThePplService()) {
@@ -197,6 +205,13 @@ void ManagerShutdown() {
         DisablePplProducer();
     }
 
+    // PPL service log ETW reader: stop after the PPL producer is disabled so
+    // any final service log messages are captured.
+    if (g_Config.do_etwti) {
+        LOG_A(LOG_INFO, "Manager: Stop PPL service log ETW reader");
+        PplLogReaderShutdown();
+    }
+
     // ETW
     if (g_Config.do_etw) {
         LOG_A(LOG_INFO, "Manager: Stop ETW readers");
@@ -236,7 +251,4 @@ void ManagerShutdown() {
     // Analyzer
     LOG_A(LOG_INFO, "Manager: Stop EventProcessor");
     StopEventProcessor();
-
-    // LogReader (stop flag only; thread polls every 1s)
-    LogReaderStopAll();
 }

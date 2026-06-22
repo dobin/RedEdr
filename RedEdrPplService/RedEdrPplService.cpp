@@ -29,8 +29,6 @@ void ShutdownService() {
     ShutdownEtwtiReader();
 	g_ProcessResolver.ResetData(); // Clear process cache
 
-    CleanupFileLogging(); // Clean up log file handle
-
     // Stopped
     g_ServiceStatus.dwCurrentState = SERVICE_STOPPED;
     SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
@@ -170,6 +168,13 @@ DWORD ServiceEntry()
 
 int main(INT argc, CHAR** argv)
 {
+    // Register the ETW log provider first, so all subsequent LOG_A / LOG_W
+    // calls are captured. If this fails the service has no observability.
+    if (!PplLogInit()) {
+        OutputDebugStringA("[RedEdr PPL] main: PplLogInit failed\n");
+        return 1;
+    }
+
     LOG_A(LOG_INFO, "Starting RedEdr PPL Service %s", REDEDR_VERSION);
     
     DWORD result = ServiceEntry();
@@ -178,5 +183,8 @@ int main(INT argc, CHAR** argv)
     }
     
     LOG_A(LOG_INFO, "RedEdr PPL Service terminated");
+
+    // Unregister the ETW provider last, after every LOG_A / LOG_W call.
+    PplLogUninit();
     return result;
 }
