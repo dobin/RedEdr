@@ -2,26 +2,28 @@
 #include <ntstrsafe.h>  // Required for RtlStringCbVPrintfA
 
 #include "../Shared/common.h"
+#include "etwlog.h"
 
 #define KRN_LOG_LEN 512
 
 
 void LOG_A(int severity, const char* format, ...)
 {
-    UNREFERENCED_PARAMETER(severity);
-    char message[KRN_LOG_LEN] = "[RedEdr KRN] ";
-    size_t offset = strlen(message);
+    char message[KRN_LOG_LEN];
 
     va_list arg_ptr;
     va_start(arg_ptr, format);
 
     // Use RtlStringCbVPrintfA for kernel-safe string formatting
-    RtlStringCbVPrintfA(&message[offset], KRN_LOG_LEN - offset, format, arg_ptr);
+    RtlStringCbVPrintfA(message, KRN_LOG_LEN, format, arg_ptr);
 
     va_end(arg_ptr);
 
-    // Use DbgPrintEx for kernel logging
-    DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "%s", message);
+    // Emit the log message via the RedEdr kernel-log ETW provider. The
+    // severity is mapped to an ETW level inside LogEtwEvent. The legacy
+    // "[RedEdr KRN] " prefix is dropped: the ETW provider name already
+    // identifies the source.
+    LogEtwEvent(severity, message);
 }
 
 

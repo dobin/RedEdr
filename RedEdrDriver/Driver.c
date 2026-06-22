@@ -9,6 +9,7 @@
 #include "upipe.h"
 #include "kcallbacks.h"
 #include "hashcache.h"
+#include "etwlog.h"
 #include "../Shared/common.h"
 
 // Internal driver device name, cannot be used userland
@@ -264,7 +265,7 @@ void LoadKernelCallbacks() {
 
 
 void RedEdrUnload(_In_ PDRIVER_OBJECT DriverObject) {
-    DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, "Unloading routine called\n");
+    LOG_A(LOG_INFO, "Unloading routine called\n");
 
     CleanupPipe();
 
@@ -291,6 +292,10 @@ void RedEdrUnload(_In_ PDRIVER_OBJECT DriverObject) {
     IoDeleteDevice(DriverObject->DeviceObject);
     // Delete the symbolic link
     IoDeleteSymbolicLink(&SYM_LINK);
+
+    // Unregister the ETW log provider last, after every LOG_A call has
+    // completed. No LOG_A calls are allowed after this point.
+    EtwLogUninit();
 }
 
 
@@ -308,6 +313,15 @@ NTSTATUS MyDriverCreateClose(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
 NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING RegistryPath) {
     UNREFERENCED_PARAMETER(RegistryPath); // Prevent compiler error such as unreferenced parameter (error 4)
     NTSTATUS status;
+
+    // Register the ETW log provider first, so all subsequent LOG_A calls are
+    // captured. If this fails the driver has no observability, so fail load.
+    status = EtwLogInit();
+    if (!NT_SUCCESS(status)) {
+        DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL,
+                   "[RedEdr KRN] DriverEntry: EtwLogInit failed 0x%08X\n", status);
+        return status;
+    }
 
     LOG_A(LOG_INFO, "RedEdr Kernel Driver %s\n", REDEDR_VERSION);
     InitializeHashTable();

@@ -21,6 +21,56 @@ std::ofstream log_file;
 
 #define DO_LOG_DEBUG 0
 
+
+// Forward declaration: AppendAgentLog (below) uses InitLogFile, which is
+// defined further down in this file.
+void InitLogFile();
+
+
+// Append a pre-formatted message to the agent log store (error_messages)
+// and the log file, with a timestamp prefix matching LOG_A's format.
+// Caller must NOT hold error_mutex.
+static void AppendAgentLog(const std::string& message)
+{
+    std::lock_guard<std::mutex> lock(error_mutex);
+
+    using namespace std::chrono;
+
+    auto now = system_clock::now();
+    auto in_time_t = system_clock::to_time_t(now);
+    auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
+
+    std::tm local_tm;
+    if (localtime_s(&local_tm, &in_time_t) != 0) {
+        error_messages.push_back("Failed to get local time - " + message);
+        return;
+    }
+
+    // Log to: stdout
+    std::ostringstream oss;
+    oss << std::put_time(&local_tm, "%Y-%m-%d %H:%M:%S");
+    oss << '.' << std::setfill('0') << std::setw(3) << ms.count();
+    oss << " - " << message;
+
+    // Log to: in-memory store (error_messages)
+    std::string log_entry = oss.str();
+    error_messages.push_back(log_entry);
+
+    // Log to: .log file
+    InitLogFile();
+    if (log_file.is_open()) {
+        log_file << log_entry << std::endl;
+        log_file.flush();
+    }
+}
+
+
+// Public entry point for external log sources (e.g. kernel-log ETW reader).
+void AddAgentLog(const std::string& message)
+{
+    AppendAgentLog(message);
+}
+
 // Initialize log file
 void InitLogFile() {
     static bool initialized = false;
@@ -68,42 +118,7 @@ void LOG_A(int verbosity, const char* format, ...)
     }
     va_end(args);
 
-    std::lock_guard<std::mutex> lock(error_mutex);
-
-    {
-        using namespace std::chrono;
-
-        // Get current time point
-        auto now = system_clock::now();
-        auto in_time_t = system_clock::to_time_t(now);
-        auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
-
-        // Convert to local time using localtime_s (thread-safe)
-        std::tm local_tm;
-        if (localtime_s(&local_tm, &in_time_t) != 0) {
-            // Fallback in case localtime_s fails
-            error_messages.push_back("Failed to get local time - " + std::string(buffer));
-            return;
-        }
-
-        // Format time string
-        std::ostringstream oss;
-        oss << std::put_time(&local_tm, "%Y-%m-%d %H:%M:%S");
-        oss << '.' << std::setfill('0') << std::setw(3) << ms.count();
-        oss << " - " << buffer;
-
-        std::string log_entry = oss.str();
-        error_messages.push_back(log_entry);
-
-        // Write to file
-        InitLogFile();
-        if (log_file.is_open()) {
-            log_file << log_entry << std::endl;
-            log_file.flush();
-        }
-    }
-
-    //error_messages.push_back(std::string(buffer));
+    AppendAgentLog(buffer);
 }
 
 
@@ -139,40 +154,5 @@ void LOG_W(int verbosity, const wchar_t* format, ...)
     }
     va_end(args);
 
-    std::lock_guard<std::mutex> lock(error_mutex);
-
-    {
-        using namespace std::chrono;
-
-        // Get current time point
-        auto now = system_clock::now();
-        auto in_time_t = system_clock::to_time_t(now);
-        auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
-
-        // Convert to local time using localtime_s (thread-safe)
-        std::tm local_tm;
-        if (localtime_s(&local_tm, &in_time_t) != 0) {
-            // Fallback in case localtime_s fails
-            error_messages.push_back("Failed to get local time - " + std::string(buffer));
-            return;
-        }
-
-        // Format time string
-        std::ostringstream oss;
-        oss << std::put_time(&local_tm, "%Y-%m-%d %H:%M:%S");
-        oss << '.' << std::setfill('0') << std::setw(3) << ms.count();
-        oss << " - " << std::string(buffer);
-
-        std::string log_entry = oss.str();
-        error_messages.push_back(log_entry);
-
-        // Write to file
-        InitLogFile();
-        if (log_file.is_open()) {
-            log_file << log_entry << std::endl;
-            log_file.flush();
-        }
-    }
-
-    //error_messages.push_back(std::string(buffer));
+    AppendAgentLog(buffer);
 }

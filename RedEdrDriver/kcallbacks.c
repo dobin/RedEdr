@@ -603,9 +603,7 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
         //
 
         if (PreInfo->Object == PsGetCurrentProcess()) {
-            DbgPrintEx(
-                DPFLTR_IHVDRIVER_ID, DPFLTR_TRACE_LEVEL,
-                "ObCallbackTest: CBTdPreOperationCallback: ignore process open/duplicate from the protected process itself\n");
+            LOG_A(LOG_DEBUG, "CBTdPreOperationCallback: ignore process open/duplicate from the protected process itself\n");
             goto Exit;
         }
 
@@ -632,9 +630,7 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
         //
 
         if (ProcessIdOfTargetThread == PsGetCurrentProcessId()) {
-            DbgPrintEx(
-                DPFLTR_IHVDRIVER_ID, DPFLTR_TRACE_LEVEL,
-                "ObCallbackTest: CBTdPreOperationCallback: ignore thread open/duplicate from the protected process itself\n");
+            LOG_A(LOG_DEBUG, "CBTdPreOperationCallback: ignore thread open/duplicate from the protected process itself\n");
             goto Exit;
         }
 
@@ -643,9 +639,7 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
         AccessBitsToSet = 0;
     }
     else {
-        DbgPrintEx(
-            DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL,
-            "ObCallbackTest: CBTdPreOperationCallback: unexpected object type\n");
+        LOG_A(LOG_ERROR, "CBTdPreOperationCallback: unexpected object type\n");
         goto Exit;
     }
 
@@ -711,9 +705,8 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
             *DesiredAccess);
         LogEvent(line);
     } else {
-        DbgPrintEx(
-            DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL,
-            "ObCallbackTest: CBTdPreOperationCallback\n"
+        LOG_A(LOG_ERROR,
+            "CBTdPreOperationCallback\n"
             "    Client Id:    %p:%p\n"
             "    Object:       %p\n"
             "    Type:         %ls\n"

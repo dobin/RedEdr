@@ -117,6 +117,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Driver.c" />
+    <ClCompile Include="etwlog.c" />
     <ClCompile Include="hashcache.c" />
     <ClCompile Include="kapcinjector.c" />
     <ClCompile Include="kcallbacks.c" />
@@ -125,6 +126,7 @@
     <ClCompile Include="utils.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="etwlog.h" />
     <ClInclude Include="hashcache.h" />
     <ClInclude Include="kapcinjector.h" />
     <ClInclude Include="kcallbacks.h" />

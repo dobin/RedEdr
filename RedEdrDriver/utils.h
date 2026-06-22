@@ -3,7 +3,7 @@
 #include <Ntifs.h>
 
 
-void LOG_A(int severity, char* format, ...);
+void LOG_A(int severity, const char* format, ...);
 int IsSubstringInUnicodeString(PUNICODE_STRING pDestString, PCWSTR pSubString);
 void Unicodestring2wcharAlloc(const UNICODE_STRING* ustr, wchar_t* dest, size_t destSize);
 void JsonEscape(char* str, size_t buffer_size);

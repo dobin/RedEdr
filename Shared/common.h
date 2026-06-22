@@ -64,6 +64,18 @@ typedef struct _SET_PROCESS_PROTECTION_DATA {
 
 #define REDEDR_VERSION "1.0"
 
+//
+// RedEdr Kernel-Log ETW Provider (TraceLogging).
+//
+// The kernel driver (RedEdrDriver) emits its log messages via this ETW
+// provider instead of DbgPrintEx. Userspace consumers attach to the GUID
+// below to receive the "Log" events (fields: Message, Severity).
+//
+//   Provider name : "RedEdr-Kernel-Log"
+//   Provider GUID : 07a19134-15d7-4601-b106-4b7a7aafc582
+//
+#define REDEDR_KRN_ETW_PROVIDER_GUID L"{07a19134-15d7-4601-b106-4b7a7aafc582}"
+
 #define DRIVER_KERNEL_PIPE_NAME L"\\??\\pipe\\RedEdrKrnCom"
 #define KERNEL_PIPE_NAME L"\\\\.\\pipe\\RedEdrKrnCom"
 #define DLL_PIPE_NAME L"\\\\.\\pipe\\RedEdrDllCom"

@@ -166,6 +166,7 @@
     <ClCompile Include="dllreader.cpp" />
     <ClCompile Include="kernelreader.cpp" />
     <ClCompile Include="logreader.cpp" />
+    <ClCompile Include="krnlogreader.cpp" />
     <ClCompile Include="pplmanager.cpp" />
     <ClCompile Include="pplreader.cpp" />
     <ClCompile Include="privileges.cpp" />
@@ -190,6 +191,7 @@
     <ClInclude Include="dllreader.h" />
     <ClInclude Include="kernelreader.h" />
     <ClInclude Include="logreader.h" />
+    <ClInclude Include="krnlogreader.h" />
     <ClInclude Include="pplmanager.h" />
     <ClInclude Include="pplreader.h" />
     <ClInclude Include="privileges.h" />

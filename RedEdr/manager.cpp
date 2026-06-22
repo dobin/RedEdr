@@ -15,6 +15,7 @@
 #include "event_aggregator.h"
 #include "process_resolver.h"
 #include "logreader.h"
+#include "krnlogreader.h"
 
 
 /* manager.cpp: Knows and manages all subsystems (Input's)
@@ -67,6 +68,17 @@ BOOL ManagerApplyNewTargets(std::vector<std::string> traceNames) {
 BOOL ManagerStart(std::vector<HANDLE>& threads) {
 	LOG_A(LOG_INFO, "Manager: Starting all subsystems...");
     try {
+        // Kernel-log ETW reader: must start BEFORE the kernel driver is loaded
+        // and configured, so that the driver's DriverEntry and IOCTL log
+        // messages are captured. Only needed when the kernel module is used.
+        if (g_Config.do_kernel) {
+            LOG_A(LOG_INFO, "Manager: KrnLogReader init");
+            if (!KrnLogReaderInit(threads)) {
+                LOG_A(LOG_ERROR, "Manager: Failed to initialize kernel-log ETW reader");
+                return FALSE;
+            }
+        }
+
         // Kernel: Load module, and reader
         if (g_Config.do_kernel) {
             // Kernel: Driver load
@@ -206,6 +218,13 @@ void ManagerShutdown() {
 
         LOG_A(LOG_INFO, "Manager: Stop kernel reader");
         KernelReaderShutdown();
+    }
+
+    // Kernel-log ETW reader: stop last among kernel-related subsystems so any
+    // final driver log messages (including unload logs) are captured.
+    if (g_Config.do_kernel) {
+        LOG_A(LOG_INFO, "Manager: Stop kernel-log ETW reader");
+        KrnLogReaderShutdown();
     }
 
     // Web server
