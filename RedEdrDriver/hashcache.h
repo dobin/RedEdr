@@ -3,8 +3,9 @@
 #include <ntddk.h>
 #include <stdio.h>
 
-
-#define PROC_NAME_LEN 128
+// Increased from 128 to accommodate long paths (up to MAX_PATH=260) plus JSON escaping.
+// Each backslash needs to be escaped, so worst case is ~520 chars, using 600 for safety.
+#define PROC_NAME_LEN 600
 
 typedef struct _PROCESS_INFO {
     HANDLE ProcessId;
