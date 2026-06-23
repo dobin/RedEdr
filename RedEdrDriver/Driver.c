@@ -32,7 +32,7 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
 
     // Ensure we're at correct IRQL level for operations
     if (KeGetCurrentIrql() > PASSIVE_LEVEL) {
-        LOG_A(LOG_INFO, "[IOCTL] Invalid IRQL level for operation\n");
+        LOG_A(LOG_INFO, "Invalid IRQL level for operation\n");
         status = STATUS_INVALID_DEVICE_STATE;
         Irp->IoStatus.Status = status;
         Irp->IoStatus.Information = 0;
@@ -42,14 +42,14 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
 
     switch (controlCode) {
     case IOCTL_MY_IOCTL_CODE: {
-        LOG_A(LOG_INFO, "[IOCTL] Handling IOCTL\n");
+        LOG_A(LOG_INFO, "Handling IOCTL\n");
 
         // Validate input buffer
         size_t inputBufferLength = stack->Parameters.DeviceIoControl.InputBufferLength;
         
         if (inputBufferLength < sizeof(MY_DRIVER_DATA) || 
             Irp->AssociatedIrp.SystemBuffer == NULL) {
-            LOG_A(LOG_INFO, "[IOCTL] Invalid input buffer: size=%zu, expected=%zu\n", 
+            LOG_A(LOG_INFO, "Invalid input buffer: size=%zu, expected=%zu\n", 
                 inputBufferLength, sizeof(MY_DRIVER_DATA));
             status = STATUS_INVALID_PARAMETER;
             Irp->IoStatus.Information = 0;
@@ -62,7 +62,7 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
         // Ensure filename is null-terminated
         data->filename[TARGET_WSTR_LEN - 1] = L'\0';
 
-        LOG_A(LOG_INFO, "[IOCTL] Received from user-space: enabled: %i/%i  filename: %ls\n", 
+        LOG_A(LOG_INFO, "Received from user-space: enabled: %i/%i  filename: %ls\n", 
             data->enable, data->enable_dll_injection, data->filename);
         char* answer;
         if (data->enable) {
@@ -77,11 +77,11 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
             if (!IsUserspacePipeConnected()) {
                 int ret = ConnectUserspacePipe();
                 if (ret) {
-                    LOG_A(LOG_INFO, "[IOCTL] Start OK\n");
+                    LOG_A(LOG_INFO, "Start OK\n");
                     answer = "OK";
                 }
                 else {
-                    LOG_A(LOG_INFO, "[IOCTL] Start ERROR\n");
+                    LOG_A(LOG_INFO, "Start ERROR\n");
                     answer = "FAIL";
                 }
             }
@@ -91,13 +91,13 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
 
             // 
             if (g_Settings.enable_etwti_events_defender) {
-                LOG_A(LOG_INFO, "[IOCTL] Enabling ETW-TI Defender events\n");
+                LOG_A(LOG_INFO, "Enabling ETW-TI Defender events\n");
                 EnableTelemetryLoggingForProcessByName(L"MsMpEng.exe");
             }
 
         }
         else {
-            LOG_A(LOG_INFO, "[IOCTL] Stop\n");
+            LOG_A(LOG_INFO, "Stop\n");
             g_Settings.enable_kapc_injection = 0;
             g_Settings.enable_etwti_events = 0;
             g_Settings.enable_etwti_events_defender = 0;
@@ -112,7 +112,7 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
         size_t outputBufferLength = stack->Parameters.DeviceIoControl.OutputBufferLength;
         
         if (outputBufferLength < messageLen) {
-            LOG_A(LOG_INFO, "[IOCTL] Output buffer too small: %zu < %zu\n", 
+            LOG_A(LOG_INFO, "Output buffer too small: %zu < %zu\n", 
                 outputBufferLength, messageLen);
             status = STATUS_BUFFER_TOO_SMALL;
             Irp->IoStatus.Information = messageLen;
@@ -125,13 +125,13 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
     }
 
     case IOCTL_SET_PROCESS_PROTECTION: {
-        LOG_A(LOG_INFO, "[IOCTL] Handling IOCTL_SET_PROCESS_PROTECTION\n");
+        LOG_A(LOG_INFO, "Handling IOCTL_SET_PROCESS_PROTECTION\n");
 
         // Validate input buffer
         size_t protInputLen = stack->Parameters.DeviceIoControl.InputBufferLength;
         if (protInputLen < sizeof(SET_PROCESS_PROTECTION_DATA) ||
             Irp->AssociatedIrp.SystemBuffer == NULL) {
-            LOG_A(LOG_INFO, "[IOCTL] Invalid protection input buffer: size=%zu, expected=%zu\n",
+            LOG_A(LOG_INFO, "Invalid protection input buffer: size=%zu, expected=%zu\n",
                 protInputLen, sizeof(SET_PROCESS_PROTECTION_DATA));
             status = STATUS_INVALID_PARAMETER;
             Irp->IoStatus.Information = 0;
@@ -139,7 +139,7 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
         }
 
         PSET_PROCESS_PROTECTION_DATA protData = (PSET_PROCESS_PROTECTION_DATA)Irp->AssociatedIrp.SystemBuffer;
-        LOG_A(LOG_INFO, "[IOCTL] SetProcessProtection: pid=%lu signer=%u type=%u audit=%u\n",
+        LOG_A(LOG_INFO, "SetProcessProtection: pid=%lu signer=%u type=%u audit=%u\n",
             protData->ProcessId, protData->ProtectionSigner, protData->ProtectionType, protData->ProtectionAudit);
 
         NTSTATUS protStatus = SetProcessProtection(
@@ -154,7 +154,7 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
         size_t protOutputLen = stack->Parameters.DeviceIoControl.OutputBufferLength;
 
         if (protOutputLen < protMsgLen) {
-            LOG_A(LOG_INFO, "[IOCTL] Protection output buffer too small\n");
+            LOG_A(LOG_INFO, "Protection output buffer too small\n");
             status = STATUS_BUFFER_TOO_SMALL;
             Irp->IoStatus.Information = protMsgLen;
             break;

@@ -92,7 +92,7 @@ static BOOLEAN EnableProcessTelemetryLogging(PEPROCESS Process) {
         &hProcess
     );
     if (!NT_SUCCESS(status)) {
-        LOG_A(LOG_WARNING, "[RedEdr] EnableProcessTelemetryLogging: ObOpenObjectByPointer failed: 0x%08X\n", status);
+        LOG_A(LOG_WARNING, "EnableProcessTelemetryLogging: ObOpenObjectByPointer failed: 0x%08X", status);
         return FALSE;
     }
 
@@ -125,7 +125,7 @@ static BOOLEAN EnableProcessTelemetryLogging(PEPROCESS Process) {
         sizeof(processLoggingInfo)
     );
     if (!NT_SUCCESS(status)) {
-        LOG_A(LOG_WARNING, "[RedEdr] EnableProcessTelemetryLogging: ZwSetInformationProcess failed: 0x%08X\n", status);
+        LOG_A(LOG_WARNING, "EnableProcessTelemetryLogging: ZwSetInformationProcess failed: 0x%08X", status);
         success = FALSE;
     } else {
         success = TRUE;
@@ -150,7 +150,7 @@ static void LogProcessTelemetryLoggingFlags(PEPROCESS Process, HANDLE pid) {
         &hProcess
     );
     if (!NT_SUCCESS(status)) {
-        LOG_A(LOG_INFO, "[RedEdr] LogProcessTelemetryLoggingFlags: ObOpenObjectByPointer failed for pid %llu: 0x%08X\n", (ULONG64)pid, status);
+        LOG_A(LOG_INFO, "LogProcessTelemetryLoggingFlags: ObOpenObjectByPointer failed for pid %llu: 0x%08X", (ULONG64)pid, status);
         return;
     }
 
@@ -171,11 +171,11 @@ static void LogProcessTelemetryLoggingFlags(PEPROCESS Process, HANDLE pid) {
     ZwClose(hProcess);
 
     if (!NT_SUCCESS(status)) {
-        LOG_A(LOG_INFO, "[RedEdr] LogProcessTelemetryLoggingFlags: ZwQueryInformationProcess failed for pid %llu: 0x%08X\n", (ULONG64)pid, status);
+        LOG_A(LOG_INFO, "LogProcessTelemetryLoggingFlags: ZwQueryInformationProcess failed for pid %llu: 0x%08X", (ULONG64)pid, status);
         return;
     }
 
-    LOG_A(LOG_INFO, "[RedEdr] pid %llu ETW-TI flags=0x%02X: ReadVM=%d WriteVM=%d ProcSuspRes=%d ThrSuspRes=%d LocalExecProt=%d RemoteExecProt=%d Impersonation=%d reserved=0x%02X\n",
+    LOG_A(LOG_INFO, "pid %llu ETW-TI flags=0x%02X: ReadVM=%d WriteVM=%d ProcSuspRes=%d ThrSuspRes=%d LocalExecProt=%d RemoteExecProt=%d Impersonation=%d reserved=0x%02X",
         (ULONG64)pid,
         loggingInfo.Flags,
         loggingInfo.Bits.EnableReadVmLogging,
@@ -233,12 +233,12 @@ VOID EnableTelemetryLoggingForProcessByName(PCWSTR targetName) {
     ULONG bufferSize = 1024 * 1024; // 1 MB initial allocation
     PVOID buffer = ExAllocatePool2(POOL_FLAG_NON_PAGED, bufferSize, 'PrEn');
     if (buffer == NULL) {
-        LOG_A(LOG_WARNING, "[RedEdr] EnableTelemetryLoggingForProcessByName: allocation failed\n");
+        LOG_A(LOG_WARNING, "EnableTelemetryLoggingForProcessByName: allocation failed");
         return;
     }
 
     if (g_ZwQuerySystemInformation == NULL) {
-        LOG_A(LOG_WARNING, "[RedEdr] EnableTelemetryLoggingForProcessByName: ZwQuerySystemInformation not resolved\n");
+        LOG_A(LOG_WARNING, "EnableTelemetryLoggingForProcessByName: ZwQuerySystemInformation not resolved");
         ExFreePool(buffer);
         return;
     }
@@ -250,7 +250,7 @@ VOID EnableTelemetryLoggingForProcessByName(PCWSTR targetName) {
         &returnLength
     );
     if (!NT_SUCCESS(status)) {
-        LOG_A(LOG_WARNING, "[RedEdr] EnableTelemetryLoggingForProcessByName: ZwQuerySystemInformation failed 0x%08X\n", status);
+        LOG_A(LOG_WARNING, "EnableTelemetryLoggingForProcessByName: ZwQuerySystemInformation failed 0x%08X", status);
         ExFreePool(buffer);
         return;
     }
@@ -267,11 +267,11 @@ VOID EnableTelemetryLoggingForProcessByName(PCWSTR targetName) {
                 status = PsLookupProcessByProcessId(pid, &process);
                 if (NT_SUCCESS(status)) {
                     BOOLEAN ok = EnableProcessTelemetryLogging(process);
-                    LOG_A(LOG_INFO, "[RedEdr] EnableTelemetryLoggingForProcessByName: pid %llu -> %d\n",
+                    LOG_A(LOG_INFO, "EnableTelemetryLoggingForProcessByName: pid %llu -> %d",
                         (ULONG64)pid, ok);
                     ObDereferenceObject(process);
                 } else {
-                    LOG_A(LOG_WARNING, "[RedEdr] EnableTelemetryLoggingForProcessByName: PsLookupProcessByProcessId pid %llu failed 0x%08X\n",
+                    LOG_A(LOG_WARNING, "EnableTelemetryLoggingForProcessByName: PsLookupProcessByProcessId pid %llu failed 0x%08X",
                         (ULONG64)pid, status);
                 }
             }
@@ -292,31 +292,31 @@ int InitCallbacks() {
     RtlInitUnicodeString(&funcName, L"ZwSetInformationProcess");
     g_ZwSetInformationProcess = (PFN_ZwSetInformationProcess)MmGetSystemRoutineAddress(&funcName);
     if (g_ZwSetInformationProcess == NULL) {
-        LOG_A(LOG_WARNING, "[RedEdr] InitCallbacks: failed to resolve ZwSetInformationProcess\n");
+        LOG_A(LOG_WARNING, "InitCallbacks: failed to resolve ZwSetInformationProcess");
     }
 
     RtlInitUnicodeString(&funcName, L"ZwQueryInformationProcess");
     g_ZwQueryInformationProcess = (PFN_ZwQueryInformationProcess)MmGetSystemRoutineAddress(&funcName);
     if (g_ZwQueryInformationProcess == NULL) {
-        LOG_A(LOG_WARNING, "[RedEdr] InitCallbacks: failed to resolve ZwQueryInformationProcess\n");
+        LOG_A(LOG_WARNING, "InitCallbacks: failed to resolve ZwQueryInformationProcess");
     }
 
     RtlInitUnicodeString(&funcName, L"ZwQuerySystemInformation");
     g_ZwQuerySystemInformation = (PFN_ZwQuerySystemInformation)MmGetSystemRoutineAddress(&funcName);
     if (g_ZwQuerySystemInformation == NULL) {
-        LOG_A(LOG_WARNING, "[RedEdr] InitCallbacks: failed to resolve ZwQuerySystemInformation\n");
+        LOG_A(LOG_WARNING, "InitCallbacks: failed to resolve ZwQuerySystemInformation");
     }
 
     RtlInitUnicodeString(&funcName, L"PsGetProcessSignatureLevel");
     g_PsGetProcessSignatureLevel = (PFN_PsGetProcessSignatureLevel)MmGetSystemRoutineAddress(&funcName);
     if (g_PsGetProcessSignatureLevel == NULL) {
-        LOG_A(LOG_WARNING, "[RedEdr] InitCallbacks: failed to resolve PsGetProcessSignatureLevel\n");
+        LOG_A(LOG_WARNING, "InitCallbacks: failed to resolve PsGetProcessSignatureLevel");
     }
 
     RtlInitUnicodeString(&funcName, L"PsGetProcessSectionSignatureLevel");
     g_PsGetProcessSectionSignatureLevel = (PFN_PsGetProcessSectionSignatureLevel)MmGetSystemRoutineAddress(&funcName);
     if (g_PsGetProcessSectionSignatureLevel == NULL) {
-        LOG_A(LOG_WARNING, "[RedEdr] InitCallbacks: failed to resolve PsGetProcessSectionSignatureLevel\n");
+        LOG_A(LOG_WARNING, "InitCallbacks: failed to resolve PsGetProcessSectionSignatureLevel");
     }
     return TRUE;
 }
@@ -352,15 +352,15 @@ void CreateProcessNotifyRoutine(PEPROCESS process, HANDLE pid, PPS_CREATE_NOTIFY
             SeLocateProcessImageName(parent_process, &parent_processName);
         }
 
-        //LOG_A(LOG_INFO, "[RedEdr] Process %wZ created\n", processName);
-        //LOG_A(LOG_INFO, "            PID: %d\n", pid);
-        //LOG_A(LOG_INFO, "            Created by: %wZ\n", parent_processName);
-        //LOG_A(LOG_INFO, "            ImageBase: %ws\n", createInfo->ImageFileName->Buffer);
+        //LOG_A(LOG_INFO, "Process %wZ created", processName);
+        //LOG_A(LOG_INFO, "            PID: %d", pid);
+        //LOG_A(LOG_INFO, "            Created by: %wZ", parent_processName);
+        //LOG_A(LOG_INFO, "            ImageBase: %ws", createInfo->ImageFileName->Buffer);
 
         POBJECT_NAME_INFORMATION objFileDosDeviceName;
         IoQueryFileDosDeviceName(createInfo->FileObject, &objFileDosDeviceName);
-        //LOG_A(LOG_INFO, "            DOS path: %ws\n", objFileDosDeviceName->Name.Buffer);
-        //LOG_A(LOG_INFO, "            CommandLine: %ws\n", createInfo->CommandLine->Buffer);
+        //LOG_A(LOG_INFO, "            DOS path: %ws", objFileDosDeviceName->Name.Buffer);
+        //LOG_A(LOG_INFO, "            CommandLine: %ws", createInfo->CommandLine->Buffer);
 
         processInfo = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(PROCESS_INFO), 'Proc');
         if (!processInfo) {
@@ -389,7 +389,7 @@ void CreateProcessNotifyRoutine(PEPROCESS process, HANDLE pid, PPS_CREATE_NOTIFY
         if (g_Settings.trace_children && processInfo->ppid == g_Settings.trace_pid) {
             processInfo->observe = 1;
         }
-        //LOG_A(LOG_INFO, "CreateProcessNotify: Process %d created, observe: %i\n", 
+        //LOG_A(LOG_INFO, "CreateProcessNotify: Process %d created, observe: %i", 
         //    pid, processInfo->observe);
 
         AddProcessInfo(pid, processInfo);
@@ -429,7 +429,7 @@ void CreateProcessNotifyRoutine(PEPROCESS process, HANDLE pid, PPS_CREATE_NOTIFY
         // by observe flag. Must run at PASSIVE_LEVEL - process callbacks qualify.
         if (g_Settings.enable_etwti_events) {
             BOOLEAN etwtiEnabledSuccess = EnableProcessTelemetryLogging(process);
-            LOG_A(LOG_INFO, "Enabled ETW-TI logging for pid %d: %d\n", pid, etwtiEnabledSuccess);
+            LOG_A(LOG_INFO, "Enabled ETW-TI logging for pid %d: %d", pid, etwtiEnabledSuccess);
         }
 
         // Log ETW-TI flags after modification to confirm they were set correctly.
@@ -503,7 +503,7 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
             if (InterlockedCompareExchange(&processInfo->injected, 1, 0) == 0) {
                 int result = KapcInjectDll(FullImageName, ProcessId, ImageInfo);
                 if (result) {
-                    LOG_A(LOG_INFO, "Injected DLL into pid: %d\n", ProcessId);
+                    LOG_A(LOG_INFO, "Injected DLL into pid: %d", ProcessId);
                 } else {
                     // Reset so injection can be retried on the next image load.
                     InterlockedExchange(&processInfo->injected, 0);
@@ -603,7 +603,7 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
         //
 
         if (PreInfo->Object == PsGetCurrentProcess()) {
-            LOG_A(LOG_DEBUG, "CBTdPreOperationCallback: ignore process open/duplicate from the protected process itself\n");
+            LOG_A(LOG_DEBUG, "CBTdPreOperationCallback: ignore process open/duplicate from the protected process itself");
             goto Exit;
         }
 
@@ -630,7 +630,7 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
         //
 
         if (ProcessIdOfTargetThread == PsGetCurrentProcessId()) {
-            LOG_A(LOG_DEBUG, "CBTdPreOperationCallback: ignore thread open/duplicate from the protected process itself\n");
+            LOG_A(LOG_DEBUG, "CBTdPreOperationCallback: ignore thread open/duplicate from the protected process itself");
             goto Exit;
         }
 
@@ -639,7 +639,7 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
         AccessBitsToSet = 0;
     }
     else {
-        LOG_A(LOG_ERROR, "CBTdPreOperationCallback: unexpected object type\n");
+        LOG_A(LOG_ERROR, "CBTdPreOperationCallback: unexpected object type");
         goto Exit;
     }
 
@@ -678,7 +678,7 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
 
 
     /*DbgPrintEx(
-        DPFLTR_IHVDRIVER_ID, DPFLTR_TRACE_LEVEL, "ObCallbackTest: CBTdPreOperationCallback: PROTECTED process %p (ID 0x%p)\n",
+        DPFLTR_IHVDRIVER_ID, DPFLTR_TRACE_LEVEL, "ObCallbackTest: CBTdPreOperationCallback: PROTECTED process %p (ID 0x%p)",
         TdProtectedTargetProcess,
         (PVOID)TdProtectedTargetProcessId
     );*/
@@ -686,14 +686,14 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
     if (1) {
         char line[DATA_BUFFER_SIZE] = { 0 };
         RtlStringCbPrintfA(line, DATA_BUFFER_SIZE, "%p:%p;%p;%ls;%ls;%d,0x%x,0x%x,0x%x",
-            /*"ObCallbackTest: CBTdPreOperationCallback\n"
-            "    Client Id:    %p:%p\n"
-            "    Object:       %p\n"
-            "    Type:         %ls\n"
-            "    Operation:    %ls (KernelHandle=%d)\n"
-            "    OriginalDesiredAccess: 0x%x\n"
-            "    DesiredAccess (in):    0x%x\n"
-            "    DesiredAccess (out):   0x%x\n",*/
+            /*"ObCallbackTest: CBTdPreOperationCallback"
+            "    Client Id:    %p:%p"
+            "    Object:       %p"
+            "    Type:         %ls"
+            "    Operation:    %ls (KernelHandle=%d)"
+            "    OriginalDesiredAccess: 0x%x"
+            "    DesiredAccess (in):    0x%x"
+            "    DesiredAccess (out):   0x%x",*/
             PsGetCurrentProcessId(),
             PsGetCurrentThreadId(),
             PreInfo->Object,
@@ -706,14 +706,14 @@ OB_PREOP_CALLBACK_STATUS CBTdPreOperationCallback(
         LogEvent(line);
     } else {
         LOG_A(LOG_ERROR,
-            "CBTdPreOperationCallback\n"
-            "    Client Id:    %p:%p\n"
-            "    Object:       %p\n"
-            "    Type:         %ls\n"
-            "    Operation:    %ls (KernelHandle=%d)\n"
-            "    OriginalDesiredAccess: 0x%x\n"
-            "    DesiredAccess (in):    0x%x\n"
-            "    DesiredAccess (out):   0x%x\n",
+            "CBTdPreOperationCallback"
+            "    Client Id:    %p:%p"
+            "    Object:       %p"
+            "    Type:         %ls"
+            "    Operation:    %ls (KernelHandle=%d)"
+            "    OriginalDesiredAccess: 0x%x"
+            "    DesiredAccess (in):    0x%x"
+            "    DesiredAccess (out):   0x%x",
             PsGetCurrentProcessId(),
             PsGetCurrentThreadId(),
             PreInfo->Object,
@@ -839,15 +839,15 @@ static ULONG_PTR ScanEprocessForProtectionOffset(
         expectedSigLevel    = g_PsGetProcessSignatureLevel(Process);
         expectedSecSigLevel = g_PsGetProcessSectionSignatureLevel(Process);
         haveExpectedSigLevels = TRUE;
-        LOG_A(LOG_INFO, "[RedEdr] ScanEprocessForProtectionOffset: kernel APIs report "
-            "SignatureLevel=0x%02X SectionSignatureLevel=0x%02X\n",
+        LOG_A(LOG_INFO, "ScanEprocessForProtectionOffset: kernel APIs report "
+            "SignatureLevel=0x%02X SectionSignatureLevel=0x%02X",
             expectedSigLevel, expectedSecSigLevel);
     } else {
-        LOG_A(LOG_WARNING, "[RedEdr] ScanEprocessForProtectionOffset: "
-            "PsGetProcessSignatureLevel not available, falling back to heuristics\n");
+        LOG_A(LOG_WARNING, "ScanEprocessForProtectionOffset: "
+            "PsGetProcessSignatureLevel not available, falling back to heuristics");
     }
 
-    LOG_A(LOG_INFO, "[RedEdr] ScanEprocessForProtectionOffset: EPROCESS=%p, expected=0x%02X, range=%lu, knownOffset=0x%lX\n",
+    LOG_A(LOG_INFO, "ScanEprocessForProtectionOffset: EPROCESS=%p, expected=0x%02X, range=%lu, knownOffset=0x%lX",
         Process, ExpectedProtection, ScanRangeBytes, knownOffset);
 
     // We need at least 2 bytes before the candidate for SignatureLevel and
@@ -887,44 +887,44 @@ static ULONG_PTR ScanEprocessForProtectionOffset(
             candidateOffset = offset;
             BOOLEAN isKnownOffset = (offset == knownOffset);
 
-            LOG_A(LOG_INFO, "[RedEdr] ScanEprocessForProtectionOffset: CANDIDATE at offset 0x%04lX  "
-                "SignatureLevel=0x%02X  SectionSignatureLevel=0x%02X  Protection=0x%02X  %s\n",
+            LOG_A(LOG_INFO, "ScanEprocessForProtectionOffset: CANDIDATE at offset 0x%04lX  "
+                "SignatureLevel=0x%02X  SectionSignatureLevel=0x%02X  Protection=0x%02X  %s",
                 offset, sigLevel, secSigLevel, val,
                 isKnownOffset ? "<-- MATCHES KNOWN OFFSET" : "");
 
             // Log surrounding context bytes for manual verification.
             if (offset >= 8 && (offset + 8) < ScanRangeBytes) {
                 UCHAR* ctx = (UCHAR*)((ULONG_PTR)Process + offset - 8);
-                LOG_A(LOG_INFO, "[RedEdr]   context[-8..+8]: "
-                    "%02X %02X %02X %02X %02X %02X %02X %02X [%02X] %02X %02X %02X %02X %02X %02X %02X\n",
+                LOG_A(LOG_INFO, "  context[-8..+8]: "
+                    "%02X %02X %02X %02X %02X %02X %02X %02X [%02X] %02X %02X %02X %02X %02X %02X %02X",
                     ctx[0], ctx[1], ctx[2], ctx[3], ctx[4], ctx[5], ctx[6], ctx[7],
                     ctx[8],  // this is our candidate (Protection byte)
                     ctx[9], ctx[10], ctx[11], ctx[12], ctx[13], ctx[14], ctx[15]);
             }
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
-            LOG_A(LOG_WARNING, "[RedEdr] ScanEprocessForProtectionOffset: exception at offset 0x%04lX, stopping scan\n", offset);
+            LOG_A(LOG_WARNING, "ScanEprocessForProtectionOffset: exception at offset 0x%04lX, stopping scan", offset);
             break;
         }
     }
 
-    LOG_A(LOG_INFO, "[RedEdr] ScanEprocessForProtectionOffset: found %lu candidate(s)\n", candidateCount);
+    LOG_A(LOG_INFO, "ScanEprocessForProtectionOffset: found %lu candidate(s)", candidateCount);
 
     if (candidateCount == 1) {
-        LOG_A(LOG_INFO, "[RedEdr] ScanEprocessForProtectionOffset: exactly 1 candidate at 0x%04lX — high confidence\n",
+        LOG_A(LOG_INFO, "ScanEprocessForProtectionOffset: exactly 1 candidate at 0x%04lX — high confidence",
             (ULONG)candidateOffset);
         if (candidateOffset != knownOffset && knownOffset != 0) {
-            LOG_A(LOG_WARNING, "[RedEdr] ScanEprocessForProtectionOffset: WARNING — scanned offset 0x%04lX differs from hardcoded 0x%04lX!\n",
+            LOG_A(LOG_WARNING, "ScanEprocessForProtectionOffset: WARNING — scanned offset 0x%04lX differs from hardcoded 0x%04lX!",
                 (ULONG)candidateOffset, knownOffset);
         }
         return candidateOffset;
     } else if (candidateCount == 0) {
-        LOG_A(LOG_WARNING, "[RedEdr] ScanEprocessForProtectionOffset: NO candidates found! "
-            "Expected pattern [SigLevel, SecSigLevel, 0x%02X] not present in scanned range\n",
+        LOG_A(LOG_WARNING, "ScanEprocessForProtectionOffset: NO candidates found! "
+            "Expected pattern [SigLevel, SecSigLevel, 0x%02X] not present in scanned range",
             ExpectedProtection);
     } else {
-        LOG_A(LOG_WARNING, "[RedEdr] ScanEprocessForProtectionOffset: %lu candidates — ambiguous, "
-            "cannot auto-detect. Known offset 0x%lX\n",
+        LOG_A(LOG_WARNING, "ScanEprocessForProtectionOffset: %lu candidates — ambiguous, "
+            "cannot auto-detect. Known offset 0x%lX",
             candidateCount, knownOffset);
     }
 
@@ -953,7 +953,7 @@ NTSTATUS SetProcessProtection(
     PEPROCESS process = NULL;
     ULONG_PTR protectionOffset = 0;
 
-    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: pid=%lu signer=%u type=%u audit=%u\n",
+    LOG_A(LOG_INFO, "SetProcessProtection: pid=%lu signer=%u type=%u audit=%u",
         ProcessId, ProtectionSigner, ProtectionType, ProtectionAudit);
 
     // Get the OS build number to determine the EPROCESS offset
@@ -961,23 +961,23 @@ NTSTATUS SetProcessProtection(
     osVer.dwOSVersionInfoSize = sizeof(osVer);
     status = RtlGetVersion(&osVer);
     if (!NT_SUCCESS(status)) {
-        LOG_A(LOG_ERROR, "[RedEdr] SetProcessProtection: RtlGetVersion failed: 0x%08X\n", status);
+        LOG_A(LOG_ERROR, "SetProcessProtection: RtlGetVersion failed: 0x%08X", status);
         return status;
     }
 
-    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: OS build %lu\n", osVer.dwBuildNumber);
+    LOG_A(LOG_INFO, "SetProcessProtection: OS build %lu", osVer.dwBuildNumber);
 
     protectionOffset = GetHardcodedPsProtectionOffset(osVer.dwBuildNumber);
     if (protectionOffset == 0) {
-        LOG_A(LOG_WARNING, "[RedEdr] SetProcessProtection: Unsupported OS build %lu, will attempt dynamic offset discovery\n", osVer.dwBuildNumber);
+        LOG_A(LOG_WARNING, "SetProcessProtection: Unsupported OS build %lu, will attempt dynamic offset discovery", osVer.dwBuildNumber);
     } else {
-        LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: PS_PROTECTION offset = 0x%lX\n", (ULONG)protectionOffset);
+        LOG_A(LOG_INFO, "SetProcessProtection: PS_PROTECTION offset = 0x%lX", (ULONG)protectionOffset);
     }
 
     // Look up the EPROCESS for the target PID
     status = PsLookupProcessByProcessId((HANDLE)(ULONG_PTR)ProcessId, &process);
     if (!NT_SUCCESS(status)) {
-        LOG_A(LOG_ERROR, "[RedEdr] SetProcessProtection: PsLookupProcessByProcessId failed for pid %lu: 0x%08X\n",
+        LOG_A(LOG_ERROR, "SetProcessProtection: PsLookupProcessByProcessId failed for pid %lu: 0x%08X",
             ProcessId, status);
         return status;
     }
@@ -1003,7 +1003,7 @@ NTSTATUS SetProcessProtection(
 
         // Also run the scanner for logging/verification against the known offset.
         // We scan up to 0x1000 bytes (4KB) which covers all known EPROCESS layouts.
-        //ScanEprocessForProtectionOffset(process, oldProtection, 0x1000);
+        ScanEprocessForProtectionOffset(process, oldProtection, 0x1000);
     } else {
         // Unknown build: we don't know the current protection value, so we cannot
         // directly pass it to the scanner. Instead, compute the new value we want
@@ -1023,21 +1023,21 @@ NTSTATUS SetProcessProtection(
                 protectionOffset = scannedOffset;
                 pProtection = (UCHAR*)((ULONG_PTR)process + protectionOffset);
                 oldProtection = *pProtection;
-                LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: dynamic discovery found offset 0x%lX (current=0x%02X)\n",
+                LOG_A(LOG_INFO, "SetProcessProtection: dynamic discovery found offset 0x%lX (current=0x%02X)",
                     (ULONG)protectionOffset, oldProtection);
                 break;
             }
         }
         if (pProtection == NULL) {
-            LOG_A(LOG_ERROR, "[RedEdr] SetProcessProtection: dynamic offset discovery failed for build %lu\n",
+            LOG_A(LOG_ERROR, "SetProcessProtection: dynamic offset discovery failed for build %lu",
                 osVer.dwBuildNumber);
             ObDereferenceObject(process);
             return STATUS_NOT_SUPPORTED;
         }
     }
-    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: EPROCESS=%p, PS_PROTECTION at %p (offset=0x%lX)\n",
+    LOG_A(LOG_INFO, "SetProcessProtection: EPROCESS=%p, PS_PROTECTION at %p (offset=0x%lX)",
         process, pProtection, (ULONG)protectionOffset);
-    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: Old protection = 0x%02X (Type=%u, Audit=%u, Signer=%u)\n",
+    LOG_A(LOG_INFO, "SetProcessProtection: Old protection = 0x%02X (Type=%u, Audit=%u, Signer=%u)",
         oldProtection,
         oldProtection & 0x7,           // Type
         (oldProtection >> 3) & 0x1,    // Audit
@@ -1049,20 +1049,20 @@ NTSTATUS SetProcessProtection(
 
     // Verify the write
     UCHAR verifyProtection = *pProtection;
-    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: New protection = 0x%02X (Type=%u, Audit=%u, Signer=%u)\n",
+    LOG_A(LOG_INFO, "SetProcessProtection: New protection = 0x%02X (Type=%u, Audit=%u, Signer=%u)",
         verifyProtection,
         verifyProtection & 0x7,
         (verifyProtection >> 3) & 0x1,
         (verifyProtection >> 4) & 0xF);
 
     if (verifyProtection != newProtection) {
-        LOG_A(LOG_ERROR, "[RedEdr] SetProcessProtection: Verification failed! Expected 0x%02X, got 0x%02X\n",
+        LOG_A(LOG_ERROR, "SetProcessProtection: Verification failed! Expected 0x%02X, got 0x%02X",
             newProtection, verifyProtection);
         ObDereferenceObject(process);
         return STATUS_UNSUCCESSFUL;
     }
 
-    LOG_A(LOG_INFO, "[RedEdr] SetProcessProtection: Successfully changed protection for pid %lu\n", ProcessId);
+    LOG_A(LOG_INFO, "SetProcessProtection: Successfully changed protection for pid %lu", ProcessId);
 
     ObDereferenceObject(process);
     return STATUS_SUCCESS;

@@ -259,7 +259,7 @@ void ProcessResolver::CleanupWorker() {
 
 
 void ProcessResolver::CleanupStaleProcesses() {
-    LOG_A(LOG_INFO, "ProcessResolver: Starting cleanup of stale processes");
+    //LOG_A(LOG_INFO, "ProcessResolver: Starting cleanup of stale processes");
 
     std::vector<DWORD> pidsToRemove;
     size_t totalProcesses = 0;
@@ -279,12 +279,14 @@ void ProcessResolver::CleanupStaleProcesses() {
         }
     }
 
+    /*
     if (!pidsToRemove.empty()) {
         LOG_A(LOG_INFO, "ProcessResolver: Cleaned up %zu stale processes (was: %zu, now: %zu)",
               pidsToRemove.size(), totalProcesses, GetCacheCount());
     } else {
         LOG_A(LOG_DEBUG, "ProcessResolver: No stale processes found during cleanup");
     }
+    */
 }
 
 
