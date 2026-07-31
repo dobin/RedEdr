@@ -242,6 +242,39 @@ void event_callback_defendertrace(const EVENT_RECORD& record, const krabs::trace
 }
 
 
+// Handle ETW events from the custom RedTestProvider (target application's TraceLogging provider).
+// Emits all events where the source process is one we observe.
+void event_callback_redtest(const EVENT_RECORD& record, const krabs::trace_context& trace_context) {
+    try {
+        krabs::schema schema(record, trace_context.schema_locator);
+
+        // Check if we observe the process which emitted this event
+        DWORD processId = record.EventHeader.ProcessId;
+        Process* process = g_ProcessResolver.getObject(processId);
+        if (process == NULL) {
+            LOG_A(LOG_WARNING, "ETW: No process object for pid %lu", processId);
+            return;
+        }
+        if (!process->observe) {
+            return;
+        }
+
+        // Convert ETW to JSON
+        nlohmann::json j = KrabsEtwEventToJsonStr(record, schema);
+        j["etw_process"] = process->name;
+
+        // Emit event
+        g_EventAggregator.NewEvent(j.dump());
+    }
+    catch (const std::exception& e) {
+        LOG_A(LOG_ERROR, "ETW event_callback_redtest exception: %s", e.what());
+    }
+    catch (...) {
+        LOG_A(LOG_ERROR, "ETW event_callback_redtest unknown exception");
+    }
+}
+
+
 BOOL InitializeEtwReader(std::vector<HANDLE>& threads) {
     hStopEventEtw = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (hStopEventEtw == NULL) {
@@ -433,6 +466,16 @@ DWORD WINAPI TraceProcessingThread(LPVOID param) {
             trace_user.enable(antimalwareengine_provider);
             LOG_A(LOG_INFO, "ETW: Microsoft-Antimalware-Engine (all)");
         }
+
+        // RedTestProvider (custom TraceLogging provider from target application)
+        // GUID: {6b31a8ba-7343-42d1-b74a-70eb07ffe92d}
+        krabs::guid redtest_guid(L"{6b31a8ba-7343-42d1-b74a-70eb07ffe92d}");
+        krabs::provider<> redtest_provider(redtest_guid);
+        redtest_provider.any(0xFFFFFFFFFFFFFFFF);
+        redtest_provider.trace_flags(redtest_provider.trace_flags() | EVENT_ENABLE_PROPERTY_STACK_TRACE);
+        redtest_provider.add_on_event_callback(event_callback_redtest);
+        trace_user.enable(redtest_provider);
+        LOG_A(LOG_INFO, "ETW: RedTestProvider {6b31a8ba-7343-42d1-b74a-70eb07ffe92d} (all)");
 
         LOG_A(LOG_INFO, "ETW: All providers configured, ready to start collecting");
         
