@@ -357,12 +357,6 @@
         
         // Demo data for standalone usage
         const DEMO_DATA = [
-            { id: 1, timestamp: "2025-03-08 12:00:00", level: "INFO", message: "System started" },
-            { id: 2, timestamp: "2025-03-08 12:05:00", level: "WARNING", message: "High memory usage detected" },
-            { id: 3, timestamp: "2025-03-08 12:10:00", level: "ERROR", message: "System crash" },
-            { id: 4, timestamp: "2025-03-08 12:10:00", nolevel: "ERROR", stuff: "0x1234", addr: 0x1235, offset: 0x643643, size: 0x23643,
-                "info": "microsoft threat intelligence provider"
-             }
         ];
         
         // Flask template injection (for small datasets)
@@ -424,6 +418,7 @@
             { type: "key", action: "header", key: "etw_provider_name", value: "" },
             { type: "key", action: "header", key: "etw_process", value: "" },
             { type: "key", action: "header", key: "type", value: "" },
+            { type: "key", action: "header", key: "func", value: "" },
             { type: "key", action: "important", key: "message", value: "" },
         ];
         let visibility = typeof FLASK_VISIBILITY !== 'undefined' ? FLASK_VISIBILITY : DEMO_VISIBILITY;
@@ -842,31 +837,75 @@
         function renderLogs() {
             const container = document.getElementById("log-container");
             container.innerHTML = "";
+
+            // --- Precompute lookup maps once per render (perf: avoids O(n*m) scans) ---
+            const hideKeys = new Set();
+            const headerKeys = new Set();
+            const importantKeys = new Set();
+            for (const v of visibility) {
+                if (v.type !== "key") continue;
+                if (v.action === "hide") hideKeys.add(v.key);
+                else if (v.action === "header") headerKeys.add(v.key);
+                else if (v.action === "important") importantKeys.add(v.key);
+            }
+            const keyColorMap = new Map();
+            const valueColorMap = new Map();
+            for (const r of colorRules) {
+                if (r.type === "key") keyColorMap.set(r.match, r);
+                else if (r.type === "value") valueColorMap.set(r.match, r);
+            }
+
+            // --- Build all logs into a fragment (perf: single DOM insertion) ---
+            const fragment = document.createDocumentFragment();
+
             logs.forEach((log, logIndex) => {
                 const logDiv = document.createElement("div");
                 logDiv.classList.add("log-line");
 
-                const entryDivHeader = document.createElement("div");
-                entryDivHeader.classList.add("log-entry");
-                entryDivHeader.classList.add("log-header");
+                // Lazily created (perf: avoid 4 divs per log when unused)
+                let entryDivHeader = null;
+                let entryDivImportant = null;
+                let entryDiv = null;
+                let arrayEntryDiv = null;
 
-                const entryDivImportant = document.createElement("div");
-                entryDivImportant.classList.add("log-entry");
-                entryDivImportant.classList.add("log-important");
-                
-                const entryDiv = document.createElement("div");
-                entryDiv.classList.add("log-entry");
-
-                const arrayEntryDiv = document.createElement("div");
-                arrayEntryDiv.classList.add("log-entry");
+                const getHeaderDiv = () => {
+                    if (!entryDivHeader) {
+                        entryDivHeader = document.createElement("div");
+                        entryDivHeader.className = "log-entry log-header";
+                    }
+                    return entryDivHeader;
+                };
+                const getImportantDiv = () => {
+                    if (!entryDivImportant) {
+                        entryDivImportant = document.createElement("div");
+                        entryDivImportant.className = "log-entry log-important";
+                    }
+                    return entryDivImportant;
+                };
+                const getEntryDiv = () => {
+                    if (!entryDiv) {
+                        entryDiv = document.createElement("div");
+                        entryDiv.className = "log-entry";
+                    }
+                    return entryDiv;
+                };
+                const getArrayEntryDiv = () => {
+                    if (!arrayEntryDiv) {
+                        arrayEntryDiv = document.createElement("div");
+                        arrayEntryDiv.className = "log-entry";
+                    }
+                    return arrayEntryDiv;
+                };
 
                 Object.entries(log).forEach(([key, value]) => {
-                    // check if key is in visibility
-                    if (visibility.some(filter => filter.key === key && filter.action === "hide")) {
-                        return;
-                    }
+                    if (hideKeys.has(key)) return;
 
-                    // Check if value is an array
+                    const targetDiv = headerKeys.has(key)
+                        ? getHeaderDiv()
+                        : importantKeys.has(key)
+                            ? getImportantDiv()
+                            : null;
+
                     if (Array.isArray(value)) {
                         const arrayContainer = document.createElement("div");
                         arrayContainer.classList.add("log-kv");
@@ -876,17 +915,9 @@
                         keySpan.textContent = key + ": ";
                         keySpan.dataset.logIndex = logIndex;
                         keySpan.dataset.key = key;
-                        keySpan.onmouseenter = (event) => {
-                            keySpan.classList.add("hover-active");
-                            scheduleShowPopup(event, "key");
-                        };
-                        keySpan.onmouseleave = () => {
-                            keySpan.classList.remove("hover-active");
-                            scheduleHidePopup();
-                        };
 
                         // Apply color rules to key
-                        const keyRule = colorRules.find(r => r.type === "key" && key === r.match);
+                        const keyRule = keyColorMap.get(key);
                         if (keyRule) {
                             if (keyRule.color) keySpan.style.color = keyRule.color;
                             if (keyRule.backgroundColor) keySpan.style.backgroundColor = keyRule.backgroundColor;
@@ -897,7 +928,7 @@
                         toggleButton.style.marginLeft = "5px";
                         toggleButton.style.fontSize = "12px";
                         toggleButton.style.padding = "2px 5px";
-                        
+
                         const arrayContent = document.createElement("div");
                         arrayContent.style.display = "none";
                         arrayContent.style.marginLeft = "20px";
@@ -913,9 +944,7 @@
                             itemDiv.style.borderBottom = "1px solid #eee";
 
                             if (typeof item === 'object' && item !== null) {
-                                // If array item is an object, display key-value pairs horizontally
-                                const itemEntries = Object.entries(item);
-                                itemEntries.forEach(([itemKey, itemValue], entryIndex) => {
+                                Object.entries(item).forEach(([itemKey, itemValue]) => {
                                     const itemKeySpan = document.createElement("span");
                                     itemKeySpan.textContent = itemKey + ": ";
                                     itemKeySpan.style.fontWeight = "bold";
@@ -929,7 +958,6 @@
                                     itemDiv.appendChild(itemValueSpan);
                                 });
                             } else {
-                                // If array item is a primitive, just display it
                                 itemDiv.textContent = `[${arrayIndex}]: ${hexify(item)}`;
                             }
                             arrayContent.appendChild(itemDiv);
@@ -949,31 +977,15 @@
                         arrayContainer.appendChild(toggleButton);
                         arrayContainer.appendChild(arrayContent);
 
-                        if (visibility.some(filter => filter.key === key && filter.action === "header")) {
-                            entryDivHeader.appendChild(arrayContainer);
-                        } else if (visibility.some(filter => filter.key === key && filter.action === "important")) {
-                            entryDivImportant.appendChild(arrayContainer);
-                        } else {
-                            arrayEntryDiv.appendChild(arrayContainer);
-                        }
+                        (targetDiv || getArrayEntryDiv()).appendChild(arrayContainer);
                     } else {
-                        // Handle non-array values as before
                         const keySpan = document.createElement("span");
                         keySpan.classList.add("log-key");
                         keySpan.textContent = key + ": ";
                         keySpan.dataset.logIndex = logIndex;
                         keySpan.dataset.key = key;
-                        keySpan.onmouseenter = (event) => {
-                            keySpan.classList.add("hover-active");
-                            scheduleShowPopup(event, "key");
-                        };
-                        keySpan.onmouseleave = () => {
-                            keySpan.classList.remove("hover-active");
-                            scheduleHidePopup();
-                        };
-                        
-                        // Apply color rules to key
-                        const keyRule = colorRules.find(r => r.type === "key" && key === r.match);
+
+                        const keyRule = keyColorMap.get(key);
                         if (keyRule) {
                             if (keyRule.color) keySpan.style.color = keyRule.color;
                             if (keyRule.backgroundColor) keySpan.style.backgroundColor = keyRule.backgroundColor;
@@ -985,18 +997,8 @@
                         valueSpan.dataset.logIndex = logIndex;
                         valueSpan.dataset.key = key;
                         valueSpan.dataset.value = value;
-                        valueSpan.onmouseenter = (event) => {
-                            valueSpan.classList.add("hover-active");
-                            scheduleShowPopup(event, "value");
-                        };
-                        valueSpan.onmouseleave = () => {
-                            valueSpan.classList.remove("hover-active");
-                            scheduleHidePopup();
-                        };
 
-                        // Apply color rules to value
-                        const valStr = String(value);
-                        const valueRule = colorRules.find(r => r.type === "value" && valStr === r.match);
+                        const valueRule = valueColorMap.get(String(value));
                         if (valueRule) {
                             if (valueRule.color) valueSpan.style.color = valueRule.color;
                             if (valueRule.backgroundColor) valueSpan.style.backgroundColor = valueRule.backgroundColor;
@@ -1006,32 +1008,53 @@
                         log_kv.classList.add("log-kv");
                         log_kv.appendChild(keySpan);
                         log_kv.appendChild(valueSpan);
-                        
-                        if (visibility.some(filter => filter.key === key && filter.action === "header")) {
-                            entryDivHeader.appendChild(log_kv);
-                        } else if (visibility.some(filter => filter.key === key && filter.action === "important")) {
-                            entryDivImportant.appendChild(log_kv);
-                        } else {
-                            entryDiv.appendChild(log_kv);
-                        }
+
+                        (targetDiv || getEntryDiv()).appendChild(log_kv);
                     }
                 });
 
-                // append if has children
-                if (entryDivHeader.children.length > 0) {
-                    logDiv.appendChild(entryDivHeader);
-                }
-                if (entryDivImportant.children.length > 0) {
-                    logDiv.appendChild(entryDivImportant);
-                }
-                logDiv.appendChild(entryDiv);
-                if (arrayEntryDiv.children.length > 0) {
-                    logDiv.appendChild(arrayEntryDiv);
-                }
-                
-                container.appendChild(logDiv);
+                if (entryDivHeader) logDiv.appendChild(entryDivHeader);
+                if (entryDivImportant) logDiv.appendChild(entryDivImportant);
+                if (entryDiv) logDiv.appendChild(entryDiv);
+                if (arrayEntryDiv) logDiv.appendChild(arrayEntryDiv);
+
+                fragment.appendChild(logDiv);
             });
+
+            container.appendChild(fragment);
         }
+
+        // --- Delegated hover handlers (perf: one pair of listeners for all log rows) ---
+        (function initLogHoverDelegation() {
+            const container = document.getElementById("log-container");
+            let lastHovered = null;
+
+            container.addEventListener("mouseover", (event) => {
+                const t = event.target;
+                if (!t || !t.classList) return;
+                const isKey = t.classList.contains("log-key");
+                const isValue = !isKey && t.classList.contains("log-value");
+                if (!isKey && !isValue) return;
+
+                if (lastHovered && lastHovered !== t) {
+                    lastHovered.classList.remove("hover-active");
+                }
+                t.classList.add("hover-active");
+                lastHovered = t;
+
+                scheduleShowPopup(event, isKey ? "key" : "value");
+            });
+
+            container.addEventListener("mouseout", (event) => {
+                const t = event.target;
+                if (!t || !t.classList) return;
+                if (!t.classList.contains("log-key") && !t.classList.contains("log-value")) return;
+
+                t.classList.remove("hover-active");
+                if (lastHovered === t) lastHovered = null;
+                scheduleHidePopup();
+            });
+        })();
 
         // Logs popup
 
