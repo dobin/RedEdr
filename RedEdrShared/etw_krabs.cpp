@@ -18,7 +18,7 @@ nlohmann::json KrabsEtwEventToJsonStr(const EVENT_RECORD& record, krabs::schema 
     nlohmann::json j;
 
     j["type"] = "etw";
-    j["etw_time"] = static_cast<__int64>(record.EventHeader.TimeStamp.QuadPart);
+    j["event_time"] = static_cast<__int64>(record.EventHeader.TimeStamp.QuadPart);
     j["etw_pid"] = record.EventHeader.ProcessId;
     j["etw_tid"] = record.EventHeader.ThreadId;
 

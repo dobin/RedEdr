@@ -411,7 +411,7 @@ void CreateProcessNotifyRoutine(PEPROCESS process, HANDLE pid, PPS_CREATE_NOTIFY
         JsonEscape(processName, PROC_NAME_LEN);
         JsonEscape(parentName, PROC_NAME_LEN);
 
-        RtlStringCbPrintfA(ProcessLine, DATA_BUFFER_SIZE, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"process_create\",\"krn_pid\":%llu,\"pid\":%llu,\"name\":\"%s\",\"ppid\":%llu,\"parent_name\":\"%s\"}",
+        RtlStringCbPrintfA(ProcessLine, DATA_BUFFER_SIZE, "{\"type\":\"kernel\",\"event_time\":%llu,\"func\":\"process_create\",\"krn_pid\":%llu,\"pid\":%llu,\"name\":\"%s\",\"ppid\":%llu,\"parent_name\":\"%s\"}",
             systemTime,
             (unsigned __int64)PsGetCurrentProcessId(),
             (unsigned __int64)pid, 
@@ -452,7 +452,7 @@ void CreateThreadNotifyRoutine(HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Create
     KeQuerySystemTime(&systemTime);
 
     char ThreadLine[DATA_BUFFER_SIZE];
-    RtlStringCbPrintfA(ThreadLine, DATA_BUFFER_SIZE, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"thread_create\",\"krn_pid\":%llu,\"pid\":%llu,\"threadid\":%llu,\"create\":%d}",
+    RtlStringCbPrintfA(ThreadLine, DATA_BUFFER_SIZE, "{\"type\":\"kernel\",\"event_time\":%llu,\"func\":\"thread_create\",\"krn_pid\":%llu,\"pid\":%llu,\"threadid\":%llu,\"create\":%d}",
         systemTime,
         (unsigned __int64)PsGetCurrentProcessId(),
         (unsigned __int64)ProcessId,
@@ -487,7 +487,7 @@ void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIM
             WcharToAscii(ImageName, sizeof(ImageName), AsciiImageName, sizeof(AsciiImageName));
             JsonEscape(AsciiImageName, sizeof(AsciiImageName));
             char ImageLine[DATA_BUFFER_SIZE];
-            RtlStringCbPrintfA(ImageLine, DATA_BUFFER_SIZE, "{\"type\":\"kernel\",\"time\":%llu,\"func\":\"image_load\",\"krn_pid\":%llu,\"pid\":%llu,\"image\":\"%s\"}",
+            RtlStringCbPrintfA(ImageLine, DATA_BUFFER_SIZE, "{\"type\":\"kernel\",\"event_time\":%llu,\"func\":\"image_load\",\"krn_pid\":%llu,\"pid\":%llu,\"image\":\"%s\"}",
                 systemTime,
                 (unsigned __int64)PsGetCurrentProcessId(),
                 (unsigned __int64)ProcessId,

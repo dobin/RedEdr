@@ -41,7 +41,7 @@ void EventProcessor::init() {
 	nlohmann::json j;
 	j["type"] = "meta";
     j["func"] = "init";
-	j["date"] = get_time_for_file();
+	j["event_time"] = get_time();
     j["version"] = REDEDR_VERSION;
 	j["trace_id"] = trace_id;
 
@@ -50,6 +50,8 @@ void EventProcessor::init() {
 	j["do_kernel"] = g_Config.do_kernel;
 	j["do_hook"] = g_Config.do_hook;
 	j["do_hook_callstack"] = g_Config.do_dllinjection_ucallstack;
+	j["do_defendertrace"] = g_Config.do_defendertrace;
+	j["do_antimalwareengine"] = g_Config.do_antimalwareengine;
 	    
 	j["targets"] = g_Config.targetProcessNames;
     json_entries.push_back(j);
@@ -65,7 +67,7 @@ void EventProcessor::LogInitialProcessInfo(Process *process) {
             j["pid"] = process->id;
             j["type"] = "process_query";
             j["func"] = "peb";
-            j["time"] = get_time();
+            j["event_time"] = get_time();
             j["id"] = process->id;
             j["parent_pid"] = processPebInfoRet.parent_pid;
             j["image_path"] = processPebInfoRet.image_path;
@@ -89,7 +91,7 @@ void EventProcessor::LogInitialProcessInfo(Process *process) {
             nlohmann::json jDlls;
             jDlls["func"] = "loaded_dll";
             jDlls["type"] = "process_query";
-            jDlls["time"] = get_time();
+            jDlls["event_time"] = get_time();
             jDlls["pid"] = process->id;
             jDlls["process_name"] = process->processPebInfoRet.image_path;
             jDlls["dlls"] = {};

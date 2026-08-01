@@ -155,6 +155,7 @@ void SendDefenderInfos() {
                 modules_event["event"] = "process_modules";
                 modules_event["type"] = "meta";
                 modules_event["pid"] = pid;
+                modules_event["event_time"] = get_time();
                 modules_event["process_name"] = wchar2string(process_name);
                 modules_event["modules"] = modules_array;
                 
@@ -174,6 +175,7 @@ void SendDefenderInfos() {
         platform_event["event"] = "defender_platform_info";
         platform_event["type"] = "meta";
         platform_event["pid"] = msmpeng_pid;
+        platform_event["event_time"] = get_time();
         nlohmann::json platform_info = GetDefenderPlatformInfo();
         platform_event["as_signature_version"] = platform_info["as_signature_version"];
         platform_event["av_signature_version"] = platform_info["av_signature_version"];
