@@ -457,7 +457,7 @@
         // (100-nanosecond intervals since 1601-01-01) to a human-readable date string.
         // For Flask integration, uncomment:
         // const FLASK_TIMESTAMP_KEYS = {# timestamp_keys | tojson | safe #};
-        const DEMO_TIMESTAMP_KEYS = ["etw_time"];
+        const DEMO_TIMESTAMP_KEYS = ["event_time"];
         let timestampKeys = typeof FLASK_TIMESTAMP_KEYS !== 'undefined' ? FLASK_TIMESTAMP_KEYS : DEMO_TIMESTAMP_KEYS;
 
         // Color configuration for keys and values (can be configured via Flask)
