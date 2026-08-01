@@ -123,7 +123,7 @@ void EventProcessor::AnalyzeEventJson(nlohmann::json& j) {
         }
 
         // Cleanup badly labeled
-        if (j["etw_provider_name"] == "Microsoft-Windows-Kernel-Audit-API-Calls") {
+        if (j.contains("etw_provider_name") && j["etw_provider_name"] == "Microsoft-Windows-Kernel-Audit-API-Calls") {
             int etw_event_id = j.value("etw_event_id", -1);
             switch(etw_event_id) {
                 case 3:
@@ -267,7 +267,7 @@ void EventProcessor::EventStats(nlohmann::json& j) {
         num_dll += 1;
     }
     else if (j["type"] == "etw") {
-        if (j["etw_provider_name"] == "Microsoft-Windows-Threat-Intelligence") {
+        if (j.contains("etw_provider_name") && j["etw_provider_name"] == "Microsoft-Windows-Threat-Intelligence") {
             num_etwti += 1;
         }
         else {
