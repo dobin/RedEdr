@@ -225,6 +225,12 @@
             width: 7em;
         }
 
+        .menu-sort {
+            background-color: #3f4a5f;
+            color: white;
+            padding: 10px;
+        }
+
         input:read-only {
             background-color: #DDD;
             border: 1px solid #DDD;
@@ -293,6 +299,26 @@
             <div id="filter-container"></div>
         </div>
 
+        <!-- Menu: Sort -->
+        <div class="menu-sort">
+            <h2>Sort</h2>
+            <br>
+            <label class="lbl_width">Key</label>
+            <div class="input-container">
+                <input class="input-short" type="text" id="sort-key-input" oninput="sortOnChange()" placeholder="e.g. etw_time">
+                <button class="clear-btn" onclick="sortClear()">X</button>
+            </div>
+
+            <!-- 
+            <br>
+            <input type="radio" name="sort-dir" id="sort-asc" value="asc" checked onchange="sortOnChange()">
+            <label>Ascending</label>
+            &nbsp;
+            <input type="radio" name="sort-dir" id="sort-desc" value="desc" onchange="sortOnChange()">
+            <label>Descending</label>
+            -->
+        </div>
+
         <!-- Menu: Visibility -->
         <div class="menu-visibility">
             <h2>Visibility</h2>
@@ -330,7 +356,9 @@
         <input type="file" id="fileInput">
         <button class="nicebutton" onclick="settings_upload_file()">Private Upload</button>
         <div>
-
+            <br>
+            <b>Timestamp keys</b> (Windows FILETIME → date, comma-separated):<br>
+            <input type="text" id="timestamp-keys-input" style="width:100%;" oninput="timestampKeysOnChange()">
         </div>
     </div>
 
@@ -361,7 +389,7 @@
         
         // Flask template injection (for small datasets)
         // For Flask integration, uncomment the next line and pass data from your Flask route
-        // const FLASK_DATA = {{ data | tojson | safe }};
+        // const FLASK_DATA = {# data | tojson | safe #};
         
         // REST API endpoint configuration (recommended for large datasets)
         // For Flask integration, set this to your API endpoint, e.g., '/api/logs' or '/api/logs/rededr'
@@ -401,7 +429,7 @@
 
         // List of all filters (can be configured via Flask)
         // For Flask integration, uncomment the next line in your template:
-        // const FLASK_FILTERS = {{ filters | tojson | safe }};
+        // const FLASK_FILTERS = {# filters | tojson | safe #};
         const DEMO_FILTERS = [
             //{ type: "key", action: "include", key: "level", value: "", active: true },
             //{ type: "key", action: "exclude", key: "level", value: "INFO", active: true },
@@ -411,28 +439,38 @@
         
         // Visibility configuration (can be configured via Flask)
         // For Flask integration, uncomment the next line in your template:
-        // const FLASK_VISIBILITY = {{ visibility | tojson | safe }};
+        // const FLASK_VISIBILITY = {# visibility | tojson | safe #};
         const DEMO_VISIBILITY = [
             { type: "key", action: "hide", key: "etw_event_id", value: "" },
-            { type: "key", action: "header", key: "event", value: "" },
             { type: "key", action: "header", key: "etw_provider_name", value: "" },
             { type: "key", action: "header", key: "etw_process", value: "" },
             { type: "key", action: "header", key: "type", value: "" },
             { type: "key", action: "header", key: "func", value: "" },
+
+            { type: "key", action: "important", key: "event", value: "" },
             { type: "key", action: "important", key: "message", value: "" },
         ];
         let visibility = typeof FLASK_VISIBILITY !== 'undefined' ? FLASK_VISIBILITY : DEMO_VISIBILITY;
 
+        // Timestamp keys configuration
+        // Keys listed here will have their values converted from Windows FILETIME
+        // (100-nanosecond intervals since 1601-01-01) to a human-readable date string.
+        // For Flask integration, uncomment:
+        // const FLASK_TIMESTAMP_KEYS = {# timestamp_keys | tojson | safe #};
+        const DEMO_TIMESTAMP_KEYS = ["etw_time"];
+        let timestampKeys = typeof FLASK_TIMESTAMP_KEYS !== 'undefined' ? FLASK_TIMESTAMP_KEYS : DEMO_TIMESTAMP_KEYS;
+
         // Color configuration for keys and values (can be configured via Flask)
         // For Flask integration, uncomment the next line in your template:
-        // const FLASK_COLOR_RULES = {{ color_rules | tojson | safe }};
+        // const FLASK_COLOR_RULES = {# color_rules | tojson | safe #};
         const DEMO_COLOR_RULES = [
-            { type: "value", match: "Microsoft-Windows-Kernel-Process", backgroundColor: "#e6f2ff" },
+            { type: "value", match: "Microsoft-Windows-Kernel-Process", backgroundColor: "#bffff1" },
             { type: "value", match: "Microsoft-Windows-Kernel-Audit-API-Calls", backgroundColor: "#fff4e6" },
             { type: "value", match: "Microsoft-Windows-Kernel-File", backgroundColor: "#e6ffe6" },
             { type: "value", match: "Microsoft-Windows-Kernel-Network", backgroundColor: "#ffe6f2" },
             { type: "value", match: "Microsoft-Antimalware-Engine", backgroundColor: "#f2e6ff" },
-            { type: "value", match: "Microsoft-Windows-Threat-Intelligence", backgroundColor: "#ff38f2" },
+            { type: "value", match: "Microsoft-Windows-Threat-Intelligence", backgroundColor: "#e6c1e3" },
+            { type: "value", match: "RedTestProvider", backgroundColor: "#ffc08a" },
             { type: "value", match: "MsMpEng.exe", backgroundColor: "#e32f22" },
             { type: "value", match: "MsSense.exe", backgroundColor: "#e35c22" },
         ];
@@ -747,6 +785,12 @@
         }
 
         // Settings
+        function timestampKeysOnChange() {
+            const raw = document.getElementById("timestamp-keys-input").value;
+            timestampKeys = raw.split(",").map(s => s.trim()).filter(s => s.length > 0);
+            refresh();
+        }
+
         function settingsShow() {
             // toggle
             if (document.getElementById("settings").style.display === "block") {
@@ -756,6 +800,7 @@
 
             // set settings
             document.getElementById("settings-input").value = JSON.stringify(logs_orig, null, 2);
+            document.getElementById("timestamp-keys-input").value = timestampKeys.join(", ");
             document.getElementById("settings").style.display = "block";
         }
 
@@ -832,6 +877,38 @@
                 return "0x" + value.toString(16);
             }
             return value;
+        }
+
+        // Ensure a color string is a valid CSS color.
+        // Bare 3- or 6-char hex strings (e.g. "d9534f") get a "#" prepended.
+        function cssColor(color) {
+            if (!color) return color;
+            if (/^[0-9a-fA-F]{3}$/.test(color) || /^[0-9a-fA-F]{6}$/.test(color)) {
+                return "#" + color;
+            }
+            return color;
+        }
+
+        // Convert a Windows FILETIME (100-ns intervals since 1601-01-01) to a date string.
+        // Returns the formatted string, or null if the value doesn't look like a FILETIME.
+        function filetimeToDateString(value) {
+            // FILETIME is typically a large integer > ~100 trillion for years after 2000
+            if (typeof value !== "number" || value <= 0) return null;
+            // Offset in milliseconds between 1601-01-01 and 1970-01-01
+            const EPOCH_DIFF_MS = 11644473600000;
+            const ms = value / 10000; // 100-ns to ms
+            const unixMs = ms - EPOCH_DIFF_MS;
+            const date = new Date(unixMs);
+            if (isNaN(date.getTime())) return null;
+            return date.toISOString().replace("T", " ").replace("Z", " UTC");
+        }
+
+        function formatValue(key, value) {
+            if (timestampKeys.includes(key)) {
+                const dateStr = filetimeToDateString(value);
+                if (dateStr) return dateStr;
+            }
+            return hexify(value);
         }
 
         function renderLogs() {
@@ -919,8 +996,8 @@
                         // Apply color rules to key
                         const keyRule = keyColorMap.get(key);
                         if (keyRule) {
-                            if (keyRule.color) keySpan.style.color = keyRule.color;
-                            if (keyRule.backgroundColor) keySpan.style.backgroundColor = keyRule.backgroundColor;
+                            if (keyRule.color) keySpan.style.color = cssColor(keyRule.color);
+                            if (keyRule.backgroundColor) keySpan.style.backgroundColor = cssColor(keyRule.backgroundColor);
                         }
 
                         const toggleButton = document.createElement("button");
@@ -951,7 +1028,7 @@
                                     itemKeySpan.style.marginRight = "5px";
 
                                     const itemValueSpan = document.createElement("span");
-                                    itemValueSpan.textContent = hexify(itemValue);
+                                    itemValueSpan.textContent = formatValue(itemKey, itemValue);
                                     itemValueSpan.style.marginRight = "15px";
 
                                     itemDiv.appendChild(itemKeySpan);
@@ -987,21 +1064,21 @@
 
                         const keyRule = keyColorMap.get(key);
                         if (keyRule) {
-                            if (keyRule.color) keySpan.style.color = keyRule.color;
-                            if (keyRule.backgroundColor) keySpan.style.backgroundColor = keyRule.backgroundColor;
+                            if (keyRule.color) keySpan.style.color = cssColor(keyRule.color);
+                            if (keyRule.backgroundColor) keySpan.style.backgroundColor = cssColor(keyRule.backgroundColor);
                         }
 
                         const valueSpan = document.createElement("span");
                         valueSpan.classList.add("log-value");
-                        valueSpan.textContent = hexify(value);
+                        valueSpan.textContent = formatValue(key, value);
                         valueSpan.dataset.logIndex = logIndex;
                         valueSpan.dataset.key = key;
                         valueSpan.dataset.value = value;
 
                         const valueRule = valueColorMap.get(String(value));
                         if (valueRule) {
-                            if (valueRule.color) valueSpan.style.color = valueRule.color;
-                            if (valueRule.backgroundColor) valueSpan.style.backgroundColor = valueRule.backgroundColor;
+                            if (valueRule.color) valueSpan.style.color = cssColor(valueRule.color);
+                            if (valueRule.backgroundColor) valueSpan.style.backgroundColor = cssColor(valueRule.backgroundColor);
                         }
 
                         const log_kv = document.createElement("div");
@@ -1235,10 +1312,44 @@
         }
 
 
+        // Sort
+
+        let sortKey = "etw_time";
+        let sortDir = "asc";
+
+        function sortOnChange() {
+            sortKey = document.getElementById("sort-key-input").value.trim();
+            sortDir = document.querySelector('input[name="sort-dir"]:checked').value;
+            refresh();
+        }
+
+        function sortClear() {
+            document.getElementById("sort-key-input").value = "";
+            sortKey = "";
+            refresh();
+        }
+
+        function sortLogs(logs) {
+            if (!sortKey) return logs;
+            return logs.slice().sort((a, b) => {
+                const aVal = a[sortKey];
+                const bVal = b[sortKey];
+                // entries missing the key go to the end
+                if (aVal === undefined && bVal === undefined) return 0;
+                if (aVal === undefined) return 1;
+                if (bVal === undefined) return -1;
+                if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
+                if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
+                return 0;
+            });
+        }
+
+
         // Main
 
         function refresh() {
             logs = filterOrigLogs(logs_orig, filters);
+            logs = sortLogs(logs);
             renderLogs();
 
             // After filterOrigLogs for stats
@@ -1247,6 +1358,8 @@
         }
 
         popupInit();
+        // Initialize sort key input field with default value
+        document.getElementById("sort-key-input").value = sortKey;
         refresh();
     </script>
 </body>
