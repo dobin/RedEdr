@@ -1,347 +1,366 @@
 ﻿# RedEdr
 
-Display events from Windows to see the detection surface of your malware. Same data as an ETW-based EDR sees (Defender, Elastic, Fibratus...). 
+**RedEdr is a Windows telemetry recorder for malware developers and red teamers.**
 
-* Identify the telemetry your malware generates (detection surface)
-* Verify your anti-EDR techniques work
-* Debug and analyze your malware
+It captures the same events an ETW-based EDR would see when your tool runs, so
+you can inspect and assess your detection surface before it hits a real EDR.
 
-It generates [JSON files](https://github.com/dobin/RedEdr/tree/master/Data)
-collecting [the telemetry](https://github.com/dobin/RedEdr/blob/master/Doc/captured_events.md) 
-of your RedTeaming tools. 
+Point RedEdr at a process name, run your malware, and browse the resulting
+telemetry (ETW, ETW-TI, kernel callbacks, `ntdll.dll` hooks, callstacks) in a
+local web UI or as JSON.
 
-It is now part of Detonator, see [detonator.r00ted.ch](https://detonator.r00ted.ch). 
+RedEdr is also the recording engine behind [detonator.r00ted.ch](https://detonator.r00ted.ch).
+
+**Who this is for:** malware developers, red teamers, and anyone reverse-engineering
+Windows EDRs and telemetry.
 
 
 ## Screenshots
 
-Shellcode execution:
+Recording a small shellcode loader:
+
 ```c
-	PVOID shellcodeAddr = VirtualAlloc(NULL, payloadSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-	memcpy(shellcodeAddr, payload, payloadSize);
-	VirtualProtect(shellcodeAddr, payloadSize, PAGE_EXECUTE_READWRITE, &dwOldProtection));
-	HANDLE hThread = CreateThread(NULL, 0, shellcodeAddr, shellcodeAddr, 0, &threadId);
+PVOID shellcodeAddr = VirtualAlloc(NULL, payloadSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+memcpy(shellcodeAddr, payload, payloadSize);
+VirtualProtect(shellcodeAddr, payloadSize, PAGE_EXECUTE_READWRITE, &dwOldProtection);
+HANDLE hThread = CreateThread(NULL, 0, shellcodeAddr, shellcodeAddr, 0, &threadId);
 ```
 
-With ntdll.dll hooking:
+`ntdll.dll` hooks (`VirtualAlloc`, `VirtualProtect`, `CreateThread` calls with callstacks):
+
 ![RedEdr Screenshot ntdll.dll hooking](https://raw.github.com/dobin/RedEdr/master/Doc/screenshot-web-rwx-dll.png)
 
+ETW events (kernel process/thread/image, audit API calls):
 
-ETW events:
 ![RedEdr Screenshot ETW](https://raw.github.com/dobin/RedEdr/master/Doc/screenshot-web-rwx-etw.png)
 
 
-## Implemented Telemetry Consumers
+## What RedEdr captures
 
-* ETW
-  * Microsoft-Windows-Kernel-Process
-  * Microsoft-Windows-Kernel-Audit-API-Calls
-  * Microsoft-Windows-Security-Auditing
-  * Defender
-    * Microsoft-Antimalware-Engine
-    * Microsoft-Antimalware-RTP
-    * Microsoft-Antimalware-AMFilter
-    * Microsoft-Antimalware-Scan-Interface
-    * Microsoft-Antimalware-Protection
-  * ETW-TI (Threat Intelligence) with a PPL service via ELAM driver
+| Source | Provider / mechanism |
+|---|---|
+| **ETW** | `Microsoft-Windows-Kernel-Process`, `Microsoft-Windows-Kernel-Audit-API-Calls`, `Microsoft-Windows-Security-Auditing` |
+| **ETW (Defender)** | `Microsoft-Antimalware-Engine`, `-RTP`, `-AMFilter`, `-Scan-Interface`, `-Protection` |
+| **ETW-TI** | `Microsoft-Windows-Threat-Intelligence` (via a PPL service loaded through an ELAM driver) |
+| **Kernel callbacks** | `PsSetCreateProcessNotifyRoutine`, `PsSetCreateThreadNotifyRoutine`, `PsSetLoadImageNotifyRoutine` |
+| **User-mode hooks** | `ntdll.dll` hooking via KAPC DLL injection (what many older EDRs used to rely on) |
+| **Callstacks** | Captured on hook invocation and on selected ETW events |
+| **Process context** | PEB, loaded DLLs and their section layout |
 
-* Kernel Callbacks
-  * PsSetCreateProcessNotifyRoutine
-  * PsSetCreateThreadNotifyRoutine
-  * PsSetLoadImageNotifyRoutine
-  * (ObRegisterCallbacks, not used atm)
+Example captured events live in [`Data/`](https://github.com/dobin/RedEdr/tree/master/Data).
 
-* ntdll.dll hooking 
 
-* Callstacks
-  * On ntdll.dll hook invocation
-  * On several ETW events
- 
-* process query
-  * PEB
-  * Loaded DLL's (and their regions)
+## How it works
+
+RedEdr is not one process — it is a small system of cooperating components that
+talk over named pipes (`\\.\pipe\RedEdr*`):
+
+| Component | Role |
+|---|---|
+| `RedEdr.exe` | Orchestrator + web UI. Consumes user-mode ETW, aggregates events from all other components, serves the HTTP API. |
+| `RedEdrDriver.sys` | Kernel driver. Captures kernel callbacks and performs KAPC DLL injection into the target. Requires test-signing. |
+| `RedEdrDll.dll` | Injected into the target process for `ntdll.dll` hooking (via Detours / MinHook). |
+| `RedEdrPplService.exe` | PPL service. The only place from which ETW-TI can be consumed. Loaded via an ELAM driver. |
+| `elam_driver.sys` | Empty, signed ELAM driver used solely to allow `RedEdrPplService` to start as PPL. |
+
+You only need the components required by the modes you enable — see the
+[Feature matrix](#feature-matrix) below.
+
+A build deploys everything into `C:\RedEdr\`.
+
+
+## Feature matrix
+
+Pick a row based on what you want to see. Rows are additive — flags can be combined.
+
+| I want to see… | Flags | Kernel driver? | Test-signing? | PPL service installed? |
+|---|---|---|---|---|
+| ETW events (user-mode) | `--etw` | No | No | No |
+| ETW + `ntdll.dll` hooks | `--etw --hook` | **Yes** | **Yes** | No |
+| ETW + ETW-TI | `--etw --etwti` | **Yes** | **Yes** | **Yes** |
+| Everything | `--etw --etwti --hook` | **Yes** | **Yes** | **Yes** |
+| Defender's Antimalware-Engine ETW | add `--with-antimalwareengine` | No | No | No |
+| `MsMpEng.exe` ETW view | add `--with-defendertrace` | Better | Better | Better |
+
+**Trace matching is a substring match on the process image path.** `--trace otepad`
+matches both `notepad.exe` (Windows 10) and `Notepad.exe` (Windows 11).
+
+
+## Warnings
+
+Before you run anything:
+
+- ⚠️ **Use a dedicated, snapshotted VM.** For disabled secure boot, enabled
+  test-signing, and installed kernel driver.
+- ⚠️ **Installing the PPL service (`--etwti`) is not reversible.** There is
+  currently no working uninstall path. Snapshot the VM *before* the first
+  `--etwti` run.
+- ⚠️ **Only `C:\RedEdr\` is supported.** Paths are hardcoded in the driver and
+  PPL service. Don't install anywhere else.
+- ⚠️ **RedEdr looks like malware to AV.** Whitelist `C:\RedEdr\` in Defender
+  (or whatever AV/EDR you have) before extracting.
+
+
+## Prerequisites
+
+- Windows 11, x64
+- Local administrator (some ETW providers additionally require SYSTEM — see
+  [ETW-TI mode](#etw-ti-mode-etwti))
+- For `--hook` or `--etwti`: test-signing enabled and secure boot disabled
+  (see [Enabling kernel-driver modes](#enabling-kernel-driver-modes))
+- For building from source: Visual Studio 2022 + matching Windows SDK + WDK
+  (see [Building from source](#building-from-source))
 
 
 ## Installation
 
-Use a dedicated VM for RedEdr. 
+0. Add `C:\RedEdr\` to your AV exclusions.
+1. Download `release.zip` from the
+   [GitHub Releases page](https://github.com/dobin/RedEdr/releases).
+2. Extract to **`C:\RedEdr\`** (no other path works — paths are hardcoded).
+3. Open a terminal **as Administrator** and `cd C:\RedEdr`.
+4. Verify it starts:
 
-Extract release.zip into `C:\RedEdr`. **No other directories are supported.**
+   ```powershell
+   PS C:\RedEdr> .\RedEdr.exe --help
+   ```
 
-Whitelist `C:\RedEdr\RedEdr.exe` in your AV (Defender).
-
-Start terminal as local admin.
-
-Change into `C:\RedEdr` and run `.\RedEdr.exe`:
-```
-PS C:\rededr> .\RedEdr.exe
-Maldev event recorder
-Usage:
-  RedEdr [OPTION...]
-  -t, --trace arg     Process name to trace
-  -e, --etw           Input: Consume ETW Events
-  -g, --etwti         Input: Consume ETW-TI Events
-  -m, --mplog         Input: Consume Defender mplog file
-  -k, --kernel        Input: Consume kernel callback events
-  -i, --inject        Input: Consume DLL injection
-  -w, --web           Output: Web server
-...
-```
-
-Try: `.\RedEdr.exe --etw --trace otepad`, and then start notepad 
-(will be `notepad.exe` on Windows 10, `Notepad.exe` on Windows 11).
-The log should be printed as stdout.
+For anything beyond plain ETW, continue with
+[Enabling kernel-driver modes](#enabling-kernel-driver-modes).
 
 
-## Simple ETW Usage
+## Quick Start (ETW only, no kernel driver)
 
-RedEdr will trace all processes containing by process image name (exe path).
+The simplest mode. No reboot, no driver, no PPL.
 
-Capture ETW events and provide a web interface on [http://localhost:8081](http://localhost:8081):
-```
-PS > .\RedEdr.exe --etw --web --trace notepad.exe
+```powershell
+PS C:\RedEdr> .\RedEdr.exe --etw --trace notepad.exe
 ```
 
+Then in another window, start `notepad.exe`. Open
+<http://localhost:8081> in your browser — events stream in live.
 
-## Advanced Usage
-
-For ntdll.dll hooking and ETW-TI, we need to configure windows so it can
-load our kernel module. 
-
-Change Windows boot options to enable self-signed kernel drivers and reboot.
-
-In admin cmd:
-```
-PS > bcdedit /set testsigning on
-
-# required for win11 on proxmox even with secureboot disabled in bios
-PS > bcdedit /set {bootmgr} testsigning on
-PS > bcdedit /set {current} testsigning on
-PS > bcdedit /set hypervisorlaunchtype off
-
-PS > bcdedit -debug on
-PS > shutdown /r /t 0
-```
-
-If you use Hyper-V, uncheck "Security -> Enable Secure Boot". 
-
-If you use Proxmox, this works for me: 
-* Reboot VM, press ESC a lot to go to BIOS menu
-* Navigate to "Device Manager > Secure Boot Configuration".
-* Uncheck "Attempt Secure Boot".
+Stop RedEdr with `Ctrl+C`.
 
 
+## Enabling kernel-driver modes
 
-### ETW-TI
+`--hook` and `--etwti` load a self-signed kernel driver. Windows will refuse to
+load it unless test-signing is enabled and secure boot is off.
 
-ETW-TI requires an ELAM driver to start `RedEdrPplService`, 
-and therefore requires self signed kernel driver option.
-Make a snapshot of your VM before doing this. Currently its 
-not possible to remove the PPL service ever again. 
+**Snapshot your VM first.** Then, in an **Administrator cmd.exe** (not PowerShell —
+`bcdedit` behaves better there):
 
-```
-PS > .\RedEdr.exe --etw --etwti --trace notepad.exe
+```cmd
+bcdedit /set testsigning on
+
+:: Required for Win11 on Proxmox even with secure boot disabled in BIOS
+bcdedit /set {bootmgr} testsigning on
+bcdedit /set {current} testsigning on
+bcdedit /set hypervisorlaunchtype off
+
+bcdedit -debug on
+shutdown /r /t 0
 ```
 
-If you want ETW Microsoft-Windows-Security-Auditing, start as SYSTEM (`psexec -i -s cmd.exe`). 
+**Disable Secure Boot in your hypervisor as well:**
 
-See `gpedit.msc -> Computer Configuration -> Windows Settings -> Security Settings -> Advanced Audit Policy Configuration -> System Audit Policies - Local Group Policy object`
-for settings to log.
+- **Hyper-V:** VM settings → Security → uncheck *Enable Secure Boot*.
+- **Proxmox:** Reboot VM, mash `ESC` to enter the BIOS menu →
+  *Device Manager* → *Secure Boot Configuration* → uncheck *Attempt Secure Boot*.
 
-
-### ntdll.dll hooking
-
-KAPC DLL injection for ntdll.dll hooking. Thats what many older EDR's depend on. 
-Also requires our own kernel module. 
-
-```
-PS > .\RedEdr.exe --hook --trace notepad.exe
-```
+After the reboot, Windows will show a "Test Mode" watermark on the desktop.
+Then you ready.
 
 
+## Usage modes
 
-## EDR Introspection (for Defender)
+### ETW-TI mode (`--etwti`)
 
-The following is useful to reverse engineer EDR's, and to verify your anti-EDR techniques
-are targeted. It will observe Defender EDR. 
+Adds `Microsoft-Windows-Threat-Intelligence` events. Requires the PPL service,
+which is installed permanently on first run through the ELAM driver.
 
-For more details, see Levi's blog at [My Hacker Blog](https://blog.levi.wiki/), 
-and the [EDR-Introspection](https://github.com/cailllev/EDR-Introspection) project. 
-
-
-### Microsoft-Antimalware-Engine ETW events
-
-Argument: `--with-antimalwareengine`
-
-Example: `.\RedEdr.exe --etw --trace putty --web --with-antimalwareengine`
-
-This will collect `Microsoft-Antimalware-Engine` events related to the target process. 
-See blog post [Defender Telemetry](https://blog.deeb.ch/posts/defender-telemetry/) for an overview of available events. 
-
-For example the "Behavior Monitoring BmProcessContextStart", which indicates Defender will start behavior monitoring on the targeted process:
-```
-Behavior Monitoring BmProcessContextStart etw etw_event_id:0x6D etw_pid:0x1524 etw_process:MsMpEng.exe etw_provider_name:Microsoft-Antimalware-Engine etw_tid:0x37A8 etw_time:0x1DCC98C2B514B90 id:0x3 trace_id:0x29
-imagepath:\Device\HarddiskVolume6\toolz\putty.exe pid:0x11F48 processcontextid:0x188F7789520
+```powershell
+PS C:\RedEdr> .\RedEdr.exe --etw --etwti --trace notepad.exe
 ```
 
+For `Microsoft-Windows-Security-Auditing` events, run RedEdr as SYSTEM
+(`psexec -i -s cmd.exe`). Configure which audit categories are recorded via:
 
-### MsMpEng.exe ETW events
+`gpedit.msc` → *Computer Configuration* → *Windows Settings* → *Security
+Settings* → *Advanced Audit Policy Configuration* → *System Audit Policies –
+Local Group Policy Object*.
 
-Argument: `--with-defendertrace`
+### `ntdll.dll` hook mode (`--hook`)
 
-Example: `.\RedEdr.exe --etw --etwti --trace putty --web --with-defendertrace`
+KAPC-based DLL injection into the target. Records every hooked `Nt*` call with
+its callstack — the classic view an older user-mode-hooking EDR would have.
 
-This will collect `msmpeng.exe` ETW events related to our target process. 
-See blog post [Windows Telemetry](https://blog.deeb.ch/posts/windows-telemetry/) for an overview of available events. 
-
-For example "Info" ETW event of "Microsoft-Windows-Kernel-Audit-API-Calls" accessing our target process:
+```powershell
+PS C:\RedEdr> .\RedEdr.exe --hook --trace notepad.exe
 ```
-Info etw etw_event_id:0x6 etw_pid:0x1524 etw_process:MsMpEng.exe etw_provider_name:Microsoft-Windows-Kernel-Audit-API-Calls etw_tid:0x21E0 etw_time:0x1DCC9BA7177FD80 id:0x1 trace_id:0x29
-desiredaccess:0x1FFFFF returncode:0x0 targetprocessid:0x1524 targetthreatid:0x21E0
+
+### EDR introspection (Defender)
+
+These flags don't watch *your* process — they watch what **Defender** does in
+response to your process. Great for verifying that anti-EDR techniques actually
+land. See Levi's [My Hacker Blog](https://blog.levi.wiki/) and the
+[EDR-Introspection](https://github.com/cailllev/EDR-Introspection) project for
+context.
+
+**`--with-antimalwareengine`** — capture `Microsoft-Antimalware-Engine` events
+related to the target. Overview: [Defender Telemetry](https://blog.deeb.ch/posts/defender-telemetry/).
+
+```powershell
+PS C:\RedEdr> .\RedEdr.exe --etw --trace putty --with-antimalwareengine
+```
+
+Example event ("Defender is about to start behavior-monitoring us"):
+
+```
+Behavior Monitoring BmProcessContextStart etw etw_pid:0x1524 etw_process:MsMpEng.exe
+  etw_provider_name:Microsoft-Antimalware-Engine
+  imagepath:\Device\HarddiskVolume6\toolz\putty.exe pid:0x11F48
+```
+
+**`--with-defendertrace`** — capture *all* ETW events emitted by `MsMpEng.exe`
+that reference our target. Overview: [Windows Telemetry](https://blog.deeb.ch/posts/windows-telemetry/).
+
+```powershell
+PS C:\RedEdr> .\RedEdr.exe --etw --etwti --trace putty --with-defendertrace
+```
+
+Example event (Defender opening a handle to our process):
+
+```
+Info etw etw_pid:0x1524 etw_process:MsMpEng.exe
+  etw_provider_name:Microsoft-Windows-Kernel-Audit-API-Calls
+  desiredaccess:0x1FFFFF returncode:0x0 targetprocessid:0x1524
 ```
 
 
-## Example Output
+## Command-line reference
 
-See `Data/` directory:
-* [Data](https://github.com/dobin/RedEdr/tree/master/Data)
-
-
-## Hacking
-
-Arch:
 ```
-      ┌─────┐  ┌────────┐ ┌─────────┐  ┌──────┐                            
-      │ ETW │  │ ETW-TI │ │ Kernel  │  │ DLL  │                            
-      └──┬──┘  └───┬────┘ └────┬────┘  └──┬───┘                            
-         │         │           │          │                                
-         └─────────┴─────────┬─┴──────────┘                                
-                             │                                             
-                             │                                             
-                             ▼                                             
-                     ┌────────────────┐                                    
-                     │                │                                    
-Event as JSON string │  Event         │                                    
-                     │  Aggregator    │                                    
-                     │                │               ┌──────────┐         
-                     └───────┬────────┘               │ Process  │         
-                             │                        └──────────┘         
-                             │                             ▲               
-                             ▼                             │query          
-                     ┌────────────────┐                    │               
-                     │                │         ┌──────────┴────┐          
-Event as JSON in C++ │  Event         ├────────►│ Process Query │          
-                     │  Processor     │         └─────────────┬─┘          
-                     │                │                       │add         
-                     └┬───────────────┘                       ▼            
-                      │                                    ┌──────────────┐
-                      │ ┌────────────────────────┐query    │              │
-                      ├─┤Event Augment           ├────────►┤  Mem Static  │
-                      │ └────────────────────────┘         │              │
-                      │ ┌────────────────────────┐add      └──────────────┘
-                      ├─┤Event Mem Tracker       ├──────┐                  
-                      │ └────────────────────────┘      │  ┌──────────────┐
-                      │ ┌────────────────────────┐query └─►│              │
-                      ├─┤Event Detection         ├───┐     │ Mem Dynamic  │
-                      │ └────────────────────────┘   └────►│              │
-                      ▼ ┌────────────────────────┐         └──────────────┘
-                      └─┤Event Storage & Output  │                         
-                        └────────────────────────┘                         
+RedEdr [OPTION...]
+
+Input (what to record):
+  --trace <name>            Substring-match on process image name (default: malware)
+  --etw                     Enable ETW consumers
+  --etwti                   Enable ETW-TI (requires PPL service, permanent)
+  --kernel                  Enable kernel-callback consumer
+  --hook                    Enable ntdll.dll hooking via KAPC injection
+
+Input options:
+  --with-defendertrace      Also record ETW events emitted by MsMpEng.exe
+  --with-antimalwareengine  Also record Microsoft-Antimalware-Engine events
+
+Output:
+  --web                     Enable web UI (default: on)
+  --port <n>                Web server port (default: 8081)
+  --show                    Also print events to stdout
+
+Debug / maintenance:
+  --dllreader               Run only the DLL reader (for manual injection tests)
+  --krnload / --krnunload   Load / unload the kernel driver
+  --pplstart / --pplstop    Install / stop the PPL service
+  -d, --debug               Verbose debug output
+  -h, --help                Show help
 ```
 
-IPC:
-```
-  RedEdr.exe                                                                                       
-┌────────────┐                    ┌─────────────────┐                                             
-│            │   KERNEL_PIPE      │                 │    KERNEL_PIPE: Events (wchar)              
-│            │◄───────────────────┤   Kernel Module │                                             
-│ Pipe Server│                    │                 │    IOCTL: Config (MY_DRIVER_DATA):          
-│            ├───────────────────►│                 │             filename                        
-│            │   IOCTL            └─────────────────┘             enable                          
-│            │                                                                                    
-│            │                                                                                    
-│            │                                                                                    
-│            │                                                                                    
-│            │                    ┌─────────────────┐                                             
-│            │   DLL_PIPE         │                 │  DLL_PIPE: 1: Config (wchar)   RedEdr -> DLL
-│ Pipe Server│◄───────────────────┤  Injected DLL   │                 "callstack:1;"              
-│            │                    │                 │                                             
-│            │                    │                 │           >1: Events (wchar)   RedEdr <- DLL
-│            │                    └─────────────────┘                                             
-│            │                                                                                    
-│            │                                                                                    
-│            │                                                                                    
-│            │                    ┌─────────────────┐                                             
-│            │   PPL_PIPE         │                 │  DLL_PIPE: Events (wchar)                   
-│ Pipe Server│◄───────────────────┤  ETW-TI Service │                                             
-│            │                    │  PPL            │                                             
-│            │   SERVICE_PIPE     │                 │  SERVICE_PIPE: Config (wchar)               
-│ Pipe Client├───────────────────►│                 │                  "start:<process name>"     
-│            │                    └─────────────────┘                                             
-│            │                                                                                    
-│            │                    ┌─────────────────┐                                             
-│            │◄───────────────────┤                 │                                             
-│            │                    │  ETW            │                                             
-│            │                    │                 │                                             
-│            │                    │                 │                                             
-│            │                    └─────────────────┘                                             
-│            │                                                                                    
-│            │                                                                                    
-└────────────┘                                                                                    
-```
+The HTTP API is documented separately in [`Doc/api.md`](Doc/api.md).
 
 
-## Compiling 
+## Verifying it works
 
-Good luck.
+After starting RedEdr with `--etw`:
 
-Use VS2022. get it from https://aka.ms/vs/17/release/vs_community.exe (or https://visualstudio.microsoft.com/vs/older-downloads/ with account).
+1. Open <http://localhost:8081> — you should see the SemiDataSieve UI.
+2. Run your target process (e.g. `notepad.exe`).
+3. Events appear in the log pane within a second.
+4. Sidebar counters (`ETW`, `ETW-TI`, `kernel`, `DLL`) should match the sources
+   you enabled.
 
-Compile as DEBUG.
+If nothing appears, see [Troubleshooting](#troubleshooting).
 
-To compile the kernel driver:
-* check https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk 
-* Read the instructions on the website carefully
-* Install the shit in visual studio 2022 installer which is needed
-* Install the SDK, and WDK
-* Make sure you have the correct version installed for your system (eg. 10.0.26100 vs 10.0.28000)
-* If it doesnt work, abondon all hope and install Linux
 
-On building, it should deploy everything into `C:\RedEdr\`.
+## Troubleshooting
 
-On command line, use Visual Studio developer console. 
+| Symptom | Likely cause / fix |
+|---|---|
+| `--hook` or `--etwti`: driver fails to load | Test-signing not active or Secure Boot still on. Re-check the `bcdedit` output; verify the "Test Mode" watermark; confirm hypervisor settings. |
+| No events at all | `--trace` substring doesn't match. Try `--trace notepad` (no `.exe`) or run with `--debug --show`. |
+| `RedEdr.exe` is deleted on extraction | Defender ate it. Add `C:\RedEdr\` to exclusions **before** extracting. |
+| Port 8081 already in use | `--port 8082` (or any free port). |
+| ETW-TI events missing but `--etwti` set | PPL service failed to start. Check the Windows Event Viewer for `RedEdrPplService`. |
+| `Microsoft-Windows-Security-Auditing` empty | Run as SYSTEM via `psexec -i -s cmd.exe` and configure audit policy in `gpedit.msc`. |
 
-Everything:
-```
-repos\RedEdr>msbuild RedEdr.sln /p:Configuration=Debug /p:Platform=x64
+
+## Uninstall
+
+- **ETW-only install:** delete `C:\RedEdr\`. That's it.
+- **`--hook` install:** stop RedEdr, then `.\RedEdr.exe --krnunload`, then delete
+  `C:\RedEdr\`.
+- **`--etwti` install:** the PPL service currently **cannot be cleanly removed**.
+  Restore your VM snapshot. This is a known limitation.
+
+
+## Building from source
+
+Requirements:
+
+- Visual Studio 2022 ([download](https://aka.ms/vs/17/release/vs_community.exe))
+  with the *Desktop development with C++* workload.
+- Windows SDK **and** WDK — matching versions (e.g. both `10.0.26100`).
+  Follow Microsoft's [Download the WDK](https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk)
+  guide *exactly* — the WDK installer must run after the matching SDK.
+
+Build (Debug is currently the supported configuration; artefacts deploy to
+`C:\RedEdr\`):
+
+```powershell
+# Everything
+msbuild RedEdr.sln /p:Configuration=Debug /p:Platform=x64
+
+# Just the main exe
+msbuild RedEdr.sln /p:Configuration=Debug /p:Platform=x64 /t:RedEdr
 ```
 
-RedEdr only:
-```
-repos\RedEdr>msbuild RedEdr.sln /p:Configuration=Debug /p:Platform=x64 /t:RedEdr
-```
+Use the *x64 Native Tools Command Prompt for VS 2022* if `msbuild` isn't on
+your PATH.
+
+The kernel driver is the fragile part. If the SDK/WDK versions don't match
+exactly, driver builds silently produce broken binaries or fail cryptically.
+When in doubt, uninstall both and reinstall in the order the WDK page
+prescribes.
 
 
-## Based on
+## Further reading
 
-Based on MyDumbEdr
-* GPLv3
-* https://sensepost.com/blog/2024/sensecon-23-from-windows-drivers-to-an-almost-fully-working-edr/
-* https://github.com/sensepost/mydumbedr
-* patched https://github.com/dobin/mydumbedr
-* which seems to use: https://github.com/CCob/SylantStrike/tree/master/SylantStrike
-
-With KAPC injection from:
-* https://github.com/0xOvid/RootkitDiaries/
-* No license
-
-To run as PPL: 
-* https://github.com/pathtofile/PPLRunner/
-* No license
+- [`Doc/api.md`](Doc/api.md) — HTTP API reference
+- [blog.deeb.ch — Defender Telemetry](https://blog.deeb.ch/posts/defender-telemetry/)
+- [blog.deeb.ch — Windows Telemetry](https://blog.deeb.ch/posts/windows-telemetry/)
+- [My Hacker Blog](https://blog.levi.wiki/) (Levi)
+- [EDR-Introspection](https://github.com/cailllev/EDR-Introspection)
 
 
-## Libraries used
+## Credits
 
-* https://github.com/jarro2783/cxxopts, MIT
-* https://github.com/yhirose/cpp-httplib, MIT
-* https://github.com/nlohmann/json, MIT
+RedEdr is licensed under **GPLv3** (see [`LICENSE.txt`](LICENSE.txt)).
+
+Built on top of:
+
+- [MyDumbEdr](https://github.com/sensepost/mydumbedr) (GPLv3) —
+  ["From Windows Drivers to an (almost) Fully Working EDR"](https://sensepost.com/blog/2024/sensecon-23-from-windows-drivers-to-an-almost-fully-working-edr/),
+  itself based on [SylantStrike](https://github.com/CCob/SylantStrike/tree/master/SylantStrike).
+  Patched fork: [dobin/mydumbedr](https://github.com/dobin/mydumbedr).
+- KAPC injection from [RootkitDiaries](https://github.com/0xOvid/RootkitDiaries/) (no license).
+- PPL loading from [PPLRunner](https://github.com/pathtofile/PPLRunner/) (no license).
+
+Vendored libraries:
+
+- [cxxopts](https://github.com/jarro2783/cxxopts) — MIT
+- [cpp-httplib](https://github.com/yhirose/cpp-httplib) — MIT
+- [nlohmann/json](https://github.com/nlohmann/json) — MIT
+- [Microsoft Detours](https://github.com/microsoft/Detours) — MIT
+- [MinHook](https://github.com/TsudaKageyu/minhook) — BSD-2-Clause
