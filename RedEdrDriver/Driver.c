@@ -91,8 +91,9 @@ NTSTATUS MyDriverDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
 
             // 
             if (g_Settings.enable_etwti_events_defender) {
-                LOG_A(LOG_INFO, "Enabling ETW-TI Defender events\n");
+                LOG_A(LOG_INFO, "Enabling more ETW-TI events for: MsMpEng.exe MsSense.exe");
                 EnableTelemetryLoggingForProcessByName(L"MsMpEng.exe");
+                EnableTelemetryLoggingForProcessByName(L"MsSense.exe");
             }
 
         }
