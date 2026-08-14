@@ -52,7 +52,7 @@ Example captured events live in [`Data/`](https://github.com/dobin/RedEdr/tree/m
 
 ## How it works
 
-RedEdr is not one process — it is a small system of cooperating components that
+RedEdr is not one process - it is a small system of cooperating components that
 talk over named pipes (`\\.\pipe\RedEdr*`):
 
 | Component | Role |
@@ -63,7 +63,7 @@ talk over named pipes (`\\.\pipe\RedEdr*`):
 | `RedEdrPplService.exe` | PPL service. The only place from which ETW-TI can be consumed. Loaded via an ELAM driver. |
 | `elam_driver.sys` | Empty, signed ELAM driver used solely to allow `RedEdrPplService` to start as PPL. |
 
-You only need the components required by the modes you enable — see the
+You only need the components required by the modes you enable - see the
 [Feature matrix](#feature-matrix) below.
 
 A build deploys everything into `C:\RedEdr\`.
@@ -71,7 +71,7 @@ A build deploys everything into `C:\RedEdr\`.
 
 ## Feature matrix
 
-Pick a row based on what you want to see. Rows are additive — flags can be combined.
+Pick a row based on what you want to see. Rows are additive - flags can be combined.
 
 | I want to see… | Flags | Kernel driver? | Test-signing? | PPL service installed? |
 |---|---|---|---|---|
@@ -104,7 +104,7 @@ Before you run anything:
 ## Prerequisites
 
 - Windows 11, x64
-- Local administrator (some ETW providers additionally require SYSTEM — see
+- Local administrator (some ETW providers additionally require SYSTEM - see
   [ETW-TI mode](#etw-ti-mode-etwti))
 - For `--hook` or `--etwti`: test-signing enabled and secure boot disabled
   (see [Enabling kernel-driver modes](#enabling-kernel-driver-modes))
@@ -117,7 +117,7 @@ Before you run anything:
 0. Add `C:\RedEdr\` to your AV exclusions.
 1. Download `release.zip` from the
    [GitHub Releases page](https://github.com/dobin/RedEdr/releases).
-2. Extract to **`C:\RedEdr\`** (no other path works — paths are hardcoded).
+2. Extract to **`C:\RedEdr\`** (no other path works - paths are hardcoded).
 3. Open a terminal **as Administrator** and `cd C:\RedEdr`.
 4. Verify it starts:
 
@@ -138,7 +138,7 @@ PS C:\RedEdr> .\RedEdr.exe --etw --trace notepad.exe
 ```
 
 Then in another window, start `notepad.exe`. Open
-<http://localhost:8081> in your browser — events stream in live.
+<http://localhost:8081> in your browser - events stream in live.
 
 Stop RedEdr with `Ctrl+C`.
 
@@ -148,7 +148,7 @@ Stop RedEdr with `Ctrl+C`.
 `--hook` and `--etwti` load a self-signed kernel driver. Windows will refuse to
 load it unless test-signing is enabled and secure boot is off.
 
-**Snapshot your VM first.** Then, in an **Administrator cmd.exe** (not PowerShell —
+**Snapshot your VM first.** Then, in an **Administrator cmd.exe** (not PowerShell -
 `bcdedit` behaves better there):
 
 ```cmd
@@ -194,7 +194,7 @@ Local Group Policy Object*.
 ### `ntdll.dll` hook mode (`--hook`)
 
 KAPC-based DLL injection into the target. Records every hooked `Nt*` call with
-its callstack — the classic view an older user-mode-hooking EDR would have.
+its callstack - the classic view an older user-mode-hooking EDR would have.
 
 ```powershell
 PS C:\RedEdr> .\RedEdr.exe --hook --trace notepad.exe
@@ -202,13 +202,13 @@ PS C:\RedEdr> .\RedEdr.exe --hook --trace notepad.exe
 
 ### EDR introspection (Defender)
 
-These flags don't watch *your* process — they watch what **Defender** does in
+These flags don't watch *your* process - they watch what **Defender** does in
 response to your process. Great for verifying that anti-EDR techniques actually
 land. See Levi's [My Hacker Blog](https://blog.levi.wiki/) and the
 [EDR-Introspection](https://github.com/cailllev/EDR-Introspection) project for
 context.
 
-**`--with-antimalwareengine`** — capture `Microsoft-Antimalware-Engine` events
+**`--with-antimalwareengine`** - capture `Microsoft-Antimalware-Engine` events
 related to the target. Overview: [Defender Telemetry](https://blog.deeb.ch/posts/defender-telemetry/).
 
 ```powershell
@@ -223,7 +223,7 @@ Behavior Monitoring BmProcessContextStart etw etw_pid:0x1524 etw_process:MsMpEng
   imagepath:\Device\HarddiskVolume6\toolz\putty.exe pid:0x11F48
 ```
 
-**`--with-defendertrace`** — capture *all* ETW events emitted by `MsMpEng.exe`
+**`--with-defendertrace`** - capture *all* ETW events emitted by `MsMpEng.exe`
 that reference our target. Overview: [Windows Telemetry](https://blog.deeb.ch/posts/windows-telemetry/).
 
 ```powershell
@@ -275,7 +275,7 @@ The HTTP API is documented separately in [`Doc/api.md`](Doc/api.md).
 
 After starting RedEdr with `--etw`:
 
-1. Open <http://localhost:8081> — you should see the SemiDataSieve UI.
+1. Open <http://localhost:8081> - you should see the SemiDataSieve UI.
 2. Run your target process (e.g. `notepad.exe`).
 3. Events appear in the log pane within a second.
 4. Sidebar counters (`ETW`, `ETW-TI`, `kernel`, `DLL`) should match the sources
@@ -311,9 +311,9 @@ Requirements:
 
 - Visual Studio 2022 ([download](https://aka.ms/vs/17/release/vs_community.exe))
   with the *Desktop development with C++* workload.
-- Windows SDK **and** WDK — matching versions (e.g. both `10.0.26100`).
+- Windows SDK **and** WDK - matching versions (e.g. both `10.0.26100`).
   Follow Microsoft's [Download the WDK](https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk)
-  guide *exactly* — the WDK installer must run after the matching SDK.
+  guide *exactly* - the WDK installer must run after the matching SDK.
 
 Build (Debug is currently the supported configuration; artefacts deploy to
 `C:\RedEdr\`):
@@ -337,11 +337,13 @@ prescribes.
 
 ## Further reading
 
-- [`Doc/api.md`](Doc/api.md) — HTTP API reference
-- [blog.deeb.ch — Defender Telemetry](https://blog.deeb.ch/posts/defender-telemetry/)
-- [blog.deeb.ch — Windows Telemetry](https://blog.deeb.ch/posts/windows-telemetry/)
+- [blog.deeb.ch - AI Assisted EDR Introspection](https://blog.deeb.ch/posts/defender-ai-introspection/)
+- blog.deeb.ch - Defender Reversing [Opus](https://blog.deeb.ch/posts/reversing-defender-opus/) / [Qwen](https://blog.deeb.ch/posts/reversing-defender-qwen/) / [Deepseek](https://blog.deeb.ch/posts/reversing-defender-deepseek/)
+- [blog.deeb.ch - Defender Introspection](https://blog.deeb.ch/posts/defender-introspection/)
+- [blog.deeb.ch - Defender Telemetry](https://blog.deeb.ch/posts/defender-telemetry/)
+- [blog.deeb.ch - Windows Telemetry](https://blog.deeb.ch/posts/windows-telemetry/)
 - [My Hacker Blog](https://blog.levi.wiki/) (Levi)
-- [EDR-Introspection](https://github.com/cailllev/EDR-Introspection)
+- [EDR-Introspection](https://github.com/evilele/EDR-Introspection) (Levi)
 
 
 ## Credits
@@ -350,7 +352,7 @@ RedEdr is licensed under **GPLv3** (see [`LICENSE.txt`](LICENSE.txt)).
 
 Built on top of:
 
-- [MyDumbEdr](https://github.com/sensepost/mydumbedr) (GPLv3) —
+- [MyDumbEdr](https://github.com/sensepost/mydumbedr) (GPLv3) -
   ["From Windows Drivers to an (almost) Fully Working EDR"](https://sensepost.com/blog/2024/sensecon-23-from-windows-drivers-to-an-almost-fully-working-edr/),
   itself based on [SylantStrike](https://github.com/CCob/SylantStrike/tree/master/SylantStrike).
   Patched fork: [dobin/mydumbedr](https://github.com/dobin/mydumbedr).
@@ -359,8 +361,8 @@ Built on top of:
 
 Vendored libraries:
 
-- [cxxopts](https://github.com/jarro2783/cxxopts) — MIT
-- [cpp-httplib](https://github.com/yhirose/cpp-httplib) — MIT
-- [nlohmann/json](https://github.com/nlohmann/json) — MIT
-- [Microsoft Detours](https://github.com/microsoft/Detours) — MIT
-- [MinHook](https://github.com/TsudaKageyu/minhook) — BSD-2-Clause
+- [cxxopts](https://github.com/jarro2783/cxxopts) - MIT
+- [cpp-httplib](https://github.com/yhirose/cpp-httplib) - MIT
+- [nlohmann/json](https://github.com/nlohmann/json) - MIT
+- [Microsoft Detours](https://github.com/microsoft/Detours) - MIT
+- [MinHook](https://github.com/TsudaKageyu/minhook) - BSD-2-Clause
