@@ -63,6 +63,8 @@ bool GetUserTokenForExecution(HANDLE& hTokenDup) {
         LOG_W(LOG_ERROR, L"Failed to query user token (session %d), error: %d", sessionId, err);
         if (err == ERROR_PRIVILEGE_NOT_HELD) {
             LOG_W(LOG_ERROR, L"This process must be running as SYSTEM.");
+        } else if (err == ERROR_NO_TOKEN) {
+            LOG_W(LOG_ERROR, L"No user token available for session %d. Ensure a user is logged in.", sessionId);
         }
         return false;
     }
